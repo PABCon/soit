@@ -1,6 +1,6 @@
 # SóIT — Spec Batch
 
-**Version:** v1.7
+**Version:** v1.8
 **Date:** 2026-09-18
 **Status:** MVP spec complete and review-hardened — **build started**. Domain (`soit.pt`) still to confirm and register.
 
@@ -52,6 +52,7 @@ Product communication/notification layer (touchpoints marked in the flows — **
 
 ## Changelog
 
+- **v1.8 (2026-09-18)** — **Build step 1 complete.** One spec correction found while building: §2.1 said each route group has its "own root layout", but Next.js allows multiple *root* layouts only when route groups sit at the top of `app/`. With every URL locale-prefixed (§2.2), the root layout is `app/[locale]/layout.tsx` and the two shells are nested beneath it — the surfaces stay as separate as intended, only `<html>`/`<body>`/fonts are shared.
 - **v1.7 (2026-09-18)** — **Product name locked: SóIT.** All `[Product Name]` placeholders resolved; naming convention recorded in §1 (accented brand for humans, ASCII `soit` for machines — npm forbids accented package names and an IDN punycodes to `xn--sit-zma.pt` in certificates, analytics and copied links). Spec moved into the project repo at `docs/`. Remaining open item for step 1 is the **domain**.
 - **v1.6 (2026-09-18)** — Language settled, NIF simplified. **Spec is build-ready.**
   - **Bilingual PT + EN from day one (new §2.2)** on a `.pt` domain. Both locales explicitly prefixed (`/pt/jobs/[slug]`, `/en/jobs/[slug]`), `/` redirecting on `Accept-Language` with `pt` as default; `next-intl`; `hreflang` pairs plus `x-default`, per-locale sitemap entries and JSON-LD on both locale URLs (§4). i18n is wired in **build step 1**, before any page exists — hard-coded strings swept up later are how bilingual builds rot.

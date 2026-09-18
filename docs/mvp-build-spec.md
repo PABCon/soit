@@ -1,6 +1,6 @@
 # Build Spec — SóIT MVP (Portugal)
 
-**Version:** v1.7 · 2026-09-18
+**Version:** v1.8 · 2026-09-18
 
 > Hand this document to Claude Code as the blueprint. Build it **phase by phase** (see Build Sequence, §14), not all at once.
 >
@@ -43,7 +43,8 @@ This is not one app with role-based views. It is **two separate application surf
 "Separate surfaces" is a **product and routing** statement, not a deployment one. Build it as:
 
 - **One Next.js application**, one repository, one Vercel project.
-- **Two App Router route groups:** `(candidate)` and `(console)`, each with its **own root layout** — separate shells, separate navigation, separate styling weight. They share nothing but the design tokens, the Supabase client, and the database.
+- **Two App Router route groups:** `(candidate)` and `(console)`, each with its **own shell layout** — separate navigation, separate styling weight. They share nothing but the design tokens, the Supabase client, and the database.
+  - *Precision (v1.8, found while building step 1):* Next.js permits multiple **root** layouts only when the route groups sit at the top of `app/`. Because every URL is locale-prefixed (§2.2), the root layout is `app/[locale]/layout.tsx` — it owns `<html>`, `<body>` and font loading — and the two shells are **nested** layouts beneath it. The surfaces stay as separate as intended; only the html/body wrapper is shared, which is what you want anyway.
 - **Both sit under a locale segment: `/[locale]/…`** (§2.2). The console lives at `/[locale]/recruit`. Moving it to a `recruit.[domain]` subdomain later is a routing change, not a rewrite.
 
 ### 2.2 Bilingual from day one — PT + EN (decided v1.6)
