@@ -1,0 +1,30 @@
+flowchart TD
+    NAV[Top nav] --> LOGIN[Log in dropdown]
+    NAV --> ADD[Add offer button]
+
+    LOGIN --> CLI[Log in as candidate]
+    LOGIN --> CRE[Register as candidate]
+    LOGIN --> ELI[Log in as employer]
+    LOGIN --> ERE[Register as employer]
+
+    ADD --> CHECK{Has employer profile?}
+    CHECK -->|Yes| FORM[Add job advertisement form]
+    CHECK -->|No| ELI
+
+    CLI --> M{Method}
+    CRE --> M
+    ELI --> M
+    ERE --> NIF[Enter company NIF - checksum checked inline]
+    NIF --> EX{Company already registered?}
+    EX -->|Yes| ASK[Ask an owner for an invite]
+    EX -->|No| M
+    M -->|Email and password| CRED[Enter credentials]
+    CRED --> VER[Supabase Auth verification email]
+    M -->|Google LinkedIn GitHub Facebook| OA[OAuth provider]
+    OA --> PRE[Profile pre-filled name email avatar and email pre-verified]
+    VER --> ACT[Account active]
+    PRE --> ACT
+    ACT --> PROF{Which profile rows exist?}
+    PROF -->|Candidate only| CLAND[Candidate surface Jobs list]
+    PROF -->|Employer only| ELAND[Employer console My job ads]
+    PROF -->|Both| LAST[Land on last used role]

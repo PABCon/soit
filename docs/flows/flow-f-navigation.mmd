@@ -1,0 +1,23 @@
+flowchart TD
+    LOGIN[Login] --> ROLE{Profile}
+    ROLE -->|Candidate| CLAND[Lands on Jobs list and map]
+    ROLE -->|Employer| ELAND[Lands on My job ads]
+
+    subgraph CANDSURF[Candidate surface - public job site]
+      direction TB
+      CO[Offers]
+      CM[Map]
+      CC[Company pages public]
+      CA[Applications dashboard]
+    end
+
+    subgraph EMPCON[Employer console - Manage recruitments]
+      direction TB
+      EA[My job ads Active Inactive Drafts]
+      EAD[Add job advertisement]
+      EAP[Applicants per job ad]
+      EP[Company Profile editor]
+    end
+
+    CLAND --> CANDSURF
+    ELAND --> EMPCON

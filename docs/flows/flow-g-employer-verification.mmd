@@ -1,0 +1,16 @@
+flowchart TD
+    A[First user registers a company] --> B[Enters company NIF]
+    B --> C{Format and checksum valid?}
+    C -->|No| B
+    C -->|Yes| D{Entity type from prefix}
+    D -->|Not a business entity| N[Rejected at registration]
+    D -->|Business entity| S[Create company with status pending]
+    S --> E[Async VIES lookup]
+    E --> F{Lookup result}
+    F -->|Found| G[Store legal name and consultation reference]
+    F -->|Not found| X[Status failed - support route]
+    F -->|Unavailable| P[Stay pending and retry with backoff]
+    P --> E
+    G --> K[Status verified]
+    K --> O[Company verified - all its users may publish]
+    X --> Q[May draft but never publish]

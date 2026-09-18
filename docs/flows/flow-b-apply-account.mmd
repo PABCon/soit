@@ -1,0 +1,14 @@
+flowchart TD
+    A[Candidate clicks Apply] --> B[Apply form name email CV note]
+    B --> C[Submit]
+    C --> D[Create application record with CV snapshot]
+    C --> L[Queue thanks for applying email - comms hook]
+    D --> E[Create or match candidate profile by email - unclaimed]
+    E --> F[Confirmation application sent]
+    F --> G{Set password or continue with social?}
+    G -->|Yes| H[Supabase Auth sends verification]
+    H --> V{Email verified?}
+    V -->|Yes| I[Link profile to auth account and reveal history]
+    V -->|No| K
+    I --> J[Candidate dashboard track applications]
+    G -->|Not now| K[Profile stays unclaimed and hidden until verified]

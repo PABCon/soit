@@ -1,0 +1,11 @@
+flowchart TD
+    A[Employer posts a job] --> B{Salary range period and type provided?}
+    B -->|No| A
+    B -->|Yes| C[Job published and indexed]
+    C --> D[Job appears on public site and Google for Jobs]
+    D --> E[Candidate finds job]
+    E --> F[Candidate applies with name email CV]
+    F --> G[Application saved and candidate profile created unclaimed]
+    G --> H[Employer sees applicant in console]
+    H --> I[Employer updates status viewed responded rejected]
+    I --> J[Candidate sees live status in dashboard]

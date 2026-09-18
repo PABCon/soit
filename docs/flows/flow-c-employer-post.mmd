@@ -1,0 +1,15 @@
+flowchart TD
+    A[Employer logs in] --> B[Lands in employer console on My job ads]
+    B --> C[Clicks Add job advertisement]
+    C --> D[New job form]
+    D --> E[Fill title description stack seniority work mode location]
+    E --> F[Enter salary min max period and employment type in EUR]
+    F --> G{Salary present and valid?}
+    G -->|No| F
+    G -->|Yes| V{Employer verified?}
+    V -->|No| W[Save as draft and show verification banner]
+    V -->|Yes| H[Geocode location to lat lng]
+    H --> I[Save job as published with expiry date]
+    I --> J[Generate JobPosting JSON-LD and add to sitemap]
+    J --> K[Request indexing]
+    I --> M[Notify employer job is live - comms hook]
