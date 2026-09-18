@@ -1,36 +1,70 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# SóIT
 
-## Getting Started
+A transparency-first IT job board for the Portuguese market. *Só* is Portuguese
+for *only*: only IT, and only real salaries.
 
-First, run the development server:
+**Two rules define the product:**
+
+1. **Every listing shows a salary range** — amount, period, and employment type.
+   Posting without one is blocked. "2000–3000" is ambiguous in a market that
+   quotes monthly gross over 14 months, so the salary is never rendered
+   without its unit.
+2. **Every employer is a verified business entity**, validated by NIF.
+
+## Stack
+
+Next.js 16 (App Router) · React 19 · Tailwind 4 · TypeScript · Supabase
+(Postgres + Auth + Storage) · `next-intl` · Vercel.
+
+The candidate surface is server-rendered and individually crawlable — discovery
+leans on organic search and Google for Jobs, and a client-rendered SPA fails to
+get indexed, killing that channel silently.
+
+## Getting started
 
 ```bash
+npm install
+cp .env.example .env.local   # fill in your Supabase project values
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Then open http://localhost:3000 — it redirects to `/pt` or `/en` based on your
+`Accept-Language`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+| Command | What it does |
+|---|---|
+| `npm run dev` | Dev server |
+| `npm run build` | Production build |
+| `npm run check` | Message-catalogue parity + lint + typecheck |
+| `npm run check:i18n` | Fails if the PT and EN catalogues have drifted |
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Layout
 
-## Learn More
+```
+docs/                     The spec. Source of truth — read it first.
+  mvp-build-spec.md       Architecture, data model, security, build sequence
+  flows/*.mmd             Mermaid flows, importable into Miro
+messages/{pt,en}.json     UI strings. Both locales, always in sync.
+src/
+  i18n/                   Locale routing, request config, navigation helpers
+  proxy.ts                Locale negotiation (Next 16's middleware convention)
+  app/[locale]/
+    (candidate)/          Public job site — SEO critical
+    (console)/recruit/    Employer console — behind login, noindex
+  components/Salary.tsx   The one salary component. Never render one ad hoc.
+  lib/supabase/           Browser and server clients
+```
 
-To learn more about Next.js, take a look at the following resources:
+## Conventions
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- **Bilingual PT + EN**, both locale-prefixed. Every string goes through
+  `next-intl`; `npm run check:i18n` fails on catalogue drift.
+- Import `Link` / `redirect` / `usePathname` / `useRouter` from
+  `@/i18n/navigation`, never from `next/*` — they must be locale-aware.
+- The brand is **SóIT**; every machine-readable identifier is ASCII **`soit`**.
+- **RLS is the security model.** Never filter by tenant in client code.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Status
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Build sequence is §14 of the spec. **Step 1 complete** (skeleton, i18n, both
+shells, design tokens). Next: step 2 — schema, RLS, storage buckets.
