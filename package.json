@@ -6,10 +6,15 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "check:i18n": "node scripts/check-messages.mjs",
+    "check": "npm run check:i18n && npm run lint && tsc --noEmit"
   },
   "dependencies": {
+    "@supabase/ssr": "^0.12.7",
+    "@supabase/supabase-js": "^2.116.0",
     "next": "16.3.5",
+    "next-intl": "^4.14.5",
     "react": "19.2.8",
     "react-dom": "19.2.8"
   },

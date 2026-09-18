@@ -1,0 +1,71 @@
+{
+  "brand": {
+    "name": "SóIT",
+    "tagline": "Só vagas de IT. Sempre com salário."
+  },
+  "nav": {
+    "login": "Entrar",
+    "addOffer": "Publicar vaga",
+    "search": "Pesquisar vagas",
+    "language": "Idioma",
+    "loginAsCandidate": "Entrar como candidato",
+    "registerAsCandidate": "Criar conta de candidato",
+    "loginAsEmployer": "Entrar como empresa",
+    "registerAsEmployer": "Criar conta de empresa",
+    "groupCandidate": "Candidato",
+    "groupEmployer": "Empresa"
+  },
+  "rail": {
+    "offers": "Vagas",
+    "map": "Mapa",
+    "applications": "Candidaturas",
+    "companies": "Empresas",
+    "favorites": "Favoritos",
+    "profile": "Perfil",
+    "cv": "CV",
+    "settings": "Definições",
+    "soon": "Em breve"
+  },
+  "console": {
+    "title": "Gerir recrutamento",
+    "myJobAds": "As minhas vagas",
+    "companyProfile": "Perfil da empresa",
+    "team": "Equipa",
+    "addJobAd": "Adicionar vaga",
+    "tabActive": "Ativas",
+    "tabInactive": "Inativas",
+    "tabDrafts": "Rascunhos",
+    "backToSite": "Voltar ao site",
+    "empty": "Ainda não tem vagas publicadas.",
+    "matchmaking": "Matchmaking",
+    "myProducts": "Os meus produtos",
+    "pricing": "Preços",
+    "contact": "Contacto",
+    "soon": "Em breve"
+  },
+  "salary": {
+    "perHour": "por hora",
+    "perDay": "por dia",
+    "perMonth": "por mês",
+    "perYear": "por ano",
+    "months": "× {count} meses",
+    "gross": "bruto",
+    "employmentType": {
+      "permanent": "Contrato sem termo",
+      "fixed_term": "Contrato a termo",
+      "contractor": "Prestação de serviços",
+      "freelance": "Freelance",
+      "internship": "Estágio"
+    }
+  },
+  "jobs": {
+    "title": "Vagas de IT",
+    "count": "{count, plural, =0 {Sem vagas} one {# vaga} other {# vagas}}",
+    "empty": "Ainda não há vagas publicadas."
+  },
+  "adLanguage": {
+    "pt": "PT",
+    "en": "EN",
+    "label": "Idioma do anúncio"
+  }
+}

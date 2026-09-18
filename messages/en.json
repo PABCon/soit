@@ -1,0 +1,71 @@
+{
+  "brand": {
+    "name": "SóIT",
+    "tagline": "Only IT jobs. Always with a salary."
+  },
+  "nav": {
+    "login": "Log in",
+    "addOffer": "Add offer",
+    "search": "Search jobs",
+    "language": "Language",
+    "loginAsCandidate": "Log in as candidate",
+    "registerAsCandidate": "Register as candidate",
+    "loginAsEmployer": "Log in as employer",
+    "registerAsEmployer": "Register as employer",
+    "groupCandidate": "Candidate",
+    "groupEmployer": "Employer"
+  },
+  "rail": {
+    "offers": "Offers",
+    "map": "Map",
+    "applications": "Applications",
+    "companies": "Companies",
+    "favorites": "Favorites",
+    "profile": "Profile",
+    "cv": "CV",
+    "settings": "Settings",
+    "soon": "Coming soon"
+  },
+  "console": {
+    "title": "Manage recruitments",
+    "myJobAds": "My job ads",
+    "companyProfile": "Company profile",
+    "team": "Team",
+    "addJobAd": "Add job advertisement",
+    "tabActive": "Active",
+    "tabInactive": "Inactive",
+    "tabDrafts": "Drafts",
+    "backToSite": "Back to site",
+    "empty": "You have not published any job ads yet.",
+    "matchmaking": "Matchmaking",
+    "myProducts": "My products",
+    "pricing": "Pricing",
+    "contact": "Contact",
+    "soon": "Coming soon"
+  },
+  "salary": {
+    "perHour": "per hour",
+    "perDay": "per day",
+    "perMonth": "per month",
+    "perYear": "per year",
+    "months": "× {count} months",
+    "gross": "gross",
+    "employmentType": {
+      "permanent": "Permanent",
+      "fixed_term": "Fixed term",
+      "contractor": "Contractor",
+      "freelance": "Freelance",
+      "internship": "Internship"
+    }
+  },
+  "jobs": {
+    "title": "IT jobs",
+    "count": "{count, plural, =0 {No jobs} one {# job} other {# jobs}}",
+    "empty": "No jobs published yet."
+  },
+  "adLanguage": {
+    "pt": "PT",
+    "en": "EN",
+    "label": "Ad language"
+  }
+}
