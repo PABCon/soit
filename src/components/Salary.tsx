@@ -65,7 +65,7 @@ export function Salary({
     .join(" · ");
 
   return (
-    <div className={size === "detail" ? "text-left" : "text-right"}>
+    <div>
       <p
         className={
           size === "detail"

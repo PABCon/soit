@@ -1,6 +1,6 @@
 # SóIT — Spec Batch
 
-**Version:** v1.8
+**Version:** v1.9
 **Date:** 2026-09-18
 **Status:** MVP spec complete and review-hardened — **build started**. Domain (`soit.pt`) still to confirm and register.
 
@@ -52,6 +52,9 @@ Product communication/notification layer (touchpoints marked in the flows — **
 
 ## Changelog
 
+- **v1.9 (2026-09-18)** — **Build order and design direction corrected against reality.**
+  - **§14 resequenced.** The dependency-correct order produced eight steps of empty, unstyled UI before anyone could see the product — which makes it impossible to judge whether the right thing is being built. Feed design, seed data, filters, job detail and the map were pulled into step 1, built against a static fixture. Steps 5 and 8 now *swap the data source* on interfaces that already exist, rather than inventing presentation and plumbing at once.
+  - **§11 clarified.** "Hairline rows, not cards" is about structure, not sparseness. Taken literally it produced something austere; the reference product is dense and colourful inside a quiet frame. Restraint applies to the frame — one bold colour, one bold number — not to the information.
 - **v1.8 (2026-09-18)** — **Build step 1 complete.** One spec correction found while building: §2.1 said each route group has its "own root layout", but Next.js allows multiple *root* layouts only when route groups sit at the top of `app/`. With every URL locale-prefixed (§2.2), the root layout is `app/[locale]/layout.tsx` and the two shells are nested beneath it — the surfaces stay as separate as intended, only `<html>`/`<body>`/fonts are shared.
 - **v1.7 (2026-09-18)** — **Product name locked: SóIT.** All `[Product Name]` placeholders resolved; naming convention recorded in §1 (accented brand for humans, ASCII `soit` for machines — npm forbids accented package names and an IDN punycodes to `xn--sit-zma.pt` in certificates, analytics and copied links). Spec moved into the project repo at `docs/`. Remaining open item for step 1 is the **domain**.
 - **v1.6 (2026-09-18)** — Language settled, NIF simplified. **Spec is build-ready.**

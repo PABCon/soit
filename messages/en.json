@@ -67,5 +67,46 @@
     "pt": "PT",
     "en": "EN",
     "label": "Ad language"
+  },
+  "feed": {
+    "new": "New",
+    "remote": "Remote",
+    "any": "Any",
+    "clear": "Clear filters",
+    "minSalary": "Minimum salary",
+    "noMatches": "No jobs match these filters.",
+    "results": "{count, plural, =0 {No results} one {# job} other {# jobs}}",
+    "postedAgo": "{days, plural, =0 {today} one {# day ago} other {# days ago}}",
+    "workModel": {
+      "remote": "Remote",
+      "hybrid": "Hybrid",
+      "office": "On-site"
+    },
+    "seniority": {
+      "junior": "Junior",
+      "mid": "Mid",
+      "senior": "Senior",
+      "lead": "Lead"
+    },
+    "viewMap": "Map view",
+    "viewList": "List view",
+    "apply": "Apply",
+    "aboutRole": "About the role",
+    "stack": "Stack",
+    "remoteGroup": "Fully remote",
+    "mapHint": "Remote jobs have no pin on the map."
+  },
+  "job": {
+    "apply": "Apply",
+    "backToJobs": "Back to jobs",
+    "aboutRole": "About the role",
+    "responsibilities": "Responsibilities",
+    "requirements": "Requirements",
+    "stack": "Tech stack",
+    "atCompany": "at {company}",
+    "publishedAgo": "Posted {ago}",
+    "salaryHeading": "Salary",
+    "placeholder": "Sample description — the real text is written by the employer in the posting form.",
+    "notFound": "Job not found."
   }
 }

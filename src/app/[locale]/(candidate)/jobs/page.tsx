@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { getTranslations, setRequestLocale } from "next-intl/server";
-import { useTranslations } from "next-intl";
-import { Salary } from "@/components/Salary";
+import { JobFeed } from "@/components/JobFeed";
+import { Link } from "@/i18n/navigation";
 
 type Props = { params: Promise<{ locale: string }> };
 
@@ -14,42 +14,28 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function JobsPage({ params }: Props) {
   const { locale } = await params;
   setRequestLocale(locale);
-  return <JobsFeed />;
-}
-
-/**
- * The job feed is the hero (§11): hairline-separated rows, not a grid of
- * shadowed cards. Real data arrives in build step 5; this is the shell plus
- * one sample row proving the salary component and the type scale.
- */
-function JobsFeed() {
-  const t = useTranslations("jobs");
-  const brand = useTranslations("brand");
+  const t = await getTranslations({ locale, namespace: "jobs" });
+  const tf = await getTranslations({ locale, namespace: "feed" });
+  const brand = await getTranslations({ locale, namespace: "brand" });
 
   return (
     <>
-      <h1 className="text-2xl font-bold">{t("title")}</h1>
-      <p className="mt-1 text-sm text-muted">{brand("tagline")}</p>
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold">{t("title")}</h1>
+          <p className="mt-1 text-sm text-muted">{brand("tagline")}</p>
+        </div>
+        <Link
+          href="/map"
+          className="flex h-9 items-center gap-2 rounded-lg border border-line bg-white px-3 text-sm font-medium text-ink hover:border-muted"
+        >
+          {tf("viewMap")}
+        </Link>
+      </div>
 
-      <ul className="mt-8 border-t border-line">
-        <li className="flex items-center justify-between gap-6 border-b border-line py-4">
-          <div className="min-w-0">
-            <p className="font-display font-semibold">Senior Java Developer</p>
-            <p className="mt-0.5 truncate text-sm text-muted">
-              Sample Company — Lisboa · Hybrid
-            </p>
-          </div>
-          <Salary
-            min={4200}
-            max={5600}
-            period="month"
-            months={14}
-            employmentType="permanent"
-          />
-        </li>
-      </ul>
-
-      <p className="mt-8 text-sm text-muted">{t("empty")}</p>
+      <div className="mt-6">
+        <JobFeed />
+      </div>
     </>
   );
 }

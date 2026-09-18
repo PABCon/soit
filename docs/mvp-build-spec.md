@@ -1,6 +1,6 @@
 # Build Spec — SóIT MVP (Portugal)
 
-**Version:** v1.8 · 2026-09-18
+**Version:** v1.9 · 2026-09-18
 
 > Hand this document to Claude Code as the blueprint. Build it **phase by phase** (see Build Sequence, §14), not all at once.
 >
@@ -655,6 +655,7 @@ The candidate surface must look **obviously more proper and modern** than the in
 
 ### Layout
 - **Job feed = the hero.** Fast, scannable. **Hairline-separated rows**, not a grid of identical rounded shadowed cards. Salary right-aligned, bold, in `--pine`.
+  - *Clarified v1.9.* "Not cards" is about **structure**, not about being sparse. The row still carries a company logo tile, the tech stack as chips, work model, seniority and posting age — the density that makes a job board usable at a glance. Read literally, the first build of this rule produced something austere and unfinished-looking; the reference product (justjoin.it) is dense and colourful within a quiet frame, and so is this. Restraint applies to the *frame* — one bold colour, one bold number — not to the information.
 - **The salary component is one shared component** used by the feed row, the job page and the map popover. It renders amount + period + months + employment type from one prop set, so a salary can never be displayed ambiguously in one place and correctly in another. Build it in step 1 with the tokens.
 - Company page: strong header (logo/cover), then the company's live jobs.
 - Employer console: clean, functional admin — clarity over flourish.
@@ -707,6 +708,19 @@ Buttons say what happens (Apply, Add job advertisement, Save changes), same word
 9. **SEO check + compliance + polish** — Search Console + Rich Results Test; privacy policy, consent, retention purge job (§6.6); error monitoring (Sentry) and basic analytics; expired-job handling verified end to end; design pass against §11.
 
 After step 7 you have a working two-sided marketplace. Everything past step 9 is a separate project on this foundation (§12).
+
+> **Resequenced in v1.9 — design and data moved forward.** The order above is
+> dependency-correct but confidence-wrong: it produced eight steps of unstyled,
+> empty UI before anyone could see what SóIT looks like, which makes it
+> impossible to tell whether the right thing is being built. So the **feed
+> design, seed data, filters, job detail page and map view were built during
+> step 1**, against a static `src/lib/jobs.ts` fixture rather than the database.
+>
+> Nothing in steps 2–9 is removed. What changed is that steps 5 and 8 now
+> **swap the data source** on interfaces that already exist and have been looked
+> at, instead of inventing the presentation at the same time as the plumbing.
+> The lesson generalises: **build the thing you can look at as early as the
+> dependencies allow**, and keep the fixture — it becomes the test fixture.
 
 **Testing floor:** an end-to-end test that walks the loop (post → publish → apply → status change → candidate sees it) from step 7 onward, plus RLS policy tests asserting that employer A cannot read employer B's applications. Those two cover the parts that actually break. Add a **table-driven test over the NIF validator** (§5.7.2) — valid checksums per prefix class, `000000000`, wrong-length and non-numeric input, and each prefix's routing decision. It is pure arithmetic, so exhaustive testing is cheap and it is the one layer that must never be wrong.
 

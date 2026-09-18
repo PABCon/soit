@@ -67,5 +67,46 @@
     "pt": "PT",
     "en": "EN",
     "label": "Idioma do anúncio"
+  },
+  "feed": {
+    "new": "Novo",
+    "remote": "Remoto",
+    "any": "Qualquer",
+    "clear": "Limpar filtros",
+    "minSalary": "Salário mínimo",
+    "noMatches": "Nenhuma vaga corresponde aos filtros.",
+    "results": "{count, plural, =0 {Sem resultados} one {# vaga} other {# vagas}}",
+    "postedAgo": "{days, plural, =0 {hoje} one {há # dia} other {há # dias}}",
+    "workModel": {
+      "remote": "Remoto",
+      "hybrid": "Híbrido",
+      "office": "Presencial"
+    },
+    "seniority": {
+      "junior": "Júnior",
+      "mid": "Intermédio",
+      "senior": "Sénior",
+      "lead": "Lead"
+    },
+    "viewMap": "Ver mapa",
+    "viewList": "Ver lista",
+    "apply": "Candidatar",
+    "aboutRole": "Sobre a função",
+    "stack": "Stack",
+    "remoteGroup": "Totalmente remoto",
+    "mapHint": "As vagas remotas não têm ponto no mapa."
+  },
+  "job": {
+    "apply": "Candidatar",
+    "backToJobs": "Voltar às vagas",
+    "aboutRole": "Sobre a função",
+    "responsibilities": "Responsabilidades",
+    "requirements": "Requisitos",
+    "stack": "Stack técnico",
+    "atCompany": "em {company}",
+    "publishedAgo": "Publicada {ago}",
+    "salaryHeading": "Salário",
+    "placeholder": "Descrição de exemplo — o texto real é escrito pela empresa no formulário de publicação.",
+    "notFound": "Vaga não encontrada."
   }
 }
