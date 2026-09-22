@@ -20,28 +20,38 @@ export default async function proxy(request: NextRequest) {
   // refresh yet and no locale segment to guard against.
   if (response.status === 307 || response.status === 308) return response;
 
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll: () => request.cookies.getAll(),
-        setAll: (cookiesToSet) => {
-          cookiesToSet.forEach(({ name, value, options }) =>
-            response.cookies.set(name, value, options),
-          );
+  // Defensive: this must never be able to take the whole site down. If the
+  // session refresh fails for any reason, fall through with no guard — the
+  // console layout does its own real auth check server-side (belt and
+  // suspenders was the point; RLS is the actual security boundary either
+  // way), so the worst case here is a logged-out visitor briefly seeing the
+  // login form render instead of an instant redirect.
+  try {
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll: () => request.cookies.getAll(),
+          setAll: (cookiesToSet) => {
+            cookiesToSet.forEach(({ name, value, options }) =>
+              response.cookies.set(name, value, options),
+            );
+          },
         },
       },
-    },
-  );
+    );
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
-  const match = request.nextUrl.pathname.match(/^\/(pt|en)\/recruit(\/|$)/);
-  if (match && !user) {
-    return NextResponse.redirect(new URL(`/${match[1]}/employer/login`, request.url));
+    const match = request.nextUrl.pathname.match(/^\/(pt|en)\/recruit(\/|$)/);
+    if (match && !user) {
+      return NextResponse.redirect(new URL(`/${match[1]}/employer/login`, request.url));
+    }
+  } catch (error) {
+    console.error("proxy: session refresh failed", error);
   }
 
   return response;
