@@ -59,6 +59,9 @@ src/
   lib/nif.ts              NIF layer-1 validation (§5.7.2), exhaustively tested
   lib/verification/       Async NIF registry lookup — ViesProvider (§5.7.6)
   lib/auth/               Profile creation/claiming + login landing (§6.4, §6.5)
+  lib/db/                 Server-only, RLS-scoped data layer: jobs, companies, team
+  app/[locale]/(candidate)/companies/[slug]/  Public company page (§7.1)
+  app/[locale]/(console)/recruit/  My job ads, job form, company profile, team
 ```
 
 ## Conventions
@@ -80,4 +83,7 @@ verification) — email/password + social login (Google/GitHub/LinkedIn,
 inert until OAuth credentials are added in the Supabase dashboard),
 NIF layer-1 + async VIES verification, role-split landing. See `CLAUDE.md`
 for the known gaps (production redirect-URL allowlist, email rate limits).
-Next: step 4 — employer console.
+**Step 4 complete** (employer console) — and the candidate surface now
+reads the real database (steps 5/8 done early; see `CLAUDE.md`), plus a new
+public company page and Team/invite. Next: steps 6/7 — the apply flow and
+the employer Applicants view.

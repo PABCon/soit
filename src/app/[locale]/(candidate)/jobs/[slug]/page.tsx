@@ -5,22 +5,16 @@ import { Link } from "@/i18n/navigation";
 import { Salary } from "@/components/Salary";
 import { CompanyLogo } from "@/components/CompanyLogo";
 import { TechTags } from "@/components/TechTags";
-import { JOBS, type Job } from "@/lib/jobs";
+import { getLiveJobBySlug, type JobDetail } from "@/lib/db/jobs";
 import { routing } from "@/i18n/routing";
 
 type Props = { params: Promise<{ locale: string; slug: string }> };
 
 const SITE = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
 
-export function generateStaticParams() {
-  return routing.locales.flatMap((locale) =>
-    JOBS.map((job) => ({ locale, slug: job.slug })),
-  );
-}
-
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale, slug } = await params;
-  const job = JOBS.find((j) => j.slug === slug);
+  const job = await getLiveJobBySlug(slug);
   if (!job) return {};
 
   return {
@@ -48,17 +42,14 @@ const EMPLOYMENT = {
   internship: "INTERN",
 } as const;
 
-function jobPostingJsonLd(job: Job, locale: string) {
-  const posted = new Date(Date.now() - job.postedDaysAgo * 864e5);
-  const valid = new Date(posted.getTime() + 30 * 864e5);
-
+function jobPostingJsonLd(job: JobDetail, locale: string) {
   return {
     "@context": "https://schema.org",
     "@type": "JobPosting",
     title: job.title,
-    description: `${job.title} — ${job.company.name}. ${job.tech.join(", ")}.`,
-    datePosted: posted.toISOString().slice(0, 10),
-    validThrough: valid.toISOString().slice(0, 10),
+    description: job.description,
+    datePosted: job.publishedAt.slice(0, 10),
+    validThrough: job.expiresAt.slice(0, 10),
     employmentType: EMPLOYMENT[job.employmentType],
     hiringOrganization: {
       "@type": "Organization",
@@ -100,11 +91,13 @@ export default async function JobDetailPage({ params }: Props) {
   const { locale, slug } = await params;
   setRequestLocale(locale);
 
-  const job = JOBS.find((j) => j.slug === slug);
+  const job = await getLiveJobBySlug(slug);
   if (!job) notFound();
 
   const t = await getTranslations({ locale, namespace: "job" });
   const tf = await getTranslations({ locale, namespace: "feed" });
+
+  const paragraphs = job.description.split(/\n{2,}/).filter(Boolean);
 
   return (
     <>
@@ -126,7 +119,10 @@ export default async function JobDetailPage({ params }: Props) {
             <div className="min-w-0">
               <h1 className="font-display text-2xl font-bold">{job.title}</h1>
               <p className="mt-1 text-muted">
-                {job.company.name} · {job.location ?? tf("remote")}
+                <Link href={`/companies/${job.company.slug}`} className="hover:text-pine hover:underline">
+                  {job.company.name}
+                </Link>{" "}
+                · {job.location ?? tf("remote")}
               </p>
               <div className="mt-3 flex flex-wrap gap-1.5">
                 {[
@@ -158,22 +154,11 @@ export default async function JobDetailPage({ params }: Props) {
             <h2 className="font-display text-lg font-semibold">
               {t("aboutRole")}
             </h2>
-            {/* Placeholder copy — real descriptions are employer-authored HTML
-                from the posting form, sanitised server-side (§15.1). */}
-            <p className="mt-2 text-sm leading-relaxed text-muted">
-              {t("placeholder")}
-            </p>
-            <h3 className="mt-6 font-display text-sm font-semibold">
-              {t("requirements")}
-            </h3>
-            <ul className="mt-2 space-y-1 text-sm text-muted">
-              {job.tech.map((tech) => (
-                <li key={tech} className="flex gap-2">
-                  <span className="text-pine">·</span>
-                  {tech}
-                </li>
+            <div className="mt-2 space-y-3 text-sm leading-relaxed text-muted">
+              {paragraphs.map((p, i) => (
+                <p key={i}>{p}</p>
               ))}
-            </ul>
+            </div>
           </section>
         </div>
 

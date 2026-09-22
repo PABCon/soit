@@ -69,5 +69,36 @@ patterns are — add it in the dashboard before relying on employer/candidate
 registration in production); Supabase's default email sender is
 rate-limited enough to make repeated local testing slow.
 
-Next: step 4 — employer console (My job ads, Add job advertisement, Company
-Profile editor, publish gated on `verification_status = 'verified'`).
+**Step 4 (employer console) is done**, and expanded beyond its original
+scope per a mid-step decision: the candidate surface (`/jobs`, `/jobs/
+[slug]`, `/map`) now reads the real database instead of the `src/lib/jobs.ts`
+fixture (steps 5/8 done early, on purpose — see `src/lib/db/jobs.ts`), a new
+public `/companies/[slug]` page shipped (the job detail page's JSON-LD
+`sameAs` already pointed at it, so real jobs without it meant a broken link
+to every search engine), and Team/invite (§7.2) was built now rather than
+deferred. Job descriptions are plain text (paragraphs split on blank lines)
+— no HTML is ever accepted or stored, so there's nothing to sanitize.
+Team invites don't send email (that's custom product messaging, out of
+scope per §13/§9.1) — the owner gets a copyable `/employer/accept-invite/
+<token>` link to share themselves. See `src/lib/db/` for the data layer and
+the plan's git history for the full design.
+
+Verified directly against the live database and through the real browser
+UI (Playwright): draft → blocked publish while unverified → verified via
+direct DB update (VIES has no real test NIF to resolve to `verified`) →
+successful publish → visible on `/jobs`, the job detail page, `/map`, and
+the company page; Company Profile edit + banner states; Team invite
+creation and acceptance (a second employer_users row, `member` role,
+correct company, invite `accepted_at` set).
+
+**Two testing-methodology findings, not product bugs, worth remembering**:
+`supabase.auth.admin.generateLink()` produces an *implicit-flow* link (no
+`pkce_` prefix), which `/auth/callback` doesn't handle — real users get
+PKCE links from `signUp()` and this was already verified working in step 3.
+For a pre-confirmed test account with a session, prefer creating the user
+via the admin client + calling `completeRegistration` directly, then
+logging in through the real UI (`signInWithPassword`) rather than trying to
+manufacture a confirmation link.
+
+Next: step 6/7 — the apply flow (anonymous apply, §6.7's constraints on
+that endpoint) and the employer Applicants view.

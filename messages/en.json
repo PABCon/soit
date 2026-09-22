@@ -33,6 +33,7 @@
     "companyProfile": "Company profile",
     "team": "Team",
     "addJobAd": "Add job advertisement",
+    "editJobAd": "Edit job advertisement",
     "tabActive": "Active",
     "tabInactive": "Inactive",
     "tabDrafts": "Drafts",
@@ -43,7 +44,96 @@
     "myProducts": "My products",
     "pricing": "Pricing",
     "contact": "Contact",
-    "soon": "Coming soon"
+    "soon": "Coming soon",
+    "notEmployer": "You don't have an employer profile for this company.",
+    "remoteBadge": "Remote",
+    "statusActive": "Active",
+    "statusExpired": "Expired",
+    "status_draft": "Draft",
+    "status_inactive": "Paused",
+    "status_closed": "Closed",
+    "applicantCount": "{count, plural, =0 {No applicants yet} one {# applicant} other {# applicants}}",
+    "verifiedBanner": "Your company is verified. Job ads you publish go live immediately.",
+    "pendingBanner": "We're checking your company's NIF. You can keep drafting job ads — publishing unlocks once verification clears.",
+    "failedBanner": "We could not confirm this NIF. Contact support to resolve this before publishing.",
+    "ownerOnly": "Only a company owner can edit this. Ask an owner to make changes.",
+    "uploadLogo": "Upload logo",
+    "uploadCover": "Upload cover image",
+    "companyName": "Company name",
+    "description": "Description",
+    "website": "Website",
+    "industry": "Industry",
+    "companySize": "Company size",
+    "save": "Save",
+    "saved": "Saved.",
+    "teamMembers": "Members",
+    "roleLabel": {
+      "owner": "Owner",
+      "member": "Member"
+    },
+    "removeMember": "Remove",
+    "inviteColleague": "Invite a colleague",
+    "email": "Email",
+    "role": "Role",
+    "createInvite": "Create invite link",
+    "copyLink": "Copy link",
+    "copied": "Copied!",
+    "errorGeneric": "Something went wrong. Try again."
+  },
+  "jobForm": {
+    "title": "Job title",
+    "description": "Description",
+    "descriptionHint": "Plain text — leave a blank line between paragraphs.",
+    "language": "Ad language",
+    "seniority": "Seniority",
+    "seniorityOption": {
+      "junior": "Junior",
+      "mid": "Mid",
+      "senior": "Senior",
+      "lead": "Lead"
+    },
+    "workModel": "Work model",
+    "workModelOption": {
+      "remote": "Remote",
+      "hybrid": "Hybrid",
+      "office": "On-site"
+    },
+    "location": "Location",
+    "locationRemote": "Remote — no location needed",
+    "salaryLegend": "Salary — required, shown on every listing",
+    "salaryMin": "Minimum",
+    "salaryMax": "Maximum",
+    "salaryPeriod": "Period",
+    "salaryPeriodOption": {
+      "hour": "Per hour",
+      "day": "Per day",
+      "month": "Per month",
+      "year": "Per year"
+    },
+    "salaryMonths": "Months per year",
+    "employmentType": "Employment type",
+    "employmentTypeOption": {
+      "permanent": "Permanent",
+      "fixed_term": "Fixed term",
+      "contractor": "Contractor",
+      "freelance": "Freelance",
+      "internship": "Internship"
+    },
+    "techTags": "Tech stack",
+    "techTagsFilter": "Search technologies…",
+    "saveDraft": "Save as draft",
+    "publish": "Publish",
+    "notVerified": "Saved as a draft — your company isn't verified yet, so this can't go live until it is.",
+    "errorTitle": "Enter a job title.",
+    "errorDescription": "Enter a description.",
+    "errorLocation": "Enter a location, or switch to Remote.",
+    "errorSalaryMin": "Enter a minimum salary.",
+    "errorSalaryMax": "Maximum must be at least the minimum.",
+    "errorGeneric": "Something went wrong. Try again."
+  },
+  "company": {
+    "openJobs": "{count, plural, =0 {No open jobs} one {# open job} other {# open jobs}}",
+    "noOpenJobs": "This company has no open jobs right now."
   },
   "salary": {
     "perHour": "per hour",
@@ -123,7 +213,10 @@
       "google": "Google",
       "github": "GitHub",
       "linkedin_oidc": "LinkedIn"
-    }
+    },
+    "inviteTitle": "Join your team on SóIT",
+    "inviteBody": "You've been invited to join {company} as a recruiter.",
+    "inviteInvalid": "This invite link is invalid or has expired."
   },
   "job": {
     "apply": "Apply",

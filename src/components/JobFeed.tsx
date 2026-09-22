@@ -3,14 +3,24 @@
 import { useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { JobRow } from "@/components/JobRow";
-import {
-  JOBS,
-  ALL_TECH,
-  SENIORITIES,
-  WORK_MODELS,
-  monthlyFloor,
-  type Job,
-} from "@/lib/jobs";
+import type { Job, Seniority, WorkModel } from "@/lib/types";
+
+const SENIORITIES: Seniority[] = ["junior", "mid", "senior", "lead"];
+const WORK_MODELS: WorkModel[] = ["remote", "hybrid", "office"];
+
+/** Monthly-equivalent floor, so a day rate and a monthly salary sort comparably. */
+function monthlyFloor(job: Job): number {
+  switch (job.salaryPeriod) {
+    case "hour":
+      return job.salaryMin * 8 * 21;
+    case "day":
+      return job.salaryMin * 21;
+    case "year":
+      return Math.round(job.salaryMin / 12);
+    default:
+      return job.salaryMin;
+  }
+}
 
 type Filters = {
   tech: string[];
@@ -26,24 +36,36 @@ function toggle(list: string[], value: string) {
 }
 
 /**
- * The job feed with live filtering (§7.1). Runs over seed data today; step 5
- * swaps the source for the database and moves filtering server-side so the
- * results stay crawlable.
+ * The job feed with live filtering (§7.1), over the real live jobs passed in
+ * by the server component. The full unfiltered list is what's in the
+ * initial server-rendered HTML — crawlable — filtering here is purely a
+ * client-side interactive refinement on top of it.
  */
-export function JobFeed() {
+export function JobFeed({ jobs: allJobs }: { jobs: Job[] }) {
   const t = useTranslations("feed");
   const [f, setF] = useState<Filters>(EMPTY);
 
+  const allTech = useMemo(
+    () =>
+      [...new Set(allJobs.flatMap((j) => j.tech))].sort((a, b) => {
+        const count = (tag: string) => allJobs.filter((j) => j.tech.includes(tag)).length;
+        return count(b) - count(a) || a.localeCompare(b);
+      }),
+    [allJobs],
+  );
+
   const jobs = useMemo(
     () =>
-      JOBS.filter(
-        (j: Job) =>
-          (f.tech.length === 0 || f.tech.some((x) => j.tech.includes(x))) &&
-          (f.seniority.length === 0 || f.seniority.includes(j.seniority)) &&
-          (f.workModel.length === 0 || f.workModel.includes(j.workModel)) &&
-          monthlyFloor(j) >= f.minSalary,
-      ).sort((a, b) => a.postedDaysAgo - b.postedDaysAgo),
-    [f],
+      allJobs
+        .filter(
+          (j: Job) =>
+            (f.tech.length === 0 || f.tech.some((x) => j.tech.includes(x))) &&
+            (f.seniority.length === 0 || f.seniority.includes(j.seniority)) &&
+            (f.workModel.length === 0 || f.workModel.includes(j.workModel)) &&
+            monthlyFloor(j) >= f.minSalary,
+        )
+        .sort((a, b) => a.postedDaysAgo - b.postedDaysAgo),
+    [allJobs, f],
   );
 
   const active =
@@ -84,7 +106,7 @@ export function JobFeed() {
         </div>
 
         <div className="flex gap-1.5 overflow-x-auto pb-1">
-          {ALL_TECH.slice(0, 14).map((tech) => (
+          {allTech.slice(0, 14).map((tech) => (
             <button
               key={tech}
               type="button"

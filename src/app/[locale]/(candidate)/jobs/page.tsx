@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { JobFeed } from "@/components/JobFeed";
 import { Link } from "@/i18n/navigation";
+import { getLiveJobs } from "@/lib/db/jobs";
 
 type Props = { params: Promise<{ locale: string }> };
 
@@ -17,6 +18,7 @@ export default async function JobsPage({ params }: Props) {
   const t = await getTranslations({ locale, namespace: "jobs" });
   const tf = await getTranslations({ locale, namespace: "feed" });
   const brand = await getTranslations({ locale, namespace: "brand" });
+  const jobs = await getLiveJobs();
 
   return (
     <>
@@ -34,7 +36,7 @@ export default async function JobsPage({ params }: Props) {
       </div>
 
       <div className="mt-6">
-        <JobFeed />
+        <JobFeed jobs={jobs} />
       </div>
     </>
   );

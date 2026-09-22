@@ -3,7 +3,7 @@
 import { useEffect, useRef } from "react";
 import { useFormatter, useTranslations } from "next-intl";
 import { useRouter } from "@/i18n/navigation";
-import type { Job } from "@/lib/jobs";
+import type { Job } from "@/lib/types";
 import "leaflet/dist/leaflet.css";
 
 /**

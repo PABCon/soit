@@ -1,41 +1,14 @@
-import type { EmploymentType, SalaryPeriod } from "@/components/Salary";
+import type { Company, Job, Seniority, WorkModel } from "@/lib/types";
 
-export type Seniority = "junior" | "mid" | "senior" | "lead";
-export type WorkModel = "remote" | "hybrid" | "office";
-
-export type Company = {
-  slug: string;
-  name: string;
-  /** Deterministic brand colour for the logo tile until real logos are uploaded. */
-  color: string;
-};
-
-export type Job = {
-  slug: string;
-  title: string;
-  company: Company;
-  location: string | null;
-  lat: number | null;
-  lng: number | null;
-  workModel: WorkModel;
-  seniority: Seniority;
-  tech: string[];
-  salaryMin: number;
-  salaryMax: number;
-  salaryPeriod: SalaryPeriod;
-  salaryMonths?: number;
-  employmentType: EmploymentType;
-  language: "pt" | "en";
-  postedDaysAgo: number;
-};
+export type { Company, Job, Seniority, WorkModel };
 
 const C = {
-  marlin: { slug: "marlin-digital", name: "Marlin Digital", color: "#0C6B58" },
-  azuria: { slug: "azuria-tech-hub", name: "Azuria Tech Hub", color: "#2D5BA8" },
-  nortech: { slug: "nortech-solutions", name: "Nortech Solutions", color: "#8A3D5F" },
-  tagus: { slug: "tagus-cloud", name: "Tagus Cloud", color: "#B4622A" },
-  vela: { slug: "vela-systems", name: "Vela Systems", color: "#3F5E48" },
-  beira: { slug: "beira-analytics", name: "Beira Analytics", color: "#5B4B8A" },
+  marlin: { slug: "marlin-digital", name: "Marlin Digital" },
+  azuria: { slug: "azuria-tech-hub", name: "Azuria Tech Hub" },
+  nortech: { slug: "nortech-solutions", name: "Nortech Solutions" },
+  tagus: { slug: "tagus-cloud", name: "Tagus Cloud" },
+  vela: { slug: "vela-systems", name: "Vela Systems" },
+  beira: { slug: "beira-analytics", name: "Beira Analytics" },
 } satisfies Record<string, Company>;
 
 const CITY = {

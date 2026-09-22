@@ -3,7 +3,7 @@ import { Link } from "@/i18n/navigation";
 import { Salary } from "@/components/Salary";
 import { CompanyLogo } from "@/components/CompanyLogo";
 import { TechTags } from "@/components/TechTags";
-import type { Job } from "@/lib/jobs";
+import type { Job } from "@/lib/types";
 
 /**
  * One row of the feed — the hero of the product (§11).

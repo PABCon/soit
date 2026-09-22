@@ -3,7 +3,7 @@ import dynamic from "next/dynamic";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
 import { JobRow } from "@/components/JobRow";
-import { JOBS } from "@/lib/jobs";
+import { getLiveJobs } from "@/lib/db/jobs";
 
 const JobMap = dynamic(() =>
   import("@/components/JobMap").then((m) => m.JobMap),
@@ -25,8 +25,9 @@ export default async function MapPage({ params }: Props) {
   const t = await getTranslations({ locale, namespace: "feed" });
   const tr = await getTranslations({ locale, namespace: "rail" });
 
-  const pinned = JOBS.filter((j) => j.lat !== null);
-  const remote = JOBS.filter((j) => j.lat === null);
+  const jobs = await getLiveJobs();
+  const pinned = jobs.filter((j) => j.lat !== null);
+  const remote = jobs.filter((j) => j.lat === null);
 
   return (
     <>

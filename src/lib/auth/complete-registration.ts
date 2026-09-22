@@ -3,18 +3,9 @@ import type { User } from "@supabase/supabase-js";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { logEvent } from "@/lib/events";
 import { verifyCompany } from "@/lib/verification/verify-company";
+import { slugify } from "@/lib/slug";
 
 type Role = "employer" | "candidate";
-
-function slugify(name: string): string {
-  const base = name
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
-  return `${base || "company"}-${Math.random().toString(36).slice(2, 8)}`;
-}
 
 /**
  * Runs once per user, the first time their session is established after
@@ -44,6 +35,31 @@ export async function completeRegistration(user: User): Promise<{ role: Role; la
     .select("id")
     .eq("auth_user_id", user.id)
     .maybeSingle();
+
+  if (!existingEmployer && !existingCandidate) {
+    const { data: invite } = await admin
+      .from("employer_invites")
+      .select("id, company_id, role")
+      .eq("email", email)
+      .is("accepted_at", null)
+      .gt("expires_at", new Date().toISOString())
+      .maybeSingle();
+
+    if (invite) {
+      await admin
+        .from("employer_users")
+        .insert({ auth_user_id: user.id, company_id: invite.company_id, role: invite.role });
+      await admin
+        .from("employer_invites")
+        .update({ accepted_at: new Date().toISOString() })
+        .eq("id", invite.id);
+      await admin.auth.admin.updateUserById(user.id, {
+        user_metadata: { ...meta, last_role: "employer" },
+      });
+      await logEvent("user.registered", { role: "employer", via: "invite" }, user.id);
+      return { role: "employer", landingPath: "/recruit" };
+    }
+  }
 
   if (!existingEmployer && !existingCandidate && meta.pending_nif) {
     const { data: company, error: companyError } = await admin
