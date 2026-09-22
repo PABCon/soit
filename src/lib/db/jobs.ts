@@ -63,11 +63,12 @@ function toJob(row: JobRow): Job {
   };
 }
 
-export type JobDetail = Job & { description: string; publishedAt: string; expiresAt: string };
+export type JobDetail = Job & { id: string; description: string; publishedAt: string; expiresAt: string };
 
 function toJobDetail(row: JobRow): JobDetail {
   return {
     ...toJob(row),
+    id: row.id,
     description: row.description,
     publishedAt: row.published_at ?? row.created_at,
     expiresAt: row.expires_at ?? row.created_at,
@@ -116,7 +117,10 @@ export async function getCompanyJobs(companyId: string, tab: ConsoleTab): Promis
   const supabase = await createClient();
   const nowIso = new Date().toISOString();
 
-  let query = supabase.from("jobs").select(SELECT).eq("company_id", companyId);
+  let query = supabase
+    .from("jobs")
+    .select(`${SELECT}, applications(count)`)
+    .eq("company_id", companyId);
 
   if (tab === "active") {
     query = query.eq("status", "published").gt("expires_at", nowIso);
@@ -131,11 +135,11 @@ export async function getCompanyJobs(companyId: string, tab: ConsoleTab): Promis
   const { data, error } = await query.order("created_at", { ascending: false });
   if (error || !data) return [];
 
-  return (data as unknown as JobRow[]).map((row) => ({
+  return (data as unknown as (JobRow & { applications: { count: number }[] })[]).map((row) => ({
     ...toJob(row),
     id: row.id,
     status: row.status,
-    applicantCount: 0, // applications table has no data until step 6/7's apply flow.
+    applicantCount: row.applications?.[0]?.count ?? 0,
   }));
 }
 

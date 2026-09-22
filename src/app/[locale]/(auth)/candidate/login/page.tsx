@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
 import { AuthForm } from "@/components/auth/AuthForm";
@@ -19,7 +20,9 @@ export default async function CandidateLoginPage({ params }: Props) {
   return (
     <>
       <h1 className="mb-6 text-2xl font-bold text-ink">{t("candidateLoginTitle")}</h1>
-      <AuthForm role="candidate" mode="login" />
+      <Suspense>
+        <AuthForm role="candidate" mode="login" />
+      </Suspense>
       <p className="mt-6 text-sm text-muted">
         {t("needAccount")}{" "}
         <Link href="/candidate/register" className="font-medium text-pine hover:underline">

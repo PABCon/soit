@@ -34,6 +34,7 @@
     "team": "Team",
     "addJobAd": "Add job advertisement",
     "editJobAd": "Edit job advertisement",
+    "viewApplicants": "View applicants",
     "tabActive": "Active",
     "tabInactive": "Inactive",
     "tabDrafts": "Drafts",
@@ -230,5 +231,47 @@
     "salaryHeading": "Salary",
     "placeholder": "Sample description — the real text is written by the employer in the posting form.",
     "notFound": "Job not found."
+  },
+  "apply": {
+    "apply": "Apply",
+    "cv": "CV",
+    "cvHint": "PDF or DOCX, max 5MB.",
+    "coverNote": "Cover note (optional)",
+    "submit": "Submit application",
+    "alreadyApplied": "You've applied",
+    "error": {
+      "not_candidate": "You need a candidate account to apply.",
+      "job_not_found": "This job is no longer accepting applications.",
+      "already_applied": "You've already applied to this job.",
+      "rate_limited": "You've reached today's application limit. Try again tomorrow.",
+      "bad_file": "That file isn't a valid PDF or DOCX.",
+      "file_too_large": "That file is too large — 5MB maximum.",
+      "upload_failed": "Couldn't upload your CV. Try again.",
+      "db_error": "Something went wrong. Try again."
+    }
+  },
+  "applications": {
+    "title": "My applications",
+    "empty": "You haven't applied to any jobs yet.",
+    "status": {
+      "applied": "Applied",
+      "viewed": "Viewed",
+      "responded": "Responded",
+      "rejected": "Rejected",
+      "closed": "Closed"
+    }
+  },
+  "applicants": {
+    "title": "Applicants for “{job}”",
+    "empty": "No applicants yet.",
+    "viewCv": "View CV",
+    "cvUnavailable": "CV unavailable",
+    "status": {
+      "applied": "Applied",
+      "viewed": "Viewed",
+      "responded": "Responded",
+      "rejected": "Rejected",
+      "closed": "Closed"
+    }
   }
 }

@@ -1,6 +1,6 @@
 # Build Spec — SóIT MVP (Portugal)
 
-**Version:** v1.9 · 2026-09-18
+**Version:** v1.10 · 2026-09-22
 
 > Hand this document to Claude Code as the blueprint. Build it **phase by phase** (see Build Sequence, §14), not all at once.
 >
@@ -153,7 +153,7 @@ v1.1–v1.4 had a single `employers` table carrying both the business and its on
 > **All amounts are gross.** State this in the UI next to every figure — not in a footer. Where `salary_period = month`, the job form asks the employer whether the range is paid over 12 or 14 months and stores it in `salary_months` (int, default 14); the job page renders it ("× 14 months").
 
 ### 5.3 `candidates`
-- `id` (uuid, pk) · `auth_user_id?` (fk → `auth.users`, unique, **nullable**: profile created on apply, before password/social is set)
+- `id` (uuid, pk) · `auth_user_id?` (fk → `auth.users`, unique, **nullable**: kept nullable for the unclaimed-row mechanism §6.5 describes, but since **applying now requires a verified account (§6.7, v1.10)**, every row created via the apply flow already has this set from the start. The nullable case is now only a direct-registration nuance — an email that matches a row created some other way — not the primary path it once was)
 - `full_name` · `email` (**unique, lowercased** — this is the match key in Flow B) · `phone?` · `cv_url?` · `linkedin_url?` · `avatar_url?` (pre-fillable from social login)
 - `auth_provider?` (email | google | linkedin | github | facebook)
 - `email_verified` (bool, default false — **gates profile claiming**, see §6.4)
@@ -323,7 +323,7 @@ Flow D routes on `{Role}` and v1.1 never said where role was stored. Decided:
 - **Landing after login** (§9, Flow D): if the user holds only one profile row, land on that surface. If they hold both, land on `last_role`. Every login through a role-specific entry point updates `last_role`.
 - **Authorisation never reads `last_role`.** It is a *landing preference only*. Access is always decided by the existence of the relevant profile row, enforced in RLS (§6.2). Metadata is user-writable in some Supabase configurations; treating it as an authorisation source would be a hole.
 
-### 6.5 Profile claiming must be verified (resolves a v1.1 exploit)
+### 6.5 Profile claiming must be verified (resolves a v1.1 exploit; superseded by v1.10)
 
 v1.1: apply without an account creates a `candidates` row keyed by email, "claimable later via same email". As written, **anyone can apply using someone else's email address**, and the real owner later inherits applications they never made — or an attacker registering an unverified address inherits a stranger's application history and CV.
 
@@ -335,29 +335,76 @@ Rule: **an unclaimed `candidates` row (`auth_user_id IS NULL`) is linked to an a
 4. Only on verification does the server set `auth_user_id` and `email_verified = true`, and the full application history becomes visible.
 5. Applications submitted against an address that is never verified stay in the database and remain visible to the employer — the employer still received a real application — but never attach to an account.
 
+> **Superseded, v1.10.** Applying now requires a verified candidate account
+> (§6.7) — the unclaimed-row state this section exists to fix can no longer
+> be reached via apply, because there is no more anonymous submission for a
+> stranger's email to be attached to. The claiming *mechanism* above still
+> exists in `complete-registration.ts` and still runs correctly for a
+> direct registration whose email happens to match a pre-existing row
+> (created some other way), but nothing in the current product creates an
+> unclaimed row anymore. Left in place as dead-but-correct code rather than
+> removed, since ripping out already-verified auth logic for a step that
+> isn't touching it has its own risk.
+
 ### 6.6 GDPR (EU market — a launch precondition, not polish)
 
-The product stores names, emails, phone numbers and **CVs of people who never created an account**, in the EU. This is not deferrable:
+The product stores names, emails, phone numbers and **CVs**, in the EU. This is not deferrable. *(v1.10: apply now requires a verified account, so this is no longer data on people who never created one — the obligations below are unchanged regardless.)*
 
-- **Lawful basis.** Applying is the performance of a request by the data subject; the account-free path still needs a clear notice at the point of the apply form, not buried in a footer.
+- **Lawful basis.** Applying is the performance of a request by the data subject; the apply form still needs a clear notice at the point of submission, not buried in a footer.
 - **Controller relationship.** Once an employer views an applicant, they are a **separate controller**. The employer terms must say so, and the console must surface it.
-- **Retention.** Default: applications and their CV snapshots are deleted **12 months** after `status_updated_at`; unclaimed `candidates` rows with no live applications are deleted after 12 months. Implement as a scheduled purge — this is the one place a cron is genuinely required.
+- **Retention.** Default: applications and their CV snapshots are deleted **12 months** after `status_updated_at`. Implement as a scheduled purge — this is the one place a cron is genuinely required.
 - **Erasure and access.** A candidate must be able to request deletion and export. MVP-acceptable implementation: a documented email route with a defined SLA, actioned from the Supabase dashboard (there is no admin UI, §5.7.3). A self-serve button is better and belongs in the first post-MVP phase.
 - **Privacy policy + cookie/consent** on the candidate surface before launch. Keep analytics cookie-free if possible so the consent banner stays trivial.
 - **NIF is personal data when it belongs to a sole trader** (§5.7.2, prefixes 1–3) — it is that individual's personal tax number. Company NIFs (prefix 5) are public business-register data and far less sensitive. Treat the column as personal data regardless: never expose it on the public company page by default (§15.1), restrict it to the owning employer and admins in RLS (§6.2), and include it in the retention and erasure paths above.
 
 > This section describes obligations, not legal advice. Have the policy and employer terms reviewed before launch.
 
-### 6.7 The anonymous apply endpoint (added v1.4)
+### 6.7 The apply endpoint — requires an account (revised v1.10)
 
-Account-free apply (§7.1, Flow B) is the growth loop **and** the most exposed surface in the product: an unauthenticated `POST` that accepts a **file upload** from anyone on the internet. It needs constraints specified, not discovered:
+**v1.4–v1.9 made apply account-free** — "the growth loop and the most
+exposed surface in the product": an unauthenticated `POST` accepting a
+file upload from anyone on the internet, mitigated by the list below.
+**v1.10 changes the decision, not just the mitigations**: applying now
+requires a verified candidate account (§9, §6.4). A logged-out visitor
+clicking Apply is routed through candidate login/register first —
+mirroring how "Add offer" already routes a logged-out visitor through
+employer login/register (§9.2) — and returns to the job to complete the
+application once authenticated. This removes the anonymous-submission
+exploit surface entirely rather than layering mitigations on top of it;
+the tradeoff, made deliberately, is more friction on the candidate's first
+touch than the original growth-loop design wanted.
 
-- **File type allowlist by content sniffing, not extension** — PDF and DOCX only. Reject on the server; never trust the client-declared MIME type.
-- **Size cap** (5 MB is generous for a CV) enforced at the edge, before the body is buffered.
-- **Rate limit per IP and per email**, and a cap on applications per candidate per day. Without it, one script can fill an employer's applicant list and poison the `applications` table the response-rate feature will later read.
-- **Never serve uploads from the application's own origin.** Supabase Storage is a separate domain, which already contains stored-XSS risk from a malicious PDF — keep it that way, and serve only via the short-lived signed URLs of §6.3.
-- **Bot protection** on the apply form. A privacy-respecting challenge (Cloudflare Turnstile) over reCAPTCHA, to keep §6.6's consent story simple.
-- Validate that the target job is **live** (§5.5) server-side. An expired or draft job must not accept applications even if the form is replayed.
+Every constraint below still applies — an authenticated caller is not a
+trusted one, and this is still a file upload that gets opened by an
+employer:
+
+- **File type allowlist by content sniffing, not extension** — PDF and
+  DOCX only. Reject on the server; never trust the client-declared MIME
+  type.
+- **Size cap** (5 MB is generous for a CV) enforced before the body is
+  buffered.
+- **Never serve uploads from the application's own origin.** Supabase
+  Storage is a separate domain, which already contains stored-XSS risk
+  from a malicious PDF — keep it that way, and serve only via the
+  short-lived signed URLs of §6.3.
+- Validate that the target job is **live** (§5.5) server-side — now an RLS
+  `with check` on the `applications` insert policy (candidate_id must be
+  the caller's own, job must be live), not an app-code check, since the
+  caller is authenticated and RLS can see who they are.
+
+**What v1.10 drops, and why:**
+- **Per-IP rate limiting and Cloudflare Turnstile** — both existed to
+  blunt anonymous abuse specifically. A verified account is already a much
+  stronger throttle key and a much higher signup cost than either
+  mitigates for. Neither is built now; both need external infra
+  (Turnstile a site key, IP limiting a store like Upstash) that isn't
+  configured. Revisit if real abuse is observed against the account-gated
+  endpoint — don't build it speculatively against a threat model that no
+  longer applies.
+- **Per-email rate limiting** — meaningless once the caller is
+  authenticated by email already; replaced by a **per-candidate daily
+  application cap**, checked against the `applications` table directly
+  (no new infrastructure).
 
 ---
 
@@ -381,7 +428,10 @@ Public browsing, plus a personal account area reachable from a persistent **left
 - Map view — split list + map (§8)
 - Job detail (`/jobs/[slug]`) — salary prominent and unambiguous (amount + period + × months + gross + employment type), `JobPosting` JSON-LD, Apply button, links to the company page
 - **Company profile page (`/companies/[slug]`)** — public, indexable: logo/cover, description, website, and the company's live jobs. A key SEO + employer-branding asset.
-- Apply — no account required; triggers the account loop (Flow B), subject to §6.5
+- Apply — **requires a candidate account** (§6.7, revised v1.10). A
+  logged-out visitor is routed through candidate login/register first,
+  same pattern as the employer "Add offer" entry point (§9.2), and returns
+  to the job to complete the application once authenticated.
 
 **Candidate account (logged in)**
 - Applications dashboard — history with status (applied → viewed → responded)
@@ -483,7 +533,7 @@ Miro renders Mermaid natively (public beta): open a `.mmd` file, copy it, in Mir
 | File | Flow |
 |------|------|
 | `flows/flow-a-core-loop.mmd` | Core marketplace loop |
-| `flows/flow-b-apply-account.mmd` | Apply → account creation (verified claim) |
+| `flows/flow-b-apply-account.mmd` | Apply → login gate → verified candidate applies (revised v1.10) |
 | `flows/flow-c-employer-post.mmd` | Employer posts a job (in the console) |
 | `flows/flow-d-auth.mmd` | Authentication + role-split entry |
 | `flows/flow-e-status-lifecycle.mmd` | Application status lifecycle |
@@ -498,29 +548,29 @@ flowchart TD
     B -->|Yes| C[Job published and indexed]
     C --> D[Job appears on public site and Google for Jobs]
     D --> E[Candidate finds job]
-    E --> F[Candidate applies with name email CV]
-    F --> G[Application saved and candidate profile created unclaimed]
+    E --> F{Logged in as candidate?}
+    F -->|No| F2[Routed through candidate login or register]
+    F2 --> E
+    F -->|Yes| G[Candidate applies with CV, application saved against verified account]
     G --> H[Employer sees applicant in console]
     H --> I[Employer updates status viewed responded rejected]
     I --> J[Candidate sees live status in dashboard]
 ```
 
-### Flow B — apply → account creation (verified claim)
+### Flow B — apply → login gate → verified candidate applies (revised v1.10)
 ```mermaid
 flowchart TD
-    A[Candidate clicks Apply] --> B[Apply form name email CV note]
-    B --> C[Submit]
-    C --> D[Create application record with CV snapshot]
-    C --> L[Queue thanks for applying email - comms hook]
-    D --> E[Create or match candidate profile by email - unclaimed]
-    E --> F[Confirmation application sent]
-    F --> G{Set password or continue with social?}
-    G -->|Yes| H[Supabase Auth sends verification]
-    H --> V{Email verified?}
-    V -->|Yes| I[Link profile to auth account and reveal history]
-    V -->|No| K
-    I --> J[Candidate dashboard track applications]
-    G -->|Not now| K[Profile stays unclaimed and hidden until verified]
+    A[Candidate clicks Apply] --> B{Logged in as candidate?}
+    B -->|No| C[Redirect to candidate login or register, same pattern as employer Add offer]
+    C --> D[Candidate logs in or registers and verifies email]
+    D --> E[Return to the job]
+    B -->|Yes| E
+    E --> F[Apply form CV and optional cover note]
+    F --> G[Submit]
+    G --> H[Create application record with CV snapshot against existing verified candidate]
+    G --> L[Queue thanks for applying email - comms hook]
+    H --> I[Employer sees applicant in console]
+    H --> J[Candidate dashboard shows the application]
 ```
 
 ### Flow C — employer posts a job (in the console)
@@ -702,7 +752,12 @@ Buttons say what happens (Apply, Add job advertisement, Save changes), same word
    - **NIF layer 1 inline** (pure function, exhaustively tested) + **`ViesProvider` behind `NifRegistryProvider`** running async with backoff (§5.7.6). No admin step, no manual queue.
 4. **Employer console** — My job ads landing (3 tabs, §7.2) → Add job advertisement (salary min/max/period/type required, geocode on save, 30-day expiry) → posting appears in My job ads. Company Profile editor with the verification banner. **Publish gated on `verification_status = 'verified'`, enforced server-side (§5.7.4).**
 5. **Candidate public surface** — server-rendered job list + job detail + **company profile page**, from the DB, using the **live** condition (§5.5). `JobPosting` JSON-LD incl. `unitText` + `employmentType`, dynamic sitemap, robots.txt.
-6. **Apply flow** — account-free apply → creates application + CV snapshot + unclaimed candidate profile → "set password / continue with social" prompt, **claim gated on verification** (§6.5). Emit `application.created`.
+6. **Apply flow (revised v1.10 — account required)** — Apply is gated on
+   a candidate session; a logged-out visitor is routed through candidate
+   login/register first (§6.7, §9.2's pattern), then returns to the job.
+   Once authenticated, the apply form creates the application + CV
+   snapshot directly against the candidate's existing, already-verified
+   row — no unclaimed-profile step. Emit `application.created`.
 7. **Applicants + status** — employer Applicants view (per job ad) with CV access via signed URLs (§6.3) + status updates; candidate Applications dashboard reflects them. Emit `application.status_changed`. **← loop closed.**
 8. **Map view** — list + map over the captured coordinates, with the providers named in §8.1.
 9. **SEO check + compliance + polish** — Search Console + Rich Results Test; privacy policy, consent, retention purge job (§6.6); error monitoring (Sentry) and basic analytics; expired-job handling verified end to end; design pass against §11.

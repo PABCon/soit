@@ -5,7 +5,9 @@ import { Link } from "@/i18n/navigation";
 import { Salary } from "@/components/Salary";
 import { CompanyLogo } from "@/components/CompanyLogo";
 import { TechTags } from "@/components/TechTags";
+import { ApplyForm } from "@/components/ApplyForm";
 import { getLiveJobBySlug, type JobDetail } from "@/lib/db/jobs";
+import { getApplyStatus } from "@/lib/db/applications";
 import { routing } from "@/i18n/routing";
 
 type Props = { params: Promise<{ locale: string; slug: string }> };
@@ -96,6 +98,7 @@ export default async function JobDetailPage({ params }: Props) {
 
   const t = await getTranslations({ locale, namespace: "job" });
   const tf = await getTranslations({ locale, namespace: "feed" });
+  const applyStatus = await getApplyStatus(job.id);
 
   const paragraphs = job.description.split(/\n{2,}/).filter(Boolean);
 
@@ -177,12 +180,11 @@ export default async function JobDetailPage({ params }: Props) {
                 size="detail"
               />
             </div>
-            <button
-              type="button"
-              className="mt-5 h-11 w-full rounded-lg bg-pine text-sm font-semibold text-white hover:bg-pine/90"
-            >
-              {t("apply")}
-            </button>
+            <ApplyForm
+              jobSlug={slug}
+              isCandidate={applyStatus.isCandidate}
+              alreadyApplied={applyStatus.alreadyApplied}
+            />
             <p className="mt-3 text-center text-xs text-muted">
               {tf("postedAgo", { days: job.postedDaysAgo })}
             </p>

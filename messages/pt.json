@@ -34,6 +34,7 @@
     "team": "Equipa",
     "addJobAd": "Adicionar vaga",
     "editJobAd": "Editar vaga",
+    "viewApplicants": "Ver candidaturas",
     "tabActive": "Ativas",
     "tabInactive": "Inativas",
     "tabDrafts": "Rascunhos",
@@ -230,5 +231,47 @@
     "salaryHeading": "Salário",
     "placeholder": "Descrição de exemplo — o texto real é escrito pela empresa no formulário de publicação.",
     "notFound": "Vaga não encontrada."
+  },
+  "apply": {
+    "apply": "Candidatar",
+    "cv": "CV",
+    "cvHint": "PDF ou DOCX, máximo 5MB.",
+    "coverNote": "Nota de candidatura (opcional)",
+    "submit": "Enviar candidatura",
+    "alreadyApplied": "Já se candidatou",
+    "error": {
+      "not_candidate": "Precisa de uma conta de candidato para se candidatar.",
+      "job_not_found": "Esta vaga já não aceita candidaturas.",
+      "already_applied": "Já se candidatou a esta vaga.",
+      "rate_limited": "Atingiu o limite de candidaturas de hoje. Tente novamente amanhã.",
+      "bad_file": "Esse ficheiro não é um PDF ou DOCX válido.",
+      "file_too_large": "Esse ficheiro é demasiado grande — máximo 5MB.",
+      "upload_failed": "Não foi possível carregar o seu CV. Tente novamente.",
+      "db_error": "Algo correu mal. Tente novamente."
+    }
+  },
+  "applications": {
+    "title": "As minhas candidaturas",
+    "empty": "Ainda não se candidatou a nenhuma vaga.",
+    "status": {
+      "applied": "Candidatado",
+      "viewed": "Visto",
+      "responded": "Respondido",
+      "rejected": "Rejeitado",
+      "closed": "Fechado"
+    }
+  },
+  "applicants": {
+    "title": "Candidaturas para “{job}”",
+    "empty": "Ainda não há candidaturas.",
+    "viewCv": "Ver CV",
+    "cvUnavailable": "CV indisponível",
+    "status": {
+      "applied": "Candidatado",
+      "viewed": "Visto",
+      "responded": "Respondido",
+      "rejected": "Rejeitado",
+      "closed": "Fechado"
+    }
   }
 }

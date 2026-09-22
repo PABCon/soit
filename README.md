@@ -62,6 +62,10 @@ src/
   lib/db/                 Server-only, RLS-scoped data layer: jobs, companies, team
   app/[locale]/(candidate)/companies/[slug]/  Public company page (§7.1)
   app/[locale]/(console)/recruit/  My job ads, job form, company profile, team
+  app/[locale]/(candidate)/applications/  Candidate's own applications (§7.1)
+  app/[locale]/(console)/recruit/jobs/[id]/applicants/  Employer Applicants view (§7.2)
+  lib/db/applications.ts  Apply, CV upload, status updates — §6.7 (v1.10: account required)
+  lib/file-sniff.ts       Content-sniffs uploaded CVs by magic bytes, never by extension
 ```
 
 ## Conventions
@@ -85,5 +89,9 @@ NIF layer-1 + async VIES verification, role-split landing. See `CLAUDE.md`
 for the known gaps (production redirect-URL allowlist, email rate limits).
 **Step 4 complete** (employer console) — and the candidate surface now
 reads the real database (steps 5/8 done early; see `CLAUDE.md`), plus a new
-public company page and Team/invite. Next: steps 6/7 — the apply flow and
-the employer Applicants view.
+public company page and Team/invite. **Steps 6/7 complete** (apply +
+Applicants) — with a mid-step spec change: applying now requires a
+verified candidate account (§6.7 rewritten to v1.10; see `CLAUDE.md`).
+Per the spec, steps 1-7 being done means there's a working two-sided
+marketplace, loop closed, end to end. Next: step 9 — SEO check,
+compliance, and polish.

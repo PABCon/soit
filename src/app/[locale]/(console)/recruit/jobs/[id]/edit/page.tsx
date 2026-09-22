@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
+import { Link } from "@/i18n/navigation";
 import { getJobForEdit } from "@/lib/db/jobs";
 import { getTechTags } from "@/lib/db/tech-tags";
 import { JobForm } from "@/components/console/JobForm";
@@ -16,7 +17,15 @@ export default async function EditJobPage({ params }: Props) {
 
   return (
     <>
-      <h1 className="text-2xl font-bold">{t("editJobAd")}</h1>
+      <div className="flex items-center justify-between gap-4">
+        <h1 className="text-2xl font-bold">{t("editJobAd")}</h1>
+        <Link
+          href={`/recruit/jobs/${job.id}/applicants`}
+          className="text-sm font-medium text-pine hover:underline"
+        >
+          {t("viewApplicants")}
+        </Link>
+      </div>
       <div className="mt-6">
         <JobForm
           techTags={techTags}

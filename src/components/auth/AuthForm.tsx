@@ -1,10 +1,18 @@
 "use client";
 
 import { useState, type FormEvent } from "react";
+import { useSearchParams } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { useRouter } from "@/i18n/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { validateNif } from "@/lib/nif";
+
+/** Only ever honour a same-origin relative path — never redirect based on
+ *  an attacker-controlled `next` value (open-redirect). */
+function safeNext(value: string | null): string | null {
+  if (!value || !value.startsWith("/") || value.startsWith("//")) return null;
+  return value;
+}
 
 type Role = "candidate" | "employer";
 type Mode = "login" | "register";
@@ -25,6 +33,8 @@ export function AuthForm({ role, mode }: { role: Role; mode: Mode }) {
   const t = useTranslations("auth");
   const locale = useLocale();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const next = safeNext(searchParams.get("next"));
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -58,7 +68,7 @@ export function AuthForm({ role, mode }: { role: Role; mode: Mode }) {
           email,
           password,
           options: {
-            emailRedirectTo: `${window.location.origin}/auth/callback?next=/${locale}${landingPath}`,
+            emailRedirectTo: `${window.location.origin}/auth/callback?next=/${locale}${next ?? landingPath}`,
             data: {
               last_role: role,
               ...(role === "employer"
@@ -76,7 +86,7 @@ export function AuthForm({ role, mode }: { role: Role; mode: Mode }) {
         if (data.session) {
           const res = await fetch("/api/auth/finish", { method: "POST" });
           const json = await res.json();
-          router.push(json.landingPath ?? landingPath);
+          router.push(next ?? json.landingPath ?? landingPath);
         } else {
           setCheckEmail(true);
         }
@@ -93,7 +103,7 @@ export function AuthForm({ role, mode }: { role: Role; mode: Mode }) {
           body: JSON.stringify({ preferredRole: role }),
         });
         const json = await res.json();
-        if (json.landingPath) router.push(json.landingPath);
+        if (json.landingPath) router.push(next ?? json.landingPath);
         else setError(t("noProfile"));
       }
     } finally {
@@ -105,7 +115,7 @@ export function AuthForm({ role, mode }: { role: Role; mode: Mode }) {
     const supabase = createClient();
     await supabase.auth.signInWithOAuth({
       provider,
-      options: { redirectTo: `${window.location.origin}/auth/callback?next=/${locale}${landingPath}` },
+      options: { redirectTo: `${window.location.origin}/auth/callback?next=/${locale}${next ?? landingPath}` },
     });
   }
 

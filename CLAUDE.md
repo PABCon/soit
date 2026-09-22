@@ -123,5 +123,68 @@ via the admin client + calling `completeRegistration` directly, then
 logging in through the real UI (`signInWithPassword`) rather than trying to
 manufacture a confirmation link.
 
-Next: step 6/7 — the apply flow (anonymous apply, §6.7's constraints on
-that endpoint) and the employer Applicants view.
+**Step 6/7 (apply + Applicants) is done, with a spec change decided
+mid-planning**: you asked whether anonymous apply was really agreed, given
+the bot/abuse risk — it wasn't something I had record of us changing, and
+the spec as written made it deliberate (§6.7, "the growth loop and the
+most exposed surface in the product"). **You changed the decision**:
+apply now requires a verified candidate account. §6.7 (and §6.5, §6.6,
+§7.1, §14 step 6, both Flow A/B diagrams — inline and their `.mmd` files)
+were rewritten to v1.10 to reflect it, before any code — read §6.7 for the
+current rules and what got dropped (per-IP limiting, Turnstile — both
+existed specifically for the anonymous case) versus kept (content-sniffed
+file type, 5MB cap, signed-URL-only CV access, live-job check — now an RLS
+policy instead of app code). `complete-registration.ts`'s unclaimed-row
+claiming branch (§6.5) is dead-but-correct code now — nothing creates an
+unclaimed row anymore, left in place rather than ripped out of already-
+verified step-3 code for a step that isn't touching it.
+
+Built: `ApplyForm` (gates on a candidate session, routes a logged-out
+visitor through candidate login/register with a `next` param back to the
+job — same pattern as employer "Add offer"), content-sniffing by magic
+bytes (`src/lib/file-sniff.ts` — never trust the extension or declared
+MIME type), a per-candidate daily application cap (DB-backed, no new
+infra), the candidate Applications dashboard, and the employer Applicants
+view (CV access via a signed URL, ≤15 min, status updates). See
+`src/lib/db/applications.ts`.
+
+**Two real bugs found by testing this against the live database before
+ever reaching the browser** (both fixed, both worth internalizing as
+patterns, not just one-off fixes):
+1. **RLS policies whose conditions read each other's table can recurse.**
+   The new "candidates see jobs they applied to" policy on `jobs`
+   subqueries `applications`; the existing "employers see applications to
+   their company's jobs" policy on `applications` subqueries `jobs` right
+   back — `42P17 infinite recursion`. Fixed with a `SECURITY DEFINER`
+   helper (`candidate_applied_to_job()`), the same pattern
+   `my_company_id()`/`my_candidate_id()` already use. Full writeup in
+   `supabase/migrations/README.md`.
+2. **An embedded join still goes through the joined table's RLS**, even
+   when the top-level table's policy already let the query through.
+   `getApplicantsForJob` embedded `candidates!inner(full_name, email)` —
+   but `candidates` deliberately has no policy letting an employer read it
+   (step 2's own schema comment: "Employers never read this table") — so
+   every applicant silently vanished from the Applicants view. Fixed by
+   fetching candidate info via the admin client instead, the same pattern
+   Team's email lookup and the CV signed URL already use in this exact
+   function.
+
+Verified against the live database and through the real browser UI
+(localhost — production wasn't re-verified this round since nothing about
+Vercel/env vars changed; the lesson from steps 3-4 was specifically about
+*that* class of issue, and this step's changes are all DB/RLS/app-code):
+apply while logged out → redirected to candidate login with the job as
+`next` → returns to the job after login → a renamed-`.exe` upload rejected
+by content-sniffing → a real PDF accepted → double-apply blocked →
+Applications dashboard shows it → employer's Applicants view shows the
+candidate, cover note, and a working signed CV URL (confirmed serving
+`application/pdf` from the Supabase Storage domain, not our own origin,
+per §6.7) → status change to "Viewed" persists and reflects immediately on
+the candidate's own dashboard. Test data cleaned up afterward, storage
+objects included (candidate/company row deletion doesn't cascade-delete
+the actual uploaded file — `storage.objects.remove()` needed separately).
+
+Next: step 9 — SEO check + compliance + polish (Search Console, privacy
+policy, consent, the §6.6 retention purge job, error monitoring). Per the
+spec, steps 1-7 being done means there's a working two-sided marketplace
+end to end.
