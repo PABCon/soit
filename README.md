@@ -37,6 +37,7 @@ Then open http://localhost:3000 — it redirects to `/pt` or `/en` based on your
 | `npm run build` | Production build |
 | `npm run check` | Message-catalogue parity + lint + typecheck |
 | `npm run check:i18n` | Fails if the PT and EN catalogues have drifted |
+| `npm run test` | Vitest — the NIF validator's table-driven tests |
 
 ## Layout
 
@@ -52,7 +53,12 @@ src/
     (candidate)/          Public job site — SEO critical
     (console)/recruit/    Employer console — behind login, noindex
   components/Salary.tsx   The one salary component. Never render one ad hoc.
-  lib/supabase/           Browser and server clients
+  app/[locale]/(auth)/    Candidate/employer login + register (§9.2)
+  app/auth/callback/      OAuth + email-link confirmation — outside [locale]
+  lib/supabase/           Browser, server and admin (service-role) clients
+  lib/nif.ts              NIF layer-1 validation (§5.7.2), exhaustively tested
+  lib/verification/       Async NIF registry lookup — ViesProvider (§5.7.6)
+  lib/auth/               Profile creation/claiming + login landing (§6.4, §6.5)
 ```
 
 ## Conventions
@@ -69,4 +75,9 @@ src/
 Build sequence is §14 of the spec. **Step 1 complete** (skeleton, i18n, both
 shells, design tokens). **Step 2 complete** (schema, RLS, storage buckets) —
 migrations are applied and verified against the live Supabase project; see
-`supabase/migrations/README.md`. Next: step 3 — auth + employer verification.
+`supabase/migrations/README.md`. **Step 3 complete** (auth + employer
+verification) — email/password + social login (Google/GitHub/LinkedIn,
+inert until OAuth credentials are added in the Supabase dashboard),
+NIF layer-1 + async VIES verification, role-split landing. See `CLAUDE.md`
+for the known gaps (production redirect-URL allowlist, email rate limits).
+Next: step 4 — employer console.

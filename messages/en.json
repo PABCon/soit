@@ -13,7 +13,8 @@
     "loginAsEmployer": "Log in as employer",
     "registerAsEmployer": "Register as employer",
     "groupCandidate": "Candidate",
-    "groupEmployer": "Employer"
+    "groupEmployer": "Employer",
+    "logOut": "Log out"
   },
   "rail": {
     "offers": "Offers",
@@ -36,6 +37,7 @@
     "tabInactive": "Inactive",
     "tabDrafts": "Drafts",
     "backToSite": "Back to site",
+    "logOut": "Log out",
     "empty": "You have not published any job ads yet.",
     "matchmaking": "Matchmaking",
     "myProducts": "My products",
@@ -95,6 +97,33 @@
     "stack": "Stack",
     "remoteGroup": "Fully remote",
     "mapHint": "Remote jobs have no pin on the map."
+  },
+  "auth": {
+    "candidateLoginTitle": "Log in as candidate",
+    "candidateRegisterTitle": "Register as candidate",
+    "employerLoginTitle": "Log in as employer",
+    "employerRegisterTitle": "Register as employer",
+    "email": "Email",
+    "password": "Password",
+    "companyName": "Company name",
+    "nif": "NIF",
+    "logIn": "Log in",
+    "createAccount": "Create account",
+    "alreadyHaveAccount": "Already have an account?",
+    "needAccount": "Need an account?",
+    "orContinueWith": "or continue with",
+    "checkEmail": "Check your email to confirm your account before logging in.",
+    "noProfile": "No account found for this role. Try registering first.",
+    "nifError": {
+      "format": "Enter a 9-digit NIF.",
+      "checksum": "That NIF isn't valid — check the digits.",
+      "not_business": "That NIF belongs to an individual, not a registered business. SóIT verifies companies and public entities only."
+    },
+    "provider": {
+      "google": "Google",
+      "github": "GitHub",
+      "linkedin_oidc": "LinkedIn"
+    }
   },
   "job": {
     "apply": "Apply",

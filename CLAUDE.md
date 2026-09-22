@@ -26,10 +26,29 @@ update it *first* when adding a feature (§12.5).
 ## Commands
 - `npm run dev` · `npm run build`
 - `npm run check` — i18n parity + lint + typecheck
+- `npm run test` — vitest (currently just the NIF validator, §14 testing floor)
 
 ## Build sequence
 §14 of the spec. **Step 1 (skeleton + i18n + shells + tokens) is done.**
 **Step 2 (schema, RLS, storage buckets) is done and verified** against the
 live Supabase project ("SO IT", ref `bzwavosbvarvdhsogxqt`) — see
 `supabase/migrations/README.md`. `.env.local` holds real project credentials.
-Next: step 3 — auth + employer verification (NIF layer 1 + VIES).
+
+**Step 3 (auth + employer verification) is done**: email/password + social
+(Google/GitHub/LinkedIn — wired, inert until OAuth credentials are added in
+the Supabase dashboard) registration and login for both roles, NIF layer-1
+validation (`src/lib/nif.ts`, exhaustively tested), async VIES verification
+with lazy retry (no cron — Vercel Hobby's minimum interval is daily), and
+role-split landing (§6.4). See `src/lib/auth/complete-registration.ts` for
+the profile-creation/claiming logic and `docs/mvp-build-spec.md` §5.7/§6.4/§9
+for the rules it implements. Verified directly against the live database
+(admin client, both role branches, idempotency) — see git history for the
+verification transcript. Known gaps, not blockers: production's
+`https://soit.vercel.app` isn't yet in the Supabase Auth redirect allowlist
+(only `soit-soit.vercel.app` patterns are — add it in the dashboard before
+relying on employer/candidate registration in production); Supabase's
+default email sender is rate-limited enough to make repeated local testing
+slow.
+
+Next: step 4 — employer console (My job ads, Add job advertisement, Company
+Profile editor, publish gated on `verification_status = 'verified'`).

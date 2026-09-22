@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "check:i18n": "node scripts/check-messages.mjs",
-    "check": "npm run check:i18n && npm run lint && tsc --noEmit"
+    "check": "npm run check:i18n && npm run lint && tsc --noEmit",
+    "test": "vitest run"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",
@@ -28,6 +29,8 @@
     "eslint": "^9",
     "eslint-config-next": "16.3.5",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vite": "^8.3.0",
+    "vitest": "^5.0.1"
   }
 }

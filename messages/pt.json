@@ -13,7 +13,8 @@
     "loginAsEmployer": "Entrar como empresa",
     "registerAsEmployer": "Criar conta de empresa",
     "groupCandidate": "Candidato",
-    "groupEmployer": "Empresa"
+    "groupEmployer": "Empresa",
+    "logOut": "Sair"
   },
   "rail": {
     "offers": "Vagas",
@@ -36,6 +37,7 @@
     "tabInactive": "Inativas",
     "tabDrafts": "Rascunhos",
     "backToSite": "Voltar ao site",
+    "logOut": "Sair",
     "empty": "Ainda não tem vagas publicadas.",
     "matchmaking": "Matchmaking",
     "myProducts": "Os meus produtos",
@@ -95,6 +97,33 @@
     "stack": "Stack",
     "remoteGroup": "Totalmente remoto",
     "mapHint": "As vagas remotas não têm ponto no mapa."
+  },
+  "auth": {
+    "candidateLoginTitle": "Entrar como candidato",
+    "candidateRegisterTitle": "Criar conta de candidato",
+    "employerLoginTitle": "Entrar como empresa",
+    "employerRegisterTitle": "Criar conta de empresa",
+    "email": "Email",
+    "password": "Palavra-passe",
+    "companyName": "Nome da empresa",
+    "nif": "NIF",
+    "logIn": "Entrar",
+    "createAccount": "Criar conta",
+    "alreadyHaveAccount": "Já tem conta?",
+    "needAccount": "Ainda não tem conta?",
+    "orContinueWith": "ou continuar com",
+    "checkEmail": "Verifique o seu email para confirmar a conta antes de entrar.",
+    "noProfile": "Não foi encontrada conta para este perfil. Experimente criar uma conta primeiro.",
+    "nifError": {
+      "format": "Indique um NIF com 9 dígitos.",
+      "checksum": "Esse NIF não é válido — verifique os dígitos.",
+      "not_business": "Esse NIF pertence a uma pessoa singular, não a uma empresa registada. A SóIT verifica apenas empresas e entidades públicas."
+    },
+    "provider": {
+      "google": "Google",
+      "github": "GitHub",
+      "linkedin_oidc": "LinkedIn"
+    }
   },
   "job": {
     "apply": "Candidatar",

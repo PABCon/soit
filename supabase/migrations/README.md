@@ -8,6 +8,8 @@ idempotent.
 | `20260921120000_schema.sql` | §5 — tables, enums, constraints, indexes, triggers |
 | `20260921120100_rls.sql` | §6 — helper functions, grants, RLS policies, `live_jobs` view |
 | `20260921120200_storage.sql` | §6.3 — private `cvs` bucket, public `branding` bucket |
+| `20260922090000_verification_backoff.sql` | §5.7.3 — retry bookkeeping columns on `companies`, step 3 |
+| `20260922100000_service_role_grants.sql` | Fixes a step-2 gap — `service_role` never had table privileges, only RLS bypass (see below) |
 
 ## ✅ Verified against the live database (2026-09-21)
 
@@ -37,6 +39,22 @@ supabase link --project-ref bzwavosbvarvdhsogxqt   # already linked from .env.lo
 supabase db push
 supabase db query --linked -f supabase/seed.sql
 ```
+
+## ⚠ service_role had no table privileges until step 3 (found 2026-09-22)
+
+`service_role` bypasses RLS via its role attribute, but that's a separate
+layer from the ordinary Postgres GRANT system underneath it — and this
+project's `public` schema default privileges only auto-grant `anon`/
+`authenticated` on new tables (which is why the RLS migration explicitly
+revokes them), never `service_role`. Every table created in the schema
+migration therefore had zero `service_role` privileges beyond TRUNCATE/
+REFERENCES/TRIGGER until `20260922100000_service_role_grants.sql` — meaning
+every privileged server-side write (registration, applications, anything
+using the admin client) would have failed with 42501 the moment it was
+tried, regardless of RLS. Caught while building step 3 and testing the
+admin client directly against the live project; fixed by that migration.
+If a future migration adds a table, grant `service_role` explicitly — don't
+assume it inherits access the way `storage`/`auth` schema tables do.
 
 ## Things to check on first apply
 

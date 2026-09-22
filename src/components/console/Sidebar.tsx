@@ -1,6 +1,9 @@
+"use client";
+
 import { useTranslations } from "next-intl";
-import { Link } from "@/i18n/navigation";
+import { Link, useRouter } from "@/i18n/navigation";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
+import { createClient } from "@/lib/supabase/client";
 
 const MVP = [
   { key: "myJobAds", href: "/recruit" },
@@ -14,6 +17,13 @@ const LATER = ["matchmaking", "myProducts", "pricing", "contact"] as const;
 export function Sidebar() {
   const t = useTranslations("console");
   const brand = useTranslations("brand");
+  const router = useRouter();
+
+  async function handleLogOut() {
+    await createClient().auth.signOut();
+    router.push("/");
+    router.refresh();
+  }
 
   return (
     <aside className="flex w-full shrink-0 flex-col border-b border-line bg-white/60 px-3 py-4 md:h-dvh md:w-60 md:border-r md:border-b-0">
@@ -48,7 +58,12 @@ export function Sidebar() {
         <Link href="/jobs" className="text-xs text-muted hover:text-ink">
           {t("backToSite")}
         </Link>
-        <LanguageSwitcher />
+        <div className="flex items-center gap-3">
+          <button type="button" onClick={handleLogOut} className="text-xs text-muted hover:text-ink">
+            {t("logOut")}
+          </button>
+          <LanguageSwitcher />
+        </div>
       </div>
     </aside>
   );
