@@ -79,7 +79,16 @@
     "createInvite": "Create invite link",
     "copyLink": "Copy link",
     "copied": "Copied!",
-    "errorGeneric": "Something went wrong. Try again."
+    "errorGeneric": "Something went wrong. Try again.",
+    "companyType": "Company type",
+    "socialLinks": "Social links",
+    "facebook": "Facebook",
+    "linkedin": "LinkedIn",
+    "instagram": "Instagram",
+    "youtube": "YouTube",
+    "tiktok": "TikTok",
+    "x": "X",
+    "viewPublicProfile": "View public profile"
   },
   "jobForm": {
     "title": "Job title",
@@ -136,7 +145,15 @@
   },
   "company": {
     "openJobs": "{count, plural, =0 {No open jobs} one {# open job} other {# open jobs}}",
-    "noOpenJobs": "This company has no open jobs right now."
+    "noOpenJobs": "This company has no open jobs right now.",
+    "officeLocations": "Office locations",
+    "activeOffers": "Active offers",
+    "companyType": "Company type",
+    "industry": "Industry"
+  },
+  "companies": {
+    "title": "Companies",
+    "empty": "No verified companies yet."
   },
   "salary": {
     "perHour": "per hour",

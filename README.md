@@ -60,7 +60,7 @@ src/
   lib/verification/       Async NIF registry lookup — ViesProvider (§5.7.6)
   lib/auth/               Profile creation/claiming + login landing (§6.4, §6.5)
   lib/db/                 Server-only, RLS-scoped data layer: jobs, companies, team
-  app/[locale]/(candidate)/companies/[slug]/  Public company page (§7.1)
+  app/[locale]/(candidate)/companies/  Companies listing + public company page (§7.1)
   app/[locale]/(console)/recruit/  My job ads, job form, company profile, team
   app/[locale]/(candidate)/applications/  Candidate's own applications (§7.1)
   app/[locale]/(console)/recruit/jobs/[id]/applicants/  Employer Applicants view (§7.2)
@@ -98,7 +98,11 @@ created and claiming is offered after applying — see `CLAUDE.md`. Same
 pass added an optional per-job external apply URL (bypasses the internal
 flow entirely) and built the full application-email flow (real templates,
 real trigger points) behind a swappable `EmailProvider`, not yet connected
-to a real sender (§9.1a).
+to a real sender (§9.1a). A `/companies` listing page and a richer public
+company profile (banner + circular logo, social links, a stat-card row)
+followed, modelled on a rocketjobs.com reference — see `CLAUDE.md` for what
+was scoped out (Follow, AI-generated profiles, theme picker) and a real
+RLS column-grant bug it surfaced.
 Per the spec, steps 1-7 being done means there's a working two-sided
 marketplace, loop closed, end to end. Next: step 9 — SEO check,
 compliance, and polish — plus the rest of the real-usage QA backlog (see

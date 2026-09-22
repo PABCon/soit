@@ -79,7 +79,16 @@
     "createInvite": "Criar link de convite",
     "copyLink": "Copiar link",
     "copied": "Copiado!",
-    "errorGeneric": "Algo correu mal. Tente novamente."
+    "errorGeneric": "Algo correu mal. Tente novamente.",
+    "companyType": "Tipo de empresa",
+    "socialLinks": "Redes sociais",
+    "facebook": "Facebook",
+    "linkedin": "LinkedIn",
+    "instagram": "Instagram",
+    "youtube": "YouTube",
+    "tiktok": "TikTok",
+    "x": "X",
+    "viewPublicProfile": "Ver perfil público"
   },
   "jobForm": {
     "title": "Título da vaga",
@@ -136,7 +145,15 @@
   },
   "company": {
     "openJobs": "{count, plural, =0 {Sem vagas abertas} one {# vaga aberta} other {# vagas abertas}}",
-    "noOpenJobs": "Esta empresa não tem vagas abertas neste momento."
+    "noOpenJobs": "Esta empresa não tem vagas abertas neste momento.",
+    "officeLocations": "Localizações",
+    "activeOffers": "Vagas ativas",
+    "companyType": "Tipo de empresa",
+    "industry": "Indústria"
+  },
+  "companies": {
+    "title": "Empresas",
+    "empty": "Ainda não há empresas verificadas."
   },
   "salary": {
     "perHour": "por hora",

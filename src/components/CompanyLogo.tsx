@@ -1,6 +1,11 @@
 import type { Company } from "@/lib/types";
 
-const SIZES = { sm: "h-10 w-10 text-xs", md: "h-12 w-12 text-sm", lg: "h-16 w-16 text-lg" };
+const SIZES = {
+  sm: "h-10 w-10 text-xs",
+  md: "h-12 w-12 text-sm",
+  lg: "h-16 w-16 text-lg",
+  xl: "h-24 w-24 text-2xl",
+};
 
 // A small fixed palette, deterministically picked from the name — stable
 // across renders/requests without needing to store a color anywhere.
@@ -17,17 +22,22 @@ function colorFor(name: string): string {
 export function CompanyLogo({
   company,
   size = "md",
+  shape = "rounded",
 }: {
   company: Company;
   size?: keyof typeof SIZES;
+  /** "circle" overlaps a banner with a white ring — the public company page's header. */
+  shape?: "rounded" | "circle";
 }) {
+  const shapeClass = shape === "circle" ? "rounded-full ring-4 ring-paper" : "rounded-xl";
+
   if (company.logoUrl) {
     return (
       // eslint-disable-next-line @next/next/no-img-element -- external Supabase Storage URLs, not local assets.
       <img
         src={company.logoUrl}
         alt=""
-        className={`${SIZES[size]} shrink-0 rounded-xl object-cover`}
+        className={`${SIZES[size]} ${shapeClass} shrink-0 object-cover`}
       />
     );
   }
@@ -42,7 +52,7 @@ export function CompanyLogo({
     <div
       aria-hidden="true"
       style={{ backgroundColor: colorFor(company.name) }}
-      className={`${SIZES[size]} flex shrink-0 items-center justify-center rounded-xl font-display font-bold text-white`}
+      className={`${SIZES[size]} ${shapeClass} flex shrink-0 items-center justify-center font-display font-bold text-white`}
     >
       {initials}
     </div>

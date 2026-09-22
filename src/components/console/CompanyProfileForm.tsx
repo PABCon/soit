@@ -2,6 +2,7 @@
 
 import { useState, type FormEvent } from "react";
 import { useTranslations } from "next-intl";
+import { Link } from "@/i18n/navigation";
 import { CompanyLogo } from "@/components/CompanyLogo";
 import { updateProfileAction, uploadImageAction } from "@/app/[locale]/(console)/recruit/company/actions";
 import type { MyCompany } from "@/lib/db/companies";
@@ -20,6 +21,9 @@ function VerificationBanner({ status }: { status: MyCompany["verification_status
   return <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{t("failedBanner")}</p>;
 }
 
+const SOCIAL_FIELDS = ["facebook_url", "linkedin_url", "instagram_url", "youtube_url", "tiktok_url", "x_url"] as const;
+type SocialField = (typeof SOCIAL_FIELDS)[number];
+
 export function CompanyProfileForm({ company, canEdit }: { company: MyCompany; canEdit: boolean }) {
   const t = useTranslations("console");
   const [name, setName] = useState(company.company_name);
@@ -27,6 +31,15 @@ export function CompanyProfileForm({ company, canEdit }: { company: MyCompany; c
   const [website, setWebsite] = useState(company.website ?? "");
   const [industry, setIndustry] = useState(company.industry ?? "");
   const [size, setSize] = useState(company.company_size ?? "");
+  const [companyType, setCompanyType] = useState(company.company_type ?? "");
+  const [socials, setSocials] = useState<Record<SocialField, string>>({
+    facebook_url: company.facebook_url ?? "",
+    linkedin_url: company.linkedin_url ?? "",
+    instagram_url: company.instagram_url ?? "",
+    youtube_url: company.youtube_url ?? "",
+    tiktok_url: company.tiktok_url ?? "",
+    x_url: company.x_url ?? "",
+  });
   const [saved, setSaved] = useState(false);
   const [pending, setPending] = useState(false);
 
@@ -40,6 +53,8 @@ export function CompanyProfileForm({ company, canEdit }: { company: MyCompany; c
     formData.set("website", website);
     formData.set("industry", industry);
     formData.set("company_size", size);
+    formData.set("company_type", companyType);
+    for (const field of SOCIAL_FIELDS) formData.set(field, socials[field]);
     await updateProfileAction(formData);
     setPending(false);
     setSaved(true);
@@ -116,6 +131,27 @@ export function CompanyProfileForm({ company, canEdit }: { company: MyCompany; c
             <input value={size} onChange={(e) => setSize(e.target.value)} className={inputClass} />
           </label>
         </div>
+        <label className={labelClass}>
+          <span>{t("companyType")}</span>
+          <input value={companyType} onChange={(e) => setCompanyType(e.target.value)} className={inputClass} />
+        </label>
+
+        <fieldset className="flex flex-col gap-3">
+          <legend className="text-sm font-medium">{t("socialLinks")}</legend>
+          <div className="grid grid-cols-2 gap-4">
+            {SOCIAL_FIELDS.map((field) => (
+              <label key={field} className={labelClass}>
+                <span>{t(field.replace("_url", ""))}</span>
+                <input
+                  type="url"
+                  value={socials[field]}
+                  onChange={(e) => setSocials((s) => ({ ...s, [field]: e.target.value }))}
+                  className={inputClass}
+                />
+              </label>
+            ))}
+          </div>
+        </fieldset>
 
         <div className="flex items-center gap-3">
           <button
@@ -126,6 +162,13 @@ export function CompanyProfileForm({ company, canEdit }: { company: MyCompany; c
             {t("save")}
           </button>
           {saved && <span className="text-sm text-pine">{t("saved")}</span>}
+          <Link
+            href={`/companies/${company.slug}`}
+            target="_blank"
+            className="text-sm text-pine hover:underline"
+          >
+            {t("viewPublicProfile")}
+          </Link>
         </div>
       </form>
     </div>

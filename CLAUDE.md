@@ -257,18 +257,65 @@ Test fixtures (one company under a fresh NIF, its jobs, employer/candidate
 auth users, applications, and their CV storage objects) cleaned up
 afterward, same as every prior step. `npx tsc --noEmit`, `npm run build`,
 and `npm run test` all pass; `npm run check:i18n` reports both locales in
-sync. Not yet re-verified against `https://soit.vercel.app` production —
-do that after this lands there.
+sync. Re-verified against `https://soit.vercel.app` production the same
+way, with a fresh fixture created and cleaned up there too.
 
-Next: step 9 — SEO check + compliance + polish (Search Console, privacy
-policy, consent, the §6.6 retention purge job, error monitoring) — plus the
-rest of the real-usage QA backlog this reversal was triaged out of (bug
-fixes: silent image-upload error handling, delete-job button, job pause/
-deactivate control, duplicate-draft UX, dual-role-signup fix, applicant-
-count-not-clickable; core gaps: candidate profile page, password change,
-forgot-password, team member profile fields; bigger initiatives: pricing/
-billing, company-page overhaul, job browse/category pages, employer
-analytics, abandoned-application-recovery popup — with map/visual design
-polish deliberately last, per your own instruction). Per the spec, steps
-1-7 being done (now reversed/extended per v1.11) means there's a working
-two-sided marketplace end to end.
+**Companies listing page + richer company profile**, the first item tackled
+from that backlog: `/companies` (the "Empresas" rail link — already wired
+to that path in `src/components/candidate/Rail.tsx`, just 404ing because
+the page didn't exist) now lists every company with at least one live job;
+the public `/companies/[slug]` page was redesigned per your rocketjobs.com
+reference screenshot (banner + circular logo overlap, a social-links icon
+row, a 4-card stat row — office locations / active offers / company type /
+industry, each card omitted rather than shown blank when unset); the
+console's Company Profile form gained a "Company type" field and 5 new
+social-link inputs (Facebook/LinkedIn/Instagram/YouTube/TikTok/X, alongside
+the existing Website), plus a "View public profile" link. Scoped down from
+the full reference on your call: no Follow button (needs its own table/
+auth — later), no AI-generated description or banner theme picker (AI work
+is its own future track), and registry enrichment stays VIES-only (legal
+name + verified badge — real address/size/founding-year data needs a paid
+PT business-registry API that isn't set up).
+
+Migration `20260922140000_companies_profile_fields.sql` adds the 6 new
+`companies` columns and their own column-level grants. **A real bug found
+by testing, not just the usual "did it deploy" check**: the new `/companies`
+listing page originally filtered `.eq("verification_status", "verified")`
+directly — but `verification_status` was never in the public column-select
+grant (`supabase/migrations/20260921120100_rls.sql`, "NOT the verification
+columns" — deliberate, `nif`/verification data are console-only, reachable
+publicly only through the `my_company()` SECURITY DEFINER RPC). PostgREST
+returned `42501 permission denied`, and the page's `if (!data) return []`
+swallowed it into a silent empty list — no crash, no error surfaced, just
+"no companies" on a database that had several. Fixed by deriving listing
+membership from `jobs` instead (a company can't have a live job without
+being verified — spec rule #2 — so "has ≥1 live job" is an equivalent,
+privilege-clean proxy), rather than opening a new grant on a column this
+project deliberately kept off the public surface. A second, smaller bug in
+the same pass: a stat card referenced `t("industry")` under the `company`
+i18n namespace, but that key had never existed there (only under `jobForm`/
+`console`) — added it. Both caught by the same Playwright-against-the-
+live-database method used throughout this project, not by `tsc`/`eslint`/
+`build`, all of which passed the whole time.
+
+Verified end-to-end, live database + real browser: `/companies` lists a
+company with live jobs (including your own real "Test Company") and omits
+a verified-but-jobless one; the profile page shows the gradient fallback
+banner when no cover image is set, the circular logo overlap, only the
+social icons that are actually filled in, and the stat-card row with a
+card genuinely absent (not blank) when its field is unset; editing the new
+console fields persists and shows up on the public page immediately
+(`revalidatePath` on both `/recruit/company` and `/companies/[slug]`).
+Test fixtures cleaned up afterward. Not yet re-verified on production —
+do that before considering this fully done.
+
+Next: the rest of the real-usage QA backlog — bug fixes (silent image-
+upload error handling, delete-job button, job pause/deactivate control,
+duplicate-draft UX, dual-role-signup fix, applicant-count-not-clickable);
+core gaps (candidate profile page, password change, forgot-password, team
+member profile fields); bigger initiatives (pricing/billing, Follow +
+AI-generated profiles once the base product is done, job browse/category
+pages, employer analytics, abandoned-application-recovery popup) — plus
+step 9 (SEO check + compliance + polish: Search Console, privacy policy,
+consent, the §6.6 retention purge job, error monitoring), with map/visual
+design polish deliberately last, per your own instruction.
