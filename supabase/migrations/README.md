@@ -9,28 +9,34 @@ idempotent.
 | `20260921120100_rls.sql` | §6 — helper functions, grants, RLS policies, `live_jobs` view |
 | `20260921120200_storage.sql` | §6.3 — private `cvs` bucket, public `branding` bucket |
 
-## ⚠ Not yet verified against a database
+## ✅ Verified against the live database (2026-09-21)
 
-These were written from the spec but **never executed** — this machine has
-neither Docker (so `supabase start` cannot run) nor a local Postgres. Nothing
-should depend on the RLS policies until they have been applied and tested.
+Applied to the linked project (`bzwavosbvarvdhsogxqt`, "SO IT", eu-central-1)
+via `supabase db push`; `seed.sql` loaded (159 `tech_tags`). This machine still
+has no Docker/local Postgres, so verification ran against the remote project
+directly, not `supabase start`.
 
-To verify:
+All six tests §14 calls for passed, using two employer users, two companies,
+a candidate and a mix of live/draft/expired jobs, with `set role` +
+`request.jwt.claims` to simulate `anon`/`authenticated` sessions:
+
+- ✅ employer A cannot `select` employer B's `applications`
+- ✅ employer A cannot `update` a job belonging to employer B
+- ✅ `anon` cannot read `companies.nif` or any `verification_*` column (42501)
+- ✅ `anon` cannot read a `draft`, `inactive` or expired job
+- ✅ a candidate cannot `update` `applications.status`
+- ✅ `anon` and `authenticated` cannot read or write the `cvs` bucket
+
+Test fixtures were cleaned up afterward — the live schema now holds only the
+seeded `tech_tags` vocabulary.
+
+To re-verify after a future migration:
 
 ```bash
-supabase link --project-ref <ref>
+supabase link --project-ref bzwavosbvarvdhsogxqt   # already linked from .env.local
 supabase db push
-psql "$DATABASE_URL" -f supabase/seed.sql
+supabase db query --linked -f supabase/seed.sql
 ```
-
-Then the tests §14 calls for, which are the ones that actually matter:
-
-- employer A cannot `select` employer B's `applications`
-- employer A cannot `update` a job belonging to employer B
-- `anon` cannot read `companies.nif` or any `verification_*` column
-- `anon` cannot read a `draft`, `inactive` or expired job
-- a candidate cannot `update` `applications.status`
-- `anon` and `authenticated` cannot read or write the `cvs` bucket
 
 ## Things to check on first apply
 

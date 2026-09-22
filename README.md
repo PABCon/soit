@@ -67,4 +67,6 @@ src/
 ## Status
 
 Build sequence is §14 of the spec. **Step 1 complete** (skeleton, i18n, both
-shells, design tokens). Next: step 2 — schema, RLS, storage buckets.
+shells, design tokens). **Step 2 complete** (schema, RLS, storage buckets) —
+migrations are applied and verified against the live Supabase project; see
+`supabase/migrations/README.md`. Next: step 3 — auth + employer verification.

@@ -29,4 +29,7 @@ update it *first* when adding a feature (§12.5).
 
 ## Build sequence
 §14 of the spec. **Step 1 (skeleton + i18n + shells + tokens) is done.**
-Next: step 2 — schema, RLS, storage buckets.
+**Step 2 (schema, RLS, storage buckets) is done and verified** against the
+live Supabase project ("SO IT", ref `bzwavosbvarvdhsogxqt`) — see
+`supabase/migrations/README.md`. `.env.local` holds real project credentials.
+Next: step 3 — auth + employer verification (NIF layer 1 + VIES).
