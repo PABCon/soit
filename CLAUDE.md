@@ -306,8 +306,9 @@ social icons that are actually filled in, and the stat-card row with a
 card genuinely absent (not blank) when its field is unset; editing the new
 console fields persists and shows up on the public page immediately
 (`revalidatePath` on both `/recruit/company` and `/companies/[slug]`).
-Test fixtures cleaned up afterward. Not yet re-verified on production —
-do that before considering this fully done.
+Test fixtures cleaned up afterward. Re-verified against
+`https://soit.vercel.app` production the same way, fixture cleaned up
+there too.
 
 Next: the rest of the real-usage QA backlog — bug fixes (silent image-
 upload error handling, delete-job button, job pause/deactivate control,
