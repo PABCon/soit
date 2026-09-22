@@ -84,12 +84,35 @@ scope per §13/§9.1) — the owner gets a copyable `/employer/accept-invite/
 the plan's git history for the full design.
 
 Verified directly against the live database and through the real browser
-UI (Playwright): draft → blocked publish while unverified → verified via
-direct DB update (VIES has no real test NIF to resolve to `verified`) →
-successful publish → visible on `/jobs`, the job detail page, `/map`, and
-the company page; Company Profile edit + banner states; Team invite
-creation and acceptance (a second employer_users row, `member` role,
-correct company, invite `accepted_at` set).
+UI (Playwright) — **against both `localhost:3000` and the actual
+`https://soit.vercel.app` production deployment**, not just locally: draft
+→ blocked publish while unverified → verified via direct DB update (VIES
+has no real test NIF to resolve to `verified` — and the lazy-retry console
+check will flip it right back to `failed` on the next page load unless
+`verification_next_retry_at` is also pushed into the future, since a fake
+NIF genuinely does come back `not_found` from real VIES) → successful
+publish → visible on `/jobs`, the job detail page, `/map`, and the company
+page; Company Profile edit + banner states; Team invite creation and
+acceptance (a second employer_users row, `member` role, correct company,
+invite `accepted_at` set).
+
+**A third production incident, this one caught only because step 4 was
+the first time an admin-client code path actually ran on Vercel in
+production** (step 3's registration flow, which also uses the admin
+client, was never fully driven through production due to email rate
+limits): `SUPABASE_SERVICE_ROLE_KEY` threw `supabaseKey is required` in
+every Server Component under `/recruit` — every one of them, via the
+console layout's lazy-retry check, which always constructs the admin
+client — even though `vercel env ls` showed it correctly set for
+Production. Re-adding the exact same value with `vercel env add
+SUPABASE_SERVICE_ROLE_KEY production --type secret --force` and
+redeploying fixed it. Lesson: **redeploy after any Vercel env var change,
+Secret or Config** — don't assume a server-only var is safe just because
+it isn't `NEXT_PUBLIC_`, and don't assume `vercel env ls` showing the
+right value means the running deployment actually has it. Root cause
+unconfirmed (possibly this value was set before the project was fully
+wired up, or something about how it was originally added); if it recurs,
+that's the next thing to dig into.
 
 **Two testing-methodology findings, not product bugs, worth remembering**:
 `supabase.auth.admin.generateLink()` produces an *implicit-flow* link (no
