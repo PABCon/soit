@@ -43,6 +43,7 @@ export default async function EditJobPage({ params }: Props) {
             salaryMonths: job.salary_months,
             employmentType: job.employment_type,
             selectedTechTagIds: job.job_tech_tags.map((t) => t.tech_tag_id),
+            externalApplyUrl: job.external_apply_url ?? "",
           }}
         />
       </div>

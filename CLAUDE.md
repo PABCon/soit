@@ -184,7 +184,91 @@ the candidate's own dashboard. Test data cleaned up afterward, storage
 objects included (candidate/company row deletion doesn't cascade-delete
 the actual uploaded file — `storage.objects.remove()` needed separately).
 
+**Real-usage QA (post step 6/7) reversed the apply-flow decision, spec
+v1.11**: after using the live site yourself, you asked for three things at
+once — reverse the "account required to apply" decision from step 6/7 back
+to account-free (a modal, matching justjoin.it's reference flow you shared
+screenshots of), build the full application-email flow now even though no
+provider is plugged in yet, and add an optional per-job external apply URL.
+`docs/mvp-build-spec.md` was rewritten first (§6.5, §6.6, §6.7, §7.1, §14
+step 6, new §9.1a, both Flow A/B diagrams inline + their `.mmd` files),
+tagged v1.11 and documented explicitly as a reversal of v1.10, not a silent
+overwrite — same convention as every prior decision change.
+
+What shipped:
+- **`applyAnonymously()`** in `src/lib/db/applications.ts` — the account-free
+  path, admin-client throughout (mirrors `complete-registration.ts`'s
+  shape): live-job check, per-email daily cap, content-sniffed + size-capped
+  CV upload (same helpers `applyToJob` already used, now shared via a
+  `uploadCv()` helper), creates/reuses an **unclaimed** `candidates` row
+  (§6.5) — but **rejects with `email_has_account`** if that email already
+  belongs to a *claimed* account (`auth_user_id is not null`), so the
+  v1.1-era exploit (attaching an anonymous application to someone else's
+  real account) can't resurface. `complete-registration.ts`'s claim-by-email
+  branch — dead code since step 6/7 removed anonymous apply — is live again
+  unchanged; claiming a profile via real registration with the same email
+  attaches any prior unclaimed applications automatically.
+- **`ApplyModal`** (`src/components/ApplyModal.tsx`, replaces `ApplyForm`) —
+  a real modal, not a redirect. Three branches: `externalApplyUrl` set →
+  plain outbound `<a target="_blank">`, no modal, no application ever
+  created for that job; logged-in candidate → CV + note only, name/email
+  hidden; anonymous → full form + a required consent checkbox, and on
+  success a confirmation view inside the same modal with a "Create your
+  profile" CTA that deep-links to `/candidate/register?email=…`
+  (`AuthForm` now prefills `email` from that query param).
+- **External apply URL** — one nullable column (`jobs.external_apply_url`,
+  migration `20260922130000_jobs_external_apply_url.sql`), one optional
+  field in `JobForm`, threaded through `saveJob`/`JobFormInput` and
+  `getLiveJobBySlug`/`JobDetail`. Simple branch, no new authorization
+  surface: set → redirect only; unset → normal internal flow.
+- **Email flow, built but not connected** (§9.1a) — `src/lib/email/`: an
+  `EmailProvider` interface, a `ConsoleEmailProvider` that logs the fully
+  rendered message instead of sending (visible in server/Vercel logs today),
+  and two real templates (`application-confirmation.ts`,
+  `new-applicant.ts`). `sendEmail()` is the one call site that picks the
+  provider — swapping in Resend/Postmark later is a one-line change, not a
+  redesign. Triggered from both `applyToJob` and `applyAnonymously` right
+  after the application row is created: confirmation to the applicant,
+  notification to every `employer_users` row of the company.
+
+**One responsiveness bug found by testing, fixed the same way
+`complete-registration.ts` already fixed an equivalent one for VIES**: both
+notification emails were originally `await`-ed inline before the apply
+Server Action returned, so the applicant's browser sat waiting through two
+sequential sends (confirmation + N employer notifications, each doing an
+`admin.auth.admin.getUserById` call) before the modal could show the
+confirmation view. A second Playwright run against a fresh job caught it —
+the DB write had actually succeeded already, but the UI hadn't updated
+within a normal wait, i.e. a real UX latency issue, not a flaky test. Fixed
+with `next/server`'s `after()` — wrapped in the same
+`try { after(...) } catch { void fn() }` fallback pattern
+`complete-registration.ts` uses — so the notification work runs after the
+response is sent instead of blocking it. Re-verified: confirmation now
+appears in ~1.3s and both emails still log with correct, fully-rendered
+content.
+
+Verified against the live database and through the real browser UI on
+`localhost:3000`: anonymous apply with a real PDF → unclaimed `candidates`
+row + application created, both emails log correctly → a second anonymous
+apply attempt against the now-claimed email is rejected with a "log in to
+apply" prompt, no application created → an external-apply-URL job's public
+Apply button is a plain outbound link, no application ever created for it.
+Test fixtures (one company under a fresh NIF, its jobs, employer/candidate
+auth users, applications, and their CV storage objects) cleaned up
+afterward, same as every prior step. `npx tsc --noEmit`, `npm run build`,
+and `npm run test` all pass; `npm run check:i18n` reports both locales in
+sync. Not yet re-verified against `https://soit.vercel.app` production —
+do that after this lands there.
+
 Next: step 9 — SEO check + compliance + polish (Search Console, privacy
-policy, consent, the §6.6 retention purge job, error monitoring). Per the
-spec, steps 1-7 being done means there's a working two-sided marketplace
-end to end.
+policy, consent, the §6.6 retention purge job, error monitoring) — plus the
+rest of the real-usage QA backlog this reversal was triaged out of (bug
+fixes: silent image-upload error handling, delete-job button, job pause/
+deactivate control, duplicate-draft UX, dual-role-signup fix, applicant-
+count-not-clickable; core gaps: candidate profile page, password change,
+forgot-password, team member profile fields; bigger initiatives: pricing/
+billing, company-page overhaul, job browse/category pages, employer
+analytics, abandoned-application-recovery popup — with map/visual design
+polish deliberately last, per your own instruction). Per the spec, steps
+1-7 being done (now reversed/extended per v1.11) means there's a working
+two-sided marketplace end to end.

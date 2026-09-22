@@ -5,7 +5,7 @@ import { Link } from "@/i18n/navigation";
 import { Salary } from "@/components/Salary";
 import { CompanyLogo } from "@/components/CompanyLogo";
 import { TechTags } from "@/components/TechTags";
-import { ApplyForm } from "@/components/ApplyForm";
+import { ApplyModal } from "@/components/ApplyModal";
 import { getLiveJobBySlug, type JobDetail } from "@/lib/db/jobs";
 import { getApplyStatus } from "@/lib/db/applications";
 import { routing } from "@/i18n/routing";
@@ -180,10 +180,12 @@ export default async function JobDetailPage({ params }: Props) {
                 size="detail"
               />
             </div>
-            <ApplyForm
+            <ApplyModal
               jobSlug={slug}
+              companyName={job.company.name}
               isCandidate={applyStatus.isCandidate}
               alreadyApplied={applyStatus.alreadyApplied}
+              externalApplyUrl={job.externalApplyUrl}
             />
             <p className="mt-3 text-center text-xs text-muted">
               {tf("postedAgo", { days: job.postedDaysAgo })}

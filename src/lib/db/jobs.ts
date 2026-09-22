@@ -8,6 +8,7 @@ const SELECT = `
   id, slug, title, description, language, seniority, work_model, location,
   latitude, longitude, salary_min, salary_max, salary_currency, salary_period,
   salary_months, employment_type, status, published_at, expires_at, created_at,
+  external_apply_url,
   companies!inner ( slug, company_name, company_logo_url ),
   job_tech_tags ( tech_tags ( slug, label ) )
 `;
@@ -33,6 +34,7 @@ type JobRow = {
   published_at: string | null;
   expires_at: string | null;
   created_at: string;
+  external_apply_url: string | null;
   companies: { slug: string; company_name: string; company_logo_url: string | null };
   job_tech_tags: { tech_tags: { slug: string; label: string } }[];
 };
@@ -63,7 +65,13 @@ function toJob(row: JobRow): Job {
   };
 }
 
-export type JobDetail = Job & { id: string; description: string; publishedAt: string; expiresAt: string };
+export type JobDetail = Job & {
+  id: string;
+  description: string;
+  publishedAt: string;
+  expiresAt: string;
+  externalApplyUrl: string | null;
+};
 
 function toJobDetail(row: JobRow): JobDetail {
   return {
@@ -72,6 +80,7 @@ function toJobDetail(row: JobRow): JobDetail {
     description: row.description,
     publishedAt: row.published_at ?? row.created_at,
     expiresAt: row.expires_at ?? row.created_at,
+    externalApplyUrl: row.external_apply_url,
   };
 }
 
@@ -156,6 +165,7 @@ export type JobFormInput = {
   salaryMonths: number | null;
   employmentType: Job["employmentType"];
   techTagIds: string[];
+  externalApplyUrl: string;
   publish: boolean;
 };
 
@@ -193,6 +203,7 @@ export async function saveJob(jobId: string | null, input: JobFormInput): Promis
     salary_period: input.salaryPeriod,
     salary_months: input.salaryPeriod === "month" ? input.salaryMonths : null,
     employment_type: input.employmentType,
+    external_apply_url: input.externalApplyUrl.trim() || null,
     status: willPublish ? "published" : "draft",
     ...(willPublish
       ? { published_at: now.toISOString(), expires_at: new Date(now.getTime() + 30 * 864e5).toISOString() }
@@ -234,7 +245,7 @@ export async function getJobForEdit(jobId: string) {
   const { data } = await supabase
     .from("jobs")
     .select(
-      "id, company_id, title, description, language, seniority, work_model, location, salary_min, salary_max, salary_period, salary_months, employment_type, status, job_tech_tags(tech_tag_id)",
+      "id, company_id, title, description, language, seniority, work_model, location, salary_min, salary_max, salary_period, salary_months, employment_type, external_apply_url, status, job_tech_tags(tech_tag_id)",
     )
     .eq("id", jobId)
     .maybeSingle();

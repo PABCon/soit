@@ -4,10 +4,10 @@ flowchart TD
     B -->|Yes| C[Job published and indexed]
     C --> D[Job appears on public site and Google for Jobs]
     D --> E[Candidate finds job]
-    E --> F{Logged in as candidate?}
-    F -->|No| F2[Routed through candidate login or register]
-    F2 --> E
-    F -->|Yes| G[Candidate applies with CV, application saved against verified account]
-    G --> H[Employer sees applicant in console]
-    H --> I[Employer updates status viewed responded rejected]
-    I --> J[Candidate sees live status in dashboard]
+    E --> F{External apply URL set on this job?}
+    F -->|Yes| F3[Apply button links out to employer's own site, no application collected]
+    F -->|No| G[Candidate applies via modal, CV and optional note]
+    G --> H[Application saved, candidate profile created or matched unclaimed]
+    H --> I[Employer sees applicant in console]
+    I --> J[Employer updates status viewed responded rejected]
+    J --> K[Candidate sees live status once they claim their profile]

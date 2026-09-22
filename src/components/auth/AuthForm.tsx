@@ -36,7 +36,7 @@ export function AuthForm({ role, mode }: { role: Role; mode: Mode }) {
   const searchParams = useSearchParams();
   const next = safeNext(searchParams.get("next"));
 
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(searchParams.get("email") ?? "");
   const [password, setPassword] = useState("");
   const [companyName, setCompanyName] = useState("");
   const [nif, setNif] = useState("");

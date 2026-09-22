@@ -22,6 +22,7 @@ type Initial = {
   salaryMonths: number | null;
   employmentType: JobFormInput["employmentType"];
   selectedTechTagIds: string[];
+  externalApplyUrl: string;
 };
 
 const inputClass = "h-9 rounded-lg border border-line bg-white px-3 text-sm disabled:bg-paper disabled:text-muted";
@@ -47,6 +48,7 @@ export function JobForm({ techTags, initial }: { techTags: TechTagOption[]; init
     initial?.employmentType ?? "permanent",
   );
   const [selectedTags, setSelectedTags] = useState<string[]>(initial?.selectedTechTagIds ?? []);
+  const [externalApplyUrl, setExternalApplyUrl] = useState(initial?.externalApplyUrl ?? "");
   const [tagFilter, setTagFilter] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -101,6 +103,7 @@ export function JobForm({ techTags, initial }: { techTags: TechTagOption[]; init
         salaryMonths: salaryPeriod === "month" ? Number(salaryMonths) : null,
         employmentType,
         techTagIds: selectedTags,
+        externalApplyUrl,
         publish,
       });
 
@@ -137,6 +140,18 @@ export function JobForm({ techTags, initial }: { techTags: TechTagOption[]; init
           className={`${inputClass} h-auto py-2`}
         />
         <span className="text-xs text-muted">{t("descriptionHint")}</span>
+      </label>
+
+      <label className={labelClass}>
+        <span>{t("externalApplyUrl")}</span>
+        <input
+          type="url"
+          value={externalApplyUrl}
+          onChange={(e) => setExternalApplyUrl(e.target.value)}
+          placeholder="https://…"
+          className={inputClass}
+        />
+        <span className="text-xs text-muted">{t("externalApplyUrlHint")}</span>
       </label>
 
       <div className="grid grid-cols-2 gap-4">

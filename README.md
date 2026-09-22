@@ -64,8 +64,10 @@ src/
   app/[locale]/(console)/recruit/  My job ads, job form, company profile, team
   app/[locale]/(candidate)/applications/  Candidate's own applications (§7.1)
   app/[locale]/(console)/recruit/jobs/[id]/applicants/  Employer Applicants view (§7.2)
-  lib/db/applications.ts  Apply, CV upload, status updates — §6.7 (v1.10: account required)
+  lib/db/applications.ts  Apply, CV upload, status updates — §6.7 (v1.11: account-free again)
   lib/file-sniff.ts       Content-sniffs uploaded CVs by magic bytes, never by extension
+  components/ApplyModal.tsx  Apply modal — account-free, external-URL bypass (§7.1, v1.11)
+  lib/email/               EmailProvider interface + templates, built but not connected (§9.1a)
 ```
 
 ## Conventions
@@ -90,8 +92,14 @@ for the known gaps (production redirect-URL allowlist, email rate limits).
 **Step 4 complete** (employer console) — and the candidate surface now
 reads the real database (steps 5/8 done early; see `CLAUDE.md`), plus a new
 public company page and Team/invite. **Steps 6/7 complete** (apply +
-Applicants) — with a mid-step spec change: applying now requires a
-verified candidate account (§6.7 rewritten to v1.10; see `CLAUDE.md`).
+Applicants), then reversed by real-usage QA: applying is **account-free
+again** (v1.11, reverses v1.10) via a modal, an unclaimed profile is
+created and claiming is offered after applying — see `CLAUDE.md`. Same
+pass added an optional per-job external apply URL (bypasses the internal
+flow entirely) and built the full application-email flow (real templates,
+real trigger points) behind a swappable `EmailProvider`, not yet connected
+to a real sender (§9.1a).
 Per the spec, steps 1-7 being done means there's a working two-sided
 marketplace, loop closed, end to end. Next: step 9 — SEO check,
-compliance, and polish.
+compliance, and polish — plus the rest of the real-usage QA backlog (see
+`CLAUDE.md`).
