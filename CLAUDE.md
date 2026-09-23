@@ -597,8 +597,10 @@ afterward, careful this time to use fresh, non-overlapping emails per
 scenario after one early mix-up (a shared test email accidentally routed
 through a real pending invite instead of the manual-NIF path — caught
 immediately by checking the resulting DB row's company name, not a code
-bug). Not yet re-verified on production — do that before considering this
-fully done.
+bug). Re-verified against `https://soit.vercel.app` production the same
+way — wrong-password rejection, then a real attach confirmed by DB query
+(`employer_users` row created under the candidate's original
+`auth_user_id`, candidate row untouched) — fixture cleaned up there too.
 
 Next: the rest of the real-usage QA backlog — bigger initiatives
 (pricing/billing tied to AI-feature upgrade plans, and employer
