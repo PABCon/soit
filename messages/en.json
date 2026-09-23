@@ -392,5 +392,11 @@
       "bad_file": "That file isn't a supported format.",
       "upload_failed": "Couldn't upload that file. Try again."
     }
+  },
+  "engagement": {
+    "title": "Looking for the right role?",
+    "body": "We see you've been checking out a few jobs — create a free account to track your applications and pick up where you left off.",
+    "createAccount": "Create my account",
+    "maybeLater": "Maybe later"
   }
 }

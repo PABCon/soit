@@ -1,8 +1,9 @@
 "use client";
 
-import { useState, type FormEvent, type ReactNode } from "react";
+import { useState, type FormEvent } from "react";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
+import { Modal } from "@/components/Modal";
 import { applyAction, applyAnonymousAction } from "@/app/[locale]/(candidate)/jobs/[slug]/actions";
 import type { ApplyResult, AnonymousApplyResult } from "@/lib/db/applications";
 
@@ -18,30 +19,6 @@ const buttonClass =
   "mt-5 flex h-11 w-full items-center justify-center rounded-lg bg-pine text-sm font-semibold text-white hover:bg-pine/90 disabled:opacity-50";
 const inputClass = "h-9 rounded-lg border border-line bg-white px-3 text-sm";
 const labelClass = "flex flex-col gap-1 text-sm";
-
-function Modal({ onClose, children }: { onClose: () => void; children: ReactNode }) {
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 p-4"
-      onClick={onClose}
-    >
-      <div
-        className="max-h-[90vh] w-full max-w-md overflow-y-auto rounded-xl bg-white p-6 shadow-lg"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label="Close"
-          className="float-right -mt-2 -mr-2 text-xl text-muted hover:text-ink"
-        >
-          ×
-        </button>
-        {children}
-      </div>
-    </div>
-  );
-}
 
 export function ApplyModal({ jobSlug, companyName, isCandidate, alreadyApplied: initiallyApplied, externalApplyUrl }: Props) {
   const t = useTranslations("apply");

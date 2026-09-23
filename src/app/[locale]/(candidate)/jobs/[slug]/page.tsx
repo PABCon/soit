@@ -6,6 +6,7 @@ import { Salary } from "@/components/Salary";
 import { CompanyLogo } from "@/components/CompanyLogo";
 import { TechTags } from "@/components/TechTags";
 import { ApplyModal } from "@/components/ApplyModal";
+import { EngagementPopup } from "@/components/EngagementPopup";
 import { getLiveJobBySlug, type JobDetail } from "@/lib/db/jobs";
 import { getApplyStatus } from "@/lib/db/applications";
 import { routing } from "@/i18n/routing";
@@ -110,6 +111,8 @@ export default async function JobDetailPage({ params }: Props) {
           __html: JSON.stringify(jobPostingJsonLd(job, locale)),
         }}
       />
+
+      <EngagementPopup jobSlug={slug} />
 
       <Link href="/jobs" className="text-sm text-muted hover:text-ink">
         ← {t("backToJobs")}

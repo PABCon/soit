@@ -78,6 +78,8 @@ src/
   app/sitemap.ts, robots.ts  New — every live job/company page + non-empty browse combinations only
   lib/auth/complete-registration.ts  ensureEmployerProfile/ensureCandidateProfile — same-email dual-role (§6.4a)
   app/api/auth/attach-role/  Attaches a second role to an already-logged-in account
+  components/EngagementPopup.tsx  Growth nudge after 3 distinct job views, signed-out only
+  components/Modal.tsx  Shared modal wrapper, extracted from ApplyModal.tsx
 ```
 
 ## Conventions
@@ -143,7 +145,11 @@ attach-role` attaches the second role to an already-logged-in session
 behind an explicit confirm screen, and a real pre-existing bug (team
 invite acceptance via "login" mode never actually created the
 `employer_users` row) got fixed as a side effect of reusing the same
-mechanism — see `CLAUDE.md`.
+mechanism — see `CLAUDE.md`. A browsing-engagement popup followed: a
+signed-out visitor who's viewed 3 distinct jobs (tracked client-side,
+`localStorage`, no new table) gets a one-time nudge to create an
+account — corrected from the original "abandoned application" framing to
+a browsing-behavior one during triage.
 Per the spec, steps 1-7 being done means there's a working two-sided
 marketplace, loop closed, end to end. Next: step 9 — SEO check,
 compliance, and polish — plus the rest of the real-usage QA backlog (see

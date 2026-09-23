@@ -392,5 +392,11 @@
       "bad_file": "Esse ficheiro não tem um formato suportado.",
       "upload_failed": "Não foi possível carregar esse ficheiro. Tente novamente."
     }
+  },
+  "engagement": {
+    "title": "À procura da vaga certa?",
+    "body": "Reparámos que tem estado a ver várias vagas — crie uma conta gratuita para acompanhar as suas candidaturas e continuar onde ficou.",
+    "createAccount": "Criar a minha conta",
+    "maybeLater": "Talvez mais tarde"
   }
 }

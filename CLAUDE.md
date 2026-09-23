@@ -602,12 +602,41 @@ way — wrong-password rejection, then a real attach confirmed by DB query
 (`employer_users` row created under the candidate's original
 `auth_user_id`, candidate row untouched) — fixture cleaned up there too.
 
+**The browsing-engagement popup** shipped next — a growth nudge, not the
+form-abandonment-recovery framing the original justjoin.it reference
+suggested (corrected during triage): a signed-out visitor who's looked at
+several different jobs in this browser gets a one-time popup suggesting
+they create an account to track applications.
+
+Entirely client-side, no new table, no server round-trip for the
+tracking itself: new `src/components/EngagementPopup.tsx`, mounted on the
+job detail page (`/jobs/[slug]/page.tsx`), tracks distinct job slugs
+viewed in `localStorage` (`soit_viewed_jobs`) and shows the popup once
+that count hits 3, provided (a) there's no active Supabase session at all
+— checked client-side via `supabase.auth.getUser()`, so it's suppressed
+for logged-in candidates *and* employers, not just candidates — and (b)
+it hasn't already been dismissed (`soit_engagement_popup_dismissed`,
+permanent per-browser once set — no cooldown/resurface logic, kept
+deliberately simple). Both storage reads/writes are wrapped defensively
+(private browsing / blocked storage must never break the page over a
+growth nudge).
+
+The shared modal wrapper that `ApplyModal.tsx` already had inline got
+extracted to `src/components/Modal.tsx` so this could reuse the exact
+same look instead of a second implementation — `ApplyModal` now imports
+it too, no visual or behavioral change there.
+
+Verified live, real browser: three distinct job views with no account →
+no popup after 1 or 2, shows on the 3rd; dismissing it persists — a 4th
+job view (even of an already-seen job) doesn't bring it back; a logged-in
+candidate viewing 3 jobs never sees it at all; the "Create my account"
+CTA links to `/candidate/register` and closes the popup on click. Test
+fixtures cleaned up afterward. Not yet re-verified on production — do
+that before considering this fully done.
+
 Next: the rest of the real-usage QA backlog — bigger initiatives
 (pricing/billing tied to AI-feature upgrade plans, and employer
-analytics, both explicitly deferred to post-MVP; a browsing-engagement
-popup — "you've viewed several jobs, want an account to track your
-applications?" — redefined from the original abandoned-application-form
-framing) — plus step 9 (SEO check + compliance + polish: Search Console,
-privacy policy, consent, the §6.6 retention purge job, error monitoring),
-with map/visual design polish deliberately last, per your own
-instruction.
+analytics, both explicitly deferred to post-MVP) — plus step 9 (SEO
+check + compliance + polish: Search Console, privacy policy, consent,
+the §6.6 retention purge job, error monitoring), with map/visual design
+polish deliberately last, per your own instruction.
