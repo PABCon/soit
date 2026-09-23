@@ -514,8 +514,10 @@ react` narrows by tech instead; an unknown location or facet slug 404s; a
 real curated city with zero jobs (Coimbra) renders a genuine empty state,
 not a 404; `/jobs`'s new browse-by sections and `sitemap.xml` both list
 exactly the non-empty combinations — confirmed by literally reading the
-generated sitemap. Test fixtures cleaned up afterward. Not yet re-verified
-on production — do that before considering this fully done.
+generated sitemap. Test fixtures cleaned up afterward. Re-verified against
+`https://soit.vercel.app` production the same way — a real job posted
+through the live form (Braga, Cybersecurity), its browse pages and
+sitemap entries all correct — fixture cleaned up there too.
 
 Next: the rest of the real-usage QA backlog — bigger initiatives
 (pricing/billing, Follow + AI-generated profiles once the base product is
