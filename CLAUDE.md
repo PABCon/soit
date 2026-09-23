@@ -310,13 +310,75 @@ Test fixtures cleaned up afterward. Re-verified against
 `https://soit.vercel.app` production the same way, fixture cleaned up
 there too.
 
-Next: the rest of the real-usage QA backlog — bug fixes (silent image-
-upload error handling, delete-job button, job pause/deactivate control,
-duplicate-draft UX, dual-role-signup fix, applicant-count-not-clickable);
-core gaps (candidate profile page, password change, forgot-password, team
-member profile fields); bigger initiatives (pricing/billing, Follow +
-AI-generated profiles once the base product is done, job browse/category
-pages, employer analytics, abandoned-application-recovery popup) — plus
-step 9 (SEO check + compliance + polish: Search Console, privacy policy,
-consent, the §6.6 retention purge job, error monitoring), with map/visual
-design polish deliberately last, per your own instruction.
+**Six quick bug fixes from that backlog**, all in one pass:
+
+- **Delete-job button**: `deleteJob()` (`src/lib/db/jobs.ts`) + a "Delete"
+  button on the Drafts tab (`src/components/console/JobListRow.tsx`, new —
+  replaces the old row markup that lived inline in `recruit/page.tsx`),
+  with a `window.confirm()` guard (this codebase's only destructive-action
+  confirm so far — everywhere else, like Team's "Remove", just acts
+  immediately; deleting a job felt like it warranted one). The `jobs.
+  applications` FK is `on delete restrict` (schema §15.1) — a job with any
+  applications can never actually be deleted, by design, so the button
+  only appears on Drafts, which can't have any.
+- **Job pause/deactivate + reactivate**: `setJobStatus()` — the `inactive`
+  tab's *read* path already existed (`getCompanyJobs`), but nothing could
+  ever *write* `status: 'inactive'`. "Pause" on the Active tab, "Reactivate"
+  on the Inactive tab (only for jobs actually `status: 'inactive'`, not
+  expired-published or closed ones) — reactivating renews the 30-day
+  window, same as a fresh publish, so it's actually live again rather than
+  instantly re-expiring.
+- **Applicant count now links to Applicants**: it was already technically
+  clickable (nested inside the row's one giant `<Link>`), but always went
+  to the job's Edit page, never `/recruit/jobs/[id]/applicants`. Fixed by
+  restructuring the row so the count is its own link.
+- **"Duplicate draft" — investigated, turned out not to be a code bug**:
+  `saveJob()`'s insert-vs-update logic is correct; editing a draft via its
+  own `/recruit/jobs/[id]/edit` page always updates that row in place.
+  The reported symptom is consistent with clicking "Add job advertisement"
+  (a blank form) instead of the existing draft row. No fix needed there —
+  but the new Delete button gives a real way out of the mess it leaves.
+- **Dual-role signup**: `AuthForm.tsx` — Supabase Auth is one `auth.users`
+  row per email for the whole project. `signUp()` against an email that
+  already has a *confirmed* account (e.g. registering as a candidate with
+  an email that already has an employer account) returns **200, no error,
+  an empty `identities` array, and no session** — deliberately, to avoid
+  leaking which emails are registered. The old code never checked for
+  this, so it fell straight into "check your email," for a confirmation
+  link that was never sent — an indefinite, silent dead end. Now checks
+  `data.user?.identities?.length === 0` and shows a real "an account
+  already exists" message instead. **This does not make one email hold
+  both roles** — that needs a real "log in, then attach the missing
+  role/profile to your existing account" flow, a bigger, separate feature;
+  flagged, not built, since it wasn't asked for here.
+- **Silent image-upload errors**: `uploadImageAction` threw plain,
+  un-translated `Error`s with no client-side `try/catch` at all
+  (`CompanyProfileForm.tsx`'s `handleImage` just `await`ed it) — a failed
+  upload (wrong type, or a file over the `branding` bucket's 2MB cap)
+  showed the user nothing. Reworked to return a structured
+  `{ ok: false; reason }` instead of throwing, with client-side pre-checks
+  and a translated message per reason. **Found a real, separate bug while
+  testing this fix**: Next.js Server Actions default to a **1MB** request
+  body limit — below the bucket's own 2MB image cap — so any upload
+  between 1-2MB (which the bucket would happily accept) crashed with a raw
+  framework 500 before the new size check ever ran. Fixed in
+  `next.config.ts` (`experimental.serverActions.bodySizeLimit: "3mb"`).
+  Caught by testing an oversized file, not by `tsc`/`build`/`eslint`.
+
+Verified live, real browser, both locally and on `https://soit.vercel.app`:
+pause → job moves to Inactive → reactivate → back on Active; delete a
+draft → gone from the list; applicant-count link goes straight to
+Applicants; a second registration attempt on an already-registered email
+gets a clear error, not a silent hang; an oversized/wrong-type logo upload
+shows the right message and doesn't crash the page; a valid small logo
+still uploads and shows up normally. Test fixtures cleaned up afterward.
+
+Next: the rest of the real-usage QA backlog — core gaps (candidate
+profile page, password change, forgot-password, team member profile
+fields); bigger initiatives (pricing/billing, Follow + AI-generated
+profiles once the base product is done, job browse/category pages,
+employer analytics, abandoned-application-recovery popup, and — flagged
+above — a real "same email, both roles" flow) — plus step 9 (SEO check +
+compliance + polish: Search Console, privacy policy, consent, the §6.6
+retention purge job, error monitoring), with map/visual design polish
+deliberately last, per your own instruction.

@@ -102,7 +102,13 @@ to a real sender (§9.1a). A `/companies` listing page and a richer public
 company profile (banner + circular logo, social links, a stat-card row)
 followed, modelled on a rocketjobs.com reference — see `CLAUDE.md` for what
 was scoped out (Follow, AI-generated profiles, theme picker) and a real
-RLS column-grant bug it surfaced.
+RLS column-grant bug it surfaced. Six quick bug fixes came next: job
+delete (drafts only — applications block deletion at the DB level) and
+pause/reactivate, the applicant count now actually links to Applicants,
+a real "account already exists" error on dual-role signup instead of a
+silent dead end, and image-upload errors surface instead of failing
+silently — including a real Next.js Server Actions body-size-limit bug
+that fix uncovered (see `CLAUDE.md`).
 Per the spec, steps 1-7 being done means there's a working two-sided
 marketplace, loop closed, end to end. Next: step 9 — SEO check,
 compliance, and polish — plus the rest of the real-usage QA backlog (see

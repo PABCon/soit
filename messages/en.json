@@ -54,6 +54,10 @@
     "status_inactive": "Paused",
     "status_closed": "Closed",
     "applicantCount": "{count, plural, =0 {No applicants yet} one {# applicant} other {# applicants}}",
+    "pauseJob": "Pause",
+    "reactivateJob": "Reactivate",
+    "deleteJob": "Delete",
+    "confirmDeleteJob": "Delete this draft? This can't be undone.",
     "verifiedBanner": "Your company is verified. Job ads you publish go live immediately.",
     "pendingBanner": "We're checking your company's NIF. You can keep drafting job ads — publishing unlocks once verification clears.",
     "failedBanner": "We could not confirm this NIF. Contact support to resolve this before publishing.",
@@ -88,7 +92,13 @@
     "youtube": "YouTube",
     "tiktok": "TikTok",
     "x": "X",
-    "viewPublicProfile": "View public profile"
+    "viewPublicProfile": "View public profile",
+    "imageError": {
+      "not_employer": "Something went wrong. Try again.",
+      "file_too_large": "That image is too large — 2MB maximum.",
+      "bad_file": "That file isn't a PNG, JPEG, WEBP, or SVG image.",
+      "upload_failed": "Couldn't upload that image. Try again."
+    }
   },
   "jobForm": {
     "title": "Job title",
@@ -224,6 +234,7 @@
     "orContinueWith": "or continue with",
     "checkEmail": "Check your email to confirm your account before logging in.",
     "noProfile": "No account found for this role. Try registering first.",
+    "emailAlreadyRegistered": "An account already exists for this email. Log in instead, or use a different email.",
     "nifError": {
       "format": "Enter a 9-digit NIF.",
       "checksum": "That NIF isn't valid — check the digits.",

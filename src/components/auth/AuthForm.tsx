@@ -83,6 +83,18 @@ export function AuthForm({ role, mode }: { role: Role; mode: Mode }) {
           return;
         }
 
+        // Supabase Auth is one auth.users row per email across the whole
+        // project — signUp() against an email that already has a confirmed
+        // account (e.g. an employer registering the same email as a
+        // candidate) returns 200 with no error, an empty `identities` array,
+        // and no session, to avoid leaking which emails are registered. Left
+        // unchecked, this silently falls into "check your email" below for
+        // a confirmation link that will never arrive.
+        if (data.user && data.user.identities?.length === 0) {
+          setError(t("emailAlreadyRegistered"));
+          return;
+        }
+
         if (data.session) {
           const res = await fetch("/api/auth/finish", { method: "POST" });
           const json = await res.json();

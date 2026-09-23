@@ -240,6 +240,48 @@ export async function saveJob(jobId: string | null, input: JobFormInput): Promis
   };
 }
 
+/** Pause/reactivate (§7.2) — the only two transitions this exposes.
+ *  Reactivating a paused job renews its 30-day window, same as a fresh
+ *  publish, so it's actually live again rather than instantly re-expiring. */
+export async function setJobStatus(jobId: string, status: "inactive" | "published"): Promise<void> {
+  const ctx = await getMyEmployerContext();
+  if (!ctx) throw new Error("Not an employer");
+
+  const supabase = await createClient();
+  const patch =
+    status === "published"
+      ? {
+          status,
+          published_at: new Date().toISOString(),
+          expires_at: new Date(Date.now() + 30 * 864e5).toISOString(),
+        }
+      : { status };
+
+  const { error } = await supabase
+    .from("jobs")
+    .update(patch)
+    .eq("id", jobId)
+    .eq("company_id", ctx.company.id);
+  if (error) throw new Error(error.message);
+}
+
+/** A job with any applications is DB-restricted from deletion (§15.1,
+ *  `applications.job_id ... on delete restrict`) — close/pause it instead.
+ *  This only ever gets a real chance to run against a draft in the console
+ *  UI, but the ownership check + DB constraint hold regardless of tab. */
+export async function deleteJob(jobId: string): Promise<void> {
+  const ctx = await getMyEmployerContext();
+  if (!ctx) throw new Error("Not an employer");
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("jobs")
+    .delete()
+    .eq("id", jobId)
+    .eq("company_id", ctx.company.id);
+  if (error) throw new Error(error.message);
+}
+
 export async function getJobForEdit(jobId: string) {
   const supabase = await createClient();
   const { data } = await supabase

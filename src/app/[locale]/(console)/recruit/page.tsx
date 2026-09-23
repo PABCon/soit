@@ -2,7 +2,7 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
 import { getMyEmployerContext } from "@/lib/db/companies";
 import { getCompanyJobs, type ConsoleTab } from "@/lib/db/jobs";
-import { Salary } from "@/components/Salary";
+import { JobListRow } from "@/components/console/JobListRow";
 
 type Props = {
   params: Promise<{ locale: string }>;
@@ -65,38 +65,7 @@ export default async function MyJobAdsPage({ params, searchParams }: Props) {
       ) : (
         <ul className="mt-4 divide-y divide-line border-t border-line">
           {jobs.map((job) => (
-            <li key={job.id}>
-              <Link
-                href={`/recruit/jobs/${job.id}/edit`}
-                className="flex flex-wrap items-center justify-between gap-3 py-4 hover:bg-white"
-              >
-                <div className="min-w-0">
-                  <p className="truncate font-medium text-ink">{job.title}</p>
-                  <p className="mt-0.5 text-xs text-muted">
-                    {job.location ?? t("remoteBadge")} ·{" "}
-                    {job.status === "published"
-                      ? tab === "active"
-                        ? t("statusActive")
-                        : t("statusExpired")
-                      : t(`status_${job.status}`)}
-                  </p>
-                </div>
-                <div className="shrink-0 text-right">
-                  <Salary
-                    min={job.salaryMin}
-                    max={job.salaryMax}
-                    period={job.salaryPeriod}
-                    months={job.salaryMonths}
-                    employmentType={job.employmentType}
-                  />
-                  {tab === "active" && (
-                    <p className="mt-1 text-xs text-muted">
-                      {t("applicantCount", { count: job.applicantCount })}
-                    </p>
-                  )}
-                </div>
-              </Link>
-            </li>
+            <JobListRow key={job.id} job={job} tab={tab} />
           ))}
         </ul>
       )}

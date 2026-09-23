@@ -42,6 +42,7 @@ export function CompanyProfileForm({ company, canEdit }: { company: MyCompany; c
   });
   const [saved, setSaved] = useState(false);
   const [pending, setPending] = useState(false);
+  const [imageError, setImageError] = useState<string | null>(null);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -61,9 +62,14 @@ export function CompanyProfileForm({ company, canEdit }: { company: MyCompany; c
   }
 
   async function handleImage(field: "logo" | "cover", file: File) {
+    setImageError(null);
     const formData = new FormData();
     formData.set("file", file);
-    await uploadImageAction(field, formData);
+    const result = await uploadImageAction(field, formData);
+    if (!result.ok) {
+      setImageError(t(`imageError.${result.reason}`));
+      return;
+    }
     window.location.reload();
   }
 
@@ -79,6 +85,7 @@ export function CompanyProfileForm({ company, canEdit }: { company: MyCompany; c
   return (
     <div className="max-w-xl space-y-6">
       <VerificationBanner status={company.verification_status} />
+      {imageError && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{imageError}</p>}
 
       <div className="flex items-center gap-4">
         <CompanyLogo company={{ slug: "", name: company.company_name, logoUrl: company.company_logo_url }} size="lg" />
