@@ -3,6 +3,7 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import { JobFeed } from "@/components/JobFeed";
 import { Link } from "@/i18n/navigation";
 import { getLiveJobs } from "@/lib/db/jobs";
+import { getFeaturedTechCounts } from "@/lib/db/tech-tags";
 
 type Props = { params: Promise<{ locale: string }> };
 
@@ -19,10 +20,11 @@ export default async function JobsPage({ params }: Props) {
   const tf = await getTranslations({ locale, namespace: "feed" });
   const tjf = await getTranslations({ locale, namespace: "jobForm" });
   const brand = await getTranslations({ locale, namespace: "brand" });
-  const jobs = await getLiveJobs();
+  const [jobs, featuredTech] = await Promise.all([getLiveJobs(), getFeaturedTechCounts()]);
 
-  // Only locations/categories that currently have a live job get a link —
-  // never advertise an empty browse page (§ SEO note in sitemap.ts).
+  // Only locations/categories/languages/technologies that currently have a
+  // live job get a link — never advertise an empty browse page (§ SEO note
+  // in sitemap.ts).
   const locationCounts = new Map<string, { name: string; count: number }>();
   const categoryCounts = new Map<string, number>();
   for (const job of jobs) {
@@ -36,6 +38,8 @@ export default async function JobsPage({ params }: Props) {
   }
   const topLocations = [...locationCounts.entries()].sort((a, b) => b[1].count - a[1].count).slice(0, 8);
   const topCategories = [...categoryCounts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8);
+  const topLanguages = featuredTech.filter((t) => t.group === "language");
+  const topTechnologies = featuredTech.filter((t) => t.group === "technology");
 
   return (
     <>
@@ -56,8 +60,8 @@ export default async function JobsPage({ params }: Props) {
         <JobFeed jobs={jobs} />
       </div>
 
-      {(topLocations.length > 0 || topCategories.length > 0) && (
-        <div className="mt-10 grid grid-cols-1 gap-6 border-t border-line pt-6 sm:grid-cols-2">
+      {(topLocations.length > 0 || topCategories.length > 0 || featuredTech.length > 0) && (
+        <div className="mt-10 grid grid-cols-1 gap-6 border-t border-line pt-6 sm:grid-cols-2 lg:grid-cols-4">
           {topLocations.length > 0 && (
             <div>
               <h2 className="text-sm font-semibold text-muted">{tf("browseByLocation")}</h2>
@@ -86,6 +90,40 @@ export default async function JobsPage({ params }: Props) {
                       className="rounded-full border border-line bg-white px-3 py-1.5 text-xs text-muted hover:border-muted hover:text-ink"
                     >
                       {tjf(`categoryOption.${slug}`)}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {topLanguages.length > 0 && (
+            <div>
+              <h2 className="text-sm font-semibold text-muted">{tf("browseByLanguage")}</h2>
+              <ul className="mt-2 flex flex-wrap gap-1.5">
+                {topLanguages.map(({ slug, label }) => (
+                  <li key={slug}>
+                    <Link
+                      href={`/jobs/in/all-locations/${slug}`}
+                      className="rounded-full border border-line bg-white px-3 py-1.5 text-xs text-muted hover:border-muted hover:text-ink"
+                    >
+                      {label}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {topTechnologies.length > 0 && (
+            <div>
+              <h2 className="text-sm font-semibold text-muted">{tf("browseByTechnology")}</h2>
+              <ul className="mt-2 flex flex-wrap gap-1.5">
+                {topTechnologies.map(({ slug, label }) => (
+                  <li key={slug}>
+                    <Link
+                      href={`/jobs/in/all-locations/${slug}`}
+                      className="rounded-full border border-line bg-white px-3 py-1.5 text-xs text-muted hover:border-muted hover:text-ink"
+                    >
+                      {label}
                     </Link>
                   </li>
                 ))}

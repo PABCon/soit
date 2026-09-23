@@ -252,7 +252,9 @@
     "allJobs": "All jobs",
     "allLocations": "all of Portugal",
     "browseByLocation": "Browse by location",
-    "browseByCategory": "Browse by category"
+    "browseByCategory": "Browse by category",
+    "browseByLanguage": "Browse by language",
+    "browseByTechnology": "Browse by technology"
   },
   "auth": {
     "candidateLoginTitle": "Log in as candidate",

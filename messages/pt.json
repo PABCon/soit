@@ -252,7 +252,9 @@
     "allJobs": "Todas as vagas",
     "allLocations": "todo o país",
     "browseByLocation": "Explorar por localização",
-    "browseByCategory": "Explorar por categoria"
+    "browseByCategory": "Explorar por categoria",
+    "browseByLanguage": "Explorar por linguagem",
+    "browseByTechnology": "Explorar por tecnologia"
   },
   "auth": {
     "candidateLoginTitle": "Entrar como candidato",

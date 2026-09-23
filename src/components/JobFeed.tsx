@@ -7,6 +7,7 @@ import type { Job, Seniority, WorkModel } from "@/lib/types";
 
 const SENIORITIES: Seniority[] = ["junior", "mid", "senior", "lead"];
 const WORK_MODELS: WorkModel[] = ["remote", "hybrid", "office"];
+const AD_LANGUAGES: ("pt" | "en")[] = ["pt", "en"];
 
 /** Monthly-equivalent floor, so a day rate and a monthly salary sort comparably. */
 function monthlyFloor(job: Job): number {
@@ -26,10 +27,11 @@ type Filters = {
   tech: string[];
   seniority: string[];
   workModel: string[];
+  adLanguage: string[];
   minSalary: number;
 };
 
-const EMPTY: Filters = { tech: [], seniority: [], workModel: [], minSalary: 0 };
+const EMPTY: Filters = { tech: [], seniority: [], workModel: [], adLanguage: [], minSalary: 0 };
 
 function toggle(list: string[], value: string) {
   return list.includes(value) ? list.filter((v) => v !== value) : [...list, value];
@@ -43,6 +45,7 @@ function toggle(list: string[], value: string) {
  */
 export function JobFeed({ jobs: allJobs }: { jobs: Job[] }) {
   const t = useTranslations("feed");
+  const ta = useTranslations("adLanguage");
   const [f, setF] = useState<Filters>(EMPTY);
 
   const allTech = useMemo(
@@ -62,6 +65,7 @@ export function JobFeed({ jobs: allJobs }: { jobs: Job[] }) {
             (f.tech.length === 0 || f.tech.some((x) => j.tech.includes(x))) &&
             (f.seniority.length === 0 || f.seniority.includes(j.seniority)) &&
             (f.workModel.length === 0 || f.workModel.includes(j.workModel)) &&
+            (f.adLanguage.length === 0 || f.adLanguage.includes(j.language)) &&
             monthlyFloor(j) >= f.minSalary,
         )
         .sort((a, b) => a.postedDaysAgo - b.postedDaysAgo),
@@ -69,7 +73,7 @@ export function JobFeed({ jobs: allJobs }: { jobs: Job[] }) {
   );
 
   const active =
-    f.tech.length + f.seniority.length + f.workModel.length + (f.minSalary ? 1 : 0);
+    f.tech.length + f.seniority.length + f.workModel.length + f.adLanguage.length + (f.minSalary ? 1 : 0);
 
   const chip = (on: boolean) =>
     `shrink-0 rounded-full border px-3 py-1.5 text-xs transition-colors ${
@@ -101,6 +105,17 @@ export function JobFeed({ jobs: allJobs }: { jobs: Job[] }) {
               className={chip(f.seniority.includes(s))}
             >
               {t(`seniority.${s}`)}
+            </button>
+          ))}
+          <span className="mx-1 w-px shrink-0 bg-line" />
+          {AD_LANGUAGES.map((lang) => (
+            <button
+              key={lang}
+              type="button"
+              onClick={() => setF({ ...f, adLanguage: toggle(f.adLanguage, lang) })}
+              className={chip(f.adLanguage.includes(lang))}
+            >
+              {ta(lang)}
             </button>
           ))}
         </div>

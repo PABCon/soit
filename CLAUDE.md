@@ -636,6 +636,44 @@ fixtures cleaned up afterward. Re-verified against
 2 views, shows on the 3rd, stays dismissed — fixture cleaned up there
 too.
 
+**Two more curated browse facets** shipped next — "Languages" and
+"Technologies," extending the location/category browse work. The
+reference you shared (a justjoin.it homepage facet row) turned out to
+mix specific languages and broad categories in one flat list; you
+confirmed the actual ask is simpler: a small **featured** subset of the
+159-entry `tech_tags` vocabulary — not a new taxonomy, not a real
+language/technology split across all 159 rows. `tech_tags` gained one
+nullable `featured_group` column (`'language' | 'technology'`, a check
+constraint, most rows stay `null`); 10 languages (JavaScript, TypeScript,
+Python, Java, C#, PHP, Go, Ruby, C++, SQL) and 10 technologies (React,
+Node.js, AWS, Azure, Docker, Kubernetes, PostgreSQL, Angular, Spring
+Boot, .NET) were marked, picked for real-world relevance rather than
+derived from anything. New `getFeaturedTechCounts()`
+(`src/lib/db/tech-tags.ts`) aggregates live-job counts for just those 20
+in one query (small dataset, no per-tag query loop) — the `/jobs` page's
+"Browse by X" section grew from 2 columns to 4, same "only show entries
+that currently have ≥1 live job" rule as location/category. Both new
+sections link through the *existing* `/jobs/in/[location]/[facet]`
+route unchanged — `facet` already resolved against `tech_tags.slug`, so
+no new URL scheme was needed.
+
+**A third, distinct thing surfaced in the same conversation**: the job's
+*ad language* (PT/EN — an existing `jobs.language` column, already shown
+as a badge on every job card) wasn't filterable at all. Unrelated to the
+language/technology *tech* facets above — this is the posting's own
+language, not a skill. Added as a third small chip group in
+`JobFeed.tsx` (client-side, same as the existing work-model/seniority
+chips — a 2-value facet didn't need a URL-routed browse page).
+
+Verified live, real browser: jobs actually tagged with featured tech via
+direct fixture setup (not the picker — that stays the full 159-tag
+list, unchanged), one PT/Python job and one EN/AWS job. The `/jobs` page
+shows both new "Browse by" sections; the Python link lands on `/jobs/in/
+all-locations/python` showing only the Python job; the AWS link shows
+only the AWS job; the EN filter chip narrows to just the EN job. Test
+fixtures cleaned up afterward. Not yet re-verified on production — do
+that before considering this fully done.
+
 Next: the rest of the real-usage QA backlog — bigger initiatives
 (pricing/billing tied to AI-feature upgrade plans, and employer
 analytics, both explicitly deferred to post-MVP) — plus step 9 (SEO

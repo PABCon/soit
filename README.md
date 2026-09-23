@@ -80,6 +80,7 @@ src/
   app/api/auth/attach-role/  Attaches a second role to an already-logged-in account
   components/EngagementPopup.tsx  Growth nudge after 3 distinct job views, signed-out only
   components/Modal.tsx  Shared modal wrapper, extracted from ApplyModal.tsx
+  lib/db/tech-tags.ts  getFeaturedTechCounts() — a curated 20-tag subset for Language/Technology browse
 ```
 
 ## Conventions
@@ -149,7 +150,13 @@ mechanism — see `CLAUDE.md`. A browsing-engagement popup followed: a
 signed-out visitor who's viewed 3 distinct jobs (tracked client-side,
 `localStorage`, no new table) gets a one-time nudge to create an
 account — corrected from the original "abandoned application" framing to
-a browsing-behavior one during triage.
+a browsing-behavior one during triage. Two more curated browse facets
+came next — Language and Technology, a small featured 20-tag subset of
+the existing `tech_tags` vocabulary (not a new taxonomy), reusing the
+same `/jobs/in/[location]/[facet]` route already built; a third, unrelated
+thing surfaced in the same request — the job's own ad language (PT/EN)
+wasn't filterable at all — added as a plain chip filter, not a browse
+route (only 2 values) — see `CLAUDE.md`.
 Per the spec, steps 1-7 being done means there's a working two-sided
 marketplace, loop closed, end to end. Next: step 9 — SEO check,
 compliance, and polish — plus the rest of the real-usage QA backlog (see
