@@ -671,8 +671,9 @@ list, unchanged), one PT/Python job and one EN/AWS job. The `/jobs` page
 shows both new "Browse by" sections; the Python link lands on `/jobs/in/
 all-locations/python` showing only the Python job; the AWS link shows
 only the AWS job; the EN filter chip narrows to just the EN job. Test
-fixtures cleaned up afterward. Not yet re-verified on production — do
-that before considering this fully done.
+fixtures cleaned up afterward. Re-verified against
+`https://soit.vercel.app` production the same way — Java/Docker browse
+links and the EN filter chip all correct — fixture cleaned up there too.
 
 Next: the rest of the real-usage QA backlog — bigger initiatives
 (pricing/billing tied to AI-feature upgrade plans, and employer
