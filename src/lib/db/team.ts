@@ -6,6 +6,8 @@ export type TeamMember = {
   id: string;
   role: "owner" | "member";
   email: string;
+  fullName: string | null;
+  avatarUrl: string | null;
   createdAt: string;
 };
 
@@ -33,14 +35,63 @@ export async function getCompanyMembers(companyId: string): Promise<TeamMember[]
   return Promise.all(
     rows.map(async (row) => {
       const { data } = await admin.auth.admin.getUserById(row.auth_user_id);
+      const metadata = data.user?.user_metadata as { full_name?: string; avatar_url?: string } | undefined;
       return {
         id: row.id,
         role: row.role,
         email: data.user?.email ?? "—",
+        fullName: metadata?.full_name || null,
+        avatarUrl: metadata?.avatar_url || null,
         createdAt: row.created_at,
       };
     }),
   );
+}
+
+/** Self-service — Supabase Auth's own user record, not a table
+ *  `employer_users` owns, so no new RLS grant is needed (same as
+ *  `last_role`/`pending_nif`, already set the same way at signup). */
+export async function updateMyMemberProfile(fields: { full_name: string; avatar_url?: string }) {
+  const supabase = await createClient();
+  const { error } = await supabase.auth.updateUser({ data: fields });
+  if (error) throw new Error(error.message);
+}
+
+const MAX_AVATAR_BYTES = 2 * 1024 * 1024;
+const ALLOWED_AVATAR_TYPES = ["image/png", "image/jpeg", "image/webp"];
+
+export type UploadResult =
+  | { ok: true }
+  | { ok: false; reason: "no_session" | "file_too_large" | "bad_file" | "upload_failed" };
+
+/** Same shared `avatars` bucket and structured-result shape as
+ *  `uploadCandidateAvatar` (candidate-profile.ts) — the only difference is
+ *  where the resulting URL is written (user_metadata, not a table column). */
+export async function uploadMemberAvatar(file: File): Promise<UploadResult> {
+  if (file.size > MAX_AVATAR_BYTES) return { ok: false, reason: "file_too_large" };
+  if (!ALLOWED_AVATAR_TYPES.includes(file.type)) return { ok: false, reason: "bad_file" };
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, reason: "no_session" };
+
+  const ext = file.type === "image/png" ? "png" : file.type === "image/webp" ? "webp" : "jpg";
+  const path = `${user.id}/avatar.${ext}`;
+
+  const { error: uploadError } = await supabase.storage
+    .from("avatars")
+    .upload(path, file, { upsert: true, contentType: file.type });
+  if (uploadError) return { ok: false, reason: "upload_failed" };
+
+  const { data: publicUrl } = supabase.storage.from("avatars").getPublicUrl(path);
+  const { error } = await supabase.auth.updateUser({
+    data: { avatar_url: `${publicUrl.publicUrl}?v=${Date.now()}` },
+  });
+  if (error) return { ok: false, reason: "upload_failed" };
+
+  return { ok: true };
 }
 
 export async function getPendingInvites(companyId: string): Promise<PendingInvite[]> {

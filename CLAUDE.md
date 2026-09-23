@@ -373,12 +373,82 @@ gets a clear error, not a silent hang; an oversized/wrong-type logo upload
 shows the right message and doesn't crash the page; a valid small logo
 still uploads and shows up normally. Test fixtures cleaned up afterward.
 
-Next: the rest of the real-usage QA backlog — core gaps (candidate
-profile page, password change, forgot-password, team member profile
-fields); bigger initiatives (pricing/billing, Follow + AI-generated
-profiles once the base product is done, job browse/category pages,
-employer analytics, abandoned-application-recovery popup, and — flagged
-above — a real "same email, both roles" flow) — plus step 9 (SEO check +
-compliance + polish: Search Console, privacy policy, consent, the §6.6
-retention purge job, error monitoring), with map/visual design polish
-deliberately last, per your own instruction.
+**Account basics** shipped next: candidate profile page, password change,
+forgot-password, and team member profile fields (name, picture). One
+migration (a shared `avatars` storage bucket, scoped by `auth.uid()` —
+both candidates and employer team members manage their own folder in it,
+mirroring `branding`'s shape but without an "owner" concept). Everything
+else reused what already existed: `candidates` already had `full_name`/
+`phone`/`cv_url`/`linkedin_url`/`avatar_url`/`skills` columns with RLS
+granted for self-update (step 2 anticipated this), so the candidate
+profile page (`/profile`) is mostly UI — a *master* CV upload/download
+distinct from per-application CVs, reusing the same content-sniffing +
+signed-URL patterns `applications.ts` already established. Team member
+profiles don't touch `employer_users` at all — name/avatar live in
+`auth.users.user_metadata` (same place `last_role`/`pending_nif` already
+do), read off the `admin.auth.admin.getUserById()` call `getCompanyMembers`
+already made for email.
+
+Password change (`PasswordChangeForm`, shared between `/settings` and
+`/recruit/settings`) is a plain client-side `supabase.auth.updateUser({
+password })` — no Server Action needed, the live session is enough.
+Forgot-password required extending `/auth/callback/route.ts`: it always
+called `completeRegistration` + redirected to a role-based landing page,
+which would have silently skipped the "set a new password" step entirely
+for a recovery link. Added one branch — `type=recovery` in the query
+string (carried through from `resetPasswordForEmail`'s `redirectTo`) skips
+`completeRegistration` and lands on `/reset-password` instead.
+
+**Two real bugs found by testing, not by `tsc`/`eslint`/`build`, both
+worth reading closely:**
+1. Both new `candidate-profile.ts` update calls (`updateCandidateProfile`,
+   the avatar/CV writes) originally did a bare `.from("candidates").
+   update(fields)` with no filter — RLS scopes *which* rows a query can
+   touch, but PostgREST still hard-rejects an UPDATE with no WHERE clause
+   at all, regardless of RLS ("UPDATE requires a WHERE clause"). Every
+   other `.update()` in this codebase already had an explicit `.eq(...)`;
+   this was a new-code mistake, not a repeat of an old one. Fixed by
+   filtering on `id`/`auth_user_id` explicitly, the same as everywhere
+   else.
+2. **A real, pre-existing bug this session's testing was the first to
+   actually trigger**: `getMyEmployerContext()` (`src/lib/db/companies.ts`)
+   did `supabase.from("employer_users").select("id, role").single()` —
+   no filter, relying on RLS. But the "see colleagues" policy on
+   `employer_users` returns *every* row at the caller's company, not just
+   their own (unlike `candidates`' RLS, which genuinely is `auth_user_id =
+   auth.uid()`). `.single()` errors on more than one matching row, so
+   **any company with a second team member broke the entire console** —
+   My Job Ads, Company Profile, Team, everything under `/recruit` — the
+   moment the owner (or any member) loaded a page, silently rendering
+   "you don't have an employer profile" instead of a real error. This
+   never surfaced before because no prior test session created a second
+   *confirmed* member and then reloaded a console page as an existing
+   member afterward. Fixed by filtering on `auth_user_id = auth.uid()`
+   (unique per row) with `.maybeSingle()` instead of `.single()`. If
+   you've been using a multi-person company account in production and
+   hit an unexplained "not an employer" page, this was almost certainly
+   why — it's fixed now, but production had this bug until this line
+   deployed.
+
+Verified live, real browser, real recovery email end-to-end (via
+mailinator — same method used throughout this project): candidate edits
+name/phone/LinkedIn/skills and it persists; uploads an avatar and a
+master CV, downloads it back via a signed link; password change works and
+the new password logs in afterward; forgot-password's real email arrives,
+its link lands on `/reset-password` (not the normal role landing), a new
+password there redirects correctly and logs in; an employer owner sets
+their own name/avatar and both a second teammate *and* the owner's own
+Team-page view show it correctly (this last check is exactly what
+surfaced the `getMyEmployerContext` bug above — worth remembering as a
+reason to always test multi-person scenarios, not just solo-owner ones).
+Test fixtures cleaned up afterward, both locally and on
+`https://soit.vercel.app`.
+
+Next: the rest of the real-usage QA backlog — bigger initiatives
+(pricing/billing, Follow + AI-generated profiles once the base product is
+done, job browse/category pages, employer analytics, abandoned-
+application-recovery popup, and a real "same email, both roles" flow —
+flagged, not built, during the earlier bug-fix pass) — plus step 9 (SEO
+check + compliance + polish: Search Console, privacy policy, consent, the
+§6.6 retention purge job, error monitoring), with map/visual design
+polish deliberately last, per your own instruction.

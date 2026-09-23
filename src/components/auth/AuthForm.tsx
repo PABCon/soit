@@ -3,7 +3,7 @@
 import { useState, type FormEvent } from "react";
 import { useSearchParams } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
-import { useRouter } from "@/i18n/navigation";
+import { Link, useRouter } from "@/i18n/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { validateNif } from "@/lib/nif";
 
@@ -165,6 +165,12 @@ export function AuthForm({ role, mode }: { role: Role; mode: Mode }) {
           className={inputClass}
         />
       </label>
+
+      {mode === "login" && (
+        <Link href="/forgot-password" className="-mt-2 self-start text-xs text-pine hover:underline">
+          {t("forgotPassword")}
+        </Link>
+      )}
 
       {mode === "register" && role === "employer" && (
         <>

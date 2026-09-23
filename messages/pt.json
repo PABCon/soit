@@ -98,6 +98,16 @@
       "file_too_large": "Essa imagem é demasiado grande — máximo 2MB.",
       "bad_file": "Esse ficheiro não é uma imagem PNG, JPEG, WEBP ou SVG.",
       "upload_failed": "Não foi possível carregar essa imagem. Tente novamente."
+    },
+    "myAccount": "A minha conta",
+    "myProfile": "O meu perfil",
+    "fullName": "Nome completo",
+    "uploadAvatar": "Carregar foto",
+    "avatarError": {
+      "no_session": "Algo correu mal. Tente novamente.",
+      "file_too_large": "Essa imagem é demasiado grande — máximo 2MB.",
+      "bad_file": "Esse ficheiro não é uma imagem PNG, JPEG ou WEBP.",
+      "upload_failed": "Não foi possível carregar essa imagem. Tente novamente."
     }
   },
   "jobForm": {
@@ -247,7 +257,20 @@
     },
     "inviteTitle": "Junte-se à sua equipa na SóIT",
     "inviteBody": "Foi convidado para se juntar a {company} como recrutador.",
-    "inviteInvalid": "Este link de convite é inválido ou expirou."
+    "inviteInvalid": "Este link de convite é inválido ou expirou.",
+    "forgotPassword": "Esqueceu-se da palavra-passe?",
+    "forgotPasswordTitle": "Repor a palavra-passe",
+    "sendResetLink": "Enviar link de reposição",
+    "checkEmailForReset": "Se esse email tiver uma conta, enviámos um link para repor a palavra-passe.",
+    "resetPasswordTitle": "Definir nova palavra-passe",
+    "resetPasswordHint": "Escolha uma nova palavra-passe para a sua conta.",
+    "changePassword": "Alterar palavra-passe",
+    "newPassword": "Nova palavra-passe",
+    "confirmPassword": "Confirmar nova palavra-passe",
+    "passwordMismatch": "As palavras-passe não coincidem.",
+    "passwordTooShort": "A palavra-passe deve ter pelo menos 6 caracteres.",
+    "savePassword": "Guardar palavra-passe",
+    "passwordSaved": "Palavra-passe atualizada."
   },
   "job": {
     "apply": "Candidatar",
@@ -313,6 +336,27 @@
       "responded": "Respondido",
       "rejected": "Rejeitado",
       "closed": "Fechado"
+    }
+  },
+  "profile": {
+    "title": "O meu perfil",
+    "fullName": "Nome completo",
+    "email": "Email",
+    "phone": "Telefone",
+    "linkedinUrl": "URL do LinkedIn",
+    "skills": "Competências",
+    "skillsHint": "Separadas por vírgula, ex.: React, TypeScript, PostgreSQL",
+    "save": "Guardar",
+    "saved": "Guardado.",
+    "uploadAvatar": "Carregar foto",
+    "uploadCv": "Carregar CV",
+    "replaceCv": "Substituir CV",
+    "downloadCv": "Descarregar o meu CV",
+    "fileError": {
+      "not_a_candidate": "Algo correu mal. Tente novamente.",
+      "file_too_large": "Esse ficheiro é demasiado grande.",
+      "bad_file": "Esse ficheiro não tem um formato suportado.",
+      "upload_failed": "Não foi possível carregar esse ficheiro. Tente novamente."
     }
   }
 }

@@ -63,9 +63,19 @@ export function TeamManager({
         <ul className="mt-2 divide-y divide-line border-t border-line">
           {members.map((m) => (
             <li key={m.id} className="flex items-center justify-between py-3">
-              <div>
-                <p className="text-sm text-ink">{m.email}</p>
-                <p className="text-xs text-muted">{t(`roleLabel.${m.role}`)}</p>
+              <div className="flex items-center gap-3">
+                {m.avatarUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element -- external Supabase Storage URL
+                  <img src={m.avatarUrl} alt="" className="h-8 w-8 rounded-full object-cover" />
+                ) : (
+                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-pine text-xs font-bold text-white">
+                    {(m.fullName || m.email).slice(0, 1).toUpperCase()}
+                  </div>
+                )}
+                <div>
+                  <p className="text-sm text-ink">{m.fullName || m.email}</p>
+                  <p className="text-xs text-muted">{t(`roleLabel.${m.role}`)}</p>
+                </div>
               </div>
               {isOwner && m.id !== myEmployerId && (
                 <button

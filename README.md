@@ -68,6 +68,11 @@ src/
   lib/file-sniff.ts       Content-sniffs uploaded CVs by magic bytes, never by extension
   components/ApplyModal.tsx  Apply modal — account-free, external-URL bypass (§7.1, v1.11)
   lib/email/               EmailProvider interface + templates, built but not connected (§9.1a)
+  app/[locale]/(candidate)/profile/  Candidate profile — name/CV/avatar/skills
+  app/[locale]/(candidate)/settings/  Candidate password change
+  app/[locale]/(console)/recruit/settings/  Employer's own profile + password change
+  app/[locale]/(auth)/forgot-password/, reset-password/  Password recovery
+  lib/db/candidate-profile.ts  Self-profile reads/writes + master CV, distinct from per-application CVs
 ```
 
 ## Conventions
@@ -108,7 +113,14 @@ pause/reactivate, the applicant count now actually links to Applicants,
 a real "account already exists" error on dual-role signup instead of a
 silent dead end, and image-upload errors surface instead of failing
 silently — including a real Next.js Server Actions body-size-limit bug
-that fix uncovered (see `CLAUDE.md`).
+that fix uncovered (see `CLAUDE.md`). Account basics followed: a candidate
+profile page (`/profile`, name/phone/LinkedIn/skills/avatar/master CV), a
+shared password-change form, a real forgot-password flow (with a branch
+in `/auth/callback` for recovery links), and team members now have a name
++ picture (stored in `auth.users.user_metadata`, not a new column). That
+pass surfaced a real, pre-existing bug — `getMyEmployerContext()` broke
+the entire `/recruit` console for any company with a second team member —
+fixed; see `CLAUDE.md` for the full writeup.
 Per the spec, steps 1-7 being done means there's a working two-sided
 marketplace, loop closed, end to end. Next: step 9 — SEO check,
 compliance, and polish — plus the rest of the real-usage QA backlog (see

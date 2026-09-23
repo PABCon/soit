@@ -40,10 +40,22 @@ export type EmployerContext = {
 export async function getMyEmployerContext(): Promise<EmployerContext | null> {
   const supabase = await createClient();
 
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return null;
+
+  // Unfiltered .single() here was a real bug: the "see colleagues" RLS
+  // policy on employer_users returns every row at the caller's company,
+  // not just their own — so this errored (and silently returned null,
+  // rendering "not an employer") for any company with more than one team
+  // member. auth_user_id is unique per employer_users row, so filtering by
+  // it — and using maybeSingle(), not single() — is the actual fix.
   const { data: employerRow } = await supabase
     .from("employer_users")
     .select("id, role")
-    .single();
+    .eq("auth_user_id", user.id)
+    .maybeSingle();
   if (!employerRow) return null;
 
   const { data: company } = await supabase.rpc("my_company");

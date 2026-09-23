@@ -98,6 +98,16 @@
       "file_too_large": "That image is too large — 2MB maximum.",
       "bad_file": "That file isn't a PNG, JPEG, WEBP, or SVG image.",
       "upload_failed": "Couldn't upload that image. Try again."
+    },
+    "myAccount": "My account",
+    "myProfile": "My profile",
+    "fullName": "First and last name",
+    "uploadAvatar": "Upload photo",
+    "avatarError": {
+      "no_session": "Something went wrong. Try again.",
+      "file_too_large": "That image is too large — 2MB maximum.",
+      "bad_file": "That file isn't a PNG, JPEG, or WEBP image.",
+      "upload_failed": "Couldn't upload that image. Try again."
     }
   },
   "jobForm": {
@@ -247,7 +257,20 @@
     },
     "inviteTitle": "Join your team on SóIT",
     "inviteBody": "You've been invited to join {company} as a recruiter.",
-    "inviteInvalid": "This invite link is invalid or has expired."
+    "inviteInvalid": "This invite link is invalid or has expired.",
+    "forgotPassword": "Forgot password?",
+    "forgotPasswordTitle": "Reset your password",
+    "sendResetLink": "Send reset link",
+    "checkEmailForReset": "If that email has an account, we've sent a link to reset the password.",
+    "resetPasswordTitle": "Set a new password",
+    "resetPasswordHint": "Choose a new password for your account.",
+    "changePassword": "Change password",
+    "newPassword": "New password",
+    "confirmPassword": "Confirm new password",
+    "passwordMismatch": "Passwords don't match.",
+    "passwordTooShort": "Password must be at least 6 characters.",
+    "savePassword": "Save password",
+    "passwordSaved": "Password updated."
   },
   "job": {
     "apply": "Apply",
@@ -313,6 +336,27 @@
       "responded": "Responded",
       "rejected": "Rejected",
       "closed": "Closed"
+    }
+  },
+  "profile": {
+    "title": "My profile",
+    "fullName": "First and last name",
+    "email": "Email",
+    "phone": "Phone",
+    "linkedinUrl": "LinkedIn URL",
+    "skills": "Skills",
+    "skillsHint": "Comma-separated, e.g. React, TypeScript, PostgreSQL",
+    "save": "Save",
+    "saved": "Saved.",
+    "uploadAvatar": "Upload photo",
+    "uploadCv": "Upload CV",
+    "replaceCv": "Replace CV",
+    "downloadCv": "Download my CV",
+    "fileError": {
+      "not_a_candidate": "Something went wrong. Try again.",
+      "file_too_large": "That file is too large.",
+      "bad_file": "That file isn't a supported format.",
+      "upload_failed": "Couldn't upload that file. Try again."
     }
   }
 }

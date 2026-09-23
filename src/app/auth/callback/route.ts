@@ -21,6 +21,14 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(`${origin}/pt/employer/login?error=auth`);
   }
 
+  // A password-recovery link exchanges a real session here too, but must
+  // never run completeRegistration/land on the normal role-based page — it
+  // has to reach the "set a new password" step. resetPasswordForEmail's
+  // redirectTo carries `type=recovery` for exactly this branch.
+  if (searchParams.get("type") === "recovery") {
+    return NextResponse.redirect(`${origin}${next}`);
+  }
+
   const { landingPath } = await completeRegistration(data.user);
   const locale = next.split("/")[1] || "pt";
   return NextResponse.redirect(`${origin}/${locale}${landingPath}`);
