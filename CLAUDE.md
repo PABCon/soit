@@ -444,11 +444,84 @@ reason to always test multi-person scenarios, not just solo-owner ones).
 Test fixtures cleaned up afterward, both locally and on
 `https://soit.vercel.app`.
 
+**Job browse pages** (justjoin.it-style `/job-offers/berlin/java`) shipped
+next, and grew mid-plan into a bigger data-hygiene pass at your call: job
+**category** (job function/domain — "Software Development", "Security")
+didn't exist as a concept anywhere, distinct from tech tags (specific
+technologies, unbounded per job — category is one required field per job).
+Two new curated, RLS-public tables — `locations` (14 Portuguese cities,
+seeded with real coordinates) and `job_categories` (14 job functions,
+adapted from `tech_tags`' own seed-file section groupings) — replace what
+used to be a free-text location `<input>` on `JobForm.tsx` with two
+required `<select>`s. `saveJob` now looks up the picked city's name/lat/lng
+by id instead of calling Nominatim per job — `src/lib/geocode.ts` is gone,
+confirmed fully dead the moment location stopped being free text.
+
+Routes: `/jobs/in/[location]` and `/jobs/in/[location]/[facet]` — a static
+`in/` segment was necessary because `/jobs/[slug]` already owns the job
+*detail* route, so a location can't live at that same dynamic-segment
+level without colliding. `[facet]` resolves against **either**
+`job_categories.slug` or `tech_tags.slug` (tried in that order) — one
+shared URL slot for both taxonomies, matching justjoin's own mixing of
+"java" and "analytics"/"devops" in the identical position, with
+`all-locations` as the "any location" sentinel. Every valid combination
+renders a real 200 with an empty state at zero jobs — the taxonomy is
+legitimate before it's populated — but `src/app/sitemap.ts` (new; none
+existed before) and the `/jobs` page's new "Browse by location/category"
+links only ever point at combinations that actually have ≥1 live job,
+computed from already-fetched data, not the full cross-product (14
+locations × ~173 facets would be ~2400 mostly-empty URLs — bad for SEO,
+not just wasted effort). `src/app/robots.ts` (new) points at the sitemap;
+it doesn't duplicate the `noindex` that console/settings/auth pages
+already declare per-page via their own metadata.
+
+Category display anywhere in the UI goes through i18n by slug
+(`jobForm.categoryOption.{slug}`), never the raw DB `label` — the DB
+stores English only, same reasoning as why `job.tech` stays untranslated
+(tech names like "React" aren't translatable) but category names clearly
+are. `getBrowseJobs()` returns `facetKind` alongside the resolved label
+specifically so callers can make that distinction correctly.
+
+**Two real bugs found by testing, not by `tsc`/`eslint`/`build`:**
+1. `getBrowseJobs()`'s tech-facet filter first tried appending a *second*
+   `job_tech_tags(...)` embed onto the existing `SELECT` string to add
+   `!inner`, which would have produced a duplicate/ambiguous embed.
+   PostgREST's actual mechanism for "filter parent rows by an embedded
+   resource's column" is forcing `!inner` onto the *existing* embed
+   reference, not adding a parallel one — fixed via a targeted
+   `SELECT.replace("job_tech_tags (", "job_tech_tags!inner (")`.
+2. **The same `service_role`-grants gap this project already has one
+   documented incident and migration for** (`20260922100000_service_role_
+   grants.sql`) — Postgres's default privileges don't auto-grant
+   `service_role` on new `public` schema tables (unlike Supabase-managed
+   schemas), so the two new tables needed their own explicit `grant all
+   ... to service_role`, or any admin-client read against them would 42501.
+   Caught by my own verification script hitting exactly that error, not by
+   the app itself (nothing in this feature happens to use the admin client
+   against these two tables yet) — but it's exactly the kind of gap that
+   bites the *next* thing that does, so it's fixed now rather than left for
+   that to rediscover.
+
+Verified live, real browser, jobs actually posted through the real
+`JobForm` UI (not seeded directly) across two cities and three categories
+plus one remote job: the picker saves correct location text/lat-lng/
+category; editing preselects both; category is enforced as required
+(blocked with a real error when left unset); `/jobs/in/lisboa` shows only
+Lisboa jobs; `/jobs/in/lisboa/backend-development` and `/jobs/in/porto/
+devops-cloud` narrow by category; `/jobs/in/all-locations/data-analytics`
+catches the remote job (no location) by category alone; `/jobs/in/lisboa/
+react` narrows by tech instead; an unknown location or facet slug 404s; a
+real curated city with zero jobs (Coimbra) renders a genuine empty state,
+not a 404; `/jobs`'s new browse-by sections and `sitemap.xml` both list
+exactly the non-empty combinations — confirmed by literally reading the
+generated sitemap. Test fixtures cleaned up afterward. Not yet re-verified
+on production — do that before considering this fully done.
+
 Next: the rest of the real-usage QA backlog — bigger initiatives
 (pricing/billing, Follow + AI-generated profiles once the base product is
-done, job browse/category pages, employer analytics, abandoned-
-application-recovery popup, and a real "same email, both roles" flow —
-flagged, not built, during the earlier bug-fix pass) — plus step 9 (SEO
-check + compliance + polish: Search Console, privacy policy, consent, the
-§6.6 retention purge job, error monitoring), with map/visual design
-polish deliberately last, per your own instruction.
+done, employer analytics, abandoned-application-recovery popup, and a
+real "same email, both roles" flow — flagged, not built, during the
+earlier bug-fix pass) — plus step 9 (SEO check + compliance + polish:
+Search Console, privacy policy, consent, the §6.6 retention purge job,
+error monitoring), with map/visual design polish deliberately last, per
+your own instruction.

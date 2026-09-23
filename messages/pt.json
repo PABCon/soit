@@ -132,6 +132,9 @@
     },
     "location": "Localização",
     "locationRemote": "Remoto — sem localização necessária",
+    "locationPlaceholder": "Selecione uma cidade…",
+    "category": "Categoria",
+    "categoryPlaceholder": "Selecione uma categoria…",
     "salaryLegend": "Salário — obrigatório, mostrado em todos os anúncios",
     "salaryMin": "Mínimo",
     "salaryMax": "Máximo",
@@ -151,6 +154,22 @@
       "freelance": "Freelance",
       "internship": "Estágio"
     },
+    "categoryOption": {
+      "software-development": "Desenvolvimento de Software",
+      "frontend-development": "Desenvolvimento Frontend",
+      "backend-development": "Desenvolvimento Backend",
+      "mobile-development": "Desenvolvimento Mobile",
+      "devops-cloud": "DevOps & Infraestrutura Cloud",
+      "data-analytics": "Dados & Analytics",
+      "ai-ml": "IA & Machine Learning",
+      "qa-testing": "QA & Testes",
+      "cybersecurity": "Cibersegurança",
+      "it-support": "Suporte de TI & Administração de Sistemas",
+      "enterprise-systems": "Sistemas Empresariais",
+      "product-management": "Gestão de Produto",
+      "ux-ui-design": "Design UX/UI",
+      "project-management": "Gestão de Projeto/Programa"
+    },
     "techTags": "Stack técnico",
     "techTagsFilter": "Pesquisar tecnologias…",
     "saveDraft": "Guardar rascunho",
@@ -159,6 +178,7 @@
     "errorTitle": "Indique um título para a vaga.",
     "errorDescription": "Indique uma descrição.",
     "errorLocation": "Indique uma localização, ou mude para Remoto.",
+    "errorCategory": "Selecione uma categoria.",
     "errorSalaryMin": "Indique um salário mínimo.",
     "errorSalaryMax": "O máximo tem de ser pelo menos igual ao mínimo.",
     "errorGeneric": "Algo correu mal. Tente novamente."
@@ -226,7 +246,13 @@
     "aboutRole": "Sobre a função",
     "stack": "Stack",
     "remoteGroup": "Totalmente remoto",
-    "mapHint": "As vagas remotas não têm ponto no mapa."
+    "mapHint": "As vagas remotas não têm ponto no mapa.",
+    "jobsIn": "Vagas de IT em {place}",
+    "facetJobsIn": "Vagas de {facet} em {place}",
+    "allJobs": "Todas as vagas",
+    "allLocations": "todo o país",
+    "browseByLocation": "Explorar por localização",
+    "browseByCategory": "Explorar por categoria"
   },
   "auth": {
     "candidateLoginTitle": "Entrar como candidato",

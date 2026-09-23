@@ -14,11 +14,13 @@ export type Job = {
   title: string;
   company: Company;
   location: string | null;
+  locationSlug: string | null;
   lat: number | null;
   lng: number | null;
   workModel: WorkModel;
   seniority: Seniority;
   tech: string[];
+  categorySlug: string | null;
   salaryMin: number;
   salaryMax: number;
   salaryPeriod: SalaryPeriod;

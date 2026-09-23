@@ -73,6 +73,9 @@ src/
   app/[locale]/(console)/recruit/settings/  Employer's own profile + password change
   app/[locale]/(auth)/forgot-password/, reset-password/  Password recovery
   lib/db/candidate-profile.ts  Self-profile reads/writes + master CV, distinct from per-application CVs
+  app/[locale]/(candidate)/jobs/in/  Browse pages — /jobs/in/[location]/[facet] (justjoin.it-style)
+  lib/db/locations.ts, job-categories.ts  Curated pickers replacing free-text location on JobForm
+  app/sitemap.ts, robots.ts  New — every live job/company page + non-empty browse combinations only
 ```
 
 ## Conventions
@@ -120,7 +123,16 @@ in `/auth/callback` for recovery links), and team members now have a name
 + picture (stored in `auth.users.user_metadata`, not a new column). That
 pass surfaced a real, pre-existing bug — `getMyEmployerContext()` broke
 the entire `/recruit` console for any company with a second team member —
-fixed; see `CLAUDE.md` for the full writeup.
+fixed; see `CLAUDE.md` for the full writeup. Job browse pages
+(`/jobs/in/[location]/[facet]`, justjoin.it-style) came next and grew
+mid-plan into a data-hygiene pass: job **category** — distinct from tech
+tags — didn't exist anywhere, so a curated `job_categories` taxonomy
+joined a new `locations` taxonomy, both replacing what used to be a
+free-text location field on the posting form with required pickers. A new
+`sitemap.ts`/`robots.ts` list every live job/company page plus only the
+browse-page combinations that actually have jobs — see `CLAUDE.md` for the
+routing-collision design (`/jobs/[slug]` already owns job detail) and two
+real bugs the pass surfaced.
 Per the spec, steps 1-7 being done means there's a working two-sided
 marketplace, loop closed, end to end. Next: step 9 — SEO check,
 compliance, and polish — plus the rest of the real-usage QA backlog (see

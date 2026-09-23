@@ -3,6 +3,8 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
 import { getJobForEdit } from "@/lib/db/jobs";
 import { getTechTags } from "@/lib/db/tech-tags";
+import { getLocations } from "@/lib/db/locations";
+import { getJobCategories } from "@/lib/db/job-categories";
 import { JobForm } from "@/components/console/JobForm";
 
 type Props = { params: Promise<{ locale: string; id: string }> };
@@ -12,7 +14,12 @@ export default async function EditJobPage({ params }: Props) {
   setRequestLocale(locale);
   const t = await getTranslations({ locale, namespace: "console" });
 
-  const [job, techTags] = await Promise.all([getJobForEdit(id), getTechTags()]);
+  const [job, techTags, locations, jobCategories] = await Promise.all([
+    getJobForEdit(id),
+    getTechTags(),
+    getLocations(),
+    getJobCategories(),
+  ]);
   if (!job) notFound();
 
   return (
@@ -29,6 +36,8 @@ export default async function EditJobPage({ params }: Props) {
       <div className="mt-6">
         <JobForm
           techTags={techTags}
+          locations={locations}
+          jobCategories={jobCategories}
           initial={{
             id: job.id,
             title: job.title,
@@ -36,7 +45,8 @@ export default async function EditJobPage({ params }: Props) {
             language: job.language,
             seniority: job.seniority,
             workModel: job.work_model,
-            location: job.location ?? "",
+            locationId: job.location_id,
+            categoryId: job.category_id,
             salaryMin: job.salary_min,
             salaryMax: job.salary_max,
             salaryPeriod: job.salary_period,

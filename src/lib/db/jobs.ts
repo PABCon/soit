@@ -1,5 +1,4 @@
 import { createClient } from "@/lib/supabase/server";
-import { geocodeLocation } from "@/lib/geocode";
 import { slugify } from "@/lib/slug";
 import type { Job } from "@/lib/types";
 import { getMyEmployerContext } from "./companies";
@@ -8,9 +7,11 @@ const SELECT = `
   id, slug, title, description, language, seniority, work_model, location,
   latitude, longitude, salary_min, salary_max, salary_currency, salary_period,
   salary_months, employment_type, status, published_at, expires_at, created_at,
-  external_apply_url,
+  external_apply_url, location_id,
   companies!inner ( slug, company_name, company_logo_url ),
-  job_tech_tags ( tech_tags ( slug, label ) )
+  job_tech_tags ( tech_tags ( slug, label ) ),
+  job_categories ( slug ),
+  locations ( slug )
 `;
 
 type JobRow = {
@@ -35,8 +36,11 @@ type JobRow = {
   expires_at: string | null;
   created_at: string;
   external_apply_url: string | null;
+  location_id: string | null;
   companies: { slug: string; company_name: string; company_logo_url: string | null };
   job_tech_tags: { tech_tags: { slug: string; label: string } }[];
+  job_categories: { slug: string } | null;
+  locations: { slug: string } | null;
 };
 
 function toJob(row: JobRow): Job {
@@ -50,11 +54,13 @@ function toJob(row: JobRow): Job {
       logoUrl: row.companies.company_logo_url,
     },
     location: row.location,
+    locationSlug: row.locations?.slug ?? null,
     lat: row.latitude,
     lng: row.longitude,
     workModel: row.work_model,
     seniority: row.seniority,
     tech: row.job_tech_tags.map((t) => t.tech_tags.label),
+    categorySlug: row.job_categories?.slug ?? null,
     salaryMin: row.salary_min,
     salaryMax: row.salary_max,
     salaryPeriod: row.salary_period,
@@ -158,7 +164,8 @@ export type JobFormInput = {
   language: "pt" | "en";
   seniority: Job["seniority"];
   workModel: Job["workModel"];
-  location: string;
+  locationId: string | null;
+  categoryId: string;
   salaryMin: number;
   salaryMax: number;
   salaryPeriod: Job["salaryPeriod"];
@@ -181,7 +188,22 @@ export async function saveJob(jobId: string | null, input: JobFormInput): Promis
 
   const supabase = await createClient();
   const isRemote = input.workModel === "remote";
-  const coords = !isRemote && input.location.trim() ? await geocodeLocation(input.location) : null;
+
+  let location: string | null = null;
+  let latitude: number | null = null;
+  let longitude: number | null = null;
+  if (!isRemote && input.locationId) {
+    const { data: place } = await supabase
+      .from("locations")
+      .select("name, latitude, longitude")
+      .eq("id", input.locationId)
+      .maybeSingle();
+    if (place) {
+      location = place.name;
+      latitude = place.latitude;
+      longitude = place.longitude;
+    }
+  }
 
   const wantsPublish = input.publish;
   const canPublish = ctx.company.verification_status === "verified";
@@ -195,9 +217,11 @@ export async function saveJob(jobId: string | null, input: JobFormInput): Promis
     language: input.language,
     seniority: input.seniority,
     work_model: input.workModel,
-    location: isRemote ? null : input.location.trim() || null,
-    latitude: isRemote ? null : (coords?.lat ?? null),
-    longitude: isRemote ? null : (coords?.lng ?? null),
+    location,
+    location_id: isRemote ? null : input.locationId,
+    latitude,
+    longitude,
+    category_id: input.categoryId,
     salary_min: input.salaryMin,
     salary_max: input.salaryMax,
     salary_period: input.salaryPeriod,
@@ -287,9 +311,95 @@ export async function getJobForEdit(jobId: string) {
   const { data } = await supabase
     .from("jobs")
     .select(
-      "id, company_id, title, description, language, seniority, work_model, location, salary_min, salary_max, salary_period, salary_months, employment_type, external_apply_url, status, job_tech_tags(tech_tag_id)",
+      "id, company_id, title, description, language, seniority, work_model, location, location_id, category_id, salary_min, salary_max, salary_period, salary_months, employment_type, external_apply_url, status, job_tech_tags(tech_tag_id)",
     )
     .eq("id", jobId)
     .maybeSingle();
   return data;
+}
+
+export type BrowseResult = {
+  jobs: Job[];
+  locationName: string | null;
+  /** null when no facet was requested. "category" facets should be
+   *  displayed via i18n (`jobForm.categoryOption.{facetSlug}`), not this
+   *  raw DB label — it's stored in English only. "tech" facets are shown
+   *  as-is (tech names like "React"/"AWS" aren't translated anywhere else
+   *  in this app either). */
+  facetKind: "category" | "tech" | null;
+  facetSlug: string | null;
+  facetLabel: string | null;
+};
+
+/** Powers `/jobs/in/[location]` and `/jobs/in/[location]/[facet]`
+ *  (justjoin.it-style browse pages). `facetSlug` is resolved against
+ *  `job_categories` first, then `tech_tags` — the two taxonomies share one
+ *  URL slot, same as justjoin's own "java" vs "analytics"/"devops" facets.
+ *  Returns `null` only when a given slug matches neither taxonomy — the
+ *  page 404s on that, same convention as an unknown company/job slug
+ *  elsewhere in this app. */
+export async function getBrowseJobs(params: {
+  locationSlug?: string;
+  facetSlug?: string;
+}): Promise<BrowseResult | null> {
+  const supabase = await createClient();
+
+  let locationId: string | undefined;
+  let locationName: string | null = null;
+  if (params.locationSlug) {
+    const { data: location } = await supabase
+      .from("locations")
+      .select("id, name")
+      .eq("slug", params.locationSlug)
+      .maybeSingle();
+    if (!location) return null;
+    locationId = location.id;
+    locationName = location.name;
+  }
+
+  let categoryId: string | undefined;
+  let techId: string | undefined;
+  let facetKind: "category" | "tech" | null = null;
+  let facetLabel: string | null = null;
+  if (params.facetSlug) {
+    const { data: category } = await supabase
+      .from("job_categories")
+      .select("id, label")
+      .eq("slug", params.facetSlug)
+      .maybeSingle();
+    if (category) {
+      categoryId = category.id;
+      facetKind = "category";
+      facetLabel = category.label;
+    } else {
+      const { data: tech } = await supabase
+        .from("tech_tags")
+        .select("id, label")
+        .eq("slug", params.facetSlug)
+        .maybeSingle();
+      if (!tech) return null;
+      techId = tech.id;
+      facetKind = "tech";
+      facetLabel = tech.label;
+    }
+  }
+
+  // Forcing an inner join on job_tech_tags is how PostgREST lets a filter on
+  // an embedded resource actually restrict the parent rows — swapping the
+  // embed modifier in place, not appending a second, duplicate embed.
+  const selectForQuery = techId ? SELECT.replace("job_tech_tags (", "job_tech_tags!inner (") : SELECT;
+
+  let query = supabase
+    .from("jobs")
+    .select(selectForQuery)
+    .eq("status", "published")
+    .gt("expires_at", new Date().toISOString());
+
+  if (locationId) query = query.eq("location_id", locationId);
+  if (categoryId) query = query.eq("category_id", categoryId);
+  if (techId) query = query.eq("job_tech_tags.tech_tag_id", techId);
+
+  const { data, error } = await query.order("published_at", { ascending: false });
+  const jobs = error || !data ? [] : (data as unknown as JobRow[]).map(toJob);
+  return { jobs, locationName, facetKind, facetSlug: params.facetSlug ?? null, facetLabel };
 }

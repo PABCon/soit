@@ -7,6 +7,8 @@ import { saveJobAction } from "@/app/[locale]/(console)/recruit/jobs/actions";
 import type { JobFormInput } from "@/lib/db/jobs";
 
 type TechTagOption = { id: string; label: string; aliases: string[] };
+type LocationOption = { id: string; slug: string; name: string };
+type JobCategoryOption = { id: string; slug: string; label: string };
 
 type Initial = {
   id: string;
@@ -15,7 +17,8 @@ type Initial = {
   language: "pt" | "en";
   seniority: JobFormInput["seniority"];
   workModel: JobFormInput["workModel"];
-  location: string;
+  locationId: string | null;
+  categoryId: string | null;
   salaryMin: number;
   salaryMax: number;
   salaryPeriod: JobFormInput["salaryPeriod"];
@@ -28,7 +31,17 @@ type Initial = {
 const inputClass = "h-9 rounded-lg border border-line bg-white px-3 text-sm disabled:bg-paper disabled:text-muted";
 const labelClass = "flex flex-col gap-1 text-sm";
 
-export function JobForm({ techTags, initial }: { techTags: TechTagOption[]; initial?: Initial }) {
+export function JobForm({
+  techTags,
+  locations,
+  jobCategories,
+  initial,
+}: {
+  techTags: TechTagOption[];
+  locations: LocationOption[];
+  jobCategories: JobCategoryOption[];
+  initial?: Initial;
+}) {
   const t = useTranslations("jobForm");
   const router = useRouter();
 
@@ -37,7 +50,8 @@ export function JobForm({ techTags, initial }: { techTags: TechTagOption[]; init
   const [language, setLanguage] = useState<"pt" | "en">(initial?.language ?? "pt");
   const [seniority, setSeniority] = useState<JobFormInput["seniority"]>(initial?.seniority ?? "mid");
   const [workModel, setWorkModel] = useState<JobFormInput["workModel"]>(initial?.workModel ?? "hybrid");
-  const [location, setLocation] = useState(initial?.location ?? "");
+  const [locationId, setLocationId] = useState(initial?.locationId ?? "");
+  const [categoryId, setCategoryId] = useState(initial?.categoryId ?? "");
   const [salaryMin, setSalaryMin] = useState(initial?.salaryMin?.toString() ?? "");
   const [salaryMax, setSalaryMax] = useState(initial?.salaryMax?.toString() ?? "");
   const [salaryPeriod, setSalaryPeriod] = useState<JobFormInput["salaryPeriod"]>(
@@ -69,7 +83,8 @@ export function JobForm({ techTags, initial }: { techTags: TechTagOption[]; init
   function validate(): string | null {
     if (!title.trim()) return t("errorTitle");
     if (!description.trim()) return t("errorDescription");
-    if (workModel !== "remote" && !location.trim()) return t("errorLocation");
+    if (workModel !== "remote" && !locationId) return t("errorLocation");
+    if (!categoryId) return t("errorCategory");
     const min = Number(salaryMin);
     const max = Number(salaryMax);
     if (!min || min <= 0) return t("errorSalaryMin");
@@ -96,7 +111,8 @@ export function JobForm({ techTags, initial }: { techTags: TechTagOption[]; init
         language,
         seniority,
         workModel,
-        location,
+        locationId: workModel === "remote" ? null : locationId,
+        categoryId,
         salaryMin: Number(salaryMin),
         salaryMax: Number(salaryMax),
         salaryPeriod,
@@ -201,15 +217,35 @@ export function JobForm({ techTags, initial }: { techTags: TechTagOption[]; init
 
         <label className={labelClass}>
           <span>{t("location")}</span>
-          <input
-            value={location}
+          <select
+            value={locationId}
             disabled={workModel === "remote"}
-            onChange={(e) => setLocation(e.target.value)}
-            placeholder={workModel === "remote" ? t("locationRemote") : undefined}
+            onChange={(e) => setLocationId(e.target.value)}
             className={inputClass}
-          />
+          >
+            <option value="">
+              {workModel === "remote" ? t("locationRemote") : t("locationPlaceholder")}
+            </option>
+            {locations.map((loc) => (
+              <option key={loc.id} value={loc.id}>
+                {loc.name}
+              </option>
+            ))}
+          </select>
         </label>
       </div>
+
+      <label className={labelClass}>
+        <span>{t("category")}</span>
+        <select value={categoryId} onChange={(e) => setCategoryId(e.target.value)} className={inputClass}>
+          <option value="">{t("categoryPlaceholder")}</option>
+          {jobCategories.map((cat) => (
+            <option key={cat.id} value={cat.id}>
+              {t(`categoryOption.${cat.slug}`)}
+            </option>
+          ))}
+        </select>
+      </label>
 
       <fieldset className="rounded-lg border border-line p-4">
         <legend className="px-1 text-sm font-medium text-ink">{t("salaryLegend")}</legend>

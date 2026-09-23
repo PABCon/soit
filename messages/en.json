@@ -132,6 +132,9 @@
     },
     "location": "Location",
     "locationRemote": "Remote — no location needed",
+    "locationPlaceholder": "Select a city…",
+    "category": "Category",
+    "categoryPlaceholder": "Select a category…",
     "salaryLegend": "Salary — required, shown on every listing",
     "salaryMin": "Minimum",
     "salaryMax": "Maximum",
@@ -151,6 +154,22 @@
       "freelance": "Freelance",
       "internship": "Internship"
     },
+    "categoryOption": {
+      "software-development": "Software Development",
+      "frontend-development": "Frontend Development",
+      "backend-development": "Backend Development",
+      "mobile-development": "Mobile Development",
+      "devops-cloud": "DevOps & Cloud Infrastructure",
+      "data-analytics": "Data & Analytics",
+      "ai-ml": "AI & Machine Learning",
+      "qa-testing": "QA & Testing",
+      "cybersecurity": "Cybersecurity",
+      "it-support": "IT Support & Systems Administration",
+      "enterprise-systems": "Enterprise Systems",
+      "product-management": "Product Management",
+      "ux-ui-design": "UX/UI Design",
+      "project-management": "Project/Program Management"
+    },
     "techTags": "Tech stack",
     "techTagsFilter": "Search technologies…",
     "saveDraft": "Save as draft",
@@ -159,6 +178,7 @@
     "errorTitle": "Enter a job title.",
     "errorDescription": "Enter a description.",
     "errorLocation": "Enter a location, or switch to Remote.",
+    "errorCategory": "Select a category.",
     "errorSalaryMin": "Enter a minimum salary.",
     "errorSalaryMax": "Maximum must be at least the minimum.",
     "errorGeneric": "Something went wrong. Try again."
@@ -226,7 +246,13 @@
     "aboutRole": "About the role",
     "stack": "Stack",
     "remoteGroup": "Fully remote",
-    "mapHint": "Remote jobs have no pin on the map."
+    "mapHint": "Remote jobs have no pin on the map.",
+    "jobsIn": "IT jobs in {place}",
+    "facetJobsIn": "{facet} jobs in {place}",
+    "allJobs": "All jobs",
+    "allLocations": "all of Portugal",
+    "browseByLocation": "Browse by location",
+    "browseByCategory": "Browse by category"
   },
   "auth": {
     "candidateLoginTitle": "Log in as candidate",
