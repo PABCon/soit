@@ -631,8 +631,10 @@ no popup after 1 or 2, shows on the 3rd; dismissing it persists — a 4th
 job view (even of an already-seen job) doesn't bring it back; a logged-in
 candidate viewing 3 jobs never sees it at all; the "Create my account"
 CTA links to `/candidate/register` and closes the popup on click. Test
-fixtures cleaned up afterward. Not yet re-verified on production — do
-that before considering this fully done.
+fixtures cleaned up afterward. Re-verified against
+`https://soit.vercel.app` production the same way — no popup after 1 or
+2 views, shows on the 3rd, stays dismissed — fixture cleaned up there
+too.
 
 Next: the rest of the real-usage QA backlog — bigger initiatives
 (pricing/billing tied to AI-feature upgrade plans, and employer
