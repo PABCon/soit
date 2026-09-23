@@ -76,6 +76,8 @@ src/
   app/[locale]/(candidate)/jobs/in/  Browse pages — /jobs/in/[location]/[facet] (justjoin.it-style)
   lib/db/locations.ts, job-categories.ts  Curated pickers replacing free-text location on JobForm
   app/sitemap.ts, robots.ts  New — every live job/company page + non-empty browse combinations only
+  lib/auth/complete-registration.ts  ensureEmployerProfile/ensureCandidateProfile — same-email dual-role (§6.4a)
+  app/api/auth/attach-role/  Attaches a second role to an already-logged-in account
 ```
 
 ## Conventions
@@ -132,7 +134,16 @@ free-text location field on the posting form with required pickers. A new
 `sitemap.ts`/`robots.ts` list every live job/company page plus only the
 browse-page combinations that actually have jobs — see `CLAUDE.md` for the
 routing-collision design (`/jobs/[slug]` already owns job detail) and two
-real bugs the pass surfaced.
+real bugs the pass surfaced. Same-email dual-role (§6.4a) came next: one
+login can now hold both a candidate and an employer profile — Supabase
+Auth won't allow two separate accounts sharing an email, so
+`completeRegistration` was split into idempotent per-role functions
+(`ensureEmployerProfile`/`ensureCandidateProfile`), a new `/api/auth/
+attach-role` attaches the second role to an already-logged-in session
+behind an explicit confirm screen, and a real pre-existing bug (team
+invite acceptance via "login" mode never actually created the
+`employer_users` row) got fixed as a side effect of reusing the same
+mechanism — see `CLAUDE.md`.
 Per the spec, steps 1-7 being done means there's a working two-sided
 marketplace, loop closed, end to end. Next: step 9 — SEO check,
 compliance, and polish — plus the rest of the real-usage QA backlog (see

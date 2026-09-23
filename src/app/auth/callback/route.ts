@@ -29,7 +29,15 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(`${origin}${next}`);
   }
 
-  const { landingPath } = await completeRegistration(data.user);
+  // Role intent (§6.4a): email/password signUp() already carries it in
+  // user_metadata.last_role; OAuth has no metadata channel at sign-in
+  // time, so AuthForm passes it as an explicit `role` query param on the
+  // redirectTo instead. Defaulting to "candidate" matches this route's
+  // long-standing implicit behavior when neither is present.
+  const intendedRole = (searchParams.get("role") ?? data.user.user_metadata?.last_role ?? "candidate") as
+    | "employer"
+    | "candidate";
+  const { landingPath } = await completeRegistration(data.user, intendedRole);
   const locale = next.split("/")[1] || "pt";
   return NextResponse.redirect(`${origin}/${locale}${landingPath}`);
 }

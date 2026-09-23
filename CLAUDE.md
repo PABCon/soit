@@ -519,11 +519,93 @@ generated sitemap. Test fixtures cleaned up afterward. Re-verified against
 through the live form (Braga, Cybersecurity), its browse pages and
 sitemap entries all correct — fixture cleaned up there too.
 
+**Same-email dual-role (§6.4a)** shipped next — the flagged item from the
+bug-fix pass, built properly this time. Landed on the model you confirmed
+across a few rounds: Supabase Auth is one account per email project-wide
+(a platform constraint, not something this schema controls), so "two
+independent password-protected accounts sharing an email" isn't
+buildable — what's real and what you actually want is **one login, two
+attachable profiles**. Acquiring either role still requires that role's
+own full registration (the employer side specifically needs a real,
+verified NIF), so sharing a login doesn't shortcut anything — it only
+removes the dead end *after* someone has deliberately gone through the
+second role's own signup. The attach is never silent: an explicit
+confirm/cancel screen sits between "we detected this is really you" and
+actually creating the second profile.
+
+`src/lib/auth/complete-registration.ts`'s `completeRegistration(user)`
+used to create *one* profile and hard-stop the moment any profile
+existed — `if (existingEmployer) return ...` before ever considering the
+other role. That's exactly what blocked dual-role. Split into two
+idempotent, reusable functions — `ensureEmployerProfile(user, {nif,
+companyName})` and `ensureCandidateProfile(user)` — each checking "do I
+already have *this* role" instead of "does *any* profile exist yet";
+`completeRegistration(user, intendedRole)` is now a thin dispatcher over
+them for the confirmation-link path, with `intendedRole` required rather
+than inferred. New `POST /api/auth/attach-role` calls the same two
+functions directly, authenticated by session cookie only (never a
+client-supplied user id) — for the *already-logged-in* attach case, where
+there's no email confirmation link to click since the account was
+already verified the first time around.
+
+`AuthForm.tsx`'s register flow: on the existing `identities.length === 0`
+signal (email already has a confirmed account — the enumeration-safe
+response Supabase Auth returns), it now attempts `signInWithPassword`
+with the exact email/password just typed, no re-entry. Wrong password →
+the same `emailAlreadyRegistered` error as before (this doubles as
+"someone guessing at a stranger's email," same failure mode as any login
+attempt). Right password → a real session for their existing account, and
+a new confirm screen ("You already have a {role} account with this
+email — add a {role} profile to it?") before anything is attached.
+Cancelling signs them back out — a session was a side effect of the
+password probe, and leaving it active without consent isn't acceptable.
+
+OAuth's role intent was a real, separate gap this surfaced: `signUp()`
+carries `last_role` in its `data` option, but `signInWithOAuth` has no
+equivalent metadata channel, so OAuth registration always silently
+resolved to "candidate" regardless of which button was clicked — nobody
+had hit this yet since OAuth is still inert (no credentials configured in
+the Supabase dashboard). Fixed by passing `role` as an explicit query
+param on the OAuth `redirectTo`, read by `/auth/callback` alongside the
+metadata fallback. Verified by code review only — there's no way to
+exercise a live OAuth round trip in this environment yet.
+
+**A related, genuinely pre-existing bug fixed for free**:
+`InviteAcceptForm.tsx`'s "login" mode (accepting a team invite while
+already holding some account) used to just sign in and redirect to
+`/recruit` — it never actually called the invite-acceptance logic, so the
+`employer_users` row was never created and the invite never marked
+accepted. It now calls the same `/api/auth/attach-role` endpoint with
+`{role: "employer"}`, and `ensureEmployerProfile`'s existing invite-by-
+email check picks it up — same mechanism, not a separate fix.
+
+Verified live, real browser, real accounts (not seeded profiles for the
+attach step — created via the actual register forms): a candidate
+registering as an employer with their own real password + a valid NIF
+sees the confirm screen, confirms, lands on `/recruit`, and a real
+`employer_users`/`companies` row exists under their *original*
+`auth_user_id`, NIF verification kicks off; the reverse (employer →
+candidate) same. Wrong password on the second registration → the plain
+error, no session established, no profile created — confirmed nothing
+was created. Cancelling the confirm screen → signed out, confirmed no
+employer/company row exists. A fresh invite accepted via "login" mode now
+actually creates the `employer_users` row and marks the invite accepted —
+confirmed via direct query, this was silently broken before. A brand-new
+single-role registration (the common case, unaffected by any of this) was
+spot-checked and still works normally. Test fixtures cleaned up
+afterward, careful this time to use fresh, non-overlapping emails per
+scenario after one early mix-up (a shared test email accidentally routed
+through a real pending invite instead of the manual-NIF path — caught
+immediately by checking the resulting DB row's company name, not a code
+bug). Not yet re-verified on production — do that before considering this
+fully done.
+
 Next: the rest of the real-usage QA backlog — bigger initiatives
-(pricing/billing, Follow + AI-generated profiles once the base product is
-done, employer analytics, abandoned-application-recovery popup, and a
-real "same email, both roles" flow — flagged, not built, during the
-earlier bug-fix pass) — plus step 9 (SEO check + compliance + polish:
-Search Console, privacy policy, consent, the §6.6 retention purge job,
-error monitoring), with map/visual design polish deliberately last, per
-your own instruction.
+(pricing/billing tied to AI-feature upgrade plans, and employer
+analytics, both explicitly deferred to post-MVP; a browsing-engagement
+popup — "you've viewed several jobs, want an account to track your
+applications?" — redefined from the original abandoned-application-form
+framing) — plus step 9 (SEO check + compliance + polish: Search Console,
+privacy policy, consent, the §6.6 retention purge job, error monitoring),
+with map/visual design polish deliberately last, per your own
+instruction.

@@ -43,8 +43,12 @@ export function AuthForm({ role, mode }: { role: Role; mode: Mode }) {
   const [error, setError] = useState<string | null>(null);
   const [checkEmail, setCheckEmail] = useState(false);
   const [pending, setPending] = useState(false);
+  // §6.4a — same-email dual-role: set once signInWithPassword confirms this
+  // really is the account's owner, before anything is attached.
+  const [attachOffer, setAttachOffer] = useState<{ nif?: string; companyName?: string } | null>(null);
 
   const landingPath = role === "employer" ? "/recruit" : "/jobs";
+  const otherRole: Role = role === "employer" ? "candidate" : "employer";
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -88,10 +92,27 @@ export function AuthForm({ role, mode }: { role: Role; mode: Mode }) {
         // account (e.g. an employer registering the same email as a
         // candidate) returns 200 with no error, an empty `identities` array,
         // and no session, to avoid leaking which emails are registered. Left
-        // unchecked, this silently falls into "check your email" below for
-        // a confirmation link that will never arrive.
+        // unchecked, this used to fall into "check your email" below for a
+        // confirmation link that would never arrive.
+        //
+        // §6.4a: this might genuinely be the same person adding their
+        // second role under one login (what you agreed to support) rather
+        // than someone guessing at a stranger's email — the only way to
+        // tell the two apart is to check whether the password they just
+        // typed for THIS registration is actually the existing account's
+        // real password.
         if (data.user && data.user.identities?.length === 0) {
-          setError(t("emailAlreadyRegistered"));
+          const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+            email,
+            password,
+          });
+          if (signInError || !signInData.session) {
+            setError(t("emailAlreadyRegistered"));
+            return;
+          }
+          // Correct password — this really is the account's owner. Don't
+          // attach automatically; offer it explicitly, per your call.
+          setAttachOffer({ nif: pendingNif, companyName });
           return;
         }
 
@@ -127,12 +148,74 @@ export function AuthForm({ role, mode }: { role: Role; mode: Mode }) {
     const supabase = createClient();
     await supabase.auth.signInWithOAuth({
       provider,
-      options: { redirectTo: `${window.location.origin}/auth/callback?next=/${locale}${next ?? landingPath}` },
+      options: {
+        // §6.4a — OAuth has no metadata channel at sign-in time, unlike
+        // signUp()'s `data` option, so intended role has to travel as an
+        // explicit query param for /auth/callback to read.
+        redirectTo: `${window.location.origin}/auth/callback?next=/${locale}${next ?? landingPath}&role=${role}`,
+      },
     });
+  }
+
+  async function handleAttachConfirm() {
+    if (!attachOffer) return;
+    setPending(true);
+    try {
+      const res = await fetch("/api/auth/attach-role", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ role, nif: attachOffer.nif, companyName: attachOffer.companyName }),
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        setAttachOffer(null);
+        setError(t("errorGeneric"));
+        return;
+      }
+      router.push(next ?? json.landingPath ?? landingPath);
+      router.refresh();
+    } finally {
+      setPending(false);
+    }
+  }
+
+  async function handleAttachCancel() {
+    // A session was established as a side effect of the password probe —
+    // leaving it active without consent isn't acceptable.
+    const supabase = createClient();
+    await supabase.auth.signOut();
+    setAttachOffer(null);
+    setPassword("");
   }
 
   if (checkEmail) {
     return <p className="text-sm text-ink">{t("checkEmail")}</p>;
+  }
+
+  if (attachOffer) {
+    return (
+      <div className="flex flex-col gap-4">
+        <p className="text-sm text-ink">{t("attachOfferBody", { otherRole: t(`roleName.${otherRole}`), role: t(`roleName.${role}`) })}</p>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            disabled={pending}
+            onClick={handleAttachConfirm}
+            className="h-9 rounded-lg bg-pine px-3 text-sm font-medium text-white hover:bg-pine/90 disabled:opacity-50"
+          >
+            {t("attachOfferConfirm")}
+          </button>
+          <button
+            type="button"
+            disabled={pending}
+            onClick={handleAttachCancel}
+            className="h-9 rounded-lg border border-line bg-white px-3 text-sm font-medium text-ink hover:border-muted disabled:opacity-50"
+          >
+            {t("attachOfferCancel")}
+          </button>
+        </div>
+      </div>
+    );
   }
 
   return (

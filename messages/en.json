@@ -271,6 +271,14 @@
     "checkEmail": "Check your email to confirm your account before logging in.",
     "noProfile": "No account found for this role. Try registering first.",
     "emailAlreadyRegistered": "An account already exists for this email. Log in instead, or use a different email.",
+    "errorGeneric": "Something went wrong. Try again.",
+    "roleName": {
+      "candidate": "candidate",
+      "employer": "employer"
+    },
+    "attachOfferBody": "You already have a {otherRole} account with this email. Continue to add a {role} profile to it? You'll be able to switch between both with the same login.",
+    "attachOfferConfirm": "Yes, continue",
+    "attachOfferCancel": "Cancel",
     "nifError": {
       "format": "Enter a 9-digit NIF.",
       "checksum": "That NIF isn't valid — check the digits.",

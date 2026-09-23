@@ -271,6 +271,14 @@
     "checkEmail": "Verifique o seu email para confirmar a conta antes de entrar.",
     "noProfile": "Não foi encontrada conta para este perfil. Experimente criar uma conta primeiro.",
     "emailAlreadyRegistered": "Já existe uma conta para este email. Inicie sessão, ou use outro email.",
+    "errorGeneric": "Algo correu mal. Tente novamente.",
+    "roleName": {
+      "candidate": "candidato",
+      "employer": "empresa"
+    },
+    "attachOfferBody": "Já tem uma conta de {otherRole} com este email. Quer continuar e adicionar um perfil de {role}? Vai poder alternar entre os dois com o mesmo login.",
+    "attachOfferConfirm": "Sim, continuar",
+    "attachOfferCancel": "Cancelar",
     "nifError": {
       "format": "Indique um NIF com 9 dígitos.",
       "checksum": "Esse NIF não é válido — verifique os dígitos.",

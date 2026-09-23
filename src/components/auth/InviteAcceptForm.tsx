@@ -56,7 +56,16 @@ export function InviteAcceptForm({ email }: { email: string }) {
           setError(signInError.message);
           return;
         }
-        router.push("/recruit");
+        // Signing in alone never accepted the invite — ensureEmployerProfile
+        // finds it by email and attaches it, same mechanism as the same-
+        // email dual-role attach flow (§6.4a).
+        const res = await fetch("/api/auth/attach-role", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ role: "employer" }),
+        });
+        const json = await res.json();
+        router.push(res.ok ? (json.landingPath ?? "/recruit") : "/recruit");
         router.refresh();
       }
     } finally {

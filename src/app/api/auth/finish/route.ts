@@ -18,6 +18,9 @@ export async function POST() {
     return NextResponse.json({ error: "no session" }, { status: 401 });
   }
 
-  const { landingPath } = await completeRegistration(user);
+  // signUp() already set user_metadata.last_role moments ago on this exact
+  // call — always present on this path (§6.4a).
+  const intendedRole = (user.user_metadata?.last_role ?? "candidate") as "employer" | "candidate";
+  const { landingPath } = await completeRegistration(user, intendedRole);
   return NextResponse.json({ landingPath });
 }
