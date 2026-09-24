@@ -102,9 +102,12 @@ export function InviteAcceptForm({ email }: { email: string }) {
       <button
         type="submit"
         disabled={pending}
-        className="h-9 rounded-lg bg-pine px-3 text-sm font-medium text-white hover:bg-pine/90 disabled:opacity-50"
+        className="flex h-9 items-center justify-center gap-2 rounded-lg bg-pine px-3 text-sm font-medium text-white hover:bg-pine/90 disabled:opacity-50"
       >
-        {t(mode === "register" ? "createAccount" : "logIn")}
+        {pending && (
+          <span className="h-3.5 w-3.5 shrink-0 animate-spin rounded-full border-2 border-white/40 border-t-white" />
+        )}
+        {t(pending ? (mode === "register" ? "creatingAccount" : "loggingIn") : mode === "register" ? "createAccount" : "logIn")}
       </button>
 
       <button

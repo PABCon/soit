@@ -675,6 +675,44 @@ fixtures cleaned up afterward. Re-verified against
 `https://soit.vercel.app` production the same way — Java/Docker browse
 links and the EN filter chip all correct — fixture cleaned up there too.
 
+**A real bug report — "employer login just doesn't load, stays on the
+login page"** — investigated and fixed. Reproduced consistently on
+`https://soit.vercel.app` with a fresh test account: login *did* complete
+and land on `/recruit`, but took ~3-4 seconds with **zero visual
+feedback** during the wait — the submit button just sat there disabled
+(50% opacity, easy to miss), same label the whole time. Entirely
+plausible to read as "broken" over several seconds of apparent nothing.
+Two real, separate fixes:
+1. **Actual latency**: `/api/auth/landing` (`src/app/api/auth/landing/
+   route.ts`) did three *sequential* network hops to Supabase before
+   responding — `getUser()`, the `resolveLanding()` DB queries, then
+   `updateUser({data: {last_role}})` — and that third one is pure
+   bookkeeping (remembers which role to default to next login), not
+   correctness-critical. Made it non-blocking via `after()`, the same
+   fallback-wrapped pattern already used for `verifyCompany` and the
+   application-email notifications — shaves a full Supabase Auth round
+   trip off the critical path.
+2. **Missing loading feedback**: `AuthForm.tsx`'s submit button (and the
+   same-email dual-role attach-confirm button, and
+   `InviteAcceptForm.tsx`'s submit button — same gap, same fix) now shows
+   a spinner + "A entrar…"/"A criar conta…" while `pending` is true,
+   instead of silently sitting disabled. This is the fix that actually
+   matters most for the reported symptom — the latency reduction helps,
+   but a few seconds of *visible* progress reads completely differently
+   from a few seconds of apparent nothing.
+
+Verified live: local timing improved to ~2.4s (was ~3-4s on production,
+not independently re-measured locally pre-fix since the investigation
+went straight to production); the loading state is clearly visible
+mid-request in a screenshot taken during the pending window. Test
+fixtures cleaned up afterward, including some left over from an earlier
+interrupted investigation pass (a long idle gap mid-session — first
+attempt hit a stale Playwright browser tripping `net::ERR_NETWORK_CHANGED`,
+a false signal from the browser having sat idle for several minutes, not
+a real bug — re-ran clean before concluding anything). Not yet
+re-verified on production after the fix — do that before considering
+this fully done.
+
 Next: the rest of the real-usage QA backlog — bigger initiatives
 (pricing/billing tied to AI-feature upgrade plans, and employer
 analytics, both explicitly deferred to post-MVP) — plus step 9 (SEO

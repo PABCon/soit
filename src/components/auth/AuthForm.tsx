@@ -201,8 +201,11 @@ export function AuthForm({ role, mode }: { role: Role; mode: Mode }) {
             type="button"
             disabled={pending}
             onClick={handleAttachConfirm}
-            className="h-9 rounded-lg bg-pine px-3 text-sm font-medium text-white hover:bg-pine/90 disabled:opacity-50"
+            className="flex h-9 items-center justify-center gap-2 rounded-lg bg-pine px-3 text-sm font-medium text-white hover:bg-pine/90 disabled:opacity-50"
           >
+            {pending && (
+              <span className="h-3.5 w-3.5 shrink-0 animate-spin rounded-full border-2 border-white/40 border-t-white" />
+            )}
             {t("attachOfferConfirm")}
           </button>
           <button
@@ -276,9 +279,12 @@ export function AuthForm({ role, mode }: { role: Role; mode: Mode }) {
       <button
         type="submit"
         disabled={pending}
-        className="h-9 rounded-lg bg-pine px-3 text-sm font-medium text-white hover:bg-pine/90 disabled:opacity-50"
+        className="flex h-9 items-center justify-center gap-2 rounded-lg bg-pine px-3 text-sm font-medium text-white hover:bg-pine/90 disabled:opacity-50"
       >
-        {t(mode === "register" ? "createAccount" : "logIn")}
+        {pending && (
+          <span className="h-3.5 w-3.5 shrink-0 animate-spin rounded-full border-2 border-white/40 border-t-white" />
+        )}
+        {t(pending ? (mode === "register" ? "creatingAccount" : "loggingIn") : mode === "register" ? "createAccount" : "logIn")}
       </button>
 
       <div className="flex items-center gap-2 text-xs text-muted">

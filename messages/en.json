@@ -267,6 +267,8 @@
     "nif": "NIF",
     "logIn": "Log in",
     "createAccount": "Create account",
+    "loggingIn": "Logging in…",
+    "creatingAccount": "Creating account…",
     "alreadyHaveAccount": "Already have an account?",
     "needAccount": "Need an account?",
     "orContinueWith": "or continue with",

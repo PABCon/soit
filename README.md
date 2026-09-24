@@ -156,7 +156,12 @@ the existing `tech_tags` vocabulary (not a new taxonomy), reusing the
 same `/jobs/in/[location]/[facet]` route already built; a third, unrelated
 thing surfaced in the same request — the job's own ad language (PT/EN)
 wasn't filterable at all — added as a plain chip filter, not a browse
-route (only 2 values) — see `CLAUDE.md`.
+route (only 2 values) — see `CLAUDE.md`. A real bug report ("employer
+login just doesn't load") turned out to be two things: real latency
+(`/api/auth/landing` did an unnecessary blocking third Supabase round
+trip for non-critical bookkeeping, now backgrounded via `after()`) and,
+the bigger factor, zero loading feedback on the login/register buttons
+during the wait — both fixed, see `CLAUDE.md`.
 Per the spec, steps 1-7 being done means there's a working two-sided
 marketplace, loop closed, end to end. Next: step 9 — SEO check,
 compliance, and polish — plus the rest of the real-usage QA backlog (see
