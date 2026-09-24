@@ -709,9 +709,10 @@ fixtures cleaned up afterward, including some left over from an earlier
 interrupted investigation pass (a long idle gap mid-session — first
 attempt hit a stale Playwright browser tripping `net::ERR_NETWORK_CHANGED`,
 a false signal from the browser having sat idle for several minutes, not
-a real bug — re-ran clean before concluding anything). Not yet
-re-verified on production after the fix — do that before considering
-this fully done.
+a real bug — re-ran clean before concluding anything). Re-verified
+against `https://soit.vercel.app` production after the fix, twice: ~2.5s
+and ~3.0s (down from ~3-4s pre-fix), loading text visible immediately
+both times — fixture cleaned up there too.
 
 Next: the rest of the real-usage QA backlog — bigger initiatives
 (pricing/billing tied to AI-feature upgrade plans, and employer
