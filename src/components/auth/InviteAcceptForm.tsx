@@ -29,47 +29,51 @@ export function InviteAcceptForm({ email }: { email: string }) {
     setPending(true);
     const supabase = createClient();
 
-    try {
-      if (mode === "register") {
-        const { data, error: signUpError } = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            emailRedirectTo: `${window.location.origin}/auth/callback?next=/${locale}/recruit`,
-            data: { last_role: "employer" },
-          },
-        });
-        if (signUpError) {
-          setError(signUpError.message);
-          return;
-        }
-        if (data.session) {
-          const res = await fetch("/api/auth/finish", { method: "POST" });
-          const json = await res.json();
-          router.push(json.landingPath ?? "/recruit");
-        } else {
-          setCheckEmail(true);
-        }
-      } else {
-        const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
-        if (signInError) {
-          setError(signInError.message);
-          return;
-        }
-        // Signing in alone never accepted the invite — ensureEmployerProfile
-        // finds it by email and attaches it, same mechanism as the same-
-        // email dual-role attach flow (§6.4a).
-        const res = await fetch("/api/auth/attach-role", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ role: "employer" }),
-        });
-        const json = await res.json();
-        router.push(res.ok ? (json.landingPath ?? "/recruit") : "/recruit");
-        router.refresh();
+    // No unconditional finally resetting `pending` — see AuthForm.tsx's
+    // handleSubmit for why: once router.push() is about to swap the page
+    // out, the loading state should stay visible through the handoff.
+    if (mode === "register") {
+      const { data, error: signUpError } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          emailRedirectTo: `${window.location.origin}/auth/callback?next=/${locale}/recruit`,
+          data: { last_role: "employer" },
+        },
+      });
+      if (signUpError) {
+        setError(signUpError.message);
+        setPending(false);
+        return;
       }
-    } finally {
-      setPending(false);
+      if (data.session) {
+        const res = await fetch("/api/auth/finish", { method: "POST" });
+        const json = await res.json();
+        router.push(json.landingPath ?? "/recruit");
+        // no setPending(false) — navigating away
+      } else {
+        setCheckEmail(true);
+        setPending(false);
+      }
+    } else {
+      const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+      if (signInError) {
+        setError(signInError.message);
+        setPending(false);
+        return;
+      }
+      // Signing in alone never accepted the invite — ensureEmployerProfile
+      // finds it by email and attaches it, same mechanism as the same-
+      // email dual-role attach flow (§6.4a).
+      const res = await fetch("/api/auth/attach-role", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ role: "employer" }),
+      });
+      const json = await res.json();
+      router.push(res.ok ? (json.landingPath ?? "/recruit") : "/recruit");
+      router.refresh();
+      // no setPending(false) — navigating away
     }
   }
 

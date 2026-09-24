@@ -56,91 +56,107 @@ export function AuthForm({ role, mode }: { role: Role; mode: Mode }) {
     setPending(true);
     const supabase = createClient();
 
-    try {
-      if (mode === "register") {
-        let pendingNif: string | undefined;
-        if (role === "employer") {
-          const validation = validateNif(nif);
-          if (!validation.valid) {
-            setError(t(`nifError.${validation.reason}`));
-            return;
-          }
-          pendingNif = validation.nif;
+    // Deliberately no try/finally resetting `pending` unconditionally: once
+    // router.push() is about to swap this page out, the loading state
+    // should stay visible through the handoff, not flip back to an idle-
+    // looking button while the navigation is still in flight. Resetting it
+    // early was exactly what made a slow navigation look like nothing was
+    // happening at all — the button read as done while the page hadn't
+    // actually changed yet. Every non-navigating exit path resets it
+    // explicitly instead.
+    if (mode === "register") {
+      let pendingNif: string | undefined;
+      if (role === "employer") {
+        const validation = validateNif(nif);
+        if (!validation.valid) {
+          setError(t(`nifError.${validation.reason}`));
+          setPending(false);
+          return;
         }
+        pendingNif = validation.nif;
+      }
 
-        const { data, error: signUpError } = await supabase.auth.signUp({
+      const { data, error: signUpError } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          emailRedirectTo: `${window.location.origin}/auth/callback?next=/${locale}${next ?? landingPath}`,
+          data: {
+            last_role: role,
+            ...(role === "employer"
+              ? { pending_nif: pendingNif, pending_company_name: companyName }
+              : {}),
+          },
+        },
+      });
+
+      if (signUpError) {
+        setError(signUpError.message);
+        setPending(false);
+        return;
+      }
+
+      // Supabase Auth is one auth.users row per email across the whole
+      // project — signUp() against an email that already has a confirmed
+      // account (e.g. an employer registering the same email as a
+      // candidate) returns 200 with no error, an empty `identities` array,
+      // and no session, to avoid leaking which emails are registered. Left
+      // unchecked, this used to fall into "check your email" below for a
+      // confirmation link that would never arrive.
+      //
+      // §6.4a: this might genuinely be the same person adding their
+      // second role under one login (what you agreed to support) rather
+      // than someone guessing at a stranger's email — the only way to
+      // tell the two apart is to check whether the password they just
+      // typed for THIS registration is actually the existing account's
+      // real password.
+      if (data.user && data.user.identities?.length === 0) {
+        const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
           email,
           password,
-          options: {
-            emailRedirectTo: `${window.location.origin}/auth/callback?next=/${locale}${next ?? landingPath}`,
-            data: {
-              last_role: role,
-              ...(role === "employer"
-                ? { pending_nif: pendingNif, pending_company_name: companyName }
-                : {}),
-            },
-          },
         });
-
-        if (signUpError) {
-          setError(signUpError.message);
+        if (signInError || !signInData.session) {
+          setError(t("emailAlreadyRegistered"));
+          setPending(false);
           return;
         }
-
-        // Supabase Auth is one auth.users row per email across the whole
-        // project — signUp() against an email that already has a confirmed
-        // account (e.g. an employer registering the same email as a
-        // candidate) returns 200 with no error, an empty `identities` array,
-        // and no session, to avoid leaking which emails are registered. Left
-        // unchecked, this used to fall into "check your email" below for a
-        // confirmation link that would never arrive.
-        //
-        // §6.4a: this might genuinely be the same person adding their
-        // second role under one login (what you agreed to support) rather
-        // than someone guessing at a stranger's email — the only way to
-        // tell the two apart is to check whether the password they just
-        // typed for THIS registration is actually the existing account's
-        // real password.
-        if (data.user && data.user.identities?.length === 0) {
-          const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-            email,
-            password,
-          });
-          if (signInError || !signInData.session) {
-            setError(t("emailAlreadyRegistered"));
-            return;
-          }
-          // Correct password — this really is the account's owner. Don't
-          // attach automatically; offer it explicitly, per your call.
-          setAttachOffer({ nif: pendingNif, companyName });
-          return;
-        }
-
-        if (data.session) {
-          const res = await fetch("/api/auth/finish", { method: "POST" });
-          const json = await res.json();
-          router.push(next ?? json.landingPath ?? landingPath);
-        } else {
-          setCheckEmail(true);
-        }
-      } else {
-        const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
-        if (signInError) {
-          setError(signInError.message);
-          return;
-        }
-
-        const res = await fetch("/api/auth/landing", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ preferredRole: role }),
-        });
-        const json = await res.json();
-        if (json.landingPath) router.push(next ?? json.landingPath);
-        else setError(t("noProfile"));
+        // Correct password — this really is the account's owner. Don't
+        // attach automatically; offer it explicitly, per your call.
+        setAttachOffer({ nif: pendingNif, companyName });
+        setPending(false);
+        return;
       }
-    } finally {
-      setPending(false);
+
+      if (data.session) {
+        const res = await fetch("/api/auth/finish", { method: "POST" });
+        const json = await res.json();
+        router.push(next ?? json.landingPath ?? landingPath);
+        // no setPending(false) — navigating away
+      } else {
+        setCheckEmail(true);
+        setPending(false);
+      }
+    } else {
+      const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+      if (signInError) {
+        setError(signInError.message);
+        setPending(false);
+        return;
+      }
+
+      const res = await fetch("/api/auth/landing", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ preferredRole: role }),
+      });
+      const json = await res.json();
+      if (json.landingPath) {
+        router.push(next ?? json.landingPath);
+        // no setPending(false) — navigating away
+      } else {
+        setError(t("noProfile"));
+        setPending(false);
+      }
     }
   }
 
@@ -160,23 +176,21 @@ export function AuthForm({ role, mode }: { role: Role; mode: Mode }) {
   async function handleAttachConfirm() {
     if (!attachOffer) return;
     setPending(true);
-    try {
-      const res = await fetch("/api/auth/attach-role", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ role, nif: attachOffer.nif, companyName: attachOffer.companyName }),
-      });
-      const json = await res.json();
-      if (!res.ok) {
-        setAttachOffer(null);
-        setError(t("errorGeneric"));
-        return;
-      }
-      router.push(next ?? json.landingPath ?? landingPath);
-      router.refresh();
-    } finally {
+    const res = await fetch("/api/auth/attach-role", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ role, nif: attachOffer.nif, companyName: attachOffer.companyName }),
+    });
+    const json = await res.json();
+    if (!res.ok) {
+      setAttachOffer(null);
+      setError(t("errorGeneric"));
       setPending(false);
+      return;
     }
+    router.push(next ?? json.landingPath ?? landingPath);
+    router.refresh();
+    // no setPending(false) — navigating away
   }
 
   async function handleAttachCancel() {
