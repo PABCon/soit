@@ -189,7 +189,8 @@
     "officeLocations": "Office locations",
     "activeOffers": "Active offers",
     "companyType": "Company type",
-    "industry": "Industry"
+    "industry": "Industry",
+    "previewBadge": "Preview"
   },
   "companies": {
     "title": "Companies",

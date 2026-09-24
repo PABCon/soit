@@ -170,7 +170,7 @@ export function CompanyProfileForm({ company, canEdit }: { company: MyCompany; c
           </button>
           {saved && <span className="text-sm text-pine">{t("saved")}</span>}
           <Link
-            href={`/companies/${company.slug}`}
+            href={`/companies/${company.slug}/preview`}
             target="_blank"
             className="text-sm text-pine hover:underline"
           >

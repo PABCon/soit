@@ -189,7 +189,8 @@
     "officeLocations": "Localizações",
     "activeOffers": "Vagas ativas",
     "companyType": "Tipo de empresa",
-    "industry": "Indústria"
+    "industry": "Indústria",
+    "previewBadge": "Pré-visualização"
   },
   "companies": {
     "title": "Empresas",
