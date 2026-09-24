@@ -55,16 +55,11 @@ export function Sidebar() {
         ))}
       </nav>
 
-      <div className="mt-4 flex items-center justify-between px-2 md:mt-auto md:pt-4">
-        <Link href="/jobs" className="text-xs text-muted hover:text-ink">
-          {t("backToSite")}
-        </Link>
-        <div className="flex items-center gap-3">
-          <button type="button" onClick={handleLogOut} className="text-xs text-muted hover:text-ink">
-            {t("logOut")}
-          </button>
-          <LanguageSwitcher />
-        </div>
+      <div className="mt-4 flex items-center justify-end gap-3 px-2 md:mt-auto md:pt-4">
+        <button type="button" onClick={handleLogOut} className="text-xs text-muted hover:text-ink">
+          {t("logOut")}
+        </button>
+        <LanguageSwitcher />
       </div>
     </aside>
   );

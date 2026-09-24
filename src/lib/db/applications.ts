@@ -266,11 +266,22 @@ export type MyApplication = {
 
 export async function getMyApplications(): Promise<MyApplication[]> {
   const supabase = await createClient();
+
+  // Deliberately explicit, not left to RLS alone: `applications` also has an
+  // "employers see applications to their company's jobs" SELECT policy
+  // (needed for getApplicantsForJob) — Postgres combines permissive
+  // policies with OR, so an unfiltered select() from an employer session
+  // returned every applicant to their own jobs here too, mislabeled as
+  // "my applications." Real bug, found via a real-usage report.
+  const { data: candidateId } = await supabase.rpc("my_candidate_id");
+  if (!candidateId) return [];
+
   const { data } = await supabase
     .from("applications")
     .select(
       "id, status, created_at, jobs!inner ( slug, title, companies!inner ( slug, company_name, company_logo_url ) )",
     )
+    .eq("candidate_id", candidateId)
     .order("created_at", { ascending: false });
 
   if (!data) return [];
