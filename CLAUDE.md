@@ -761,9 +761,72 @@ landing on `/recruit`, with zero window where it looked idle before the
 page had changed. Same script, same result, re-verified against
 `https://soit.vercel.app` production — fixture cleaned up both times.
 
-Next: the rest of the real-usage QA backlog — bigger initiatives
-(pricing/billing tied to AI-feature upgrade plans, and employer
-analytics, both explicitly deferred to post-MVP) — plus step 9 (SEO
-check + compliance + polish: Search Console, privacy policy, consent,
-the §6.6 retention purge job, error monitoring), with map/visual design
-polish deliberately last, per your own instruction.
+**A real-usage report questioning why an employer session has any path
+into the main candidate site at all** — "Voltar ao site" in the console
+Sidebar, and clicking "Ver perfil público" on the company profile page,
+both drop a company account onto the full candidate-facing shell, which
+felt architecturally wrong ("they have no business there") — plus a
+specific claim that navigating there and clicking "As minhas
+candidaturas" showed 2 applications under the company account. That
+last part was investigated first, since if real it'd be a serious
+cross-account data-scoping bug: "My applications" (`getMyApplications()`
+in `src/lib/db/applications.ts`) has **no explicit filter at all** — it
+relies entirely on RLS (`candidates see their own applications`, scoped
+by `my_candidate_id()` = the `candidates` row whose `auth_user_id =
+auth.uid()`), so it can only return an employer's own applications if
+that specific auth user genuinely has a linked `candidates` row.
+Direct, read-only inspection of the live database found: zero dual-role
+accounts exist anywhere (only one `employer_users` row total, one
+claimed `candidates` row total, unrelated to each other); the specific
+reporter's account has no `candidates` row at all, claimed or otherwise
+— just one *unclaimed* application (an anonymous v1.11 apply, auth_user_id
+null, invisible to any session's RLS scope since nothing auto-claims it
+on employer login). The 2-applications claim couldn't be reproduced or
+corroborated from stored data even after the user confirmed it happened
+in the same tab/session right after clicking "Voltar ao site" — flagged
+back to the user as unresolved, asked for a screenshot/exact URL rather
+than guess at a fix for a bug that isn't reproducible server-side.
+
+The "Ver perfil público" part **was** concrete and fixed: it already
+opened in a new tab, but that tab carried the full candidate shell
+(TopNav's search/login menu/"Publicar vaga", the Rail's Jobs/
+Applications/Companies/etc.) — a real path from a one-off preview into
+browsing the whole main site. Its content (banner, logo, socials, stat
+cards, open jobs) was extracted into a shared `CompanyProfileBody`
+component, reused by both the unchanged canonical `(candidate)/
+companies/[slug]` page and a new noindex `(preview)/companies/[slug]/
+preview` route under a new minimal `(preview)` layout (brand mark + a
+"Pré-visualização"/"Preview" badge only — no Rail, no TopNav, no search,
+no login menu). Next.js layouts don't receive `searchParams` (only
+`page.tsx` does), so a real "stripped nav" variant needs its own route
+group on a distinct URL rather than a query-param toggle on the existing
+layout — this mirrors the existing `(auth)` route group's minimal
+`AuthHeader` pattern, already used for the same reason. The console
+button now links to `/companies/[slug]/preview` instead, still
+`target="_blank"`. "Voltar ao site" itself was left as-is — the user's
+own message trailed off with "but ok," reading as noting the oddity
+rather than asking for a change, and removing it is a bigger call
+(would an employer legitimately want to browse the main job board at
+all?) worth raising explicitly rather than deciding unilaterally.
+
+Verified live: a fresh test employer's "Ver perfil público" opens the
+new `/preview` URL in a new tab with no search input, no `/jobs` links,
+no logout control, no "Publicar vaga" button, the preview badge visible,
+correct company content, zero console errors — confirmed on both
+localhost and, after a redeploy (the first push hit a transient
+Turbopack/Google-Fonts build error on Vercel's infra, unrelated to this
+diff — a plain retry succeeded), `https://soit.vercel.app`. Regression-
+checked the canonical `/companies/[slug]` page separately: full nav and
+"Publicar vaga" still present, no preview badge — unaffected. Fixtures
+cleaned up both times.
+
+Next: the unresolved "2 applications" report above (pending a
+screenshot/exact URL from the user — no server-side data supports it as
+literally described, so don't act on it further without more signal),
+whether "Voltar ao site" should be scoped down or removed for an
+employer-only session, and the rest of the real-usage QA backlog —
+bigger initiatives (pricing/billing tied to AI-feature upgrade plans,
+and employer analytics, both explicitly deferred to post-MVP) — plus
+step 9 (SEO check + compliance + polish: Search Console, privacy
+policy, consent, the §6.6 retention purge job, error monitoring), with
+map/visual design polish deliberately last, per your own instruction.

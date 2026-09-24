@@ -81,6 +81,8 @@ src/
   components/EngagementPopup.tsx  Growth nudge after 3 distinct job views, signed-out only
   components/Modal.tsx  Shared modal wrapper, extracted from ApplyModal.tsx
   lib/db/tech-tags.ts  getFeaturedTechCounts() — a curated 20-tag subset for Language/Technology browse
+  app/[locale]/(preview)/companies/[slug]/preview/  Noindex company-page twin, no site nav — opened from the console
+  components/candidate/CompanyProfileBody.tsx  Shared company-page content, reused by the public page and the preview route
 ```
 
 ## Conventions
@@ -167,7 +169,19 @@ the dual-role account the reporter suspected (checked and ruled out) but
 a second layer of the same bug: the loading state was reset as soon as
 the request resolved, before the separate, untracked `router.push()`
 navigation had actually finished — now the loading UI stays visible
-honestly through the whole handoff; see `CLAUDE.md`.
+honestly through the whole handoff; see `CLAUDE.md`. The same report
+also questioned why an employer session has any path into the main
+candidate site — the console's "Ver perfil público" opened the public
+company page in a new tab, but that tab carried the full candidate nav
+(search, login menu, Jobs/Applications/etc.), a real way to wander into
+the main site from a one-off preview; it now opens a noindex `/preview`
+twin with no site nav at all, sharing content with the public page via
+a new `CompanyProfileBody` component. A second claim in the same
+report — 2 applications visible under the employer account — was
+investigated and could not be corroborated from the database (no
+dual-role accounts exist, the account has no linked candidate profile);
+left open pending more detail from the user rather than guessed at —
+see `CLAUDE.md`.
 Per the spec, steps 1-7 being done means there's a working two-sided
 marketplace, loop closed, end to end. Next: step 9 — SEO check,
 compliance, and polish — plus the rest of the real-usage QA backlog (see
