@@ -161,7 +161,13 @@ login just doesn't load") turned out to be two things: real latency
 (`/api/auth/landing` did an unnecessary blocking third Supabase round
 trip for non-critical bookkeeping, now backgrounded via `after()`) and,
 the bigger factor, zero loading feedback on the login/register buttons
-during the wait — both fixed, see `CLAUDE.md`.
+during the wait — both fixed, see `CLAUDE.md`. A follow-up report on
+the same flow ("shows loading, then doesn't move") turned out not to be
+the dual-role account the reporter suspected (checked and ruled out) but
+a second layer of the same bug: the loading state was reset as soon as
+the request resolved, before the separate, untracked `router.push()`
+navigation had actually finished — now the loading UI stays visible
+honestly through the whole handoff; see `CLAUDE.md`.
 Per the spec, steps 1-7 being done means there's a working two-sided
 marketplace, loop closed, end to end. Next: step 9 — SEO check,
 compliance, and polish — plus the rest of the real-usage QA backlog (see

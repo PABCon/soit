@@ -714,6 +714,53 @@ against `https://soit.vercel.app` production after the fix, twice: ~2.5s
 and ~3.0s (down from ~3-4s pre-fix), loading text visible immediately
 both times — fixture cleaned up there too.
 
+**A follow-up report on the same flow — "shows loading but then doesn't
+move," and afterward appears logged in on the candidate page instead of
+the employer console.** The reporter's own guess was that this was
+caused by their email (`adregaconsulting@gmail.com`) being shared
+between a candidate and an employer account — investigated and
+disproven: a direct read of that account's real data (admin API,
+read-only, no writes — that account's real "Test Company" was never
+touched) showed no `candidates` row exists for it at all; it's a normal,
+single-role, verified employer account. A fresh *generic* dual-role
+account (seeded with both a `candidates` row and an `employer_users`
+row on one `auth_user_id`) also logged in correctly in ~2-3s on both
+localhost and production, ruling dual-role out as the mechanism
+entirely.
+
+The actual bug was a second layer underneath the latency/feedback fix
+above: `handleSubmit`/`handleAttachConfirm` in `AuthForm.tsx` (and
+`InviteAcceptForm.tsx`'s `handleSubmit`) reset `pending` to `false` in a
+`try/finally` tied only to the preceding `fetch()` promise — but the
+actual page transition triggered by `router.push()` (from `@/i18n/
+navigation`) is a separate, *untracked* async process: an RSC fetch plus
+a client-side render swap that component state has no visibility into.
+Re-examining the prior fix's own test logs showed the submit button
+reliably flipped back from "A entrar…" to "Entrar" about a second
+*before* `window.location.pathname` actually changed — on a slower
+connection or a colder server response, that gap can stretch much
+further, leaving the button looking idle/done while nothing has
+actually happened yet, which reads exactly as "stuck." The second
+symptom (logged in on the candidate page after navigating away
+manually) is explained by the same root cause, not a separate bug:
+`signInWithPassword` itself had already succeeded and established a
+real session — only the employer-specific redirect afterward was
+failing to visibly complete — so manually visiting the site correctly
+showed them signed in.
+
+Fix: every early-return path that does *not* navigate away (validation
+errors, auth errors, the `attachOffer`/`checkEmail` in-page state
+switches) now resets `pending` explicitly; every path that calls
+`router.push()` deliberately leaves `pending` as `true`, so the loading
+UI stays visible continuously through the whole navigation handoff
+instead of flickering back to idle first. Verified with a timing-logged
+Playwright script (polls `window.location.pathname` and the button's
+text every ~0.3s) against a fresh employer account: locally, the button
+showed "A entrar…" continuously from submit through the real navigation
+landing on `/recruit`, with zero window where it looked idle before the
+page had changed. Same script, same result, re-verified against
+`https://soit.vercel.app` production — fixture cleaned up both times.
+
 Next: the rest of the real-usage QA backlog — bigger initiatives
 (pricing/billing tied to AI-feature upgrade plans, and employer
 analytics, both explicitly deferred to post-MVP) — plus step 9 (SEO
