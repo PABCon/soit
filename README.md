@@ -177,11 +177,20 @@ company page in a new tab, but that tab carried the full candidate nav
 the main site from a one-off preview; it now opens a noindex `/preview`
 twin with no site nav at all, sharing content with the public page via
 a new `CompanyProfileBody` component. A second claim in the same
-report — 2 applications visible under the employer account — was
-investigated and could not be corroborated from the database (no
-dual-role accounts exist, the account has no linked candidate profile);
-left open pending more detail from the user rather than guessed at —
-see `CLAUDE.md`.
+report — 2 applications visible under the employer account — couldn't
+be corroborated at first and was left open; a follow-up screenshot
+proved it real and worse than suspected: `applications` has two
+permissive RLS policies (candidates see their own; employers see
+applicants to their own jobs), and `getMyApplications()` ran a fully
+unfiltered query relying on RLS alone — an employer session got the
+union of both, showing their own job's real applicants mislabeled as
+"my applications." Fixed with an explicit `candidate_id` filter instead
+of trusting RLS to pick the narrower policy on its own. Per explicit
+follow-up instruction ("logged in as a company should never reach the
+main jobs page"), the candidate route group's layout now redirects any
+employer-only session straight to `/recruit`, covering every entry
+point at once — see `CLAUDE.md` for the full writeup, including a
+red-herring dev-cache 500 that looked alarming but wasn't real.
 Per the spec, steps 1-7 being done means there's a working two-sided
 marketplace, loop closed, end to end. Next: step 9 — SEO check,
 compliance, and polish — plus the rest of the real-usage QA backlog (see

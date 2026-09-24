@@ -820,13 +820,85 @@ checked the canonical `/companies/[slug]` page separately: full nav and
 "Publicar vaga" still present, no preview badge — unaffected. Fixtures
 cleaned up both times.
 
-Next: the unresolved "2 applications" report above (pending a
-screenshot/exact URL from the user — no server-side data supports it as
-literally described, so don't act on it further without more signal),
-whether "Voltar ao site" should be scoped down or removed for an
-employer-only session, and the rest of the real-usage QA backlog —
-bigger initiatives (pricing/billing tied to AI-feature upgrade plans,
-and employer analytics, both explicitly deferred to post-MVP) — plus
-step 9 (SEO check + compliance + polish: Search Console, privacy
-policy, consent, the §6.6 retention purge job, error monitoring), with
-map/visual design polish deliberately last, per your own instruction.
+**The "2 applications" report turned out to be real** — the user came
+back with a screenshot: `soit.vercel.app/pt/applications`, logged in as
+the employer (`adregaconsulting@gmail.com` visible top-right), "As
+minhas candidaturas" listing 2 real applications to their own "AI
+Engineer" job at "Test Company." Root cause: `applications` has two
+permissive RLS SELECT policies (`supabase/migrations/20260921120100_
+rls.sql`) — "candidates see their own applications" and "employers see
+applications to their company's jobs" (the latter exists for
+`getApplicantsForJob`, the console's real Applicants view). Postgres
+combines permissive policies with OR. `getMyApplications()` in
+`src/lib/db/applications.ts` ran a fully **unfiltered** `.select()` and
+relied entirely on RLS to scope it — so an employer session got the
+union of both policies: every real applicant to their own jobs,
+rendered under "my applications." Not a self-referential mix-up; real
+other people's application data, just under the wrong label. This is
+exactly why the earlier read-only DB check (candidate row is null,
+zero applications tied to `auth_user_id`) came back clean — that check
+was correct, but it tested the wrong mechanism; the actual leak route
+was RLS's second, employer-facing policy, invisible to a query that
+filters by `auth_user_id` directly instead of reproducing what the app
+itself does. Confirmed by direct reproduction: signed in as a fresh
+test employer with a real job and a different real applicant, the old
+unfiltered query returned that applicant's row; explicitly scoping by
+`my_candidate_id()` (an existing, already-granted RPC) returns nothing,
+correctly, since that employer has no candidate profile. Audited every
+other `applications` query in the same file for the same defect —
+`getApplicantsForJob` (filters by `job_id`) and
+`updateApplicationStatus` (filters by `id`, `UPDATE (status)` grant
+only) were never affected; `getMyApplications()` was the only unscoped
+one. Fixed by adding the explicit `.eq("candidate_id", candidateId)`
+filter (short-circuiting to `[]` when the RPC returns null) rather than
+trusting an unfiltered `select()` to land on the one RLS policy the
+caller has in mind — the lesson worth keeping: an unfiltered query
+under RLS is only as scoped as the *narrowest* applicable policy, and
+Postgres doesn't guarantee that's the one you're thinking of once a
+second, broader policy exists for a legitimate different feature.
+
+Same message also settled the open design question from the previous
+pass with an explicit instruction: **"when you are logged as a company
+you should never be able to go to the main page of jobs."** Implemented
+as a real guard, not just removing a button: `(candidate)/layout.tsx`
+now checks, for any authenticated user, whether they have an
+`employer_users` row but no `candidates` row, and redirects straight to
+`/recruit` before any of the shell renders — covers every entry point
+(direct URLs, bookmarks, the old "Voltar ao site" link) in one place. A
+genuine dual-role account (§6.4a — has both) is unaffected, since the
+whole point of that feature was letting one login hold both surfaces
+legitimately. The check deliberately fails open on any error (try/
+catch around the two lookups, `redirect()` kept outside the try so its
+internal throw is never swallowed) — this layout wraps the entire
+public, SEO-critical job site, so a broken session cookie must never
+turn into a 500 for an anonymous visitor; worst case is just skipping
+the redirect. The now-dead "Voltar ao site" link is removed from the
+console `Sidebar`, and its unused `backToSite` i18n key dropped from
+both catalogues.
+
+A live dev-server hiccup during this pass is worth recording since it
+looked alarming in the moment: after several `kill -9` + restart cycles
+on the local dev server, `/pt/jobs` and `/pt/recruit/*` all started
+500ing instantly (sub-millisecond "application-code" time in the logs)
+with `SyntaxError: Unexpected non-whitespace character after JSON` —
+reproduced even with zero cookies, ruling out a corrupted session
+cookie. Turned out to be a corrupted Turbopack dev cache, not a code
+bug — `rm -rf .next` and a clean restart fixed it immediately, and it
+never appeared on Vercel's own from-scratch production builds.
+
+Verified live: signing in as a fresh test employer and navigating
+directly to `/applications`, `/jobs`, and `/companies` all immediately
+redirect to `/recruit` — confirmed on both localhost and
+`https://soit.vercel.app`. Separately, a raw `signInWithPassword` +
+direct query against that same employer session (bypassing the UI
+guard entirely, to test the query fix in isolation) reproduced the old
+leak and confirmed the new one returns nothing — same result on both
+environments. All fixtures (company, job, real applicant, employer
+account) cleaned up on both.
+
+Next: the rest of the real-usage QA backlog — bigger initiatives
+(pricing/billing tied to AI-feature upgrade plans, and employer
+analytics, both explicitly deferred to post-MVP) — plus step 9 (SEO
+check + compliance + polish: Search Console, privacy policy, consent,
+the §6.6 retention purge job, error monitoring), with map/visual design
+polish deliberately last, per your own instruction.
