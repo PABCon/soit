@@ -1116,3 +1116,73 @@ visually compared against the reference, nav + active-highlight
 tracking confirmed by actually clicking through routes, collapsed
 persistence across a reload confirmed, zero console errors on
 production.
+
+**Phase 4 shipped**: the biggest piece of this QA round — merges the
+old separate `/jobs` (list + ephemeral client-state chip filters) and
+`/map` (unfiltered list+map, no filters at all) into one split-view
+landing page. `/map` now permanently redirects to `/jobs` rather than
+404ing — real bookmarks/indexed links may still point there. New
+`JobsExplorer.tsx` replaces `JobFeed.tsx` on the main landing page only
+— the `/jobs/in/[location]/[facet]` browse pages still use the
+original `JobFeed`, untouched, since they already have their own
+URL-encoded facet via the route itself and weren't part of this ask.
+
+The real architectural change: filter state moved from local
+`useState` to the URL — this is what actually fixes item 12 ("map
+disappears when filtering"), since list and map now read from the
+exact same filtered array in one parent component instead of being two
+separate pages with two separate unfiltered fetches. Item 4's filter
+row is curated-only (`getFeaturedTechCounts()`'s 20 tags +
+`getJobCategories()`'s 14 categories, never the full ~159-tag
+vocabulary companies actually pick from), with a "More filters" toggle
+panel for the rest — work model (minus remote, which deliberately gets
+its own quick toggle per item 5 so there's exactly one control for
+that dimension, not two that could disagree), seniority, ad language,
+salary floor. Item 6 is a result-count line directly above the list.
+
+**A real, genuinely serious bug was caught and fixed during this
+phase's own production verification, before it ever reached the
+user — the second time this exact kind of thing happened in this same
+QA round** (the footer-prefetch login bug in phase 2 was the first):
+every single filter chip click was firing a real ~650ms
+`GET /jobs?tech=...&_rsc=...` network round trip on production, network-
+captured directly to confirm it, never visible locally (same round
+trip is near-instant to a same-machine dev server). Root cause:
+`next/navigation`'s `useSearchParams()` + `router.replace()` looks like
+a same-page, client-only URL update, but on a page with no static
+generation (this one fetches fresh every request), Next's client
+router treats *any* searchParams-only navigation as needing a real RSC
+round trip — regardless of whether the page's own data-fetching
+actually reads those params, which here it doesn't at all (`JobsExplorer`
+already has the full job list as a prop and filters it entirely
+client-side in a `useMemo`). That round trip was pure waste on every
+click, undermining the exact design principle ("purely a client-side
+interactive refinement," already documented in the original `JobFeed`'s
+own comment) this component was built to preserve.
+
+Fixed by bypassing `next/navigation`'s router entirely for this one
+interaction: a `useSyncExternalStore`-based reader (a cached
+`URLSearchParams` parsed from `window.location.search` — same pattern
+`Rail.tsx`'s collapse state already uses) plus a writer that calls
+`history.replaceState()` directly and dispatches a custom event for
+same-tab reactivity, since `replaceState` never fires `popstate` in the
+tab that called it. Filtering is now truly instant (confirmed:
+list updates within ~50-100ms, zero network requests fired, on both
+localhost and production) while the URL still updates for shareable/
+bookmarkable filtered views. A second, smaller bug turned up in the
+same re-verification pass: `getServerSnapshot()` returned a fresh `new
+URLSearchParams()` on every call — exactly the anti-pattern React's own
+`useSyncExternalStore` warns about — fixed with one shared empty-params
+instance.
+
+Verified live on both localhost and `https://soit.vercel.app` with a
+fresh fixture (a remote React/senior job and an office Python/junior
+job in Lisboa, published at different times): both visible initially
+with the map rendered; the React quick-filter chip narrows to just
+that job while the map keeps rendering (the item-12 regression test)
+and the URL picks up `?tech=React`; reloading that exact filtered URL
+reproduces the same filtered view; the category chip and remote-only
+toggle each narrow correctly; sorting by salary orders the higher-paid
+job first; the count line reads correctly; the more-filters panel
+opens; the map hide toggle removes it; no horizontal overflow at
+400px viewport width. Fixtures cleaned up on both environments.

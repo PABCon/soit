@@ -87,6 +87,7 @@ src/
   app/[locale]/(legal)/  Minimal shell for /privacy, /terms — placeholder content, real copy is separate backlog
   lib/db/favorites.ts  toggleFavorite/getMyFavoriteJobIds/getMyFavoriteJobs — mirrors applications.ts's shape
   app/[locale]/(candidate)/favorites/  Saved jobs — same shell as applications, full JobRow card
+  components/JobsExplorer.tsx  Merged /jobs split list+map view — curated filters, sort, URL-synced (not next/navigation's router — see CLAUDE.md)
 ```
 
 ## Conventions
@@ -224,8 +225,24 @@ later — a heart toggle on every job card (new `favorites` table, RLS
 scoped the same way as everything candidate-owned) and a new
 `/favorites` page. A saved job stays visible there even after it's no
 longer live, mirroring how `/applications` already keeps a candidate's
-own application history around past a job's expiry. Per the spec,
-steps 1-7 being done means there's a working two-sided marketplace,
-loop closed, end to end. Next: the remaining 2 phases of that QA round
-(the map/list landing redesign, search) — plus step 9 (SEO check,
-compliance, polish) and the rest of the backlog (see `CLAUDE.md`).
+own application history around past a job's expiry. An out-of-order
+design ask followed: the left rail restyled to match a reference
+(justjoin.it-style) collapse pattern — collapsing removes it from
+layout entirely, replaced by a small floating vertical tab, rather than
+shrinking to a thin strip, with a soft highlight behind the current
+section. **Phase 4 shipped**: the big one — `/jobs` and `/map` merge
+into one split list+map view, filter state moves from local component
+state to the URL (the fix for "map disappears when filtering" — both
+panes now read the same filtered set), a curated one-row tech/category
+filter with a "more filters" panel for the rest, sort + a remote-only
+toggle, and a result count above the list. A second real
+production-only bug was caught and fixed during this phase's own
+verification — every filter click was firing a real ~650ms server
+round trip that should've been instant client-side filtering; fixed by
+reading/writing the URL directly via the History API instead of
+`next/navigation`'s router, confirmed instant (zero network requests)
+on both localhost and production afterward. Per the spec, steps 1-7
+being done means there's a working two-sided marketplace, loop closed,
+end to end. Next: phase 5 (search + saved search) — plus step 9 (SEO
+check, compliance, polish) and the rest of the backlog (see
+`CLAUDE.md`).
