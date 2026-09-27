@@ -1095,3 +1095,24 @@ analytics, both explicitly deferred to post-MVP) and step 9 (SEO check
 + compliance + polish: Search Console, real privacy/terms content,
 consent, the §6.6 retention purge job, error monitoring), with
 map/visual design polish deliberately last, per your own instruction.
+
+**A design ask arrived mid-batch, out of numbered-item order**: two
+reference screenshots of a collapsible rail pattern (justjoin.it-
+style) — collapsing removes the rail from layout entirely, replaced by
+a small floating vertical tab fixed to the left edge with rotated
+text, rather than shrinking to a thin icon strip; the current section
+gets a soft blurred highlight behind its icon. `Rail.tsx` restyled to
+match: toggle moved to the top with a rounded-panel "collapse sidebar"
+glyph, `usePathname()`-driven active state with a `bg-pine/10` blurred
+highlight (the app's own accent color, not the reference's purple),
+collapsed state is a `fixed`-positioned tab reusing phase 1's existing
+`rail.expand`/`rail.collapse` i18n keys — no new ones needed. Kept the
+real feature set (Offers/Map/Applications/Companies/Favorites/Profile/
+Settings) rather than copying every icon shown in the reference —
+several (notifications, chat, trending) don't correspond to anything
+this app actually has yet. Verified live on both localhost and
+`https://soit.vercel.app` — expanded/collapsed states screenshotted and
+visually compared against the reference, nav + active-highlight
+tracking confirmed by actually clicking through routes, collapsed
+persistence across a reload confirmed, zero console errors on
+production.
