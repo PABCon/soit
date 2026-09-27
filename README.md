@@ -88,6 +88,9 @@ src/
   lib/db/favorites.ts  toggleFavorite/getMyFavoriteJobIds/getMyFavoriteJobs — mirrors applications.ts's shape
   app/[locale]/(candidate)/favorites/  Saved jobs — same shell as applications, full JobRow card
   components/JobsExplorer.tsx  Merged /jobs split list+map view — curated filters, sort, URL-synced (not next/navigation's router — see CLAUDE.md)
+  hooks/useUrlSearchParams.ts  Shared instant URL read/write (History API), used by JobsExplorer and the nav SearchBar
+  components/nav/SearchBar.tsx  Real search (title keyword + near/radiusKm) — centered in TopNav
+  lib/db/saved-searches.ts, app/[locale]/(candidate)/saved-searches/  Save/list/delete a search — no email delivery yet
 ```
 
 ## Conventions
@@ -241,8 +244,23 @@ verification — every filter click was firing a real ~650ms server
 round trip that should've been instant client-side filtering; fixed by
 reading/writing the URL directly via the History API instead of
 `next/navigation`'s router, confirmed instant (zero network requests)
-on both localhost and production afterward. Per the spec, steps 1-7
-being done means there's a working two-sided marketplace, loop closed,
-end to end. Next: phase 5 (search + saved search) — plus step 9 (SEO
-check, compliance, polish) and the rest of the backlog (see
-`CLAUDE.md`).
+on both localhost and production afterward. **Phase 5 shipped — the
+last phase of this QA round**: a real search bar (title keyword + "near
+a curated city within N km," no geocoding provider needed — every
+curated location already has fixed coordinates and every job's own
+lat/lng is already fetched, so it's just another client-side filter),
+centered in the nav, plus save-this-search (list/delete only, no email
+delivery yet — no real sender or scheduled-job infra exists in this
+project). Two more real production-only bugs were caught and fixed
+during this phase's own verification, the second and third of this same
+kind this round (after phase 2's footer-prefetch login hang and phase
+4's filter round trip): the exact same round-trip class of bug in the
+save-search error path, and a genuine Leaflet crash from recreating the
+whole map instance on every filter change — fixed by creating the map
+once and only redrawing its markers on change; both confirmed against
+production afterward. This closes all 14 items from the original
+real-usage QA round, plus a mid-batch rail restyle. Per the spec,
+steps 1-7 being done means there's a working two-sided marketplace,
+loop closed, end to end. Next: the rest of the backlog — email/cron
+infra for real saved-search notifications, and step 9 (SEO check,
+compliance, polish) (see `CLAUDE.md`).

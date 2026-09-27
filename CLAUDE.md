@@ -1186,3 +1186,98 @@ toggle each narrow correctly; sorting by salary orders the higher-paid
 job first; the count line reads correctly; the more-filters panel
 opens; the map hide toggle removes it; no horizontal overflow at
 400px viewport width. Fixtures cleaned up on both environments.
+
+**Phase 5 shipped**: item 8, the last phase of this QA round —
+TopNav's decorative, non-functional search `<input>` is now real:
+title keyword (`q`) + "near a curated city within N km" (`near`/
+`radiusKm`), centered in the nav. No geocoding provider needed for the
+radius search: every curated location (`getLocations()`, now also
+carrying `latitude`/`longitude`) already has fixed coordinates, and
+every job's own lat/lng is already fetched, so it's just another pure
+client-side Haversine filter in `JobsExplorer` — the same pattern as
+its existing `monthlyFloor()`-based salary filter, no new Postgres RPC.
+Submitting from any other page does a real navigation to `/jobs`
+(correctly — a genuinely new page); submitting while already on `/jobs`
+merges the search into the URL in place via the same instant,
+no-round-trip mechanism phase 4's filters use, preserving whatever chip
+filters are already active there rather than silently resetting them.
+That mechanism (`useUrlSearchParams`/`writeUrlSearchParams`/
+`parseListParam`) moved out of `JobsExplorer.tsx` into a shared
+`src/hooks/useUrlSearchParams.ts`, since `SearchBar` — a different
+component tree, mounted in `TopNav` — needs the exact same read/write
+path for the list/map to actually react to a search submitted from
+there.
+
+New `saved_searches` table (`candidate_id`, `label`, `query` jsonb,
+unique on the pair) — same RLS shape as favorites, via
+`my_candidate_id()`. Per your own call last phase, no email/
+notification delivery is wired up (still no real sender or
+scheduled-job infra in this project) — this ships save/list/delete
+only, and the UI never claims otherwise. The "save" icon sits next to
+the search bar and is visible to anyone, logged in or not — an
+anonymous click here is a real, expected path, not an exceptional one,
+so `saveSearch()` returns a typed result instead of throwing for that
+specific case (unlike favorites' toggle, only ever reachable by a
+session already confirmed to be a candidate) — it doesn't surface as
+server-log noise for ordinary use, caught and fixed during this
+phase's own verification. New `/saved-searches` page, reachable from
+`LoginMenu`'s dropdown.
+
+**A second and third real bug were caught and fixed during this
+phase's own production verification — the second and third time in
+this same QA round a bug surfaced only against production, never
+locally** (after phase 2's footer-prefetch login hang and phase 4's
+filter-click round trip): first, the exact same "server round trip
+where an instant client update was expected" class of bug phase 4 had
+already fixed once, this time in `saveSearchAction`'s error path —
+fixed by returning `{ ok: false, reason }` instead of throwing, as
+above. Second, a genuinely new one: a `"Cannot read properties of
+undefined (reading '_leaflet_pos')"` crash from `JobMap.tsx`, traced to
+a pre-existing pattern from phase 4's merge (never exercised enough to
+surface until phase 5's search added more paths that change the
+filtered job list) — its one effect depended on `[jobs]` and tore down
++ recreated the *entire* Leaflet `Map` instance on every filter/search
+change, which raced with Leaflet's own internal async/animation-frame
+bits under real network latency between page transitions. Reproduced
+the identical interaction sequence locally first to confirm it
+genuinely didn't happen there (it didn't — zero errors both times),
+ruling out a logic bug before concluding it was timing-specific to
+production. Fixed by splitting into two effects: a mount effect that
+creates the map and an empty marker layer group exactly once, torn
+down only on real unmount; and a markers effect that clears/redraws
+that layer group on `jobs` changes without touching the map instance
+itself. Rewriting this surfaced a third, smaller issue: `routerRef`/
+`labelRef` were already being mutated directly in the render body — a
+real latent "Cannot access refs during render" violation in the
+pre-existing code that had simply never been linted before, since
+`JobMap.tsx` had never been touched (and therefore never `eslint`'d) in
+any earlier phase of this batch. Fixed by moving each into its own
+`useEffect`.
+
+Verified live on both localhost and `https://soit.vercel.app`: keyword
+search from a non-`/jobs` page does a real navigation to `/jobs?q=...`;
+searching near Lisboa within 10km correctly shows a Lisboa job and
+hides a Porto one; saving while logged out shows the login-prompt
+message with zero server errors; logging in and saving succeeds, shows
+up on `/saved-searches`, re-runs correctly, and deletes cleanly; the
+same-page search submit is instant with zero network requests, matching
+phase 4. For the Leaflet fix specifically: marker count changes
+correctly through a full filter cycle (6 → 2 → 6, confirmed by
+counting `.leaflet-marker-icon` elements) with zero page errors on
+localhost, and the exact production-crashing interaction sequence
+re-run against `https://soit.vercel.app` came back completely clean —
+confirming the race is gone, not just harder to hit. Fixtures cleaned
+up on both environments after every run.
+
+This closes all 14 items from the original real-usage QA round, plus
+the mid-batch rail restyle. Per the spec, steps 1-7 being done means
+there's a working two-sided marketplace, loop closed, end to end. Next:
+the rest of the real-usage QA backlog — bigger initiatives (pricing/
+billing tied to AI-feature upgrade plans, and employer analytics, both
+explicitly deferred to post-MVP), connecting a real email sender +
+scheduled-job infra so saved-search notifications can actually be sent,
+and step 9 (SEO check + compliance + polish: Search Console, real
+privacy/terms content, consent, the §6.6 retention purge job, error
+monitoring, and the map tile provider's licensing gap, explicitly
+deferred earlier in this same round), with map/visual design polish
+deliberately last, per your own instruction.
