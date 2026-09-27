@@ -23,7 +23,7 @@ function forEachLocale(path: string): MetadataRoute.Sitemap {
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const [jobs, companies] = await Promise.all([getLiveJobs(), getVerifiedCompanies()]);
 
-  const staticPages = ["", "/jobs", "/companies", "/map"].flatMap(forEachLocale);
+  const staticPages = ["", "/jobs", "/companies"].flatMap(forEachLocale);
   const jobPages = jobs.flatMap((j) => forEachLocale(`/jobs/${j.slug}`));
   const companyPages = companies.flatMap((c) => forEachLocale(`/companies/${c.slug}`));
 

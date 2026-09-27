@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { getTranslations, setRequestLocale } from "next-intl/server";
-import { JobFeed } from "@/components/JobFeed";
+import { JobsExplorer } from "@/components/JobsExplorer";
 import { Link } from "@/i18n/navigation";
 import { getLiveJobs } from "@/lib/db/jobs";
 import { getFeaturedTechCounts } from "@/lib/db/tech-tags";
+import { getJobCategories } from "@/lib/db/job-categories";
 import { getMyFavoriteJobIds } from "@/lib/db/favorites";
 
 type Props = { params: Promise<{ locale: string }> };
@@ -21,15 +23,19 @@ export default async function JobsPage({ params }: Props) {
   const tf = await getTranslations({ locale, namespace: "feed" });
   const tjf = await getTranslations({ locale, namespace: "jobForm" });
   const brand = await getTranslations({ locale, namespace: "brand" });
-  const [jobs, featuredTech, favoriteJobIds] = await Promise.all([
+  const [jobs, featuredTech, categories, favoriteJobIds] = await Promise.all([
     getLiveJobs(),
     getFeaturedTechCounts(),
+    getJobCategories(),
     getMyFavoriteJobIds(),
   ]);
 
   // Only locations/categories/languages/technologies that currently have a
   // live job get a link — never advertise an empty browse page (§ SEO note
-  // in sitemap.ts).
+  // in sitemap.ts). This "Browse by" section is separate from — and stays
+  // alongside — JobsExplorer's own curated quick-filter row: these are
+  // real server-rendered links to dedicated, crawlable /jobs/in/... pages
+  // (SEO), not a client-side refinement of the page you're already on.
   const locationCounts = new Map<string, { name: string; count: number }>();
   const categoryCounts = new Map<string, number>();
   for (const job of jobs) {
@@ -48,21 +54,20 @@ export default async function JobsPage({ params }: Props) {
 
   return (
     <>
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold">{t("title")}</h1>
-          <p className="mt-1 text-sm text-muted">{brand("tagline")}</p>
-        </div>
-        <Link
-          href="/map"
-          className="flex h-9 items-center gap-2 rounded-lg border border-line bg-white px-3 text-sm font-medium text-ink hover:border-muted"
-        >
-          {tf("viewMap")}
-        </Link>
+      <div>
+        <h1 className="text-2xl font-bold">{t("title")}</h1>
+        <p className="mt-1 text-sm text-muted">{brand("tagline")}</p>
       </div>
 
       <div className="mt-6">
-        <JobFeed jobs={jobs} favoriteJobIds={favoriteJobIds} />
+        <Suspense>
+          <JobsExplorer
+            jobs={jobs}
+            featuredTech={featuredTech}
+            categories={categories}
+            favoriteJobIds={favoriteJobIds}
+          />
+        </Suspense>
       </div>
 
       {(topLocations.length > 0 || topCategories.length > 0 || featuredTech.length > 0) && (

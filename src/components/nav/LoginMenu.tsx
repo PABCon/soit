@@ -94,9 +94,6 @@ export function LoginMenu() {
           <Link href="/jobs" className={item}>
             {rail("offers")}
           </Link>
-          <Link href="/map" className={item}>
-            {rail("map")}
-          </Link>
           <Link href="/applications" className={item}>
             {rail("applications")}
           </Link>
