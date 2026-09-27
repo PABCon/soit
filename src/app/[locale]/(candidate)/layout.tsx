@@ -3,6 +3,7 @@ import { redirect } from "@/i18n/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { Rail } from "@/components/candidate/Rail";
 import { TopNav } from "@/components/candidate/TopNav";
+import { Footer } from "@/components/Footer";
 
 /**
  * Candidate surface shell (§2.1, §7.1): the public, SEO-critical job site.
@@ -55,6 +56,7 @@ export default async function CandidateLayout({
         <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-8">
           {children}
         </main>
+        <Footer />
       </div>
     </div>
   );

@@ -1,7 +1,8 @@
 {
   "brand": {
     "name": "SóIT",
-    "tagline": "Só vagas de IT. Sempre com salário."
+    "tagline": "Só vagas de IT. Sempre com salário.",
+    "navTagline": "Nº 1 portal de vagas de IT em Portugal"
   },
   "nav": {
     "login": "Entrar",
@@ -25,7 +26,9 @@
     "profile": "Perfil",
     "cv": "CV",
     "settings": "Definições",
-    "soon": "Em breve"
+    "soon": "Em breve",
+    "collapse": "Reduzir menu",
+    "expand": "Expandir menu"
   },
   "console": {
     "title": "Gerir recrutamento",
@@ -402,5 +405,20 @@
     "body": "Reparámos que tem estado a ver várias vagas — crie uma conta gratuita para acompanhar as suas candidaturas e continuar onde ficou.",
     "createAccount": "Criar a minha conta",
     "maybeLater": "Talvez mais tarde"
+  },
+  "footer": {
+    "pagesNav": "Páginas",
+    "legalNav": "Legal",
+    "jobs": "Vagas",
+    "companies": "Empresas",
+    "postJob": "Publicar vaga",
+    "privacy": "Política de privacidade",
+    "terms": "Termos de utilização",
+    "copyright": "© {year} SóIT"
+  },
+  "legal": {
+    "privacyTitle": "Política de privacidade",
+    "termsTitle": "Termos de utilização",
+    "placeholderBody": "Esta página está em preparação. O conteúdo final será publicado brevemente."
   }
 }

@@ -6,7 +6,7 @@ import { Footer } from "@/components/Footer";
 
 type Props = { children: React.ReactNode; params: Promise<{ locale: string }> };
 
-function AuthHeader() {
+function LegalHeader() {
   const brand = useTranslations("brand");
   return (
     <header className="flex h-14 items-center gap-4 border-b border-line px-4">
@@ -20,15 +20,18 @@ function AuthHeader() {
   );
 }
 
-/** Auth entry points (§9.2) get a minimal shell — no Rail, no Sidebar. */
-export default async function AuthLayout({ children, params }: Props) {
+/** Legal pages (privacy/terms) are universally accessible — unlike
+ *  (candidate), this layout must never gate on role, since an employer
+ *  session needs to be able to read these too. Minimal shell, same pattern
+ *  as (auth)'s AuthHeader. */
+export default async function LegalLayout({ children, params }: Props) {
   const { locale } = await params;
   setRequestLocale(locale);
 
   return (
     <div className="flex min-h-dvh flex-col">
-      <AuthHeader />
-      <main className="mx-auto w-full max-w-sm flex-1 px-4 py-10">{children}</main>
+      <LegalHeader />
+      <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-10">{children}</main>
       <Footer />
     </div>
   );

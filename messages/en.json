@@ -1,7 +1,8 @@
 {
   "brand": {
     "name": "SóIT",
-    "tagline": "Only IT jobs. Always with a salary."
+    "tagline": "Only IT jobs. Always with a salary.",
+    "navTagline": "#1 IT Job Board in Portugal"
   },
   "nav": {
     "login": "Log in",
@@ -25,7 +26,9 @@
     "profile": "Profile",
     "cv": "CV",
     "settings": "Settings",
-    "soon": "Coming soon"
+    "soon": "Coming soon",
+    "collapse": "Collapse menu",
+    "expand": "Expand menu"
   },
   "console": {
     "title": "Manage recruitments",
@@ -402,5 +405,20 @@
     "body": "We see you've been checking out a few jobs — create a free account to track your applications and pick up where you left off.",
     "createAccount": "Create my account",
     "maybeLater": "Maybe later"
+  },
+  "footer": {
+    "pagesNav": "Pages",
+    "legalNav": "Legal",
+    "jobs": "Jobs",
+    "companies": "Companies",
+    "postJob": "Post a job",
+    "privacy": "Privacy policy",
+    "terms": "Terms of use",
+    "copyright": "© {year} SóIT"
+  },
+  "legal": {
+    "privacyTitle": "Privacy policy",
+    "termsTitle": "Terms of use",
+    "placeholderBody": "This page is being prepared. Final content will be published soon."
   }
 }

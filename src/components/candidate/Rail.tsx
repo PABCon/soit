@@ -1,3 +1,6 @@
+"use client";
+
+import { useSyncExternalStore } from "react";
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 
@@ -29,9 +32,60 @@ const ITEMS: Item[] = [
   { key: "settings", href: "/settings", icon: icon("M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm8-3-2-1 1-2-2-2-2 1-1-2h-4l-1 2-2-1-2 2 1 2-2 1v4l2 1-1 2 2 2 2-1 1 2h4l1-2 2 1 2-2-1-2 2-1Z"), mvp: true },
 ];
 
-/** Persistent left icon rail (§7.1). Later items are drawn but disabled (§13). */
+const COLLAPSE_KEY = "soit:rail-collapsed";
+const COLLAPSE_EVENT = "soit:rail-collapsed-change";
+
+// useSyncExternalStore instead of useState+useEffect: reading localStorage
+// during an effect and then setState-ing it is exactly the "cascading
+// render" pattern react-hooks/set-state-in-effect flags, and it causes a
+// visible flash besides. This renders `false` for SSR/first hydration pass
+// (no mismatch) and picks up the real value immediately after; localStorage
+// writes never fire `storage` in the same tab that made them, hence the
+// custom event alongside it for same-tab reactivity.
+function subscribe(callback: () => void) {
+  window.addEventListener(COLLAPSE_EVENT, callback);
+  window.addEventListener("storage", callback);
+  return () => {
+    window.removeEventListener(COLLAPSE_EVENT, callback);
+    window.removeEventListener("storage", callback);
+  };
+}
+function getSnapshot() {
+  return localStorage.getItem(COLLAPSE_KEY) === "1";
+}
+function getServerSnapshot() {
+  return false;
+}
+
+/** Persistent left icon rail (§7.1). Later items are drawn but disabled
+ *  (§13). Collapsible (real-usage report: shouldn't be permanently fixed) —
+ *  a per-viewer display preference in localStorage, not account data; the
+ *  collapsed state is a thin single-button strip, everything else in the
+ *  layout reflows on its own since this is a plain flex sibling. */
 export function Rail() {
   const t = useTranslations("rail");
+  const collapsed = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
+
+  function toggle() {
+    localStorage.setItem(COLLAPSE_KEY, collapsed ? "0" : "1");
+    window.dispatchEvent(new Event(COLLAPSE_EVENT));
+  }
+
+  if (collapsed) {
+    return (
+      <nav className="sticky top-0 hidden h-dvh w-12 shrink-0 flex-col items-center border-r border-line bg-white/50 py-4 sm:flex">
+        <button
+          type="button"
+          onClick={toggle}
+          title={t("expand")}
+          className="flex h-11 w-11 items-center justify-center rounded-lg text-muted transition-colors hover:bg-paper hover:text-pine"
+        >
+          {icon("m9 6 6 6-6 6")}
+          <span className="sr-only">{t("expand")}</span>
+        </button>
+      </nav>
+    );
+  }
 
   return (
     <nav
@@ -61,6 +115,15 @@ export function Rail() {
           </span>
         ),
       )}
+      <button
+        type="button"
+        onClick={toggle}
+        title={t("collapse")}
+        className="mt-auto flex h-11 w-11 items-center justify-center rounded-lg text-muted transition-colors hover:bg-paper hover:text-pine"
+      >
+        {icon("m15 6-6 6 6 6")}
+        <span className="sr-only">{t("collapse")}</span>
+      </button>
     </nav>
   );
 }
