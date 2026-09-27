@@ -896,9 +896,98 @@ leak and confirmed the new one returns nothing — same result on both
 environments. All fixtures (company, job, real applicant, employer
 account) cleaned up on both.
 
-Next: the rest of the real-usage QA backlog — bigger initiatives
-(pricing/billing tied to AI-feature upgrade plans, and employer
-analytics, both explicitly deferred to post-MVP) — plus step 9 (SEO
-check + compliance + polish: Search Console, privacy policy, consent,
-the §6.6 retention purge job, error monitoring), with map/visual design
-polish deliberately last, per your own instruction.
+**A third round of real-usage QA came in as 14 notes at once** — nav,
+the whole candidate landing page, search, favorites, job posting. Big
+enough to plan properly: sequenced into 5 phases (nav/chrome quick wins
+→ job deadline+urgency badge → favorites → the map/list landing
+redesign → search+saved search), each independently shippable, per your
+own call to do quick wins first and the big redesign last. Two scoping
+calls made with you up front: saved-search notifications ship as
+save/manage only for now (no real email sender or cron exists yet —
+that's separate follow-up), and the map's tile-provider licensing gap
+(flagged in code as dev-only) stays untouched, out of scope here even
+though the map gets rebuilt in a later phase. Full plan retained at
+`~/.claude/plans/refactored-zooming-wren.md` for the remaining phases.
+
+**Phase 1 (nav/chrome) shipped**: six related fixes.
+1. `LoginMenu`'s signed-in state showed the raw email as plain text —
+   now a circular avatar (the candidate's own photo if set, else
+   initials) opening a real nav menu (Offers/Map/Applications/
+   Companies/Profile/Settings + Log out). `Rail` is `hidden sm:flex` —
+   there's no left-nav at all below that breakpoint — so this dropdown
+   is the *only* nav mobile visitors get, which is why it deliberately
+   mirrors Rail's own destinations rather than just being a logout
+   button. Needed one new client-side query: avatar/name live only on
+   `candidates` (`candidate-profile.ts`), never synced to
+   `user_metadata`, so `LoginMenu` now also reads
+   `full_name`/`avatar_url` on the same `onAuthStateChange` listener it
+   already had.
+2. "Add offer" rendered unconditionally in `TopNav` regardless of auth
+   state — a real bug, a logged-in candidate has no use for it. Folded
+   into `LoginMenu` itself (the one place that already knows auth
+   state) instead of adding a second auth read elsewhere; now only
+   renders in the logged-out branch.
+7. `Rail` was permanently fixed with no way to collapse it. Now a
+   per-viewer `localStorage` preference (not account data — no new
+   column). Built with `useSyncExternalStore` rather than
+   `useState`+`useEffect` — reading `localStorage` then `setState`-ing
+   it inside an effect is exactly the cascading-render pattern
+   `react-hooks/set-state-in-effect` flags (a real lint error this pass
+   hit and fixed before it ever reached a browser); a custom
+   `window` event covers same-tab reactivity since the native `storage`
+   event only fires in *other* tabs, never the one that wrote it.
+11. No footer existed anywhere in the codebase. New `Footer.tsx`: a
+    page-links row + a LinkedIn icon, then a legal-links row + a
+    copyright line. The LinkedIn icon only renders when
+    `NEXT_PUBLIC_LINKEDIN_URL` is actually set in the environment — you
+    confirmed the real URL doesn't exist yet, and guessing/hardcoding
+    one would be genuinely misleading if wrong, so it stays unset
+    (icon simply doesn't render) until you have the real one. New
+    `(legal)` route group with its own minimal shell for `/privacy` and
+    `/terms` — placeholder content only ("this page is being prepared"),
+    since real policy/terms copy is separate, already-tracked backlog
+    (§9's compliance pass) and not something to fabricate here. Footer
+    is wired into `(candidate)` and `(auth)`, deliberately **not**
+    `(preview)` — that layout was stripped of every site-nav link last
+    session specifically so an employer's own-profile preview tab can't
+    lead into the main site; a footer with Jobs/Companies links would
+    silently reopen exactly that gap.
+13. New `brand.navTagline` i18n key under the wordmark in `TopNav`
+    ("#1 IT Job Board in Portugal" / a natural PT phrasing, not a stiff
+    literal translation) — kept distinct from the pre-existing
+    `brand.tagline` ("Só vagas de IT. Sempre com salário."), which is
+    still doing its existing jobs (the page meta description, and the
+    `/jobs` page's own header subtitle) and wasn't touched.
+14. `LanguageSwitcher` showed both PT and EN as always-visible buttons
+    side by side — now a compact current-locale trigger opening a small
+    dropdown, same `<details>/<summary>` disclosure pattern already
+    used by `LoginMenu` (no new dependency).
+
+Verified live with a fresh candidate fixture on both localhost and
+`https://soit.vercel.app`: tagline visible, single language trigger,
+"Add offer" correctly shown to an anonymous visitor and hidden for a
+logged-in candidate (scoped to the header specifically — the footer's
+own persistent "Publicar vaga" link is separate and intentional, and a
+naive test locator matching it first read as a false failure before
+the mistake was caught), avatar shows the candidate's initial with no
+raw email text, the dropdown has Settings/Log out, rail collapse
+persists across a reload, language dropdown lists both locales,
+`/privacy` and `/terms` both load. One test-environment red herring
+worth recording: rail-toggle clicks kept timing out/silently failing
+in Playwright — turned out to be Next.js's own dev-mode indicator
+overlay sitting at the exact bottom-left corner where the collapse
+button renders, swallowing the physical click at the browser's
+hit-testing level even with Playwright's `force: true` (which only
+bypasses Playwright's *own* pre-click checks, not real browser
+hit-testing) — switching to a DOM-level `element.click()` for that one
+interaction fixed it; never an app bug. Fixtures cleaned up on both.
+
+Next: Phase 2 (an employer-configurable job deadline, replacing the
+hardcoded 30-day expiry, plus a "days left" urgency badge on the feed),
+then favorites, then the landing-page redesign, then search — per the
+plan above — followed by the rest of the real-usage QA backlog: bigger
+initiatives (pricing/billing tied to AI-feature upgrade plans, and
+employer analytics, both explicitly deferred to post-MVP) and step 9
+(SEO check + compliance + polish: Search Console, real privacy/terms
+content, consent, the §6.6 retention purge job, error monitoring), with
+map/visual design polish deliberately last, per your own instruction.

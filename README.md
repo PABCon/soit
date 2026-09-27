@@ -83,6 +83,8 @@ src/
   lib/db/tech-tags.ts  getFeaturedTechCounts() — a curated 20-tag subset for Language/Technology browse
   app/[locale]/(preview)/companies/[slug]/preview/  Noindex company-page twin, no site nav — opened from the console
   components/candidate/CompanyProfileBody.tsx  Shared company-page content, reused by the public page and the preview route
+  components/Footer.tsx  Page links + LinkedIn (env-gated) + legal links, in (candidate)/(auth), not (preview)
+  app/[locale]/(legal)/  Minimal shell for /privacy, /terms — placeholder content, real copy is separate backlog
 ```
 
 ## Conventions
@@ -191,7 +193,21 @@ main jobs page"), the candidate route group's layout now redirects any
 employer-only session straight to `/recruit`, covering every entry
 point at once — see `CLAUDE.md` for the full writeup, including a
 red-herring dev-cache 500 that looked alarming but wasn't real.
-Per the spec, steps 1-7 being done means there's a working two-sided
-marketplace, loop closed, end to end. Next: step 9 — SEO check,
-compliance, and polish — plus the rest of the real-usage QA backlog (see
-`CLAUDE.md`).
+A third round of real-usage QA landed as 14 notes at once — nav, the
+whole landing page, search, favorites, job posting — planned into 5
+shippable phases (see `CLAUDE.md`). **Phase 1 (nav/chrome) shipped**:
+`LoginMenu`'s signed-in state is now a real avatar + nav menu instead of
+plain email text (and doubles as the only nav on mobile, since `Rail` is
+hidden below `sm`); "Add offer" no longer shows to a logged-in candidate;
+`Rail` is now collapsible (a real bug caught along the way — the first
+cut read `localStorage` inside a `useEffect` and `setState`-ed it, which
+`react-hooks/set-state-in-effect` correctly flagged before it ever ran;
+fixed with `useSyncExternalStore`); a real footer exists for the first
+time (page links + an env-gated LinkedIn icon + legal links), alongside
+new placeholder `/privacy`/`/terms` pages; a nav tagline sits under the
+wordmark; the language switcher is a compact dropdown instead of both
+locales always visible. Per the spec, steps 1-7 being done means there's
+a working two-sided marketplace, loop closed, end to end. Next: the
+remaining 4 phases of that QA round (job deadlines, favorites, the
+map/list landing redesign, search) — plus step 9 (SEO check, compliance,
+polish) and the rest of the backlog (see `CLAUDE.md`).
