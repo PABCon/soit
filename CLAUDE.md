@@ -1035,11 +1035,63 @@ with its stored `expires_at` confirmed directly against the database
 at ~30 days out; the edit form correctly pre-fills a previously-chosen
 deadline. All fixtures cleaned up on both environments.
 
-Next: Phase 3 (favorites), then the landing-page redesign, then search
-— per the plan above — followed by the rest of the real-usage QA
-backlog: bigger initiatives (pricing/billing tied to AI-feature upgrade
-plans, and employer analytics, both explicitly deferred to post-MVP)
-and step 9 (SEO check + compliance + polish: Search Console, real
-privacy/terms content, consent, the §6.6 retention purge job, error
-monitoring), with map/visual design polish deliberately last, per your
-own instruction.
+**Phase 3 shipped**: candidates can now save a job to review later.
+New `favorites` table (`candidate_id`, `job_id`, unique pair), RLS
+scoped via the existing `my_candidate_id()` helper — insert/delete
+happen directly from the browser client under RLS, no admin client
+needed since a candidate only ever touches their own rows. A second
+migration adds `candidate_favorited_job()`, a `SECURITY DEFINER`
+function mirroring the existing `candidate_applied_to_job()` exactly,
+so a saved job stays visible on `/favorites` even once it's no longer
+live — same reasoning as the applications precedent (§6.7), and
+deliberately the same SECURITY DEFINER shape from the start rather
+than a raw correlated subquery, to stay clear of the exact
+cross-table RLS recursion this codebase already hit and fixed once
+(see the "RLS policies that subquery each other's table can recurse"
+note in `supabase/migrations/README.md`) — even though this specific
+case is one-directional (favorites' own policy never reads from jobs)
+and wouldn't actually recurse.
+
+`src/lib/db/favorites.ts` mirrors `applications.ts`'s own shape
+(`toggleFavorite`/`getMyFavoriteJobIds`/`getMyFavoriteJobs`).
+`jobs.ts`'s previously module-private `SELECT`/`toJob`/`JobRow` are now
+exported so favorites can reuse the exact same job-card query shape
+instead of duplicating it. `Job` gained a real `id` field — it was
+already being selected everywhere via the shared `SELECT`, just never
+actually mapped onto the type (only `JobDetail` had it) — since
+favorites need the job's real id, not just its slug.
+
+`FavoriteButton` (the heart toggle) renders as a sibling of `JobRow`'s
+own `Link`, not nested inside it — an interactive control inside an
+anchor is invalid HTML — with its own `stopPropagation` so clicking it
+doesn't also trigger the row's navigation. `JobRow` only renders it
+when an `isFavorited` prop is explicitly passed in; `getMyFavoriteJobIds()`
+deliberately returns `null` (not an empty array) for a non-candidate
+viewer specifically so callers can tell "a candidate with zero
+favorites" apart from "don't show hearts to this visitor at all" and
+skip the prop entirely for an anonymous visitor, rather than showing a
+heart that would just fail on click. New `/favorites` page (same shell
+as `/applications`) renders the full `JobRow` card rather than a
+lightweight list item, since favorites carry the whole job. Rail's
+`favorites` item (a disabled placeholder since it was first built) and
+`LoginMenu`'s dropdown (which Phase 1 left a forward-reference to) are
+both wired up now.
+
+Verified live on both localhost and `https://soit.vercel.app`: an
+anonymous visitor sees no heart buttons at all; a candidate can
+favorite a job from `/jobs` without the click navigating away, see it
+on `/favorites`, and un-favorite it there; a second candidate's
+`/favorites` stays empty despite the first candidate's favorite — RLS
+isolation exercised end-to-end through two real logged-in sessions
+rather than just checked via a raw SQL role simulation; a favorited job
+stays visible on `/favorites` after being manually expired directly in
+the database, while correctly dropping off the live `/jobs` feed at the
+same time. Fixtures cleaned up on both.
+
+Next: the landing-page redesign, then search — per the plan above —
+followed by the rest of the real-usage QA backlog: bigger initiatives
+(pricing/billing tied to AI-feature upgrade plans, and employer
+analytics, both explicitly deferred to post-MVP) and step 9 (SEO check
++ compliance + polish: Search Console, real privacy/terms content,
+consent, the §6.6 retention purge job, error monitoring), with
+map/visual design polish deliberately last, per your own instruction.

@@ -85,6 +85,8 @@ src/
   components/candidate/CompanyProfileBody.tsx  Shared company-page content, reused by the public page and the preview route
   components/Footer.tsx  Page links + LinkedIn (env-gated) + legal links, in (candidate)/(auth), not (preview)
   app/[locale]/(legal)/  Minimal shell for /privacy, /terms — placeholder content, real copy is separate backlog
+  lib/db/favorites.ts  toggleFavorite/getMyFavoriteJobIds/getMyFavoriteJobs — mirrors applications.ts's shape
+  app/[locale]/(candidate)/favorites/  Saved jobs — same shell as applications, full JobRow card
 ```
 
 ## Conventions
@@ -217,8 +219,13 @@ verification, before the user saw it: the new footer's plain link to
 and the post-login redirect's Router Cache entry, leaving login stuck
 on "A entrar…" forever on production only (never locally) — fixed with
 `prefetch={false}` on every footer link; see `CLAUDE.md` for the full
-trace. Per the spec, steps 1-7 being done means there's a working
-two-sided marketplace, loop closed, end to end. Next: the remaining 3
-phases of that QA round (favorites, the map/list landing redesign,
-search) — plus step 9 (SEO check, compliance, polish) and the rest of
-the backlog (see `CLAUDE.md`).
+trace. **Phase 3 shipped**: candidates can now save a job to review
+later — a heart toggle on every job card (new `favorites` table, RLS
+scoped the same way as everything candidate-owned) and a new
+`/favorites` page. A saved job stays visible there even after it's no
+longer live, mirroring how `/applications` already keeps a candidate's
+own application history around past a job's expiry. Per the spec,
+steps 1-7 being done means there's a working two-sided marketplace,
+loop closed, end to end. Next: the remaining 2 phases of that QA round
+(the map/list landing redesign, search) — plus step 9 (SEO check,
+compliance, polish) and the rest of the backlog (see `CLAUDE.md`).
