@@ -3,6 +3,7 @@ import { Link } from "@/i18n/navigation";
 import { Salary } from "@/components/Salary";
 import { CompanyLogo } from "@/components/CompanyLogo";
 import { TechTags } from "@/components/TechTags";
+import { FavoriteButton } from "@/components/FavoriteButton";
 import type { Job } from "@/lib/types";
 
 /**
@@ -11,13 +12,23 @@ import type { Job } from "@/lib/types";
  * logo, title, company, location, work model, stack, and the salary as the
  * one bold element.
  */
-export function JobRow({ job }: { job: Job }) {
+export function JobRow({ job, isFavorited }: { job: Job; isFavorited?: boolean }) {
   const t = useTranslations("feed");
   const isNew = job.postedDaysAgo <= 2;
   const daysLeft = job.daysLeft;
 
   return (
-    <li className="group @container border-b border-line">
+    <li className="group @container relative border-b border-line">
+      {/* A sibling of the Link, not nested inside it — an interactive
+       *  button inside an anchor is invalid HTML, and isFavorited is only
+       *  ever passed by pages that already know the viewer is a candidate. */}
+      {isFavorited !== undefined && (
+        <FavoriteButton
+          jobId={job.id}
+          initiallyFavorited={isFavorited}
+          className="absolute top-3 right-3 z-10"
+        />
+      )}
       <Link
         href={`/jobs/${job.slug}`}
         className="flex flex-col gap-2 px-3 py-4 transition-colors hover:bg-white @2xl:flex-row @2xl:items-center @2xl:gap-4"

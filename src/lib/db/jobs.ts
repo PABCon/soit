@@ -3,7 +3,7 @@ import { slugify } from "@/lib/slug";
 import type { Job } from "@/lib/types";
 import { getMyEmployerContext } from "./companies";
 
-const SELECT = `
+export const SELECT = `
   id, slug, title, description, language, seniority, work_model, location,
   latitude, longitude, salary_min, salary_max, salary_currency, salary_period,
   salary_months, employment_type, status, published_at, expires_at, created_at,
@@ -14,7 +14,7 @@ const SELECT = `
   locations ( slug )
 `;
 
-type JobRow = {
+export type JobRow = {
   id: string;
   slug: string;
   title: string;
@@ -43,12 +43,13 @@ type JobRow = {
   locations: { slug: string } | null;
 };
 
-function toJob(row: JobRow): Job {
+export function toJob(row: JobRow): Job {
   const posted = row.published_at ?? row.created_at;
   const daysLeft = row.expires_at
     ? Math.max(0, Math.ceil((new Date(row.expires_at).getTime() - Date.now()) / 86_400_000))
     : null;
   return {
+    id: row.id,
     slug: row.slug,
     title: row.title,
     company: {

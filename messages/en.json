@@ -229,6 +229,8 @@
   "feed": {
     "new": "New",
     "daysLeft": "{days, plural, =0 {Last day} one {# day left} other {# days left}}",
+    "favorite": "Save job",
+    "unfavorite": "Remove from saved",
     "remote": "Remote",
     "any": "Any",
     "clear": "Clear filters",
@@ -369,6 +371,10 @@
       "rejected": "Rejected",
       "closed": "Closed"
     }
+  },
+  "favorites": {
+    "title": "Saved jobs",
+    "empty": "You haven't saved any jobs yet."
   },
   "applicants": {
     "title": "Applicants for “{job}”",

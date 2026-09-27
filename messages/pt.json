@@ -229,6 +229,8 @@
   "feed": {
     "new": "Novo",
     "daysLeft": "{days, plural, =0 {Último dia} one {Falta # dia} other {Faltam # dias}}",
+    "favorite": "Guardar vaga",
+    "unfavorite": "Remover dos guardados",
     "remote": "Remoto",
     "any": "Qualquer",
     "clear": "Limpar filtros",
@@ -369,6 +371,10 @@
       "rejected": "Rejeitado",
       "closed": "Fechado"
     }
+  },
+  "favorites": {
+    "title": "Vagas guardadas",
+    "empty": "Ainda não guardou nenhuma vaga."
   },
   "applicants": {
     "title": "Candidaturas para “{job}”",

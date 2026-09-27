@@ -4,6 +4,7 @@ import { JobFeed } from "@/components/JobFeed";
 import { Link } from "@/i18n/navigation";
 import { getLiveJobs } from "@/lib/db/jobs";
 import { getFeaturedTechCounts } from "@/lib/db/tech-tags";
+import { getMyFavoriteJobIds } from "@/lib/db/favorites";
 
 type Props = { params: Promise<{ locale: string }> };
 
@@ -20,7 +21,11 @@ export default async function JobsPage({ params }: Props) {
   const tf = await getTranslations({ locale, namespace: "feed" });
   const tjf = await getTranslations({ locale, namespace: "jobForm" });
   const brand = await getTranslations({ locale, namespace: "brand" });
-  const [jobs, featuredTech] = await Promise.all([getLiveJobs(), getFeaturedTechCounts()]);
+  const [jobs, featuredTech, favoriteJobIds] = await Promise.all([
+    getLiveJobs(),
+    getFeaturedTechCounts(),
+    getMyFavoriteJobIds(),
+  ]);
 
   // Only locations/categories/languages/technologies that currently have a
   // live job get a link — never advertise an empty browse page (§ SEO note
@@ -57,7 +62,7 @@ export default async function JobsPage({ params }: Props) {
       </div>
 
       <div className="mt-6">
-        <JobFeed jobs={jobs} />
+        <JobFeed jobs={jobs} favoriteJobIds={favoriteJobIds} />
       </div>
 
       {(topLocations.length > 0 || topCategories.length > 0 || featuredTech.length > 0) && (

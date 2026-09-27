@@ -10,6 +10,7 @@ export type Company = {
 };
 
 export type Job = {
+  id: string;
   slug: string;
   title: string;
   company: Company;

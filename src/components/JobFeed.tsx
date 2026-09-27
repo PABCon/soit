@@ -43,7 +43,15 @@ function toggle(list: string[], value: string) {
  * initial server-rendered HTML — crawlable — filtering here is purely a
  * client-side interactive refinement on top of it.
  */
-export function JobFeed({ jobs: allJobs }: { jobs: Job[] }) {
+export function JobFeed({
+  jobs: allJobs,
+  favoriteJobIds,
+}: {
+  jobs: Job[];
+  /** null when the viewer isn't a candidate — hides the heart entirely
+   *  rather than showing one that would fail on click. */
+  favoriteJobIds?: string[] | null;
+}) {
   const t = useTranslations("feed");
   const ta = useTranslations("adLanguage");
   const [f, setF] = useState<Filters>(EMPTY);
@@ -168,7 +176,11 @@ export function JobFeed({ jobs: allJobs }: { jobs: Job[] }) {
       {jobs.length > 0 ? (
         <ul className="mt-4 border-t border-line">
           {jobs.map((job) => (
-            <JobRow key={job.slug} job={job} />
+            <JobRow
+              key={job.slug}
+              job={job}
+              isFavorited={favoriteJobIds ? favoriteJobIds.includes(job.id) : undefined}
+            />
           ))}
         </ul>
       ) : (

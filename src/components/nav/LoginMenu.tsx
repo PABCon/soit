@@ -100,6 +100,9 @@ export function LoginMenu() {
           <Link href="/applications" className={item}>
             {rail("applications")}
           </Link>
+          <Link href="/favorites" className={item}>
+            {rail("favorites")}
+          </Link>
           <Link href="/companies" className={item}>
             {rail("companies")}
           </Link>
