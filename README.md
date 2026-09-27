@@ -206,8 +206,19 @@ fixed with `useSyncExternalStore`); a real footer exists for the first
 time (page links + an env-gated LinkedIn icon + legal links), alongside
 new placeholder `/privacy`/`/terms` pages; a nav tagline sits under the
 wordmark; the language switcher is a compact dropdown instead of both
-locales always visible. Per the spec, steps 1-7 being done means there's
-a working two-sided marketplace, loop closed, end to end. Next: the
-remaining 4 phases of that QA round (job deadlines, favorites, the
-map/list landing redesign, search) — plus step 9 (SEO check, compliance,
-polish) and the rest of the backlog (see `CLAUDE.md`).
+locales always visible. **Phase 2 shipped**: job expiry is no longer
+purely automatic — an optional employer-set "valid until" date on the
+job form (still defaults to 1 month when left blank, matching the prior
+hardcoded behavior), plus a "days left" urgency badge on the feed and
+job detail page once a listing is within a week of expiring. A real
+production-only bug was caught and fixed during this phase's own
+verification, before the user saw it: the new footer's plain link to
+`/recruit` on the login page collided with Next's automatic prefetching
+and the post-login redirect's Router Cache entry, leaving login stuck
+on "A entrar…" forever on production only (never locally) — fixed with
+`prefetch={false}` on every footer link; see `CLAUDE.md` for the full
+trace. Per the spec, steps 1-7 being done means there's a working
+two-sided marketplace, loop closed, end to end. Next: the remaining 3
+phases of that QA round (favorites, the map/list landing redesign,
+search) — plus step 9 (SEO check, compliance, polish) and the rest of
+the backlog (see `CLAUDE.md`).

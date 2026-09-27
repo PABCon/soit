@@ -982,12 +982,64 @@ bypasses Playwright's *own* pre-click checks, not real browser
 hit-testing) — switching to a DOM-level `element.click()` for that one
 interaction fixed it; never an app bug. Fixtures cleaned up on both.
 
-Next: Phase 2 (an employer-configurable job deadline, replacing the
-hardcoded 30-day expiry, plus a "days left" urgency badge on the feed),
-then favorites, then the landing-page redesign, then search — per the
-plan above — followed by the rest of the real-usage QA backlog: bigger
-initiatives (pricing/billing tied to AI-feature upgrade plans, and
-employer analytics, both explicitly deferred to post-MVP) and step 9
-(SEO check + compliance + polish: Search Console, real privacy/terms
-content, consent, the §6.6 retention purge job, error monitoring), with
-map/visual design polish deliberately last, per your own instruction.
+**Phase 2 shipped**: job expiry used to be entirely automatic — always
+`published_at + 30 days`, hardcoded in two places (`saveJob`,
+`setJobStatus`), never exposed as a form field, not even selectable
+when editing. Added an optional "valid until" date to `JobForm`,
+threaded through `JobFormInput`/`saveJob()` (the employer's date wins
+when provided and genuinely in the future; falls back to the existing
+30-day default otherwise, so "leave it blank = 1 month" was already
+true and just needed to become an explicit, editable behavior rather
+than the only behavior) and `getJobForEdit`'s select list (previously
+omitted `expires_at` entirely, so edit mode couldn't show or change
+it). New `Job.daysLeft` (null for a never-published draft) computed
+alongside the existing `postedDaysAgo`; a new amber "N days left"
+badge on `JobRow` and the job detail page when `daysLeft <= 7`, same
+visual language as the existing mint "NEW" badge.
+
+**A real, genuinely serious bug was caught during this phase's own
+production verification step — before the user ever saw it**: employer
+(and, by the identical mechanism, candidate) login got stuck showing
+"A entrar…" forever on `https://soit.vercel.app`, but never on
+localhost, and the underlying `signInWithPassword` + `/api/auth/
+landing` calls both demonstrably succeeded (confirmed via full network
+capture) — the client-side `router.push()` to the landing page just
+never visibly completed. Root cause traced to *last session's own*
+Phase 1 footer work: `Footer` renders on the `(auth)` login page itself
+and has a plain `<Link href="/recruit">` (and `href="/jobs"`). Next's
+automatic Link prefetching — far more aggressive in a real production
+build than in dev, which is exactly why this never surfaced during
+Phase 1's own local *or* production verification, only once Phase 2's
+employer-login-heavy testing hit it — fetched those paths in the
+background the instant the login page loaded, while still
+unauthenticated, getting back a redirect-to-login response that landed
+in the client Router Cache under the exact path the real post-login
+navigation needed a fraction of a second later. The stale pre-auth
+entry won the race, and the button's (correctly persistent, per an
+earlier session's fix) loading state just never got to flip because the
+navigation it was waiting on had silently already lost. Fixed with
+`prefetch={false}` on every `Footer` link — a static utility footer has
+no real need for eager prefetching, and this was the one case where a
+footer link's destination coincided with a real post-action navigation
+target. Deployed and re-verified immediately, both employer and
+candidate login confirmed landing correctly on production afterward,
+before continuing with anything else.
+
+Verified live on both localhost and (after the hotfix)
+`https://soit.vercel.app` with a fresh verified-employer fixture: a job
+published with a 5-day deadline shows the badge on the feed (checked
+from a separate anonymous browser context, since an employer session
+can't browse the candidate site at all per an earlier fix) and its own
+detail page; a job published with no deadline chosen shows no badge,
+with its stored `expires_at` confirmed directly against the database
+at ~30 days out; the edit form correctly pre-fills a previously-chosen
+deadline. All fixtures cleaned up on both environments.
+
+Next: Phase 3 (favorites), then the landing-page redesign, then search
+— per the plan above — followed by the rest of the real-usage QA
+backlog: bigger initiatives (pricing/billing tied to AI-feature upgrade
+plans, and employer analytics, both explicitly deferred to post-MVP)
+and step 9 (SEO check + compliance + polish: Search Console, real
+privacy/terms content, consent, the §6.6 retention purge job, error
+monitoring), with map/visual design polish deliberately last, per your
+own instruction.
