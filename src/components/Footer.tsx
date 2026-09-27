@@ -8,7 +8,18 @@ const LINKEDIN_PATH =
  *  legal links + copyright. Rendered from every candidate-facing shell
  *  (candidate)/(auth)/(preview)/(legal) for consistency. The LinkedIn icon
  *  only renders when NEXT_PUBLIC_LINKEDIN_URL is actually set — no
- *  guessed/placeholder URL, a wrong one would be genuinely misleading. */
+ *  guessed/placeholder URL, a wrong one would be genuinely misleading.
+ *
+ *  `prefetch={false}` on every link here is load-bearing, not cosmetic: a
+ *  real production bug traced back to this footer being on the login page
+ *  — Next.js's automatic Link prefetch fetched `/recruit` (redirecting to
+ *  login, since that prefetch runs pre-auth) in the background the moment
+ *  the login page loaded, and that response landed in the client Router
+ *  Cache under the same path the post-login `router.push("/recruit")`
+ *  needed a fraction of a second later — reusing the stale pre-auth
+ *  response and leaving the login button stuck on its loading state
+ *  forever. Dev mode doesn't prefetch as aggressively, so this only ever
+ *  showed up against the real production build. */
 export async function Footer() {
   const t = await getTranslations("footer");
   const linkedinUrl = process.env.NEXT_PUBLIC_LINKEDIN_URL;
@@ -18,13 +29,13 @@ export async function Footer() {
       <div className="mx-auto flex max-w-6xl flex-col gap-6">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <nav className="flex flex-wrap gap-x-6 gap-y-2" aria-label={t("pagesNav")}>
-            <Link href="/jobs" className="hover:text-ink">
+            <Link href="/jobs" prefetch={false} className="hover:text-ink">
               {t("jobs")}
             </Link>
-            <Link href="/companies" className="hover:text-ink">
+            <Link href="/companies" prefetch={false} className="hover:text-ink">
               {t("companies")}
             </Link>
-            <Link href="/recruit" className="hover:text-ink">
+            <Link href="/recruit" prefetch={false} className="hover:text-ink">
               {t("postJob")}
             </Link>
           </nav>
@@ -46,10 +57,10 @@ export async function Footer() {
 
         <div className="flex flex-wrap items-center justify-between gap-4 border-t border-line pt-6 text-xs">
           <nav className="flex flex-wrap gap-x-4 gap-y-2" aria-label={t("legalNav")}>
-            <Link href="/privacy" className="hover:text-ink">
+            <Link href="/privacy" prefetch={false} className="hover:text-ink">
               {t("privacy")}
             </Link>
-            <Link href="/terms" className="hover:text-ink">
+            <Link href="/terms" prefetch={false} className="hover:text-ink">
               {t("terms")}
             </Link>
           </nav>
