@@ -2,7 +2,7 @@
 
 import { useSyncExternalStore } from "react";
 import { useTranslations } from "next-intl";
-import { Link } from "@/i18n/navigation";
+import { Link, usePathname } from "@/i18n/navigation";
 
 type Item = { key: string; href: string; icon: React.ReactNode; mvp: boolean };
 
@@ -18,6 +18,17 @@ const icon = (d: string) => (
     aria-hidden="true"
   >
     <path d={d} />
+  </svg>
+);
+
+// A rounded-rect "collapse sidebar" glyph (panel outline + a vertical
+// divider near the left third + a small inward chevron) rather than a
+// plain arrow — matching the reference design's toggle icon shape.
+const collapseIcon = (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" className="h-5 w-5" aria-hidden="true">
+    <rect x="3.5" y="4.5" width="17" height="15" rx="3" />
+    <path d="M9 4.5v15" />
+    <path d="M7.2 9.8 5.4 12l1.8 2.2" />
   </svg>
 );
 
@@ -58,12 +69,14 @@ function getServerSnapshot() {
 }
 
 /** Persistent left icon rail (§7.1). Later items are drawn but disabled
- *  (§13). Collapsible (real-usage report: shouldn't be permanently fixed) —
- *  a per-viewer display preference in localStorage, not account data; the
- *  collapsed state is a thin single-button strip, everything else in the
- *  layout reflows on its own since this is a plain flex sibling. */
+ *  (§13). Collapsible (real-usage report) — a per-viewer display preference
+ *  in localStorage, not account data. Restyled to match a reference design:
+ *  collapsed state is a floating vertical tab (not a slim icon strip), so
+ *  the content column actually reaches full width when collapsed, and the
+ *  current section gets a soft highlight instead of only a hover state. */
 export function Rail() {
   const t = useTranslations("rail");
+  const pathname = usePathname();
   const collapsed = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 
   function toggle() {
@@ -73,17 +86,19 @@ export function Rail() {
 
   if (collapsed) {
     return (
-      <nav className="sticky top-0 hidden h-dvh w-12 shrink-0 flex-col items-center border-r border-line bg-white/50 py-4 sm:flex">
-        <button
-          type="button"
-          onClick={toggle}
-          title={t("expand")}
-          className="flex h-11 w-11 items-center justify-center rounded-lg text-muted transition-colors hover:bg-paper hover:text-pine"
+      <button
+        type="button"
+        onClick={toggle}
+        title={t("expand")}
+        className="fixed top-1/2 left-0 z-20 hidden -translate-y-1/2 items-center gap-1.5 rounded-r-lg border border-l-0 border-line bg-white px-1.5 py-3 text-muted shadow-sm transition-colors hover:text-pine sm:flex"
+      >
+        <span
+          className="text-xs font-medium tracking-wide"
+          style={{ writingMode: "vertical-rl" }}
         >
-          {icon("m9 6 6 6-6 6")}
-          <span className="sr-only">{t("expand")}</span>
-        </button>
-      </nav>
+          <span className="rotate-180 inline-block">{t("expand")}</span>
+        </span>
+      </button>
     );
   }
 
@@ -92,38 +107,52 @@ export function Rail() {
       aria-label={t("offers")}
       className="sticky top-0 hidden h-dvh w-16 shrink-0 flex-col items-center gap-1 border-r border-line bg-white/50 py-4 sm:flex"
     >
-      {ITEMS.map((item) =>
-        item.mvp ? (
-          <Link
-            key={item.key}
-            href={item.href}
-            title={t(item.key)}
-            className="flex h-11 w-11 items-center justify-center rounded-lg text-muted transition-colors hover:bg-paper hover:text-pine"
-          >
-            {item.icon}
-            <span className="sr-only">{t(item.key)}</span>
-          </Link>
-        ) : (
-          <span
-            key={item.key}
-            title={`${t(item.key)} — ${t("soon")}`}
-            aria-disabled="true"
-            className="flex h-11 w-11 cursor-not-allowed items-center justify-center rounded-lg text-line"
-          >
-            {item.icon}
-            <span className="sr-only">{`${t(item.key)} — ${t("soon")}`}</span>
-          </span>
-        ),
-      )}
       <button
         type="button"
         onClick={toggle}
         title={t("collapse")}
-        className="mt-auto flex h-11 w-11 items-center justify-center rounded-lg text-muted transition-colors hover:bg-paper hover:text-pine"
+        className="mb-2 flex h-11 w-11 items-center justify-center rounded-lg text-muted transition-colors hover:bg-paper hover:text-pine"
       >
-        {icon("m15 6-6 6 6 6")}
+        {collapseIcon}
         <span className="sr-only">{t("collapse")}</span>
       </button>
+
+      {ITEMS.map((item) => {
+        if (!item.mvp) {
+          return (
+            <span
+              key={item.key}
+              title={`${t(item.key)} — ${t("soon")}`}
+              aria-disabled="true"
+              className="flex h-11 w-11 cursor-not-allowed items-center justify-center rounded-lg text-line"
+            >
+              {item.icon}
+              <span className="sr-only">{`${t(item.key)} — ${t("soon")}`}</span>
+            </span>
+          );
+        }
+
+        const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
+        return (
+          <Link
+            key={item.key}
+            href={item.href}
+            title={t(item.key)}
+            className={`relative flex h-11 w-11 items-center justify-center rounded-xl transition-colors ${
+              active ? "text-pine" : "text-muted hover:text-pine"
+            }`}
+          >
+            {active && (
+              <span
+                aria-hidden="true"
+                className="absolute inset-[-4px] rounded-2xl bg-pine/10 blur-[6px]"
+              />
+            )}
+            <span className="relative">{item.icon}</span>
+            <span className="sr-only">{t(item.key)}</span>
+          </Link>
+        );
+      })}
     </nav>
   );
 }
