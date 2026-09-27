@@ -1,64 +1,32 @@
 "use client";
 
-import { useMemo, useState, useSyncExternalStore } from "react";
+import { useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import dynamic from "next/dynamic";
 import { JobRow } from "@/components/JobRow";
+import { useUrlSearchParams, writeUrlSearchParams, parseListParam } from "@/hooks/useUrlSearchParams";
 import type { Job, Seniority, WorkModel } from "@/lib/types";
 import type { FeaturedTechCount } from "@/lib/db/tech-tags";
 import type { JobCategoryOption } from "@/lib/db/job-categories";
+import type { LocationOption } from "@/lib/db/locations";
 
 const JobMap = dynamic(() => import("@/components/JobMap").then((m) => m.JobMap), { ssr: false });
 
-const PARAMS_EVENT = "soit:jobs-search-params-change";
+const EARTH_RADIUS_KM = 6371;
 
-// Deliberately NOT next/navigation's useSearchParams()/router.replace(): on
-// a fully dynamic page (this one fetches fresh on every request, no static
-// generation), Next's client router treats ANY searchParams-only
-// navigation as needing a real RSC round trip to the server — confirmed via
-// a network capture showing a ~650ms `GET /jobs?tech=...&_rsc=...` on
-// every single chip click in production (never showed up locally, where
-// that round trip is ~0ms to a same-machine dev server) — even though this
-// component already has the full job list as a prop and does all its own
-// filtering client-side. That round trip defeats the entire point of
-// filtering client-side. Reading/writing the URL directly via the History
-// API keeps it truly instant and still gives shareable/bookmarkable URLs;
-// `replaceState` never fires `popstate` in the tab that called it, hence
-// the custom event alongside it, same pattern Rail.tsx's collapse state
-// already uses for the same reason.
-let cachedSearch: string | undefined;
-let cachedParams: URLSearchParams | undefined;
-function getSnapshot(): URLSearchParams {
-  const search = window.location.search;
-  if (search !== cachedSearch) {
-    cachedSearch = search;
-    cachedParams = new URLSearchParams(search);
-  }
-  return cachedParams!;
-}
-// A stable, shared instance — returning a fresh `new URLSearchParams()`
-// every call is exactly the anti-pattern useSyncExternalStore warns about
-// ("The result of getServerSnapshot should be cached").
-const EMPTY_PARAMS = new URLSearchParams();
-function getServerSnapshot(): URLSearchParams {
-  return EMPTY_PARAMS;
-}
-function subscribe(callback: () => void) {
-  window.addEventListener(PARAMS_EVENT, callback);
-  window.addEventListener("popstate", callback);
-  return () => {
-    window.removeEventListener(PARAMS_EVENT, callback);
-    window.removeEventListener("popstate", callback);
-  };
-}
-function useUrlSearchParams(): URLSearchParams {
-  return useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
-}
-function writeUrlSearchParams(next: URLSearchParams) {
-  const qs = next.toString();
-  const url = `${window.location.pathname}${qs ? `?${qs}` : ""}`;
-  window.history.replaceState(null, "", url);
-  window.dispatchEvent(new Event(PARAMS_EVENT));
+/** Great-circle distance — the "near X within Y km" search (item 8) reuses
+ *  the same 14 curated locations already seeded with fixed coordinates
+ *  (`getLocations()`), computed here over the already-fetched job list.
+ *  No geocoding provider, no new Postgres RPC: the dataset is small and
+ *  every job's own lat/lng is already a prop, so this is just another pure
+ *  client-side filter, same as monthlyFloor() below. */
+function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLng = ((lng2 - lng1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) * Math.sin(dLng / 2) ** 2;
+  return EARTH_RADIUS_KM * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
 const SENIORITIES: Seniority[] = ["junior", "mid", "senior", "lead"];
@@ -83,11 +51,6 @@ function monthlyFloor(job: Job): number {
   }
 }
 
-function parseList(sp: URLSearchParams, key: string): string[] {
-  const v = sp.get(key);
-  return v ? v.split(",").filter(Boolean) : [];
-}
-
 /**
  * The merged jobs landing page (§7.1, real-usage QA round 3 phase 4):
  * curated tech/category quick-filter row, a "more filters" panel for the
@@ -105,11 +68,13 @@ export function JobsExplorer({
   jobs: allJobs,
   featuredTech,
   categories,
+  locations,
   favoriteJobIds,
 }: {
   jobs: Job[];
   featuredTech: FeaturedTechCount[];
   categories: JobCategoryOption[];
+  locations: LocationOption[];
   /** null when the viewer isn't a candidate — hides the heart entirely
    *  rather than showing one that would fail on click. */
   favoriteJobIds?: string[] | null;
@@ -122,14 +87,18 @@ export function JobsExplorer({
   const [showMoreFilters, setShowMoreFilters] = useState(false);
   const [mapVisible, setMapVisible] = useState(true);
 
-  const tech = parseList(searchParams, "tech");
-  const cat = parseList(searchParams, "cat");
-  const seniority = parseList(searchParams, "seniority");
-  const adLanguage = parseList(searchParams, "lang");
-  const workModel = parseList(searchParams, "workModel");
+  const tech = parseListParam(searchParams, "tech");
+  const cat = parseListParam(searchParams, "cat");
+  const seniority = parseListParam(searchParams, "seniority");
+  const adLanguage = parseListParam(searchParams, "lang");
+  const workModel = parseListParam(searchParams, "workModel");
   const remoteOnly = searchParams.get("remote") === "1";
   const minSalary = Number(searchParams.get("minSalary") ?? 0);
   const sort = (searchParams.get("sort") as Sort | null) ?? "recent";
+  const q = searchParams.get("q") ?? "";
+  const near = searchParams.get("near") ?? "";
+  const radiusKm = Number(searchParams.get("radiusKm") ?? 0);
+  const nearLocation = near ? (locations.find((l) => l.slug === near) ?? null) : null;
 
   function updateParams(patch: Record<string, string | null>) {
     const next = new URLSearchParams(searchParams.toString());
@@ -152,6 +121,7 @@ export function JobsExplorer({
   const searchKey = searchParams.toString();
 
   const jobs = useMemo(() => {
+    const query = q.trim().toLowerCase();
     const filtered = allJobs.filter(
       (j) =>
         (tech.length === 0 || tech.some((x) => j.tech.includes(x))) &&
@@ -160,7 +130,13 @@ export function JobsExplorer({
         (adLanguage.length === 0 || adLanguage.includes(j.language)) &&
         (workModel.length === 0 || workModel.includes(j.workModel)) &&
         (!remoteOnly || j.workModel === "remote") &&
-        monthlyFloor(j) >= minSalary,
+        monthlyFloor(j) >= minSalary &&
+        (!query || j.title.toLowerCase().includes(query)) &&
+        (!nearLocation ||
+          radiusKm <= 0 ||
+          (j.lat !== null &&
+            j.lng !== null &&
+            haversineKm(nearLocation.latitude, nearLocation.longitude, j.lat, j.lng) <= radiusKm)),
     );
     switch (sort) {
       case "oldest":
@@ -187,7 +163,9 @@ export function JobsExplorer({
     adLanguage.length +
     workModel.length +
     (remoteOnly ? 1 : 0) +
-    (minSalary ? 1 : 0);
+    (minSalary ? 1 : 0) +
+    (q ? 1 : 0) +
+    (near ? 1 : 0);
 
   const chip = (on: boolean) =>
     `shrink-0 rounded-full border px-3 py-1.5 text-xs transition-colors ${
@@ -320,8 +298,28 @@ export function JobsExplorer({
         </div>
       )}
 
+      {/* Item 8 — the search bar lives in TopNav, but its terms (q/near/
+       *  radiusKm) are just more URL params this component already reads,
+       *  so they show here alongside every other active filter. */}
+      {(q || nearLocation) && (
+        <p className="mt-3 text-sm text-muted">
+          {q && (
+            <>
+              {t("searchingFor")} <span className="font-medium text-ink">&ldquo;{q}&rdquo;</span>
+            </>
+          )}
+          {q && nearLocation && " · "}
+          {nearLocation && (
+            <>
+              {t("searchNear", { place: nearLocation.name })}
+              {radiusKm > 0 && ` (${radiusKm} km)`}
+            </>
+          )}
+        </p>
+      )}
+
       {/* Item 6 — count, on top of the list. */}
-      <div className="mt-3 flex items-center gap-3">
+      <div className="mt-1 flex items-center gap-3">
         <p className="text-sm font-medium text-ink">{t("results", { count: jobs.length })}</p>
         {activeCount > 0 && (
           <button type="button" onClick={clearAll} className="text-xs font-medium text-pine underline underline-offset-2">

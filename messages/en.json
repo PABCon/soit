@@ -15,7 +15,12 @@
     "registerAsEmployer": "Register as employer",
     "groupCandidate": "Candidate",
     "groupEmployer": "Employer",
-    "logOut": "Log out"
+    "logOut": "Log out",
+    "savedSearches": "Saved searches",
+    "searchAnywhere": "Any location",
+    "searchSubmit": "Search",
+    "saveSearch": "Save search",
+    "saveSearchError": "Log in as a candidate to save searches."
   },
   "rail": {
     "offers": "Offers",
@@ -256,6 +261,8 @@
     "sortOldest": "Oldest",
     "sortSalary": "Salary",
     "remoteOnly": "Remote only",
+    "searchingFor": "Searching for",
+    "searchNear": "near {place}",
     "moreFilters": "More filters",
     "hideMap": "Hide map",
     "showMap": "Show map",
@@ -378,6 +385,11 @@
   "favorites": {
     "title": "Saved jobs",
     "empty": "You haven't saved any jobs yet."
+  },
+  "savedSearches": {
+    "title": "Saved searches",
+    "empty": "You haven't saved any searches yet.",
+    "delete": "Remove"
   },
   "applicants": {
     "title": "Applicants for “{job}”",

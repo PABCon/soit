@@ -15,7 +15,12 @@
     "registerAsEmployer": "Criar conta de empresa",
     "groupCandidate": "Candidato",
     "groupEmployer": "Empresa",
-    "logOut": "Sair"
+    "logOut": "Sair",
+    "savedSearches": "Pesquisas guardadas",
+    "searchAnywhere": "Qualquer localização",
+    "searchSubmit": "Pesquisar",
+    "saveSearch": "Guardar pesquisa",
+    "saveSearchError": "Inicie sessão como candidato para guardar pesquisas."
   },
   "rail": {
     "offers": "Vagas",
@@ -256,6 +261,8 @@
     "sortOldest": "Mais antigas",
     "sortSalary": "Salário",
     "remoteOnly": "Apenas remoto",
+    "searchingFor": "A procurar por",
+    "searchNear": "perto de {place}",
     "moreFilters": "Mais filtros",
     "hideMap": "Ocultar mapa",
     "showMap": "Mostrar mapa",
@@ -378,6 +385,11 @@
   "favorites": {
     "title": "Vagas guardadas",
     "empty": "Ainda não guardou nenhuma vaga."
+  },
+  "savedSearches": {
+    "title": "Pesquisas guardadas",
+    "empty": "Ainda não guardou nenhuma pesquisa.",
+    "delete": "Remover"
   },
   "applicants": {
     "title": "Candidaturas para “{job}”",
