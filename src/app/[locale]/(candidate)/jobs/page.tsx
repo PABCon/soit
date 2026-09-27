@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { Suspense } from "react";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { JobsExplorer } from "@/components/JobsExplorer";
 import { Link } from "@/i18n/navigation";
@@ -60,14 +59,12 @@ export default async function JobsPage({ params }: Props) {
       </div>
 
       <div className="mt-6">
-        <Suspense>
-          <JobsExplorer
-            jobs={jobs}
-            featuredTech={featuredTech}
-            categories={categories}
-            favoriteJobIds={favoriteJobIds}
-          />
-        </Suspense>
+        <JobsExplorer
+          jobs={jobs}
+          featuredTech={featuredTech}
+          categories={categories}
+          favoriteJobIds={favoriteJobIds}
+        />
       </div>
 
       {(topLocations.length > 0 || topCategories.length > 0 || featuredTech.length > 0) && (

@@ -1,16 +1,65 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useSyncExternalStore } from "react";
 import { useTranslations } from "next-intl";
-import { useSearchParams } from "next/navigation";
 import dynamic from "next/dynamic";
-import { usePathname, useRouter } from "@/i18n/navigation";
 import { JobRow } from "@/components/JobRow";
 import type { Job, Seniority, WorkModel } from "@/lib/types";
 import type { FeaturedTechCount } from "@/lib/db/tech-tags";
 import type { JobCategoryOption } from "@/lib/db/job-categories";
 
 const JobMap = dynamic(() => import("@/components/JobMap").then((m) => m.JobMap), { ssr: false });
+
+const PARAMS_EVENT = "soit:jobs-search-params-change";
+
+// Deliberately NOT next/navigation's useSearchParams()/router.replace(): on
+// a fully dynamic page (this one fetches fresh on every request, no static
+// generation), Next's client router treats ANY searchParams-only
+// navigation as needing a real RSC round trip to the server — confirmed via
+// a network capture showing a ~650ms `GET /jobs?tech=...&_rsc=...` on
+// every single chip click in production (never showed up locally, where
+// that round trip is ~0ms to a same-machine dev server) — even though this
+// component already has the full job list as a prop and does all its own
+// filtering client-side. That round trip defeats the entire point of
+// filtering client-side. Reading/writing the URL directly via the History
+// API keeps it truly instant and still gives shareable/bookmarkable URLs;
+// `replaceState` never fires `popstate` in the tab that called it, hence
+// the custom event alongside it, same pattern Rail.tsx's collapse state
+// already uses for the same reason.
+let cachedSearch: string | undefined;
+let cachedParams: URLSearchParams | undefined;
+function getSnapshot(): URLSearchParams {
+  const search = window.location.search;
+  if (search !== cachedSearch) {
+    cachedSearch = search;
+    cachedParams = new URLSearchParams(search);
+  }
+  return cachedParams!;
+}
+// A stable, shared instance — returning a fresh `new URLSearchParams()`
+// every call is exactly the anti-pattern useSyncExternalStore warns about
+// ("The result of getServerSnapshot should be cached").
+const EMPTY_PARAMS = new URLSearchParams();
+function getServerSnapshot(): URLSearchParams {
+  return EMPTY_PARAMS;
+}
+function subscribe(callback: () => void) {
+  window.addEventListener(PARAMS_EVENT, callback);
+  window.addEventListener("popstate", callback);
+  return () => {
+    window.removeEventListener(PARAMS_EVENT, callback);
+    window.removeEventListener("popstate", callback);
+  };
+}
+function useUrlSearchParams(): URLSearchParams {
+  return useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
+}
+function writeUrlSearchParams(next: URLSearchParams) {
+  const qs = next.toString();
+  const url = `${window.location.pathname}${qs ? `?${qs}` : ""}`;
+  window.history.replaceState(null, "", url);
+  window.dispatchEvent(new Event(PARAMS_EVENT));
+}
 
 const SENIORITIES: Seniority[] = ["junior", "mid", "senior", "lead"];
 const AD_LANGUAGES: ("pt" | "en")[] = ["pt", "en"];
@@ -68,9 +117,7 @@ export function JobsExplorer({
   const t = useTranslations("feed");
   const ta = useTranslations("adLanguage");
   const tjf = useTranslations("jobForm");
-  const router = useRouter();
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
+  const searchParams = useUrlSearchParams();
 
   const [showMoreFilters, setShowMoreFilters] = useState(false);
   const [mapVisible, setMapVisible] = useState(true);
@@ -90,8 +137,7 @@ export function JobsExplorer({
       if (value === null || value === "") next.delete(key);
       else next.set(key, value);
     }
-    const qs = next.toString();
-    router.replace(qs ? `${pathname}?${qs}` : pathname, { scroll: false });
+    writeUrlSearchParams(next);
   }
 
   function toggleListParam(key: string, list: string[], value: string) {
@@ -100,7 +146,7 @@ export function JobsExplorer({
   }
 
   function clearAll() {
-    router.replace(pathname, { scroll: false });
+    writeUrlSearchParams(new URLSearchParams());
   }
 
   const searchKey = searchParams.toString();
