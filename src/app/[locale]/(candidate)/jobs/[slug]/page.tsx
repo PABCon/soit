@@ -143,6 +143,11 @@ export default async function JobDetailPage({ params }: Props) {
                     {b}
                   </span>
                 ))}
+                {job.daysLeft !== null && job.daysLeft <= 7 && (
+                  <span className="rounded-md bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">
+                    {tf("daysLeft", { days: job.daysLeft })}
+                  </span>
+                )}
               </div>
             </div>
           </div>

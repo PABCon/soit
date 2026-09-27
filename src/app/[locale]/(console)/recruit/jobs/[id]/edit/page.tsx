@@ -54,6 +54,7 @@ export default async function EditJobPage({ params }: Props) {
             employmentType: job.employment_type,
             selectedTechTagIds: job.job_tech_tags.map((t) => t.tech_tag_id),
             externalApplyUrl: job.external_apply_url ?? "",
+            expiresAt: job.expires_at ? job.expires_at.slice(0, 10) : null,
           }}
         />
       </div>

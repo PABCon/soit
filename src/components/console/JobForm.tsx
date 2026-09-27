@@ -26,6 +26,7 @@ type Initial = {
   employmentType: JobFormInput["employmentType"];
   selectedTechTagIds: string[];
   externalApplyUrl: string;
+  expiresAt: string | null;
 };
 
 const inputClass = "h-9 rounded-lg border border-line bg-white px-3 text-sm disabled:bg-paper disabled:text-muted";
@@ -63,6 +64,7 @@ export function JobForm({
   );
   const [selectedTags, setSelectedTags] = useState<string[]>(initial?.selectedTechTagIds ?? []);
   const [externalApplyUrl, setExternalApplyUrl] = useState(initial?.externalApplyUrl ?? "");
+  const [expiresAt, setExpiresAt] = useState(initial?.expiresAt ?? "");
   const [tagFilter, setTagFilter] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -89,6 +91,7 @@ export function JobForm({
     const max = Number(salaryMax);
     if (!min || min <= 0) return t("errorSalaryMin");
     if (!max || max < min) return t("errorSalaryMax");
+    if (expiresAt && expiresAt <= new Date().toISOString().slice(0, 10)) return t("errorExpiresAt");
     return null;
   }
 
@@ -120,6 +123,7 @@ export function JobForm({
         employmentType,
         techTagIds: selectedTags,
         externalApplyUrl,
+        expiresAt: expiresAt || null,
         publish,
       });
 
@@ -318,6 +322,18 @@ export function JobForm({
           </select>
         </label>
       </fieldset>
+
+      <label className={labelClass}>
+        <span>{t("expiresAt")}</span>
+        <input
+          type="date"
+          min={new Date().toISOString().slice(0, 10)}
+          value={expiresAt}
+          onChange={(e) => setExpiresAt(e.target.value)}
+          className={inputClass}
+        />
+        <span className="text-xs text-muted">{t("expiresAtHint")}</span>
+      </label>
 
       <div>
         <span className="text-sm">{t("techTags")}</span>

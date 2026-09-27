@@ -28,4 +28,6 @@ export type Job = {
   employmentType: EmploymentType;
   language: "pt" | "en";
   postedDaysAgo: number;
+  /** null for a draft/never-published job — "days left" has no meaning yet. */
+  daysLeft: number | null;
 };

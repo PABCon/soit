@@ -174,6 +174,8 @@
     },
     "techTags": "Stack técnico",
     "techTagsFilter": "Pesquisar tecnologias…",
+    "expiresAt": "Vaga válida até",
+    "expiresAtHint": "Se não escolher uma data, a vaga fica ativa durante 1 mês a partir da publicação.",
     "saveDraft": "Guardar rascunho",
     "publish": "Publicar",
     "notVerified": "Guardado como rascunho — a sua empresa ainda não está verificada, por isso não pode ficar ativa até estar.",
@@ -183,6 +185,7 @@
     "errorCategory": "Selecione uma categoria.",
     "errorSalaryMin": "Indique um salário mínimo.",
     "errorSalaryMax": "O máximo tem de ser pelo menos igual ao mínimo.",
+    "errorExpiresAt": "Escolha uma data futura.",
     "errorGeneric": "Algo correu mal. Tente novamente."
   },
   "company": {
@@ -225,6 +228,7 @@
   },
   "feed": {
     "new": "Novo",
+    "daysLeft": "{days, plural, =0 {Último dia} one {Falta # dia} other {Faltam # dias}}",
     "remote": "Remoto",
     "any": "Qualquer",
     "clear": "Limpar filtros",

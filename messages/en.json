@@ -174,6 +174,8 @@
     },
     "techTags": "Tech stack",
     "techTagsFilter": "Search technologies…",
+    "expiresAt": "Job valid until",
+    "expiresAtHint": "Leave blank to keep the job live for 1 month from publish.",
     "saveDraft": "Save as draft",
     "publish": "Publish",
     "notVerified": "Saved as a draft — your company isn't verified yet, so this can't go live until it is.",
@@ -183,6 +185,7 @@
     "errorCategory": "Select a category.",
     "errorSalaryMin": "Enter a minimum salary.",
     "errorSalaryMax": "Maximum must be at least the minimum.",
+    "errorExpiresAt": "Choose a future date.",
     "errorGeneric": "Something went wrong. Try again."
   },
   "company": {
@@ -225,6 +228,7 @@
   },
   "feed": {
     "new": "New",
+    "daysLeft": "{days, plural, =0 {Last day} one {# day left} other {# days left}}",
     "remote": "Remote",
     "any": "Any",
     "clear": "Clear filters",

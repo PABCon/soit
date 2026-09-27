@@ -45,6 +45,9 @@ type JobRow = {
 
 function toJob(row: JobRow): Job {
   const posted = row.published_at ?? row.created_at;
+  const daysLeft = row.expires_at
+    ? Math.max(0, Math.ceil((new Date(row.expires_at).getTime() - Date.now()) / 86_400_000))
+    : null;
   return {
     slug: row.slug,
     title: row.title,
@@ -68,6 +71,7 @@ function toJob(row: JobRow): Job {
     employmentType: row.employment_type,
     language: row.language,
     postedDaysAgo: Math.max(0, Math.floor((Date.now() - new Date(posted).getTime()) / 86_400_000)),
+    daysLeft,
   };
 }
 
@@ -173,6 +177,11 @@ export type JobFormInput = {
   employmentType: Job["employmentType"];
   techTagIds: string[];
   externalApplyUrl: string;
+  /** Employer-chosen deadline (a "yyyy-mm-dd" date string from the form's
+   *  date input), or null to fall back to the 30-day default (§10). Only
+   *  takes effect when the job is actually being published — a draft
+   *  doesn't get an expires_at at all, same as before. */
+  expiresAt: string | null;
   publish: boolean;
 };
 
@@ -210,6 +219,13 @@ export async function saveJob(jobId: string | null, input: JobFormInput): Promis
   const willPublish = wantsPublish && canPublish;
 
   const now = new Date();
+  const defaultExpiry = new Date(now.getTime() + 30 * 864e5);
+  // Trust the client's date input, but don't trust it blindly — a bad or
+  // past date silently falls back to the same 30-day default rather than
+  // producing an invalid or already-expired listing.
+  const chosenExpiry = input.expiresAt ? new Date(input.expiresAt) : null;
+  const expiresAt = chosenExpiry && chosenExpiry.getTime() > now.getTime() ? chosenExpiry : defaultExpiry;
+
   const base = {
     company_id: ctx.company.id,
     title: input.title,
@@ -229,9 +245,7 @@ export async function saveJob(jobId: string | null, input: JobFormInput): Promis
     employment_type: input.employmentType,
     external_apply_url: input.externalApplyUrl.trim() || null,
     status: willPublish ? "published" : "draft",
-    ...(willPublish
-      ? { published_at: now.toISOString(), expires_at: new Date(now.getTime() + 30 * 864e5).toISOString() }
-      : {}),
+    ...(willPublish ? { published_at: now.toISOString(), expires_at: expiresAt.toISOString() } : {}),
   };
 
   let id = jobId;
@@ -311,7 +325,7 @@ export async function getJobForEdit(jobId: string) {
   const { data } = await supabase
     .from("jobs")
     .select(
-      "id, company_id, title, description, language, seniority, work_model, location, location_id, category_id, salary_min, salary_max, salary_period, salary_months, employment_type, external_apply_url, status, job_tech_tags(tech_tag_id)",
+      "id, company_id, title, description, language, seniority, work_model, location, location_id, category_id, salary_min, salary_max, salary_period, salary_months, employment_type, external_apply_url, status, expires_at, job_tech_tags(tech_tag_id)",
     )
     .eq("id", jobId)
     .maybeSingle();

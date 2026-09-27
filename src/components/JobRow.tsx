@@ -14,6 +14,7 @@ import type { Job } from "@/lib/types";
 export function JobRow({ job }: { job: Job }) {
   const t = useTranslations("feed");
   const isNew = job.postedDaysAgo <= 2;
+  const daysLeft = job.daysLeft;
 
   return (
     <li className="group @container border-b border-line">
@@ -31,6 +32,11 @@ export function JobRow({ job }: { job: Job }) {
               {isNew && (
                 <span className="rounded bg-mint/25 px-1.5 py-0.5 text-[10px] font-semibold tracking-wide text-pine uppercase">
                   {t("new")}
+                </span>
+              )}
+              {daysLeft !== null && daysLeft <= 7 && (
+                <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold tracking-wide text-amber-800 uppercase">
+                  {t("daysLeft", { days: daysLeft })}
                 </span>
               )}
               <span className="rounded border border-line px-1.5 py-0.5 text-[10px] font-medium text-muted uppercase">
