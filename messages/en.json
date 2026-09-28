@@ -97,6 +97,9 @@
     "inviteExpiresIn": "{days, plural, one {Expires in # day} other {Expires in # days}}",
     "errorGeneric": "Something went wrong. Try again.",
     "companyType": "Company type",
+    "location": "Location",
+    "locationPlaceholder": "Select a city…",
+    "address": "Address",
     "socialLinks": "Social links",
     "facebook": "Facebook",
     "linkedin": "LinkedIn",
@@ -207,7 +210,8 @@
     "activeOffers": "Active offers",
     "companyType": "Company type",
     "industry": "Industry",
-    "previewBadge": "Preview"
+    "previewBadge": "Preview",
+    "ourOffice": "Our office"
   },
   "companies": {
     "title": "Companies",

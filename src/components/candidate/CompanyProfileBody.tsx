@@ -4,6 +4,12 @@ import { getCompanyBySlug } from "@/lib/db/companies";
 import { getLiveJobs } from "@/lib/db/jobs";
 import { CompanyLogo } from "@/components/CompanyLogo";
 import { JobRow } from "@/components/JobRow";
+// A direct import, not next/dynamic — `ssr: false` isn't allowed from a
+// Server Component's own module scope (this file has no "use client"), and
+// CompanyMap is already a client component with no SSR-unsafe top-level
+// code (leaflet is only touched inside a useEffect), so a plain import is
+// both simpler and sufficient.
+import { CompanyMap } from "@/components/CompanyMap";
 
 export async function getCompanyPageMetadata(slug: string) {
   const company = await getCompanyBySlug(slug);
@@ -123,6 +129,18 @@ export async function CompanyProfileBody({ locale, slug }: { locale: string; slu
             </div>
           ))}
         </div>
+      )}
+
+      {company.location && (
+        <section className="mt-10">
+          <h2 className="font-display text-lg font-semibold">{t("ourOffice")}</h2>
+          <p className="mt-1 text-sm text-muted">
+            {company.address ? `${company.address}, ${company.location.name}` : company.location.name}
+          </p>
+          <div className="mt-4 overflow-hidden rounded-xl border border-line">
+            <CompanyMap latitude={company.location.latitude} longitude={company.location.longitude} />
+          </div>
+        </section>
       )}
 
       <section className="mt-10">

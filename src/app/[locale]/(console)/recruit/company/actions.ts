@@ -22,6 +22,8 @@ export async function updateProfileAction(formData: FormData) {
     youtube_url: trimmedOrNull(formData, "youtube_url"),
     tiktok_url: trimmedOrNull(formData, "tiktok_url"),
     x_url: trimmedOrNull(formData, "x_url"),
+    location_id: trimmedOrNull(formData, "location_id"),
+    address: trimmedOrNull(formData, "address"),
   });
   revalidatePath("/recruit/company");
 

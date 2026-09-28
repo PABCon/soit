@@ -6,6 +6,7 @@ import { Link } from "@/i18n/navigation";
 import { CompanyLogo } from "@/components/CompanyLogo";
 import { updateProfileAction, uploadImageAction } from "@/app/[locale]/(console)/recruit/company/actions";
 import type { MyCompany } from "@/lib/db/companies";
+import type { LocationOption } from "@/lib/db/locations";
 
 const inputClass = "h-9 rounded-lg border border-line bg-white px-3 text-sm";
 const labelClass = "flex flex-col gap-1 text-sm";
@@ -24,7 +25,15 @@ function VerificationBanner({ status }: { status: MyCompany["verification_status
 const SOCIAL_FIELDS = ["facebook_url", "linkedin_url", "instagram_url", "youtube_url", "tiktok_url", "x_url"] as const;
 type SocialField = (typeof SOCIAL_FIELDS)[number];
 
-export function CompanyProfileForm({ company, canEdit }: { company: MyCompany; canEdit: boolean }) {
+export function CompanyProfileForm({
+  company,
+  canEdit,
+  locations,
+}: {
+  company: MyCompany;
+  canEdit: boolean;
+  locations: LocationOption[];
+}) {
   const t = useTranslations("console");
   const [name, setName] = useState(company.company_name);
   const [description, setDescription] = useState(company.company_description ?? "");
@@ -32,6 +41,8 @@ export function CompanyProfileForm({ company, canEdit }: { company: MyCompany; c
   const [industry, setIndustry] = useState(company.industry ?? "");
   const [size, setSize] = useState(company.company_size ?? "");
   const [companyType, setCompanyType] = useState(company.company_type ?? "");
+  const [locationId, setLocationId] = useState(company.location_id ?? "");
+  const [address, setAddress] = useState(company.address ?? "");
   const [socials, setSocials] = useState<Record<SocialField, string>>({
     facebook_url: company.facebook_url ?? "",
     linkedin_url: company.linkedin_url ?? "",
@@ -55,6 +66,8 @@ export function CompanyProfileForm({ company, canEdit }: { company: MyCompany; c
     formData.set("industry", industry);
     formData.set("company_size", size);
     formData.set("company_type", companyType);
+    formData.set("location_id", locationId);
+    formData.set("address", address);
     for (const field of SOCIAL_FIELDS) formData.set(field, socials[field]);
     await updateProfileAction(formData);
     setPending(false);
@@ -142,6 +155,24 @@ export function CompanyProfileForm({ company, canEdit }: { company: MyCompany; c
           <span>{t("companyType")}</span>
           <input value={companyType} onChange={(e) => setCompanyType(e.target.value)} className={inputClass} />
         </label>
+
+        <div className="grid grid-cols-2 gap-4">
+          <label className={labelClass}>
+            <span>{t("location")}</span>
+            <select value={locationId} onChange={(e) => setLocationId(e.target.value)} className={inputClass}>
+              <option value="">{t("locationPlaceholder")}</option>
+              {locations.map((l) => (
+                <option key={l.id} value={l.id}>
+                  {l.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className={labelClass}>
+            <span>{t("address")}</span>
+            <input value={address} onChange={(e) => setAddress(e.target.value)} className={inputClass} />
+          </label>
+        </div>
 
         <fieldset className="flex flex-col gap-3">
           <legend className="text-sm font-medium">{t("socialLinks")}</legend>

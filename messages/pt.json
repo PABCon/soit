@@ -97,6 +97,9 @@
     "inviteExpiresIn": "{days, plural, one {Expira em # dia} other {Expira em # dias}}",
     "errorGeneric": "Algo correu mal. Tente novamente.",
     "companyType": "Tipo de empresa",
+    "location": "Localização",
+    "locationPlaceholder": "Selecione uma cidade…",
+    "address": "Morada",
     "socialLinks": "Redes sociais",
     "facebook": "Facebook",
     "linkedin": "LinkedIn",
@@ -207,7 +210,8 @@
     "activeOffers": "Vagas ativas",
     "companyType": "Tipo de empresa",
     "industry": "Indústria",
-    "previewBadge": "Pré-visualização"
+    "previewBadge": "Pré-visualização",
+    "ourOffice": "O nosso escritório"
   },
   "companies": {
     "title": "Empresas",

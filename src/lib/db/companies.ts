@@ -22,6 +22,8 @@ export type MyCompany = {
   youtube_url: string | null;
   tiktok_url: string | null;
   x_url: string | null;
+  location_id: string | null;
+  address: string | null;
 };
 
 export type EmployerContext = {
@@ -76,6 +78,8 @@ export type PublicSocialLinks = {
   xUrl: string | null;
 };
 
+export type CompanyLocation = { name: string; latitude: number; longitude: number };
+
 export async function getCompanyBySlug(slug: string): Promise<
   | (Company &
       PublicSocialLinks & {
@@ -85,6 +89,8 @@ export async function getCompanyBySlug(slug: string): Promise<
         companySize: string | null;
         companyType: string | null;
         coverImageUrl: string | null;
+        address: string | null;
+        location: CompanyLocation | null;
       })
   | null
 > {
@@ -92,12 +98,14 @@ export async function getCompanyBySlug(slug: string): Promise<
   const { data } = await supabase
     .from("companies")
     .select(
-      `slug, company_name, company_logo_url, cover_image_url, company_description, website, industry, company_size, company_type, ${PUBLIC_SOCIAL_FIELDS}`,
+      `slug, company_name, company_logo_url, cover_image_url, company_description, website, industry, company_size, company_type, address, locations ( name, latitude, longitude ), ${PUBLIC_SOCIAL_FIELDS}`,
     )
     .eq("slug", slug)
     .maybeSingle();
 
   if (!data) return null;
+
+  const location = data.locations as unknown as CompanyLocation | null;
 
   return {
     slug: data.slug,
@@ -109,6 +117,8 @@ export async function getCompanyBySlug(slug: string): Promise<
     industry: data.industry,
     companySize: data.company_size,
     companyType: data.company_type,
+    address: data.address,
+    location,
     facebookUrl: data.facebook_url,
     linkedinUrl: data.linkedin_url,
     instagramUrl: data.instagram_url,
@@ -189,6 +199,8 @@ export async function updateCompanyProfile(fields: {
   youtube_url: string | null;
   tiktok_url: string | null;
   x_url: string | null;
+  location_id: string | null;
+  address: string | null;
 }) {
   const supabase = await createClient();
   const { data: companyId } = await supabase.rpc("my_company_id");
