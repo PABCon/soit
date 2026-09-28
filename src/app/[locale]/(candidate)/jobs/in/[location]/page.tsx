@@ -11,7 +11,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { location } = await params;
   const result = await getBrowseJobs({ locationSlug: location });
   if (!result) return {};
-  return { title: `IT jobs in ${result.locationName} — SóIT` };
+  return { title: `IT jobs in ${result.locationName} — Just IT` };
 }
 
 /** justjoin.it-style browse page — `/jobs/in/lisboa`. `/jobs/[slug]` already

@@ -14,7 +14,7 @@ Your application has been sent to ${companyName} for the "${jobTitle}" role.
 
 We keep our fingers crossed for you!
 
-— SóIT`;
+— Just IT`;
 
   const html = `
     <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto;">
@@ -23,7 +23,7 @@ We keep our fingers crossed for you!
       <p>Your application has been sent to <strong>${companyName}</strong> for the
         "<strong>${jobTitle}</strong>" role.</p>
       <p>We keep our fingers crossed for you!</p>
-      <p style="color: #5b6b66; font-size: 12px;">— SóIT</p>
+      <p style="color: #5b6b66; font-size: 12px;">— Just IT</p>
     </div>
   `.trim();
 

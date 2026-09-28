@@ -1,6 +1,6 @@
 {
   "brand": {
-    "name": "SóIT",
+    "name": "Just IT",
     "tagline": "Only IT jobs. Always with a salary.",
     "navTagline": "#1 IT Job Board in Portugal"
   },
@@ -121,7 +121,7 @@
     "description": "Description",
     "descriptionHint": "Plain text — leave a blank line between paragraphs.",
     "externalApplyUrl": "External application URL (optional)",
-    "externalApplyUrlHint": "If set, the Apply button sends candidates to your own site instead — SóIT won't collect applications for this job.",
+    "externalApplyUrlHint": "If set, the Apply button sends candidates to your own site instead — Just IT won't collect applications for this job.",
     "language": "Ad language",
     "seniority": "Seniority",
     "seniorityOption": {
@@ -305,14 +305,14 @@
     "nifError": {
       "format": "Enter a 9-digit NIF.",
       "checksum": "That NIF isn't valid — check the digits.",
-      "not_business": "That NIF belongs to an individual, not a registered business. SóIT verifies companies and public entities only."
+      "not_business": "That NIF belongs to an individual, not a registered business. Just IT verifies companies and public entities only."
     },
     "provider": {
       "google": "Google",
       "github": "GitHub",
       "linkedin_oidc": "LinkedIn"
     },
-    "inviteTitle": "Join your team on SóIT",
+    "inviteTitle": "Join your team on Just IT",
     "inviteBody": "You've been invited to join {company} as a recruiter.",
     "inviteInvalid": "This invite link is invalid or has expired.",
     "forgotPassword": "Forgot password?",
@@ -439,7 +439,7 @@
     "postJob": "Post a job",
     "privacy": "Privacy policy",
     "terms": "Terms of use",
-    "copyright": "© {year} SóIT"
+    "copyright": "© {year} Just IT"
   },
   "legal": {
     "privacyTitle": "Privacy policy",

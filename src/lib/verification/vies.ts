@@ -4,12 +4,12 @@ import type { NifLookupResult, NifRegistryProvider } from "./types";
  * VIES (EU VAT Information Exchange System) — spec §5.7.1, §5.7.6.
  *
  * Uses the plain `checkVat` operation, not `checkVatApprox`: the latter
- * needs a requester VAT number to authenticate the query, which SóIT
+ * needs a requester VAT number to authenticate the query, which Just IT
  * doesn't have yet (no NIF of its own). `checkVat` needs no requester and
  * still gives a real found/not_found result plus the registered name where
  * the member state returns one. Swapping to `checkVatApprox` for the
  * consultation-number reference (§5.7.3) is a small change to this file
- * once SóIT registers.
+ * once Just IT registers.
  *
  * The caveat that decides the architecture (§5.7.1): VIES only covers
  * entities enrolled for intra-EU operations, so a real domestic-only

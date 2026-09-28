@@ -1,6 +1,6 @@
 {
   "brand": {
-    "name": "SóIT",
+    "name": "Just IT",
     "tagline": "Só vagas de IT. Sempre com salário.",
     "navTagline": "Nº 1 portal de vagas de IT em Portugal"
   },
@@ -121,7 +121,7 @@
     "description": "Descrição",
     "descriptionHint": "Texto simples — deixe uma linha em branco entre parágrafos.",
     "externalApplyUrl": "URL externo de candidatura (opcional)",
-    "externalApplyUrlHint": "Se definido, o botão Candidatar envia os candidatos para o seu próprio site — a SóIT não recolhe candidaturas para esta vaga.",
+    "externalApplyUrlHint": "Se definido, o botão Candidatar envia os candidatos para o seu próprio site — a Just IT não recolhe candidaturas para esta vaga.",
     "language": "Idioma do anúncio",
     "seniority": "Senioridade",
     "seniorityOption": {
@@ -305,14 +305,14 @@
     "nifError": {
       "format": "Indique um NIF com 9 dígitos.",
       "checksum": "Esse NIF não é válido — verifique os dígitos.",
-      "not_business": "Esse NIF pertence a uma pessoa singular, não a uma empresa registada. A SóIT verifica apenas empresas e entidades públicas."
+      "not_business": "Esse NIF pertence a uma pessoa singular, não a uma empresa registada. A Just IT verifica apenas empresas e entidades públicas."
     },
     "provider": {
       "google": "Google",
       "github": "GitHub",
       "linkedin_oidc": "LinkedIn"
     },
-    "inviteTitle": "Junte-se à sua equipa na SóIT",
+    "inviteTitle": "Junte-se à sua equipa na Just IT",
     "inviteBody": "Foi convidado para se juntar a {company} como recrutador.",
     "inviteInvalid": "Este link de convite é inválido ou expirou.",
     "forgotPassword": "Esqueceu-se da palavra-passe?",
@@ -439,7 +439,7 @@
     "postJob": "Publicar vaga",
     "privacy": "Política de privacidade",
     "terms": "Termos de utilização",
-    "copyright": "© {year} SóIT"
+    "copyright": "© {year} Just IT"
   },
   "legal": {
     "privacyTitle": "Política de privacidade",

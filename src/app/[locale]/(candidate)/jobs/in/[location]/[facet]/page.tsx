@@ -28,7 +28,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   if (!result) return {};
   const place = result.locationName ?? "Portugal";
   const facetLabel = await resolveFacetLabel(locale, result);
-  return { title: `${facetLabel} jobs in ${place} — SóIT` };
+  return { title: `${facetLabel} jobs in ${place} — Just IT` };
 }
 
 /** justjoin.it-style browse page — `/jobs/in/lisboa/react` or `/jobs/in/
