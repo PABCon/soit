@@ -1671,3 +1671,68 @@ correctly; the public page then shows the address line, a rendered
 Leaflet map, and a visible marker, with zero console errors — including
 zero 404s, re-checked explicitly after the icon fix on both
 environments. Fixtures cleaned up on both afterward.
+
+**Phase 6 shipped**: items 10b/10c and 11 — the last real feature phase
+before item 10a's LLM autofill. Its actual purpose, per your own
+framing: give the future candidate-scoring engine (item 4) a
+structured, job-side vocabulary to score against later — this phase
+builds none of the scoring itself.
+
+Must-have tech + level **extends the existing `job_tech_tags`
+relationship in place** (new `level`/`required` columns) rather than a
+new free-text requirements table — a direct match for the reference
+screenshot's own "TECH STACK: SQL — Advanced" display, and it reuses
+`JobForm`'s existing tech-tag picker UI instead of building a parallel
+one. Working languages are a genuinely new, separate concept from
+`jobs.language` (which is just "what language is this ad written in,"
+unrelated to any skill) — a new curated `spoken_languages` table
+(English/Portuguese/Spanish/French/German, same shape as `locations`/
+`job_categories`) and a `job_languages` join table (same shape as
+`job_tech_tags`). Both migrations applied to the live Supabase project
+via `supabase db push`.
+
+`JobForm.tsx`'s tech-tag selection model changed from a flat
+`string[]` to `{id, level, required}[]` — each selected chip now shows
+an inline level `<select>` and a "Must-have" checkbox, defaulting to
+required=true/level=unset on first pick. A new "Required languages"
+section mirrors the same shape for the small curated language list
+(checkbox + level, no filter-by-typing needed for only 5 entries).
+`saveJob` extends its existing delete-then-reinsert pattern for
+`job_tech_tags` to carry the two new columns, and adds the identical
+step for `job_languages`. `getJobForEdit`/the shared `SELECT` grew to
+read both back for pre-fill and public display respectively.
+
+The candidate-facing job detail page now shows required languages
+(`jobForm.requiredLanguages`, reusing the console form's own i18n
+keys rather than duplicating them) — without this, the data an
+employer enters would be entirely invisible to candidates, defeating
+the point of collecting it. New `JobExpiryBar` — a slim gradient
+progress bar matching the reference screenshot, next to the existing
+"N days left" badge logic.
+
+**A real lint catch, not a runtime bug, worth remembering**: `JobExpiryBar`
+originally called `Date.now()` directly inside its own render body —
+React's purity rule (`react-hooks/purity`) correctly flags this as an
+impure call a component must not make directly, since a component's
+job is to be idempotent for the same input. Fixed by pulling the
+calculation out into a plain `expiryPercentLeft()` helper (not a
+component, so the rule doesn't apply) that the *page* — a genuinely
+per-request server compute, not a re-rendering component — calls once
+and passes down as a plain `percentLeft` prop; `JobExpiryBar` itself is
+now purely presentational.
+
+Verified live on both localhost and `https://soit.vercel.app`,
+end-to-end through the **real `JobForm` UI** (not seeded directly, to
+actually exercise the new picker controls): posted a job picking React
+(Advanced, must-have) and TypeScript (no level, nice-to-have) as tech
+tags, and English (Advanced) plus French (no level) as required
+languages — confirmed by reading the database directly afterward that
+`job_tech_tags`/`job_languages` hold exactly those values, not just
+that the form appeared to accept them; the public job detail page
+shows "Idiomas necessários" with "English — Avançado" and a bare
+"French," plus a rendered expiry bar and days-left caption; reopening
+the job's edit page correctly pre-fills React/TypeScript with their
+exact level/required state and English/French as checked (Portuguese,
+never selected, correctly unchecked) — a genuine round trip, not just
+a one-way save. Zero console errors on either environment across every
+step. Fixtures cleaned up on both afterward.

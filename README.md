@@ -307,7 +307,13 @@ without ever downgrading a status the employer already moved further
 along. **Phase 5 shipped**: companies can now set a curated-city
 location + street address, shown as a map + address line on the public
 profile page (a real Leaflet default-marker-icon 404 bug was caught and
-fixed by this phase's own verification). Next up: connecting a real
+fixed by this phase's own verification). **Phase 6 shipped**: employers
+can mark tech tags as must-have with a proficiency level and set
+required working languages (both feed the future candidate-scoring
+engine, not scoring itself), the job detail page shows required
+languages, and a new expiry progress bar matches the reference
+screenshot. Only the LLM-based job-link autofill (item 10a) remains
+from this review round. Next up: that phase, then connecting a real
 domain + email provider (unblocks both the application-email flow and
-real saved-search notifications), step 9 (SEO check, compliance,
-polish), and the rest of the console-review phases (see `CLAUDE.md`).
+real saved-search notifications) and step 9 (SEO check, compliance,
+polish) (see `CLAUDE.md`).
