@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { verifyCompany } from "@/lib/verification/verify-company";
 import { Sidebar } from "@/components/console/Sidebar";
+import { ConsoleTopNav } from "@/components/console/ConsoleTopNav";
 
 type Props = {
   children: React.ReactNode;
@@ -59,10 +60,19 @@ export default async function ConsoleLayout({ children, params }: Props) {
     await verifyCompany(company.id, company.nif);
   }
 
+  const metadata = user!.user_metadata as { full_name?: string; avatar_url?: string } | undefined;
+
   return (
-    <div className="flex min-h-dvh flex-col md:flex-row">
-      <Sidebar />
-      <main className="min-w-0 flex-1 px-4 py-8 md:px-8">{children}</main>
+    <div className="flex min-h-dvh flex-col">
+      <ConsoleTopNav
+        fullName={metadata?.full_name ?? null}
+        avatarUrl={metadata?.avatar_url ?? null}
+        email={user!.email ?? ""}
+      />
+      <div className="flex flex-1 flex-col md:flex-row">
+        <Sidebar />
+        <main className="min-w-0 flex-1 px-4 py-8 md:px-8">{children}</main>
+      </div>
     </div>
   );
 }

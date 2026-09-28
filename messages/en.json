@@ -398,6 +398,7 @@
     "empty": "No applicants yet.",
     "viewCv": "View CV",
     "cvUnavailable": "CV unavailable",
+    "backToJobAds": "← Back to job ads",
     "status": {
       "applied": "Applied",
       "viewed": "Viewed",

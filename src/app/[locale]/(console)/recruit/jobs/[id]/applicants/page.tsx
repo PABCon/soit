@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
+import { Link } from "@/i18n/navigation";
 import { getJobForEdit } from "@/lib/db/jobs";
 import { getApplicantsForJob } from "@/lib/db/applications";
 import { ApplicantsList } from "@/components/console/ApplicantsList";
@@ -16,7 +17,10 @@ export default async function ApplicantsPage({ params }: Props) {
 
   return (
     <>
-      <h1 className="text-2xl font-bold">{t("title", { job: job.title })}</h1>
+      <Link href="/recruit" className="text-sm font-medium text-pine hover:underline">
+        {t("backToJobAds")}
+      </Link>
+      <h1 className="mt-2 text-2xl font-bold">{t("title", { job: job.title })}</h1>
       <ApplicantsList jobId={id} applicants={applicants} />
     </>
   );

@@ -1,9 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { Link, useRouter } from "@/i18n/navigation";
-import { LanguageSwitcher } from "@/components/LanguageSwitcher";
-import { createClient } from "@/lib/supabase/client";
+import { Link } from "@/i18n/navigation";
 
 const MVP = [
   { key: "myJobAds", href: "/recruit" },
@@ -14,26 +12,15 @@ const MVP = [
 
 const LATER = ["matchmaking", "myProducts", "pricing", "contact"] as const;
 
-/** Employer console sidebar (§7.2) — its own navigation, not the candidate rail. */
+/** Employer console sidebar (§7.2) — its own navigation, not the candidate
+ *  rail. Identity (avatar) and locale live in `ConsoleTopNav` above this,
+ *  not here — this is nav links only. */
 export function Sidebar() {
   const t = useTranslations("console");
-  const brand = useTranslations("brand");
-  const router = useRouter();
-
-  async function handleLogOut() {
-    await createClient().auth.signOut();
-    router.push("/");
-    router.refresh();
-  }
 
   return (
     <aside className="flex w-full shrink-0 flex-col border-b border-line bg-white/60 px-3 py-4 md:h-dvh md:w-60 md:border-r md:border-b-0">
-      <Link href="/recruit" className="px-2 font-display text-lg font-bold text-pine">
-        {brand("name")}
-      </Link>
-      <p className="mt-0.5 px-2 text-xs text-muted">{t("title")}</p>
-
-      <nav className="mt-4 flex gap-0.5 overflow-x-auto md:mt-6 md:flex-col md:overflow-visible">
+      <nav className="flex gap-0.5 overflow-x-auto md:flex-col md:overflow-visible">
         {MVP.map(({ key, href }) => (
           <Link
             key={key}
@@ -54,13 +41,6 @@ export function Sidebar() {
           </span>
         ))}
       </nav>
-
-      <div className="mt-4 flex items-center justify-end gap-3 px-2 md:mt-auto md:pt-4">
-        <button type="button" onClick={handleLogOut} className="text-xs text-muted hover:text-ink">
-          {t("logOut")}
-        </button>
-        <LanguageSwitcher />
-      </div>
     </aside>
   );
 }
