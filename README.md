@@ -298,7 +298,9 @@ language switcher, mirroring the candidate site's own `TopNav`) and a
 back link on the per-job Applicants page. **Phase 2 shipped**: Team
 invites now show an expiry readout and support Revoke/Resend — the
 `employer_invites` RLS policy already covered this, only the app-code
-actions and UI were missing. Next up: connecting a real domain + email
-provider (unblocks both the application-email flow and real
-saved-search notifications), step 9 (SEO check, compliance, polish),
-and the rest of the console-review phases (see `CLAUDE.md`).
+actions and UI were missing. **Phase 3 shipped**: the employer's own
+account page gained a phone field and a read-only display of their
+login email. Next up: connecting a real domain + email provider
+(unblocks both the application-email flow and real saved-search
+notifications), step 9 (SEO check, compliance, polish), and the rest
+of the console-review phases (see `CLAUDE.md`).

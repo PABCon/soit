@@ -1564,3 +1564,19 @@ waits and full diagnostic output (same "production is slower than a
 same-machine dev server" pattern already documented several times
 elsewhere in this file) showed everything working correctly. Fixtures
 cleaned up on both afterward.
+
+**Phase 3 shipped**: item 9, the employer's own "My account" page had
+nothing but name and password. `phone` now lives in
+`user_metadata` alongside `full_name`/`avatar_url` (same place
+`last_role`/`pending_nif` already do — no new column, mirrors the
+candidate profile's own phone field). `email` is shown but **read-only**
+— the real Supabase Auth login email, displayed with the exact same
+disabled-input styling `CandidateProfileForm` already uses for its own
+email field, since changing a login email is a separate, riskier flow
+that wasn't asked for here.
+
+Verified live on both localhost and `https://soit.vercel.app` with a
+fresh verified-employer fixture: the email field shows the correct
+login email and is genuinely disabled; setting a phone number, saving,
+and reloading the page confirms it persisted. Zero console errors
+either environment. Fixtures cleaned up on both afterward.
