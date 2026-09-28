@@ -287,7 +287,15 @@ removed, and save-search got a visible label and clearer hint. A real
 bug (an invalid `z-500` Tailwind class silently left the map's close
 button unclickable under Leaflet's own zoom control) was caught and
 fixed by the batch's own verification before shipping — see `CLAUDE.md`
-for the full writeup. Next: connecting a real domain + email provider
-(unblocks both the application-email flow and real saved-search
-notifications), and step 9 (SEO check, compliance, polish) (see
-`CLAUDE.md`).
+for the full writeup. **An 11-item employer-console review** is now
+underway as a 7-phase plan (nav, applicants, team invites, account,
+company map, job-requirements/languages, and an LLM-based job-link
+autofill — full plan at `~/.claude/plans/refactored-zooming-wren.md`);
+pricing and a direct-contact channel are explicitly deferred pending a
+business-model discussion, not built as part of it. **Phase 1
+shipped**: a top navbar for the employer console (avatar dropdown +
+language switcher, mirroring the candidate site's own `TopNav`) and a
+back link on the per-job Applicants page. Next up: connecting a real
+domain + email provider (unblocks both the application-email flow and
+real saved-search notifications), step 9 (SEO check, compliance,
+polish), and the rest of the console-review phases (see `CLAUDE.md`).

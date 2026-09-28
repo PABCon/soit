@@ -1474,3 +1474,57 @@ three extra orphaned companies left behind by earlier failed fixture-
 setup attempts during this same session (wrong FK columns while writing
 the seed script itself, not an application bug) — swept up in the same
 cleanup pass rather than left behind.
+
+**An 11-item employer-console review came in next.** Planned formally
+(3 parallel Explore agents, then a written 7-phase plan) since it's the
+largest batch yet — new tables, new pages, and a first AI/LLM
+integration. Two items are explicitly **not** implementation work and
+excluded from the plan entirely, per your own words: item 6 (pricing —
+you want real business modeling and a LinkedIn comparison, not just
+porting justjoin.it's numbers, so that's a conversation to have next,
+not code to write) and item 7 (contact chat/email — "later... I still
+need to think about it with you"). Item 10 (job-posting redesign) got
+scoped down to its pricing-independent parts (link-paste autofill,
+must-have-tech-with-level, working-language-with-level, a cosmetic
+days-left bar) — banner/video upload and anything pricing-tier-gated
+stays out until item 6 is actually resolved. One real architecture
+decision got confirmed with you via AskUserQuestion before planning:
+the link-paste autofill will use LLM-based extraction (Vercel AI
+Gateway) rather than parsing `JobPosting` schema.org markup — your own
+call, since the future candidate-scoring engine (item 4) needs that
+same investment anyway. Full 7-phase plan retained at
+`~/.claude/plans/refactored-zooming-wren.md` for the remaining phases.
+
+**Phase 1 shipped**: items 1 and 3. The employer console had no top
+navbar at all — no avatar, no language switcher up top, unlike the
+candidate site's own `TopNav`. New `ConsoleTopNav` (server) +
+`AccountMenu` (client) mirror the candidate `TopNav`/`LoginMenu`
+pattern exactly — same shared `Dropdown`/`LanguageSwitcher` components,
+no new mechanism — but deliberately slimmer: the console `Sidebar` is
+always visible (not hidden below `sm` the way the candidate `Rail` is),
+so `AccountMenu`'s panel only needs My Account + Log out, not a full
+mobile-fallback nav duplicating every Sidebar link. `fullName`/
+`avatarUrl` are read once, server-side, in `(console)/recruit/
+layout.tsx` (which already fetches the session for its own auth guard)
+and passed down as props — no second client-side auth fetch/loading
+flicker. `Sidebar.tsx` drops its own now-redundant wordmark and bottom
+logout/language row. Item 3: the per-job Applicants page had no way
+back to the job list — added, same `text-sm font-medium text-pine
+hover:underline` idiom the job-edit page's own forward link to
+Applicants already used.
+
+Verified live on both localhost and `https://soit.vercel.app` with a
+fresh verified-employer-plus-job fixture: the top bar renders with a
+working language switcher and an avatar dropdown showing the
+employer's name, a My Account link, and Log out; the dropdown closes on
+an outside click; the Sidebar no longer shows a duplicate wordmark; the
+Applicants page's back link is present and, confirmed via a direct
+network-logged reproduction on both environments, does correctly
+navigate back to `/recruit` (an initial automated run *looked* like the
+click silently failed to navigate on both localhost and production —
+re-run immediately after with request/response logging attached showed
+a completely clean navigation both times, confirming it's the same
+intermittent Playwright-vs-Next-client-hydration timing flakiness
+already seen and dismissed once earlier this session for an unrelated
+link, not a real app bug). Zero console errors either environment.
+Fixtures cleaned up on both afterward.
