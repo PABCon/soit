@@ -114,6 +114,7 @@
     "myAccount": "My account",
     "myProfile": "My profile",
     "fullName": "First and last name",
+    "phone": "Phone",
     "uploadAvatar": "Upload photo",
     "avatarError": {
       "no_session": "Something went wrong. Try again.",

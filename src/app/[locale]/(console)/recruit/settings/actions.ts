@@ -6,6 +6,7 @@ import { updateMyMemberProfile, uploadMemberAvatar, type UploadResult } from "@/
 export async function updateMyProfileAction(formData: FormData) {
   await updateMyMemberProfile({
     full_name: String(formData.get("full_name") ?? "").trim(),
+    phone: String(formData.get("phone") ?? "").trim(),
   });
   revalidatePath("/recruit/settings");
   revalidatePath("/recruit/team");

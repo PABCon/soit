@@ -50,8 +50,10 @@ export async function getCompanyMembers(companyId: string): Promise<TeamMember[]
 
 /** Self-service — Supabase Auth's own user record, not a table
  *  `employer_users` owns, so no new RLS grant is needed (same as
- *  `last_role`/`pending_nif`, already set the same way at signup). */
-export async function updateMyMemberProfile(fields: { full_name: string; avatar_url?: string }) {
+ *  `last_role`/`pending_nif`, already set the same way at signup). `phone`
+ *  lives here too (real-usage report: no phone field existed anywhere on
+ *  the employer's own account) — same place, no new table/column. */
+export async function updateMyMemberProfile(fields: { full_name: string; phone?: string; avatar_url?: string }) {
   const supabase = await createClient();
   const { error } = await supabase.auth.updateUser({ data: fields });
   if (error) throw new Error(error.message);

@@ -9,13 +9,18 @@ const labelClass = "flex flex-col gap-1 text-sm";
 
 export function EmployerProfileForm({
   initialFullName,
+  initialPhone,
+  email,
   avatarUrl,
 }: {
   initialFullName: string;
+  initialPhone: string;
+  email: string;
   avatarUrl: string | null;
 }) {
   const t = useTranslations("console");
   const [fullName, setFullName] = useState(initialFullName);
+  const [phone, setPhone] = useState(initialPhone);
   const [saved, setSaved] = useState(false);
   const [pending, setPending] = useState(false);
   const [fileError, setFileError] = useState<string | null>(null);
@@ -26,6 +31,7 @@ export function EmployerProfileForm({
     setSaved(false);
     const formData = new FormData();
     formData.set("full_name", fullName);
+    formData.set("phone", phone);
     await updateMyProfileAction(formData);
     setPending(false);
     setSaved(true);
@@ -71,6 +77,14 @@ export function EmployerProfileForm({
         <label className={labelClass}>
           <span>{t("fullName")}</span>
           <input value={fullName} onChange={(e) => setFullName(e.target.value)} className={inputClass} />
+        </label>
+        <label className={labelClass}>
+          <span>{t("email")}</span>
+          <input value={email} disabled className={`${inputClass} bg-paper text-muted`} />
+        </label>
+        <label className={labelClass}>
+          <span>{t("phone")}</span>
+          <input value={phone} onChange={(e) => setPhone(e.target.value)} className={inputClass} />
         </label>
         <div className="flex items-center gap-3">
           <button

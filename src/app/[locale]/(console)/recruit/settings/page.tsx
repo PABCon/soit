@@ -25,7 +25,7 @@ export default async function EmployerSettingsPage({ params }: Props) {
   } = await supabase.auth.getUser();
   if (!user) return redirect({ href: "/employer/login", locale });
 
-  const metadata = user.user_metadata as { full_name?: string; avatar_url?: string } | undefined;
+  const metadata = user.user_metadata as { full_name?: string; phone?: string; avatar_url?: string } | undefined;
 
   return (
     <>
@@ -34,7 +34,12 @@ export default async function EmployerSettingsPage({ params }: Props) {
       <section className="mt-6">
         <h2 className="font-display text-sm font-semibold text-muted">{t("myProfile")}</h2>
         <div className="mt-2">
-          <EmployerProfileForm initialFullName={metadata?.full_name ?? ""} avatarUrl={metadata?.avatar_url ?? null} />
+          <EmployerProfileForm
+            initialFullName={metadata?.full_name ?? ""}
+            initialPhone={metadata?.phone ?? ""}
+            email={user.email ?? ""}
+            avatarUrl={metadata?.avatar_url ?? null}
+          />
         </div>
       </section>
 

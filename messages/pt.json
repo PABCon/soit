@@ -114,6 +114,7 @@
     "myAccount": "A minha conta",
     "myProfile": "O meu perfil",
     "fullName": "Nome completo",
+    "phone": "Telefone",
     "uploadAvatar": "Carregar foto",
     "avatarError": {
       "no_session": "Algo correu mal. Tente novamente.",
