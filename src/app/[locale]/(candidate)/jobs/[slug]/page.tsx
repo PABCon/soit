@@ -7,8 +7,10 @@ import { CompanyLogo } from "@/components/CompanyLogo";
 import { TechTags } from "@/components/TechTags";
 import { ApplyModal } from "@/components/ApplyModal";
 import { EngagementPopup } from "@/components/EngagementPopup";
+import { FavoriteButton } from "@/components/FavoriteButton";
 import { getLiveJobBySlug, type JobDetail } from "@/lib/db/jobs";
 import { getApplyStatus } from "@/lib/db/applications";
+import { getMyFavoriteJobIds } from "@/lib/db/favorites";
 import { routing } from "@/i18n/routing";
 
 type Props = { params: Promise<{ locale: string; slug: string }> };
@@ -99,7 +101,10 @@ export default async function JobDetailPage({ params }: Props) {
 
   const t = await getTranslations({ locale, namespace: "job" });
   const tf = await getTranslations({ locale, namespace: "feed" });
-  const applyStatus = await getApplyStatus(job.id);
+  const [applyStatus, favoriteJobIds] = await Promise.all([
+    getApplyStatus(job.id),
+    getMyFavoriteJobIds(),
+  ]);
 
   const paragraphs = job.description.split(/\n{2,}/).filter(Boolean);
 
@@ -122,7 +127,7 @@ export default async function JobDetailPage({ params }: Props) {
         <div className="min-w-0">
           <div className="flex items-start gap-4">
             <CompanyLogo company={job.company} size="lg" />
-            <div className="min-w-0">
+            <div className="min-w-0 flex-1">
               <h1 className="font-display text-2xl font-bold">{job.title}</h1>
               <p className="mt-1 text-muted">
                 <Link href={`/companies/${job.company.slug}`} className="hover:text-pine hover:underline">
@@ -150,6 +155,13 @@ export default async function JobDetailPage({ params }: Props) {
                 )}
               </div>
             </div>
+            {favoriteJobIds && (
+              <FavoriteButton
+                jobId={job.id}
+                initiallyFavorited={favoriteJobIds.includes(job.id)}
+                className="shrink-0 border border-line bg-white shadow-sm"
+              />
+            )}
           </div>
 
           <section className="mt-8">

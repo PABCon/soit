@@ -105,7 +105,14 @@ export function JobMap({ jobs }: { jobs: Job[] }) {
       const L = (await import("leaflet")).default;
       if (cancelled || !containerRef.current) return;
 
-      const map = L.map(containerRef.current, { scrollWheelZoom: true }).setView([39.7, -8.3], 7);
+      // zoomControl: false + re-added at bottomright — the close button
+      // (JobsExplorer, item 3 of a real-usage QA round) now owns the
+      // top-left corner Leaflet's zoom control defaults to.
+      const map = L.map(containerRef.current, { scrollWheelZoom: true, zoomControl: false }).setView(
+        [39.7, -8.3],
+        7,
+      );
+      L.control.zoom({ position: "bottomright" }).addTo(map);
       L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
         maxZoom: 18,
         attribution: "&copy; OpenStreetMap contributors",

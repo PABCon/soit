@@ -20,6 +20,8 @@
     "searchAnywhere": "Qualquer localização",
     "searchSubmit": "Pesquisar",
     "saveSearch": "Guardar pesquisa",
+    "saveSearchHint": "Guardar esta pesquisa para consultar mais tarde em \"Pesquisas guardadas\" (sem notificações por agora)",
+    "saveSearchSaved": "Guardada",
     "saveSearchError": "Inicie sessão como candidato para guardar pesquisas."
   },
   "rail": {

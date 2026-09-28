@@ -22,7 +22,6 @@ export default async function JobsPage({ params }: Props) {
   const t = await getTranslations({ locale, namespace: "jobs" });
   const tf = await getTranslations({ locale, namespace: "feed" });
   const tjf = await getTranslations({ locale, namespace: "jobForm" });
-  const brand = await getTranslations({ locale, namespace: "brand" });
   const [jobs, featuredTech, categories, locations, favoriteJobIds] = await Promise.all([
     getLiveJobs(),
     getFeaturedTechCounts(),
@@ -55,10 +54,7 @@ export default async function JobsPage({ params }: Props) {
 
   return (
     <>
-      <div>
-        <h1 className="text-2xl font-bold">{t("title")}</h1>
-        <p className="mt-1 text-sm text-muted">{brand("tagline")}</p>
-      </div>
+      <h1 className="text-2xl font-bold">{t("title")}</h1>
 
       <div className="mt-6">
         <JobsExplorer

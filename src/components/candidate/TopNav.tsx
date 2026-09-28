@@ -20,7 +20,7 @@ export async function TopNav() {
 
   return (
     <header className="sticky top-0 z-10 border-b border-line bg-paper/90 backdrop-blur">
-      <div className="mx-auto flex h-14 max-w-6xl items-center gap-4 px-4">
+      <div className="mx-auto flex h-14 max-w-[1600px] items-center gap-4 px-4 sm:px-6">
         <Link href="/jobs" className="shrink-0 leading-tight">
           <span className="block font-display text-lg font-bold text-pine">{brand("name")}</span>
           <span className="block text-[11px] text-muted">{brand("navTagline")}</span>

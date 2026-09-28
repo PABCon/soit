@@ -1,9 +1,12 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
 import dynamic from "next/dynamic";
 import { JobRow } from "@/components/JobRow";
+import { Switch } from "@/components/Switch";
+import { TechIcon } from "@/components/icons/tech-icons";
+import { CategoryIcon } from "@/components/icons/category-icons";
 import { useUrlSearchParams, writeUrlSearchParams, parseListParam } from "@/hooks/useUrlSearchParams";
 import type { Job, Seniority, WorkModel } from "@/lib/types";
 import type { FeaturedTechCount } from "@/lib/db/tech-tags";
@@ -51,18 +54,51 @@ function monthlyFloor(job: Job): number {
   }
 }
 
+/** One circular icon chip for the curated tech/category filter row (§7.1,
+ *  real-usage QA — replaces the old scrollable pill-list row entirely; this
+ *  one wraps onto as many rows as it needs and never scrolls). */
+function CircleChip({
+  active,
+  onClick,
+  label,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  label: string;
+  children: ReactNode;
+}) {
+  return (
+    <button type="button" onClick={onClick} title={label} className="flex w-16 flex-col items-center gap-1">
+      <span
+        className={`flex h-12 w-12 items-center justify-center rounded-full border-2 bg-white transition-colors ${
+          active ? "border-pine bg-pine/10" : "border-line hover:border-muted"
+        }`}
+      >
+        {children}
+      </span>
+      <span className={`w-full truncate text-center text-[11px] ${active ? "font-semibold text-pine" : "text-muted"}`}>
+        {label}
+      </span>
+    </button>
+  );
+}
+
+const CROSS_ICON = (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="h-4 w-4">
+    <path d="M6 6l12 12M18 6L6 18" />
+  </svg>
+);
+
 /**
- * The merged jobs landing page (§7.1, real-usage QA round 3 phase 4):
- * curated tech/category quick-filter row, a "more filters" panel for the
- * rest, sort + remote toggle + result count, and a split list/map view
- * that shares this exact same filtered set — replaces the old separate
- * /jobs (list + client-only chip filters) and /map (unfiltered list+map)
- * pages. Filter state lives in the URL (searchParams), not local useState,
- * so the map and list can share one source of truth and filtered views
- * are shareable/bookmarkable — the one thing the old client-state design
- * couldn't do. The full unfiltered list is still what's in the initial
- * server-rendered HTML (crawlable); this is a client-side refinement atop it,
- * same philosophy the old JobFeed already had, just URL-synced now.
+ * The merged jobs landing page (§7.1, real-usage QA round 3 phase 4, then
+ * substantially reworked per a follow-up UX round): curated circular tech/
+ * category filter chips, sort + remote toggle + result count on one row
+ * above the list, a "more filters" left-side panel that swaps places with
+ * the map, and a split list/map view that shares this exact same filtered
+ * set. Filter state lives in the URL (searchParams), not local useState, so
+ * the map and list can share one source of truth and filtered views are
+ * shareable/bookmarkable.
  */
 export function JobsExplorer({
   jobs: allJobs,
@@ -118,6 +154,18 @@ export function JobsExplorer({
     writeUrlSearchParams(new URLSearchParams());
   }
 
+  /** Opening the panel hides the map to make room for it; closing it
+   *  restores the map — the exact interaction a real-usage report asked
+   *  for ("shows as a left side element and hides the map automatically,
+   *  when closed the map pops up again"). */
+  function toggleMoreFilters() {
+    setShowMoreFilters((prev) => {
+      const next = !prev;
+      setMapVisible(!next);
+      return next;
+    });
+  }
+
   const searchKey = searchParams.toString();
 
   const jobs = useMemo(() => {
@@ -156,16 +204,8 @@ export function JobsExplorer({
 
   const pinned = useMemo(() => jobs.filter((j) => j.lat !== null && j.lng !== null), [jobs]);
 
-  const activeCount =
-    tech.length +
-    cat.length +
-    seniority.length +
-    adLanguage.length +
-    workModel.length +
-    (remoteOnly ? 1 : 0) +
-    (minSalary ? 1 : 0) +
-    (q ? 1 : 0) +
-    (near ? 1 : 0);
+  const panelActiveCount = workModel.length + seniority.length + adLanguage.length + (minSalary ? 1 : 0);
+  const activeCount = tech.length + cat.length + panelActiveCount + (remoteOnly ? 1 : 0) + (q ? 1 : 0) + (near ? 1 : 0);
 
   const chip = (on: boolean) =>
     `shrink-0 rounded-full border px-3 py-1.5 text-xs transition-colors ${
@@ -176,37 +216,39 @@ export function JobsExplorer({
 
   return (
     <>
-      {/* Item 4 — one row, curated only: featured tech (20) + categories
-       *  (14), never the full ~159-tag vocabulary companies pick from. */}
-      <div className="flex gap-1.5 overflow-x-auto pb-1">
+      {/* Item 5 — curated circular icon chips (real logos for tech, generic
+       *  glyphs for categories), never the full ~159-tag vocabulary
+       *  companies pick from. Wraps onto as many rows as it needs — no
+       *  horizontal scroll. */}
+      <div className="flex flex-wrap gap-x-3 gap-y-4">
         {featuredTech.map((tag) => (
-          <button
+          <CircleChip
             key={tag.slug}
-            type="button"
+            label={tag.label}
+            active={tech.includes(tag.label)}
             onClick={() => toggleListParam("tech", tech, tag.label)}
-            className={chip(tech.includes(tag.label))}
           >
-            {tag.label}
-          </button>
+            <TechIcon slug={tag.slug} className="h-6 w-6" />
+          </CircleChip>
         ))}
-        {featuredTech.length > 0 && categories.length > 0 && (
-          <span className="mx-1 w-px shrink-0 bg-line" />
-        )}
         {categories.map((c) => (
-          <button
+          <CircleChip
             key={c.id}
-            type="button"
+            label={tjf(`categoryOption.${c.slug}`)}
+            active={cat.includes(c.slug)}
             onClick={() => toggleListParam("cat", cat, c.slug)}
-            className={chip(cat.includes(c.slug))}
           >
-            {tjf(`categoryOption.${c.slug}`)}
-          </button>
+            <CategoryIcon slug={c.slug} className="h-5 w-5 text-ink" />
+          </CircleChip>
         ))}
       </div>
 
-      {/* Item 5 — sort + remote toggle, plus the "more filters" panel
-       *  toggle and the map show/hide toggle. */}
-      <div className="mt-3 flex flex-wrap items-center gap-3">
+      {/* Item 8 — count, sort and the remote toggle all on one row, above
+       *  the list. "More filters" opens a left-side panel (below) instead
+       *  of pushing content down inline. */}
+      <div className="mt-5 flex flex-wrap items-center gap-4">
+        <p className="text-sm font-medium text-ink">{t("results", { count: jobs.length })}</p>
+
         <select
           value={sort}
           onChange={(e) => updateParams({ sort: e.target.value === "recent" ? null : e.target.value })}
@@ -217,90 +259,27 @@ export function JobsExplorer({
           <option value="salary">{t("sortSalary")}</option>
         </select>
 
-        <label className="flex items-center gap-1.5 text-xs text-muted">
-          <input
-            type="checkbox"
-            checked={remoteOnly}
-            onChange={(e) => updateParams({ remote: e.target.checked ? "1" : null })}
-            className="h-4 w-4 accent-pine"
-          />
-          {t("remoteOnly")}
-        </label>
+        <Switch
+          checked={remoteOnly}
+          onChange={(v) => updateParams({ remote: v ? "1" : null })}
+          label={t("remoteOnly")}
+        />
 
-        <button
-          type="button"
-          onClick={() => setShowMoreFilters((v) => !v)}
-          className={chip(showMoreFilters)}
-        >
+        <button type="button" onClick={toggleMoreFilters} className={chip(showMoreFilters)}>
           {t("moreFilters")}
+          {panelActiveCount > 0 ? ` (${panelActiveCount})` : ""}
         </button>
 
-        <button
-          type="button"
-          onClick={() => setMapVisible((v) => !v)}
-          className="ml-auto hidden h-9 items-center gap-2 rounded-lg border border-line bg-white px-3 text-xs font-medium text-ink hover:border-muted lg:flex"
-        >
-          {mapVisible ? t("hideMap") : t("showMap")}
-        </button>
+        {activeCount > 0 && (
+          <button type="button" onClick={clearAll} className="text-xs font-medium text-pine underline underline-offset-2">
+            {t("clear")}
+          </button>
+        )}
       </div>
 
-      {showMoreFilters && (
-        <div className="mt-2 flex flex-col gap-3 rounded-xl border border-line bg-white p-4">
-          <div className="flex flex-wrap gap-1.5">
-            {PANEL_WORK_MODELS.map((w) => (
-              <button
-                key={w}
-                type="button"
-                onClick={() => toggleListParam("workModel", workModel, w)}
-                className={chip(workModel.includes(w))}
-              >
-                {t(`workModel.${w}`)}
-              </button>
-            ))}
-            <span className="mx-1 w-px shrink-0 bg-line" />
-            {SENIORITIES.map((s) => (
-              <button
-                key={s}
-                type="button"
-                onClick={() => toggleListParam("seniority", seniority, s)}
-                className={chip(seniority.includes(s))}
-              >
-                {t(`seniority.${s}`)}
-              </button>
-            ))}
-            <span className="mx-1 w-px shrink-0 bg-line" />
-            {AD_LANGUAGES.map((lang) => (
-              <button
-                key={lang}
-                type="button"
-                onClick={() => toggleListParam("lang", adLanguage, lang)}
-                className={chip(adLanguage.includes(lang))}
-              >
-                {ta(lang)}
-              </button>
-            ))}
-          </div>
-          <label className="flex items-center gap-2 text-xs text-muted">
-            {t("minSalary")}
-            <input
-              type="range"
-              min={0}
-              max={6000}
-              step={250}
-              value={minSalary}
-              onChange={(e) => updateParams({ minSalary: e.target.value === "0" ? null : e.target.value })}
-              className="h-1 w-40 accent-pine"
-            />
-            <span className="w-20 font-semibold text-ink tabular-nums">
-              {minSalary ? `€${minSalary.toLocaleString("pt-PT")}` : t("any")}
-            </span>
-          </label>
-        </div>
-      )}
-
-      {/* Item 8 — the search bar lives in TopNav, but its terms (q/near/
-       *  radiusKm) are just more URL params this component already reads,
-       *  so they show here alongside every other active filter. */}
+      {/* The search bar lives in TopNav, but its terms (q/near/radiusKm)
+       *  are just more URL params this component already reads, so they
+       *  show here alongside every other active filter. */}
       {(q || nearLocation) && (
         <p className="mt-3 text-sm text-muted">
           {q && (
@@ -318,52 +297,127 @@ export function JobsExplorer({
         </p>
       )}
 
-      {/* Item 6 — count, on top of the list. */}
-      <div className="mt-1 flex items-center gap-3">
-        <p className="text-sm font-medium text-ink">{t("results", { count: jobs.length })}</p>
-        {activeCount > 0 && (
-          <button type="button" onClick={clearAll} className="text-xs font-medium text-pine underline underline-offset-2">
-            {t("clear")}
-          </button>
-        )}
-      </div>
-
-      {/* Items 3, 12 — split view sharing this exact filtered set, so the
-       *  map never goes stale/empty relative to the list. */}
-      <div className={`mt-4 grid gap-6 ${mapVisible ? "lg:grid-cols-[1fr_1.1fr]" : ""}`}>
-        <div className={mapVisible ? "order-2 lg:order-1" : ""}>
-          {jobs.length > 0 ? (
-            <ul className="border-t border-line">
-              {jobs.map((job) => (
-                <JobRow
-                  key={job.slug}
-                  job={job}
-                  isFavorited={favoriteJobIds ? favoriteJobIds.includes(job.id) : undefined}
-                />
-              ))}
-            </ul>
-          ) : (
-            <div className="rounded-xl border border-dashed border-line py-16 text-center">
-              <p className="text-sm text-muted">{t("noMatches")}</p>
-              {activeCount > 0 && (
+      <div className="mt-4 flex items-start gap-6">
+        {showMoreFilters && (
+          <aside className="w-full shrink-0 rounded-xl border border-line bg-white p-4 sm:w-64">
+            <div className="flex flex-wrap gap-1.5">
+              {PANEL_WORK_MODELS.map((w) => (
                 <button
+                  key={w}
                   type="button"
-                  onClick={clearAll}
-                  className="mt-3 text-sm font-medium text-pine underline underline-offset-2"
+                  onClick={() => toggleListParam("workModel", workModel, w)}
+                  className={chip(workModel.includes(w))}
                 >
-                  {t("clear")}
+                  {t(`workModel.${w}`)}
                 </button>
-              )}
+              ))}
+              <span className="mx-1 w-px shrink-0 bg-line" />
+              {SENIORITIES.map((s) => (
+                <button
+                  key={s}
+                  type="button"
+                  onClick={() => toggleListParam("seniority", seniority, s)}
+                  className={chip(seniority.includes(s))}
+                >
+                  {t(`seniority.${s}`)}
+                </button>
+              ))}
+              <span className="mx-1 w-px shrink-0 bg-line" />
+              {AD_LANGUAGES.map((lang) => (
+                <button
+                  key={lang}
+                  type="button"
+                  onClick={() => toggleListParam("lang", adLanguage, lang)}
+                  className={chip(adLanguage.includes(lang))}
+                >
+                  {ta(lang)}
+                </button>
+              ))}
+            </div>
+            <label className="mt-4 flex flex-col gap-2 text-xs text-muted">
+              {t("minSalary")}
+              <span className="flex items-center gap-2">
+                <input
+                  type="range"
+                  min={0}
+                  max={6000}
+                  step={250}
+                  value={minSalary}
+                  onChange={(e) => updateParams({ minSalary: e.target.value === "0" ? null : e.target.value })}
+                  className="h-1 flex-1 accent-pine"
+                />
+                <span className="w-20 shrink-0 font-semibold text-ink tabular-nums">
+                  {minSalary ? `€${minSalary.toLocaleString("pt-PT")}` : t("any")}
+                </span>
+              </span>
+            </label>
+          </aside>
+        )}
+
+        {/* Items 3, 12 — split view sharing this exact filtered set, so the
+         *  map never goes stale/empty relative to the list. */}
+        <div className={`grid min-w-0 flex-1 gap-6 ${mapVisible ? "lg:grid-cols-[1fr_1.1fr]" : ""}`}>
+          <div className={mapVisible ? "order-2 lg:order-1" : ""}>
+            {jobs.length > 0 ? (
+              <ul className="border-t border-line">
+                {jobs.map((job) => (
+                  <JobRow
+                    key={job.slug}
+                    job={job}
+                    isFavorited={favoriteJobIds ? favoriteJobIds.includes(job.id) : undefined}
+                  />
+                ))}
+              </ul>
+            ) : (
+              <div className="rounded-xl border border-dashed border-line py-16 text-center">
+                <p className="text-sm text-muted">{t("noMatches")}</p>
+                {activeCount > 0 && (
+                  <button
+                    type="button"
+                    onClick={clearAll}
+                    className="mt-3 text-sm font-medium text-pine underline underline-offset-2"
+                  >
+                    {t("clear")}
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+
+          {mapVisible && (
+            <div className="relative order-1 hidden h-[420px] overflow-hidden rounded-xl border border-line lg:sticky lg:top-20 lg:order-2 lg:block lg:h-[calc(100dvh-8rem)]">
+              <button
+                type="button"
+                onClick={() => setMapVisible(false)}
+                title={t("hideMap")}
+                // Leaflet's own zoom control sits at the same top-left
+                // corner with z-index 1000 — this has to clear that or a
+                // click here just hits "+" instead.
+                className="absolute top-2 left-2 z-[1100] flex h-8 w-8 items-center justify-center rounded-full bg-white text-ink shadow-sm hover:text-pine"
+              >
+                {CROSS_ICON}
+                <span className="sr-only">{t("hideMap")}</span>
+              </button>
+              <JobMap jobs={pinned} />
             </div>
           )}
         </div>
-
-        {mapVisible && (
-          <div className="order-1 hidden h-[420px] overflow-hidden rounded-xl border border-line lg:sticky lg:top-20 lg:order-2 lg:block lg:h-[calc(100dvh-8rem)]">
-            <JobMap jobs={pinned} />
-          </div>
-        )}
       </div>
+
+      {/* Item 3 — reopening the map is a floating right-edge tab, mirroring
+       *  Rail's own left-edge collapsed tab. */}
+      {!mapVisible && (
+        <button
+          type="button"
+          onClick={() => setMapVisible(true)}
+          title={t("showMap")}
+          className="fixed top-1/2 right-0 z-20 hidden -translate-y-1/2 items-center gap-1.5 rounded-l-lg border border-r-0 border-line bg-white px-1.5 py-3 text-muted shadow-sm transition-colors hover:text-pine lg:flex"
+        >
+          <span className="text-xs font-medium tracking-wide" style={{ writingMode: "vertical-rl" }}>
+            {t("showMap")}
+          </span>
+        </button>
+      )}
     </>
   );
 }

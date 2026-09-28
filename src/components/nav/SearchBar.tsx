@@ -2,7 +2,7 @@
 
 import { useState, type FormEvent } from "react";
 import { useTranslations } from "next-intl";
-import { usePathname, useRouter } from "@/i18n/navigation";
+import { Link, usePathname, useRouter } from "@/i18n/navigation";
 import { useUrlSearchParams, writeUrlSearchParams } from "@/hooks/useUrlSearchParams";
 import { saveSearchAction } from "@/app/[locale]/(candidate)/saved-searches/actions";
 import type { LocationOption } from "@/lib/db/locations";
@@ -108,26 +108,38 @@ export function SearchBar({ locations }: { locations: LocationOption[] }) {
       >
         {t("searchSubmit")}
       </button>
-      <button
-        type="button"
-        onClick={handleSave}
-        disabled={!canSave || saveState === "saving"}
-        title={saveState === "error" ? t("saveSearchError") : t("saveSearch")}
-        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-muted transition-colors hover:bg-paper hover:text-pine disabled:opacity-40"
-      >
-        <svg
-          viewBox="0 0 24 24"
-          className="h-4 w-4"
-          fill={saveState === "saved" ? "currentColor" : "none"}
-          stroke="currentColor"
-          strokeWidth="1.6"
-          strokeLinecap="round"
-          strokeLinejoin="round"
+      {saveState === "saved" ? (
+        <Link
+          href="/saved-searches"
+          className="flex h-9 shrink-0 items-center gap-1.5 rounded-lg px-2 text-xs font-medium text-pine hover:underline"
         >
-          <path d="M6 4h12v16l-6-4-6 4V4Z" />
-        </svg>
-        <span className="sr-only">{t("saveSearch")}</span>
-      </button>
+          <svg viewBox="0 0 24 24" className="h-4 w-4" fill="currentColor">
+            <path d="M6 4h12v16l-6-4-6 4V4Z" />
+          </svg>
+          {t("saveSearchSaved")}
+        </Link>
+      ) : (
+        <button
+          type="button"
+          onClick={handleSave}
+          disabled={!canSave || saveState === "saving"}
+          title={saveState === "error" ? t("saveSearchError") : t("saveSearchHint")}
+          className="flex h-9 shrink-0 items-center gap-1.5 rounded-lg px-2 text-xs font-medium text-muted transition-colors hover:bg-paper hover:text-pine disabled:opacity-40"
+        >
+          <svg
+            viewBox="0 0 24 24"
+            className="h-4 w-4"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.6"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M6 4h12v16l-6-4-6 4V4Z" />
+          </svg>
+          <span className="hidden lg:inline">{t("saveSearch")}</span>
+        </button>
+      )}
       {saveState === "error" && (
         <span className="shrink-0 text-xs text-red-700">{t("saveSearchError")}</span>
       )}

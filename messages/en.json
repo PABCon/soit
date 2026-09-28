@@ -20,6 +20,8 @@
     "searchAnywhere": "Any location",
     "searchSubmit": "Search",
     "saveSearch": "Save search",
+    "saveSearchHint": "Save this search to check later under \"Saved searches\" (no notifications yet)",
+    "saveSearchSaved": "Saved",
     "saveSearchError": "Log in as a candidate to save searches."
   },
   "rail": {

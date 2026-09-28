@@ -49,15 +49,16 @@ export default async function CandidateLayout({
   if (blockEmployer) redirect({ href: "/recruit", locale });
 
   return (
-    <div className="flex min-h-dvh">
+    <div className="flex min-h-dvh flex-col">
+      {/* Rail is always `fixed` now — a floating trigger + popover, never a
+       *  layout-affecting sidebar — so it's just an overlay here, not a
+       *  flex sibling the content column has to share width with. */}
       <Rail />
-      <div className="flex min-w-0 flex-1 flex-col">
-        <TopNav />
-        <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-8">
-          {children}
-        </main>
-        <Footer />
-      </div>
+      <TopNav />
+      <main className="mx-auto w-full max-w-[1600px] flex-1 px-4 py-8 sm:px-6">
+        {children}
+      </main>
+      <Footer />
     </div>
   );
 }

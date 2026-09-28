@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Link, useRouter } from "@/i18n/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { Dropdown } from "@/components/Dropdown";
 
 const item = "block w-full truncate px-3 py-2 text-left text-sm text-ink hover:bg-paper";
 
@@ -31,9 +32,11 @@ function Avatar({ label, avatarUrl }: { label: string; avatarUrl: string | null 
  * is hidden below `sm`, so this doubles as the only nav mobile visitors get;
  * its links mirror Rail's own destinations. Also owns "Add offer" visibility
  * (only ever shown logged-out — a signed-in candidate has no use for it) so
- * both pieces share one auth read instead of two. Client-only: reads the
- * browser session directly rather than threading auth state through every
- * server layout.
+ * both pieces share one auth read instead of two. Both dropdowns use the
+ * shared `Dropdown` (closes on outside click/Escape — a real-usage report
+ * found the old native <details> staying open confusing). Client-only:
+ * reads the browser session directly rather than threading auth state
+ * through every server layout.
  */
 export function LoginMenu() {
   const t = useTranslations("nav");
@@ -83,68 +86,81 @@ export function LoginMenu() {
   if (email) {
     const label = profile?.fullName || email;
     return (
-      <details className="relative">
-        <summary className="flex h-9 w-9 cursor-pointer list-none items-center justify-center rounded-full">
-          <Avatar label={label} avatarUrl={profile?.avatarUrl ?? null} />
-          <span className="sr-only">{label}</span>
-        </summary>
-        <div className="absolute right-0 mt-1 w-56 rounded-lg border border-line bg-white py-1 shadow-sm">
-          <p className="truncate px-3 pt-1 pb-2 text-sm font-medium text-ink">{label}</p>
-          <hr className="mb-1 border-line" />
-          <Link href="/jobs" className={item}>
-            {rail("offers")}
-          </Link>
-          <Link href="/applications" className={item}>
-            {rail("applications")}
-          </Link>
-          <Link href="/favorites" className={item}>
-            {rail("favorites")}
-          </Link>
-          <Link href="/saved-searches" className={item}>
-            {t("savedSearches")}
-          </Link>
-          <Link href="/companies" className={item}>
-            {rail("companies")}
-          </Link>
-          <Link href="/profile" className={item}>
-            {rail("profile")}
-          </Link>
-          <Link href="/settings" className={item}>
-            {rail("settings")}
-          </Link>
-          <hr className="my-1 border-line" />
-          <button type="button" onClick={handleLogOut} className={item}>
-            {t("logOut")}
-          </button>
-        </div>
-      </details>
+      <Dropdown
+        triggerLabel={label}
+        triggerClassName="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full"
+        panelClassName="w-56 rounded-lg border border-line bg-white py-1 shadow-sm"
+        trigger={<Avatar label={label} avatarUrl={profile?.avatarUrl ?? null} />}
+      >
+        {(close) => (
+          <>
+            <p className="truncate px-3 pt-1 pb-2 text-sm font-medium text-ink">{label}</p>
+            <hr className="mb-1 border-line" />
+            <Link href="/jobs" className={item} onClick={close}>
+              {rail("offers")}
+            </Link>
+            <Link href="/applications" className={item} onClick={close}>
+              {rail("applications")}
+            </Link>
+            <Link href="/favorites" className={item} onClick={close}>
+              {rail("favorites")}
+            </Link>
+            <Link href="/saved-searches" className={item} onClick={close}>
+              {t("savedSearches")}
+            </Link>
+            <Link href="/companies" className={item} onClick={close}>
+              {rail("companies")}
+            </Link>
+            <Link href="/profile" className={item} onClick={close}>
+              {rail("profile")}
+            </Link>
+            <Link href="/settings" className={item} onClick={close}>
+              {rail("settings")}
+            </Link>
+            <hr className="my-1 border-line" />
+            <button
+              type="button"
+              onClick={() => {
+                close();
+                handleLogOut();
+              }}
+              className={item}
+            >
+              {t("logOut")}
+            </button>
+          </>
+        )}
+      </Dropdown>
     );
   }
 
   return (
     <>
-      <details className="relative">
-        <summary className="flex h-9 cursor-pointer list-none items-center rounded-lg px-3 text-sm font-medium text-ink hover:bg-white">
-          {t("login")}
-        </summary>
-        <div className="absolute right-0 mt-1 w-64 rounded-lg border border-line bg-white py-1 shadow-sm">
-          <p className="px-3 pt-1 pb-0.5 text-xs font-semibold text-ink">{t("groupCandidate")}</p>
-          <Link href="/candidate/login" className={item}>
-            {t("loginAsCandidate")}
-          </Link>
-          <Link href="/candidate/register" className={item}>
-            {t("registerAsCandidate")}
-          </Link>
-          <hr className="my-1 border-line" />
-          <p className="px-3 pt-1 pb-0.5 text-xs font-semibold text-ink">{t("groupEmployer")}</p>
-          <Link href="/employer/login" className={item}>
-            {t("loginAsEmployer")}
-          </Link>
-          <Link href="/employer/register" className={item}>
-            {t("registerAsEmployer")}
-          </Link>
-        </div>
-      </details>
+      <Dropdown
+        triggerClassName="flex h-9 cursor-pointer items-center rounded-lg px-3 text-sm font-medium text-ink hover:bg-white"
+        panelClassName="w-64 rounded-lg border border-line bg-white py-1 shadow-sm"
+        trigger={t("login")}
+      >
+        {(close) => (
+          <>
+            <p className="px-3 pt-1 pb-0.5 text-xs font-semibold text-ink">{t("groupCandidate")}</p>
+            <Link href="/candidate/login" className={item} onClick={close}>
+              {t("loginAsCandidate")}
+            </Link>
+            <Link href="/candidate/register" className={item} onClick={close}>
+              {t("registerAsCandidate")}
+            </Link>
+            <hr className="my-1 border-line" />
+            <p className="px-3 pt-1 pb-0.5 text-xs font-semibold text-ink">{t("groupEmployer")}</p>
+            <Link href="/employer/login" className={item} onClick={close}>
+              {t("loginAsEmployer")}
+            </Link>
+            <Link href="/employer/register" className={item} onClick={close}>
+              {t("registerAsEmployer")}
+            </Link>
+          </>
+        )}
+      </Dropdown>
       <Link
         href="/recruit"
         className="flex h-9 items-center rounded-lg bg-pine px-3 text-sm font-medium text-white hover:bg-pine/90"
