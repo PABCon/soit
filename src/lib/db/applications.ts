@@ -312,15 +312,51 @@ export type Applicant = {
   coverNote: string | null;
   candidateName: string;
   candidateEmail: string;
+  /** Real-usage report (§7.2 review): a dedicated candidate detail page
+   *  needs more than name/email — these mirror the fields the candidate's
+   *  own profile form already exposes. */
+  phone: string | null;
+  linkedinUrl: string | null;
+  avatarUrl: string | null;
+  skills: string[];
   cvSignedUrl: string | null;
 };
+
+const CANDIDATE_DETAIL_SELECT = "full_name, email, phone, linkedin_url, avatar_url, skills";
+
+function toApplicant(
+  row: { id: string; status: MyApplication["status"]; created_at: string; cover_note: string | null },
+  candidate: {
+    full_name: string | null;
+    email: string | null;
+    phone: string | null;
+    linkedin_url: string | null;
+    avatar_url: string | null;
+    skills: string[] | null;
+  } | null,
+  cvSignedUrl: string | null,
+): Applicant {
+  return {
+    id: row.id,
+    status: row.status,
+    createdAt: row.created_at,
+    coverNote: row.cover_note,
+    candidateName: candidate?.full_name ?? "—",
+    candidateEmail: candidate?.email ?? "—",
+    phone: candidate?.phone ?? null,
+    linkedinUrl: candidate?.linkedin_url ?? null,
+    avatarUrl: candidate?.avatar_url ?? null,
+    skills: candidate?.skills ?? [],
+    cvSignedUrl,
+  };
+}
 
 /** Employer's applicant list for one of their own jobs. The `applications`
  *  list itself is RLS-scoped (existing "employers see applications to
  *  their company's jobs" policy) — but `candidates` deliberately has no
  *  policy letting an employer read it directly ("Employers never read this
  *  table," step 2's schema comment), so an embedded join 403s. The admin
- *  client fills in the candidate's name/email here, same pattern as Team's
+ *  client fills in the candidate's details here, same pattern as Team's
  *  email lookup, plus mints the short-lived signed CV URL (§6.3) — the cvs
  *  bucket has no read policy for anyone. */
 export async function getApplicantsForJob(jobId: string): Promise<Applicant[]> {
@@ -337,20 +373,89 @@ export async function getApplicantsForJob(jobId: string): Promise<Applicant[]> {
   return Promise.all(
     data.map(async (row) => {
       const [{ data: candidate }, { data: signed }] = await Promise.all([
-        admin.from("candidates").select("full_name, email").eq("id", row.candidate_id).single(),
+        admin.from("candidates").select(CANDIDATE_DETAIL_SELECT).eq("id", row.candidate_id).single(),
         admin.storage.from("cvs").createSignedUrl(row.cv_url, 900),
       ]);
-      return {
-        id: row.id,
-        status: row.status,
-        createdAt: row.created_at,
-        coverNote: row.cover_note,
-        candidateName: candidate?.full_name ?? "—",
-        candidateEmail: candidate?.email ?? "—",
-        cvSignedUrl: signed?.signedUrl ?? null,
-      };
+      return toApplicant(row, candidate, signed?.signedUrl ?? null);
     }),
   );
+}
+
+export type CompanyApplicant = Applicant & { jobId: string; jobTitle: string; jobSlug: string };
+
+/** Item 2 (§7.2 review): applicants were only ever reachable per-job.
+ *  Same RLS-scoped `applications` read + admin-client candidate lookup as
+ *  `getApplicantsForJob`, just filtered by the embedded job's `company_id`
+ *  instead of a single `job_id` — the same "force !inner + dot-notation
+ *  filter" trick `getBrowseJobs()` already uses to restrict parent rows by
+ *  an embedded resource's column. */
+export async function getAllApplicantsForCompany(companyId: string): Promise<CompanyApplicant[]> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("applications")
+    .select("id, status, created_at, cover_note, cv_url, candidate_id, jobs!inner ( id, title, slug, company_id )")
+    .eq("jobs.company_id", companyId)
+    .order("created_at", { ascending: false });
+
+  if (!data) return [];
+
+  const admin = createAdminClient();
+  return Promise.all(
+    data.map(async (row) => {
+      const job = row.jobs as unknown as { id: string; title: string; slug: string };
+      const [{ data: candidate }, { data: signed }] = await Promise.all([
+        admin.from("candidates").select(CANDIDATE_DETAIL_SELECT).eq("id", row.candidate_id).single(),
+        admin.storage.from("cvs").createSignedUrl(row.cv_url, 900),
+      ]);
+      return { ...toApplicant(row, candidate, signed?.signedUrl ?? null), jobId: job.id, jobTitle: job.title, jobSlug: job.slug };
+    }),
+  );
+}
+
+export type ApplicantDetail = Applicant & {
+  jobId: string;
+  jobTitle: string;
+  jobSlug: string;
+  companyName: string;
+};
+
+/** The canonical candidate-detail route (`/recruit/applicants/[id]`),
+ *  reachable from both the per-job and the aggregated applicant lists —
+ *  one page, not two. Relies entirely on the same `applications` RLS
+ *  policy every other applicant read here does: a row for a job this
+ *  employer's company doesn't own simply doesn't come back, no separate
+ *  ownership check needed. */
+export async function getApplicantDetail(applicationId: string): Promise<ApplicantDetail | null> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("applications")
+    .select(
+      "id, status, created_at, cover_note, cv_url, candidate_id, jobs!inner ( id, title, slug, companies!inner ( company_name ) )",
+    )
+    .eq("id", applicationId)
+    .maybeSingle();
+  if (!data) return null;
+
+  const job = data.jobs as unknown as {
+    id: string;
+    title: string;
+    slug: string;
+    companies: { company_name: string };
+  };
+
+  const admin = createAdminClient();
+  const [{ data: candidate }, { data: signed }] = await Promise.all([
+    admin.from("candidates").select(CANDIDATE_DETAIL_SELECT).eq("id", data.candidate_id).single(),
+    admin.storage.from("cvs").createSignedUrl(data.cv_url, 900),
+  ]);
+
+  return {
+    ...toApplicant(data, candidate, signed?.signedUrl ?? null),
+    jobId: job.id,
+    jobTitle: job.title,
+    jobSlug: job.slug,
+    companyName: job.companies.company_name,
+  };
 }
 
 export async function updateApplicationStatus(applicationId: string, status: MyApplication["status"]) {

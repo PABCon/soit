@@ -112,6 +112,7 @@
       "upload_failed": "Couldn't upload that image. Try again."
     },
     "myAccount": "My account",
+    "applicants": "Applicants",
     "myProfile": "My profile",
     "fullName": "First and last name",
     "phone": "Phone",
@@ -404,6 +405,11 @@
     "viewCv": "View CV",
     "cvUnavailable": "CV unavailable",
     "backToJobAds": "← Back to job ads",
+    "allApplicantsTitle": "All applicants",
+    "appliedFor": "Applied for “{job}”",
+    "backToApplicants": "← Back to applicants",
+    "notProvided": "Not provided",
+    "coverNote": "Cover note",
     "status": {
       "applied": "Applied",
       "viewed": "Viewed",

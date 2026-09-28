@@ -112,6 +112,7 @@
       "upload_failed": "Não foi possível carregar essa imagem. Tente novamente."
     },
     "myAccount": "A minha conta",
+    "applicants": "Candidaturas",
     "myProfile": "O meu perfil",
     "fullName": "Nome completo",
     "phone": "Telefone",
@@ -404,6 +405,11 @@
     "viewCv": "Ver CV",
     "cvUnavailable": "CV indisponível",
     "backToJobAds": "← Voltar às vagas",
+    "allApplicantsTitle": "Todas as candidaturas",
+    "appliedFor": "Candidatura para “{job}”",
+    "backToApplicants": "← Voltar às candidaturas",
+    "notProvided": "Não fornecido",
+    "coverNote": "Nota de candidatura",
     "status": {
       "applied": "Candidatado",
       "viewed": "Visto",

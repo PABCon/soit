@@ -5,6 +5,7 @@ import { Link } from "@/i18n/navigation";
 
 const MVP = [
   { key: "myJobAds", href: "/recruit" },
+  { key: "applicants", href: "/recruit/applicants" },
   { key: "companyProfile", href: "/recruit/company" },
   { key: "team", href: "/recruit/team" },
   { key: "myAccount", href: "/recruit/settings" },

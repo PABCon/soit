@@ -3,14 +3,17 @@
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { updateStatusAction } from "@/app/[locale]/(console)/recruit/jobs/[id]/applicants/actions";
-import type { Applicant, MyApplication } from "@/lib/db/applications";
+import type { CompanyApplicant, MyApplication } from "@/lib/db/applications";
 
 const STATUSES: MyApplication["status"][] = ["applied", "viewed", "responded", "rejected", "closed"];
 
-export function ApplicantsList({ jobId, applicants }: { jobId: string; applicants: Applicant[] }) {
+/** Item 2 (§7.2 review) — applicants across every one of the employer's
+ *  jobs, not just one at a time. Same row shape as `ApplicantsList`, plus
+ *  which job each application is for. */
+export function AllApplicantsList({ applicants }: { applicants: CompanyApplicant[] }) {
   const t = useTranslations("applicants");
 
-  async function handleStatusChange(applicationId: string, status: MyApplication["status"]) {
+  async function handleStatusChange(jobId: string, applicationId: string, status: MyApplication["status"]) {
     await updateStatusAction(jobId, applicationId, status);
   }
 
@@ -26,8 +29,7 @@ export function ApplicantsList({ jobId, applicants }: { jobId: string; applicant
             <Link href={`/recruit/applicants/${a.id}`} className="font-medium text-ink hover:text-pine hover:underline">
               {a.candidateName}
             </Link>
-            <p className="text-sm text-muted">{a.candidateEmail}</p>
-            {a.coverNote && <p className="mt-1 text-sm text-muted">{a.coverNote}</p>}
+            <p className="text-sm text-muted">{t("appliedFor", { job: a.jobTitle })}</p>
           </div>
           {a.cvSignedUrl ? (
             <a
@@ -43,7 +45,7 @@ export function ApplicantsList({ jobId, applicants }: { jobId: string; applicant
           )}
           <select
             defaultValue={a.status}
-            onChange={(e) => handleStatusChange(a.id, e.target.value as MyApplication["status"])}
+            onChange={(e) => handleStatusChange(a.jobId, a.id, e.target.value as MyApplication["status"])}
             className="h-9 shrink-0 rounded-lg border border-line bg-white px-2 text-sm"
           >
             {STATUSES.map((s) => (
