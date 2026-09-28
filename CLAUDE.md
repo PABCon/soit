@@ -1528,3 +1528,39 @@ intermittent Playwright-vs-Next-client-hydration timing flakiness
 already seen and dismissed once earlier this session for an unrelated
 link, not a real app bug). Zero console errors either environment.
 Fixtures cleaned up on both afterward.
+
+**Phase 2 shipped**: item 8, team invites. A pending invite could be
+created but never inspected, resent, or deleted afterward.
+`employer_invites`' RLS already grants owners `for all` on their own
+company's rows (confirmed by reading the migration, not assumed) — so
+`deleteInvite()`/`resendInvite()` (`src/lib/db/team.ts`) are plain
+RLS-scoped calls, no migration needed. `resendInvite()` **updates** the
+existing row's token + expiry in place rather than inserting a second
+row — `employer_invites` has a `unique(company_id, email)` constraint a
+naive re-invite would conflict with. Each pending-invite row in
+`TeamManager.tsx` now shows an "expires in N days"/"Expired" readout
+(computed from data already fetched, no new query), a Revoke button,
+and a Resend button that re-surfaces a fresh copyable link — keyed per
+invite id (`resentLinks`/`copiedInviteId`) so more than one row's
+link/copy-feedback state can't collide, unlike the single global
+`lastLink` slot the create-invite flow already used and kept unchanged.
+
+Verified live on both localhost and `https://soit.vercel.app` with a
+fresh verified-employer fixture: creating an invite shows the correct
+7-day expiry readout; Resend produces a genuinely new link (confirmed
+by reading it back, not just checking a success flag) without touching
+the row's email/role; Revoke removes the row. Two things worth noting
+from this round's own verification, neither a real bug: a clipboard
+`writeText` permission error appears in the browser console under
+Playwright's default headless context (confirmed pre-existing —
+reproduced the exact same error against the *original*, untouched
+create-invite copy flow too; granting `clipboard-write` permission
+explicitly in the test context made it disappear entirely, and the
+UI's own "Copied!" feedback was correct either way since the code never
+awaits the clipboard promise); and the first production verification
+pass used a 700ms wait that was too short for a real network round
+trip and read as failures across the board — a second pass with 2s
+waits and full diagnostic output (same "production is slower than a
+same-machine dev server" pattern already documented several times
+elsewhere in this file) showed everything working correctly. Fixtures
+cleaned up on both afterward.

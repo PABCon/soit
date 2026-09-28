@@ -295,7 +295,10 @@ pricing and a direct-contact channel are explicitly deferred pending a
 business-model discussion, not built as part of it. **Phase 1
 shipped**: a top navbar for the employer console (avatar dropdown +
 language switcher, mirroring the candidate site's own `TopNav`) and a
-back link on the per-job Applicants page. Next up: connecting a real
-domain + email provider (unblocks both the application-email flow and
-real saved-search notifications), step 9 (SEO check, compliance,
-polish), and the rest of the console-review phases (see `CLAUDE.md`).
+back link on the per-job Applicants page. **Phase 2 shipped**: Team
+invites now show an expiry readout and support Revoke/Resend — the
+`employer_invites` RLS policy already covered this, only the app-code
+actions and UI were missing. Next up: connecting a real domain + email
+provider (unblocks both the application-email flow and real
+saved-search notifications), step 9 (SEO check, compliance, polish),
+and the rest of the console-review phases (see `CLAUDE.md`).
