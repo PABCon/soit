@@ -5,10 +5,15 @@ import { useTranslations } from "next-intl";
 import { useRouter } from "@/i18n/navigation";
 import { saveJobAction } from "@/app/[locale]/(console)/recruit/jobs/actions";
 import type { JobFormInput } from "@/lib/db/jobs";
+import type { SkillLevel } from "@/lib/types";
 
 type TechTagOption = { id: string; label: string; aliases: string[] };
 type LocationOption = { id: string; slug: string; name: string };
 type JobCategoryOption = { id: string; slug: string; label: string };
+type SpokenLanguageOption = { id: string; slug: string; label: string };
+
+type SelectedTag = { id: string; level: SkillLevel | null; required: boolean };
+type SelectedLanguage = { id: string; level: SkillLevel | null };
 
 type Initial = {
   id: string;
@@ -24,23 +29,54 @@ type Initial = {
   salaryPeriod: JobFormInput["salaryPeriod"];
   salaryMonths: number | null;
   employmentType: JobFormInput["employmentType"];
-  selectedTechTagIds: string[];
+  selectedTechTags: SelectedTag[];
+  selectedLanguages: SelectedLanguage[];
   externalApplyUrl: string;
   expiresAt: string | null;
 };
 
+const LEVELS: SkillLevel[] = ["basic", "intermediate", "advanced", "expert"];
 const inputClass = "h-9 rounded-lg border border-line bg-white px-3 text-sm disabled:bg-paper disabled:text-muted";
 const labelClass = "flex flex-col gap-1 text-sm";
+
+function LevelSelect({
+  value,
+  onChange,
+  t,
+  className,
+}: {
+  value: SkillLevel | null;
+  onChange: (level: SkillLevel | null) => void;
+  t: ReturnType<typeof useTranslations>;
+  className?: string;
+}) {
+  return (
+    <select
+      value={value ?? ""}
+      onChange={(e) => onChange((e.target.value || null) as SkillLevel | null)}
+      className={className ?? "h-7 rounded border border-line bg-white px-1 text-xs"}
+    >
+      <option value="">{t("levelUnspecified")}</option>
+      {LEVELS.map((lv) => (
+        <option key={lv} value={lv}>
+          {t(`levelOption.${lv}`)}
+        </option>
+      ))}
+    </select>
+  );
+}
 
 export function JobForm({
   techTags,
   locations,
   jobCategories,
+  spokenLanguages,
   initial,
 }: {
   techTags: TechTagOption[];
   locations: LocationOption[];
   jobCategories: JobCategoryOption[];
+  spokenLanguages: SpokenLanguageOption[];
   initial?: Initial;
 }) {
   const t = useTranslations("jobForm");
@@ -62,7 +98,8 @@ export function JobForm({
   const [employmentType, setEmploymentType] = useState<JobFormInput["employmentType"]>(
     initial?.employmentType ?? "permanent",
   );
-  const [selectedTags, setSelectedTags] = useState<string[]>(initial?.selectedTechTagIds ?? []);
+  const [selectedTags, setSelectedTags] = useState<SelectedTag[]>(initial?.selectedTechTags ?? []);
+  const [selectedLanguages, setSelectedLanguages] = useState<SelectedLanguage[]>(initial?.selectedLanguages ?? []);
   const [externalApplyUrl, setExternalApplyUrl] = useState(initial?.externalApplyUrl ?? "");
   const [expiresAt, setExpiresAt] = useState(initial?.expiresAt ?? "");
   const [tagFilter, setTagFilter] = useState("");
@@ -79,7 +116,27 @@ export function JobForm({
   }, [techTags, tagFilter]);
 
   function toggleTag(id: string) {
-    setSelectedTags((prev) => (prev.includes(id) ? prev.filter((t) => t !== id) : [...prev, id]));
+    setSelectedTags((prev) =>
+      prev.some((t) => t.id === id) ? prev.filter((t) => t.id !== id) : [...prev, { id, level: null, required: true }],
+    );
+  }
+
+  function updateTagLevel(id: string, level: SkillLevel | null) {
+    setSelectedTags((prev) => prev.map((t) => (t.id === id ? { ...t, level } : t)));
+  }
+
+  function updateTagRequired(id: string, required: boolean) {
+    setSelectedTags((prev) => prev.map((t) => (t.id === id ? { ...t, required } : t)));
+  }
+
+  function toggleLanguage(id: string) {
+    setSelectedLanguages((prev) =>
+      prev.some((l) => l.id === id) ? prev.filter((l) => l.id !== id) : [...prev, { id, level: null }],
+    );
+  }
+
+  function updateLanguageLevel(id: string, level: SkillLevel | null) {
+    setSelectedLanguages((prev) => prev.map((l) => (l.id === id ? { ...l, level } : l)));
   }
 
   function validate(): string | null {
@@ -121,7 +178,8 @@ export function JobForm({
         salaryPeriod,
         salaryMonths: salaryPeriod === "month" ? Number(salaryMonths) : null,
         employmentType,
-        techTagIds: selectedTags,
+        techTags: selectedTags.map((t) => ({ techTagId: t.id, level: t.level, required: t.required })),
+        languages: selectedLanguages.map((l) => ({ spokenLanguageId: l.id, level: l.level })),
         externalApplyUrl,
         expiresAt: expiresAt || null,
         publish,
@@ -344,18 +402,27 @@ export function JobForm({
           className={`${inputClass} mt-1 w-full`}
         />
         {selectedTags.length > 0 && (
-          <ul className="mt-2 flex flex-wrap gap-1.5">
-            {selectedTags.map((id) => {
-              const tag = techTags.find((tg) => tg.id === id);
+          <ul className="mt-2 flex flex-col gap-1.5">
+            {selectedTags.map((sel) => {
+              const tag = techTags.find((tg) => tg.id === sel.id);
               if (!tag) return null;
               return (
-                <li key={id}>
-                  <button
-                    type="button"
-                    onClick={() => toggleTag(id)}
-                    className="rounded-md border border-pine bg-pine/10 px-2 py-0.5 text-xs text-pine"
-                  >
-                    {tag.label} ×
+                <li
+                  key={sel.id}
+                  className="flex flex-wrap items-center gap-2 rounded-md border border-pine bg-pine/10 px-2 py-1"
+                >
+                  <span className="text-xs font-medium text-pine">{tag.label}</span>
+                  <LevelSelect value={sel.level} onChange={(level) => updateTagLevel(sel.id, level)} t={t} />
+                  <label className="flex items-center gap-1 text-[11px] text-ink">
+                    <input
+                      type="checkbox"
+                      checked={sel.required}
+                      onChange={(e) => updateTagRequired(sel.id, e.target.checked)}
+                    />
+                    {t("mustHave")}
+                  </label>
+                  <button type="button" onClick={() => toggleTag(sel.id)} className="ml-auto text-xs text-pine">
+                    ×
                   </button>
                 </li>
               );
@@ -370,7 +437,7 @@ export function JobForm({
                   type="button"
                   onClick={() => toggleTag(tag.id)}
                   className={
-                    selectedTags.includes(tag.id)
+                    selectedTags.some((t) => t.id === tag.id)
                       ? "rounded-md border border-pine bg-pine px-2 py-0.5 text-xs text-white"
                       : "rounded-md border border-line px-2 py-0.5 text-xs text-muted hover:border-muted"
                   }
@@ -381,6 +448,24 @@ export function JobForm({
             ))}
           </ul>
         </div>
+      </div>
+
+      <div>
+        <span className="text-sm">{t("requiredLanguages")}</span>
+        <ul className="mt-2 flex flex-col gap-1.5">
+          {spokenLanguages.map((lang) => {
+            const sel = selectedLanguages.find((l) => l.id === lang.id);
+            return (
+              <li key={lang.id} className="flex items-center gap-3 text-sm">
+                <label className="flex items-center gap-1.5">
+                  <input type="checkbox" checked={!!sel} onChange={() => toggleLanguage(lang.id)} />
+                  {lang.label}
+                </label>
+                {sel && <LevelSelect value={sel.level} onChange={(level) => updateLanguageLevel(lang.id, level)} t={t} />}
+              </li>
+            );
+          })}
+        </ul>
       </div>
 
       <div className="flex gap-3">

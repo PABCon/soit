@@ -5,6 +5,7 @@ import { getJobForEdit } from "@/lib/db/jobs";
 import { getTechTags } from "@/lib/db/tech-tags";
 import { getLocations } from "@/lib/db/locations";
 import { getJobCategories } from "@/lib/db/job-categories";
+import { getSpokenLanguages } from "@/lib/db/spoken-languages";
 import { JobForm } from "@/components/console/JobForm";
 
 type Props = { params: Promise<{ locale: string; id: string }> };
@@ -14,11 +15,12 @@ export default async function EditJobPage({ params }: Props) {
   setRequestLocale(locale);
   const t = await getTranslations({ locale, namespace: "console" });
 
-  const [job, techTags, locations, jobCategories] = await Promise.all([
+  const [job, techTags, locations, jobCategories, spokenLanguages] = await Promise.all([
     getJobForEdit(id),
     getTechTags(),
     getLocations(),
     getJobCategories(),
+    getSpokenLanguages(),
   ]);
   if (!job) notFound();
 
@@ -38,6 +40,7 @@ export default async function EditJobPage({ params }: Props) {
           techTags={techTags}
           locations={locations}
           jobCategories={jobCategories}
+          spokenLanguages={spokenLanguages}
           initial={{
             id: job.id,
             title: job.title,
@@ -52,7 +55,12 @@ export default async function EditJobPage({ params }: Props) {
             salaryPeriod: job.salary_period,
             salaryMonths: job.salary_months,
             employmentType: job.employment_type,
-            selectedTechTagIds: job.job_tech_tags.map((t) => t.tech_tag_id),
+            selectedTechTags: job.job_tech_tags.map((t) => ({
+              id: t.tech_tag_id,
+              level: t.level,
+              required: t.required,
+            })),
+            selectedLanguages: job.job_languages.map((l) => ({ id: l.spoken_language_id, level: l.level })),
             externalApplyUrl: job.external_apply_url ?? "",
             expiresAt: job.expires_at ? job.expires_at.slice(0, 10) : null,
           }}

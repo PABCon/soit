@@ -8,6 +8,7 @@ import { TechTags } from "@/components/TechTags";
 import { ApplyModal } from "@/components/ApplyModal";
 import { EngagementPopup } from "@/components/EngagementPopup";
 import { FavoriteButton } from "@/components/FavoriteButton";
+import { JobExpiryBar, expiryPercentLeft } from "@/components/JobExpiryBar";
 import { getLiveJobBySlug, type JobDetail } from "@/lib/db/jobs";
 import { getApplyStatus } from "@/lib/db/applications";
 import { getMyFavoriteJobIds } from "@/lib/db/favorites";
@@ -101,12 +102,14 @@ export default async function JobDetailPage({ params }: Props) {
 
   const t = await getTranslations({ locale, namespace: "job" });
   const tf = await getTranslations({ locale, namespace: "feed" });
+  const tjf = await getTranslations({ locale, namespace: "jobForm" });
   const [applyStatus, favoriteJobIds] = await Promise.all([
     getApplyStatus(job.id),
     getMyFavoriteJobIds(),
   ]);
 
   const paragraphs = job.description.split(/\n{2,}/).filter(Boolean);
+  const expiryPercent = expiryPercentLeft(job.publishedAt, job.expiresAt);
 
   return (
     <>
@@ -173,6 +176,25 @@ export default async function JobDetailPage({ params }: Props) {
             </div>
           </section>
 
+          {job.requiredLanguages.length > 0 && (
+            <section className="mt-8">
+              <h2 className="font-display text-sm font-semibold tracking-wide text-muted">
+                {tjf("requiredLanguages")}
+              </h2>
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {job.requiredLanguages.map((lang) => (
+                  <span
+                    key={lang.slug}
+                    className="rounded-md border border-line bg-white px-2 py-0.5 text-xs text-muted"
+                  >
+                    {lang.label}
+                    {lang.level ? ` — ${tjf(`levelOption.${lang.level}`)}` : ""}
+                  </span>
+                ))}
+              </div>
+            </section>
+          )}
+
           <section className="mt-8">
             <h2 className="font-display text-lg font-semibold">
               {t("aboutRole")}
@@ -207,6 +229,16 @@ export default async function JobDetailPage({ params }: Props) {
               alreadyApplied={applyStatus.alreadyApplied}
               externalApplyUrl={job.externalApplyUrl}
             />
+            {expiryPercent !== null && (
+              <div className="mt-3">
+                <JobExpiryBar percentLeft={expiryPercent} />
+                {job.daysLeft !== null && (
+                  <p className="mt-1 text-center text-[11px] text-muted">
+                    {tf("daysLeft", { days: job.daysLeft })}
+                  </p>
+                )}
+              </div>
+            )}
             <p className="mt-3 text-center text-xs text-muted">
               {tf("postedAgo", { days: job.postedDaysAgo })}
             </p>

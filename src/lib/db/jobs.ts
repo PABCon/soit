@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { slugify } from "@/lib/slug";
-import type { Job } from "@/lib/types";
+import type { Job, SkillLevel } from "@/lib/types";
 import { getMyEmployerContext } from "./companies";
 
 export const SELECT = `
@@ -11,7 +11,8 @@ export const SELECT = `
   companies!inner ( slug, company_name, company_logo_url ),
   job_tech_tags ( tech_tags ( slug, label ) ),
   job_categories ( slug ),
-  locations ( slug )
+  locations ( slug ),
+  job_languages ( level, spoken_languages ( slug, label ) )
 `;
 
 export type JobRow = {
@@ -41,6 +42,7 @@ export type JobRow = {
   job_tech_tags: { tech_tags: { slug: string; label: string } }[];
   job_categories: { slug: string } | null;
   locations: { slug: string } | null;
+  job_languages: { level: SkillLevel | null; spoken_languages: { slug: string; label: string } }[];
 };
 
 export function toJob(row: JobRow): Job {
@@ -76,12 +78,15 @@ export function toJob(row: JobRow): Job {
   };
 }
 
+export type RequiredLanguage = { slug: string; label: string; level: SkillLevel | null };
+
 export type JobDetail = Job & {
   id: string;
   description: string;
   publishedAt: string;
   expiresAt: string;
   externalApplyUrl: string | null;
+  requiredLanguages: RequiredLanguage[];
 };
 
 function toJobDetail(row: JobRow): JobDetail {
@@ -92,6 +97,11 @@ function toJobDetail(row: JobRow): JobDetail {
     publishedAt: row.published_at ?? row.created_at,
     expiresAt: row.expires_at ?? row.created_at,
     externalApplyUrl: row.external_apply_url,
+    requiredLanguages: row.job_languages.map((jl) => ({
+      slug: jl.spoken_languages.slug,
+      label: jl.spoken_languages.label,
+      level: jl.level,
+    })),
   };
 }
 
@@ -163,6 +173,12 @@ export async function getCompanyJobs(companyId: string, tab: ConsoleTab): Promis
   }));
 }
 
+/** One required tech tag, with an optional proficiency level and whether
+ *  it's a hard must-have or just a nice-to-have (§ real-usage QA, item
+ *  10b) — replaces the old flat `techTagIds: string[]`. */
+export type JobTechTagInput = { techTagId: string; level: SkillLevel | null; required: boolean };
+export type JobLanguageInput = { spokenLanguageId: string; level: SkillLevel | null };
+
 export type JobFormInput = {
   title: string;
   description: string;
@@ -176,7 +192,8 @@ export type JobFormInput = {
   salaryPeriod: Job["salaryPeriod"];
   salaryMonths: number | null;
   employmentType: Job["employmentType"];
-  techTagIds: string[];
+  techTags: JobTechTagInput[];
+  languages: JobLanguageInput[];
   externalApplyUrl: string;
   /** Employer-chosen deadline (a "yyyy-mm-dd" date string from the form's
    *  date input), or null to fall back to the 30-day default (§10). Only
@@ -264,10 +281,26 @@ export async function saveJob(jobId: string | null, input: JobFormInput): Promis
   }
 
   await supabase.from("job_tech_tags").delete().eq("job_id", id);
-  if (input.techTagIds.length > 0) {
-    await supabase
-      .from("job_tech_tags")
-      .insert(input.techTagIds.map((tech_tag_id) => ({ job_id: id, tech_tag_id })));
+  if (input.techTags.length > 0) {
+    await supabase.from("job_tech_tags").insert(
+      input.techTags.map((tag) => ({
+        job_id: id,
+        tech_tag_id: tag.techTagId,
+        level: tag.level,
+        required: tag.required,
+      })),
+    );
+  }
+
+  await supabase.from("job_languages").delete().eq("job_id", id);
+  if (input.languages.length > 0) {
+    await supabase.from("job_languages").insert(
+      input.languages.map((lang) => ({
+        job_id: id,
+        spoken_language_id: lang.spokenLanguageId,
+        level: lang.level,
+      })),
+    );
   }
 
   const { data: saved } = await supabase.from("jobs").select("slug").eq("id", id).single();
@@ -321,16 +354,39 @@ export async function deleteJob(jobId: string): Promise<void> {
   if (error) throw new Error(error.message);
 }
 
-export async function getJobForEdit(jobId: string) {
+export type JobForEdit = {
+  id: string;
+  company_id: string;
+  title: string;
+  description: string;
+  language: "pt" | "en";
+  seniority: Job["seniority"];
+  work_model: Job["workModel"];
+  location: string | null;
+  location_id: string | null;
+  category_id: string;
+  salary_min: number;
+  salary_max: number;
+  salary_period: Job["salaryPeriod"];
+  salary_months: number | null;
+  employment_type: Job["employmentType"];
+  external_apply_url: string | null;
+  status: "draft" | "published" | "inactive" | "closed";
+  expires_at: string | null;
+  job_tech_tags: { tech_tag_id: string; level: SkillLevel | null; required: boolean }[];
+  job_languages: { spoken_language_id: string; level: SkillLevel | null }[];
+};
+
+export async function getJobForEdit(jobId: string): Promise<JobForEdit | null> {
   const supabase = await createClient();
   const { data } = await supabase
     .from("jobs")
     .select(
-      "id, company_id, title, description, language, seniority, work_model, location, location_id, category_id, salary_min, salary_max, salary_period, salary_months, employment_type, external_apply_url, status, expires_at, job_tech_tags(tech_tag_id)",
+      "id, company_id, title, description, language, seniority, work_model, location, location_id, category_id, salary_min, salary_max, salary_period, salary_months, employment_type, external_apply_url, status, expires_at, job_tech_tags(tech_tag_id, level, required), job_languages(spoken_language_id, level)",
     )
     .eq("id", jobId)
     .maybeSingle();
-  return data;
+  return data as unknown as JobForEdit | null;
 }
 
 export type BrowseResult = {

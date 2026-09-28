@@ -189,6 +189,15 @@
     },
     "techTags": "Tech stack",
     "techTagsFilter": "Search technologies…",
+    "levelUnspecified": "Level not set",
+    "levelOption": {
+      "basic": "Basic",
+      "intermediate": "Intermediate",
+      "advanced": "Advanced",
+      "expert": "Expert"
+    },
+    "mustHave": "Must-have",
+    "requiredLanguages": "Required languages",
     "expiresAt": "Job valid until",
     "expiresAtHint": "Leave blank to keep the job live for 1 month from publish.",
     "saveDraft": "Save as draft",

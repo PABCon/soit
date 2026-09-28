@@ -189,6 +189,15 @@
     },
     "techTags": "Stack técnico",
     "techTagsFilter": "Pesquisar tecnologias…",
+    "levelUnspecified": "Nível não definido",
+    "levelOption": {
+      "basic": "Básico",
+      "intermediate": "Intermédio",
+      "advanced": "Avançado",
+      "expert": "Especialista"
+    },
+    "mustHave": "Obrigatório",
+    "requiredLanguages": "Idiomas necessários",
     "expiresAt": "Vaga válida até",
     "expiresAtHint": "Se não escolher uma data, a vaga fica ativa durante 1 mês a partir da publicação.",
     "saveDraft": "Guardar rascunho",
