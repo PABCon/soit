@@ -155,6 +155,43 @@ export async function removeMember(memberId: string) {
   if (error) throw new Error(error.message);
 }
 
+/** Owner-only revoke — real-usage report: a pending invite could be created
+ *  but never removed. `employer_invites`' RLS policy is already `for all`
+ *  for owners on their own company's rows (covers delete too), so this is
+ *  just a plain RLS-scoped delete, no admin client needed. */
+export async function deleteInvite(inviteId: string) {
+  const ctx = await getMyEmployerContext();
+  if (!ctx || ctx.role !== "owner") throw new Error("Owners only");
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("employer_invites")
+    .delete()
+    .eq("id", inviteId)
+    .eq("company_id", ctx.company.id);
+  if (error) throw new Error(error.message);
+}
+
+/** Owner-only resend — real-usage report: no way to get a fresh link once
+ *  the first one had been shared/lost, and no visible expiry. Updates the
+ *  existing row's token + expiry in place rather than inserting a second
+ *  one: `employer_invites` has a `unique(company_id, email)` constraint, so
+ *  a naive re-insert would conflict with the still-pending original. */
+export async function resendInvite(inviteId: string): Promise<string> {
+  const ctx = await getMyEmployerContext();
+  if (!ctx || ctx.role !== "owner") throw new Error("Owners only");
+
+  const supabase = await createClient();
+  const token = crypto.randomUUID();
+  const { error } = await supabase
+    .from("employer_invites")
+    .update({ token, expires_at: new Date(Date.now() + 7 * 864e5).toISOString() })
+    .eq("id", inviteId)
+    .eq("company_id", ctx.company.id);
+  if (error) throw new Error(error.message);
+  return token;
+}
+
 /** Public: the invitee has no session yet, so this can't go through RLS. */
 export async function getInviteByToken(token: string) {
   const admin = createAdminClient();
