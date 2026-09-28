@@ -1622,3 +1622,52 @@ aggregated list's own link both land on the same canonical detail
 route. Zero console errors either environment. Fixtures (including the
 uploaded CV storage objects, which row deletion doesn't cascade-remove)
 cleaned up on both afterward.
+
+**Phase 5 shipped**: item 5, company address + a public-profile map.
+New migration (`20260928190000_companies_location.sql`, applied via
+`supabase db push` against the live project): `companies.location_id`
+(FK to the existing curated `locations` table) + a free-text
+`companies.address`. Reuses the exact reasoning that already moved
+`jobs.location` off free text: the map pin sits at the chosen city's
+centroid — no geocoding provider, zero new cost — and the address is
+just a human-readable line shown beside it, not itself geocoded.
+`CompanyProfileForm` gained a location `<select>` (same
+`LocationOption[]` prop shape `JobForm` already takes) + an address
+input. The public `CompanyProfileBody` (shared by the canonical
+`/companies/[slug]` page and the console's noindex preview route) now
+renders a new "Our office" section between the stat cards and "Open
+jobs," omitted entirely when no location is set — same convention
+every other optional section on that page already follows.
+
+New `src/components/CompanyMap.tsx` adapts `JobMap.tsx`'s
+mount-effect/markers-effect split even for a single static point,
+deliberately — that split exists specifically to guard against the
+real production Leaflet crash `JobMap` itself was once fixed for
+(recreating the whole map instance on every re-render), and there was
+no reason to risk the same class of bug for a "simpler" one-off
+version. Also hit, and had to route around, a Next 16 constraint: `next/
+dynamic`'s `ssr: false` is no longer allowed from a Server Component's
+own module scope (`CompanyProfileBody` has no `"use client"`) — fixed
+by importing `CompanyMap` directly instead of wrapping it in `dynamic()`,
+since it's already a client component with no SSR-unsafe top-level code
+(leaflet is only touched inside a `useEffect`).
+
+**A real bug was caught by this phase's own verification**: the map
+initially used Leaflet's default `L.marker()` icon, which 404'd on
+`marker-icon.png`/`marker-shadow.png` — confirmed directly via a
+network-logged reproduction, not guessed — because those default
+image paths resolve relative to the *current page URL* under
+Turbopack/webpack bundling, not Leaflet's own asset path. Fixed with a
+custom `divIcon` (a small solid circle, no external image), the exact
+same approach `JobMap.tsx` already uses for its own pins for the same
+underlying reason — this codebase should never reach for Leaflet's
+default marker icon again.
+
+Verified live on both localhost and `https://soit.vercel.app` with a
+fresh verified-employer fixture: before setting a location, a fresh
+company's public page has no "Our office" section at all; setting
+Lisboa + a street address in the console and saving persists
+correctly; the public page then shows the address line, a rendered
+Leaflet map, and a visible marker, with zero console errors — including
+zero 404s, re-checked explicitly after the icon fix on both
+environments. Fixtures cleaned up on both afterward.

@@ -304,7 +304,10 @@ login email. **Phase 4 shipped**: an aggregated `/recruit/applicants`
 tab across every job, and a canonical candidate detail page
 (`/recruit/applicants/[id]`) that auto-marks an application "viewed" —
 without ever downgrading a status the employer already moved further
-along. Next up: connecting a real domain + email provider (unblocks
-both the application-email flow and real saved-search notifications),
-step 9 (SEO check, compliance, polish), and the rest of the
-console-review phases (see `CLAUDE.md`).
+along. **Phase 5 shipped**: companies can now set a curated-city
+location + street address, shown as a map + address line on the public
+profile page (a real Leaflet default-marker-icon 404 bug was caught and
+fixed by this phase's own verification). Next up: connecting a real
+domain + email provider (unblocks both the application-email flow and
+real saved-search notifications), step 9 (SEO check, compliance,
+polish), and the rest of the console-review phases (see `CLAUDE.md`).
