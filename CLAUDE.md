@@ -1348,3 +1348,129 @@ pointing at `soit.vercel.app` — updating those to `justit.pt` is a
 follow-up step once the domain purchase (in progress, your own doing,
 outside anything I can do directly) actually clears and DNS is pointed
 at Vercel.
+
+**An 8-item real-usage UX pass** landed next, arriving as a single batch
+after using the rebuilt landing page yourself. Two items needed a
+clarifying decision up front, both resolved via AskUserQuestion before
+any code: the icon approach for the new curated filter chips (you chose
+simple-icons for real brand logos + lucide-react for generic category
+glyphs), and exactly how "more filters" should behave (your own words:
+"make it as a button, and then if the user clicks it shows as a left
+side element and hides the map automatically, when closed the map pops
+up again").
+
+1. **Rail is no longer a layout-affecting sidebar in any state** — it
+   was still a persistent `w-16` flex sibling when expanded (last
+   session's collapse work only ever shrank it, never removed it from
+   the flex row). `Rail.tsx` is now purely a `fixed`-positioned trigger
+   button; clicking it opens a compact, content-sized popover flyout
+   near itself (not full page height), which always starts closed on
+   every page load — no persisted state at all anymore, so the
+   `soit:rail-collapsed` localStorage key and its custom event are gone.
+   `(candidate)/layout.tsx` dropped the flex-row wrapper this made
+   unnecessary, and the shared content container (`TopNav`, `<main>`,
+   `Footer`) widened from `max-w-6xl` (1152px) to `max-w-[1600px]`,
+   directly answering your measured "~279px" margin complaint — that
+   margin was Rail's old permanent width plus its own gutter.
+2. **Dropdowns now dismiss on an outside click or Escape** — the
+   original `<details>/<summary>` pattern (`LoginMenu`, `LanguageSwitcher`)
+   never did either natively. New `src/hooks/useClickOutside.ts` +
+   `src/components/Dropdown.tsx` (a controlled trigger/panel component,
+   children as a render-prop receiving `close()` so menu items can
+   dismiss themselves on click) replace `<details>` in both. Rail's own
+   new flyout uses the same hook directly rather than going through
+   `Dropdown`, since it's a single trigger button, not a menu list.
+3. **Map close/reopen redesigned to your exact spec**: a small circular
+   cross (×) button now sits in the map's own top-left corner (was a
+   plain text "Ocultar mapa" button in the controls row); reopening it
+   is a floating tab on the right edge of the viewport, deliberately
+   mirroring Rail's own left-edge trigger tab, both in position and in
+   the vertical-text treatment.
+4. **Save-search discoverability** — the bookmark icon had no visible
+   label, just a bare `title` tooltip carrying the same short "Save
+   search" text as its own `sr-only` label, which is exactly what made
+   it easy to miss and its purpose unclear on first encounter. Now shows
+   a visible text label beside the icon (hidden only below `lg`, for
+   width), and the hover tooltip is a new, more explicit
+   `saveSearchHint` string that also says up front there's no
+   notification delivery yet, rather than let a saved search's silence
+   afterward read as broken. On success, the icon becomes a "Guardada"/
+   "Saved" link straight to `/saved-searches` instead of just staying
+   visually filled in.
+5. **Curated filter row rebuilt as circular icon chips** — was a
+   horizontally-scrolling row of text pills (your own words: "crazy
+   list that u have to scroll"). New `src/components/icons/tech-icons.tsx`
+   and `category-icons.tsx`: real brand-logo SVG path/hex data for 15 of
+   the 20 featured tech tags, extracted once from the `simple-icons` npm
+   package (v16.33.0) at build time and then **deliberately uninstalled**
+   — it's ~3000 icons in one bundle and was never meant to be a runtime
+   dependency, just a one-time data source; confirmed via direct
+   slug/title search that Java, C#, AWS, and Azure genuinely have no
+   entry in that package at all (not a lookup miss), so those plus the
+   generic "sql" tag fall back to a small text badge instead of an
+   invented logo. `lucide-react` (a real runtime dependency this time,
+   confirmed via a direct tree-shaking import test) supplies 14 generic
+   glyphs for the job categories, which aren't brands and don't have
+   logos. The chip row now wraps onto as many lines as it needs and
+   never scrolls.
+6. **Favorite button added to the job detail page** — `FavoriteButton`
+   already existed from an earlier phase but was feed-rows only; the
+   job detail page fetches `getMyFavoriteJobIds()` alongside the
+   existing apply-status call and renders the same component next to
+   the title, hidden entirely for a non-candidate viewer (same
+   `favoriteJobIds !== null` convention `JobRow` already uses).
+7. **Removed the "Only IT jobs. Always with a salary." tagline** from
+   the `/jobs` page header — flagged as useless clutter. The underlying
+   `brand.tagline` i18n key itself was left alone, since it still does
+   real work elsewhere (page meta description).
+8. **Controls row reorganized**: sort, the remote-only toggle, and the
+   result count now share one row directly above the list (were split
+   across two rows with the count and a separate "Limpar filtros" line
+   below). The remote toggle is a new `src/components/Switch.tsx` — a
+   plain Tailwind `peer`-modifier pill switch, no new dependency —
+   replacing the native checkbox you called "ugly." "More filters" is
+   now a toggle button that opens a genuine left-side panel (was an
+   inline panel pushing content down) and, per your explicit answer
+   above, automatically hides the map while open and restores it when
+   closed, rather than the two fighting for the same screen space.
+
+**A real bug was caught by this batch's own verification, before it
+ever reached you**: the map's new cross-close button was styled with
+`z-500` — not a valid Tailwind utility (its default scale has no `500`
+step), so the class silently generated no CSS at all, leaving the
+button at the page's default stacking order. Leaflet's own zoom control
+defaults to that exact same top-left corner with a real `z-index: 1000`
+from its own stylesheet, so the button was visually present but
+physically unclickable — every click landed on Leaflet's "+" control
+instead, confirmed via Playwright's own pointer-interception trace, not
+a guess. Fixed two ways together: the class corrected to `z-[1100]`
+(bracket syntax for an arbitrary value, safely above Leaflet's 1000),
+and — since simply raising z-index would have left two controls
+visually stacked on each other in the same corner — Leaflet's zoom
+control moved to `bottomright` via `zoomControl: false` at map creation
+plus a manually added `L.control.zoom({ position: "bottomright" })`
+(`JobMap.tsx`), so the two no longer physically overlap either.
+
+Verified live on both localhost and `https://soit.vercel.app` with
+fresh fixtures (a remote React job, an office Python job in Porto, and
+a hybrid job in Lisboa, plus a confirmed candidate account), all eight
+items checked by a real Playwright run against each environment: the
+tagline is gone; the circular chip row has no page-level horizontal
+scroll and a React chip correctly narrows the list; Rail's flyout stays
+closed by default, opens on click at a compact height, and closes on
+an outside click; the result count, sort, and the new Switch remote
+toggle share one row and the toggle filters correctly; "More filters"
+opens a left-side panel and hides the map, and closing it restores the
+map; the map's cross button closes it, a right-edge tab reappears and
+reopens it; no dropdown (avatar menu, language switcher) stays open
+after a click elsewhere; the save-search button carries the clearer
+hover hint and a visible label, with no notification claim anywhere on
+the bar; a candidate's favorite toggle on the job detail page works and
+the job then appears on `/favorites`, while an anonymous visitor sees
+no favorite button there at all. Zero console errors on either
+environment across every run. All fixtures (companies, jobs,
+employer/candidate accounts) cleaned up on both afterward, including
+three extra orphaned companies left behind by earlier failed fixture-
+setup attempts during this same session (wrong FK columns while writing
+the seed script itself, not an application bug) — swept up in the same
+cleanup pass rather than left behind.

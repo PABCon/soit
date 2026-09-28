@@ -272,7 +272,22 @@ name's pun only landed for Portuguese readers, a real problem for an
 explicitly bilingual site; the new name reads directly in both
 languages and matches the domain being bought, `justit.pt` (see
 `CLAUDE.md` for the full writeup, including what was deliberately left
-as `soit` internally). Next: connecting a real domain + email provider
+as `soit` internally). **An 8-item real-usage UX pass** shipped next:
+Rail is now a purely floating trigger + ephemeral popover (never a
+layout-affecting sidebar, freeing the page width for a `max-w-[1600px]`
+content container), dropdowns dismiss on an outside click via a new
+shared `Dropdown` component, the map gained a cross close button plus a
+right-edge reopen tab mirroring Rail's own, the curated filter row is
+now non-scrolling circular icon chips (real logos via a one-time
+`simple-icons` extraction, generic `lucide-react` glyphs for
+categories), sort/remote-toggle/count share one row with "more filters"
+now a left-side panel that auto-hides the map, a favorite button was
+added to the job detail page, the redundant `/jobs` tagline was
+removed, and save-search got a visible label and clearer hint. A real
+bug (an invalid `z-500` Tailwind class silently left the map's close
+button unclickable under Leaflet's own zoom control) was caught and
+fixed by the batch's own verification before shipping — see `CLAUDE.md`
+for the full writeup. Next: connecting a real domain + email provider
 (unblocks both the application-email flow and real saved-search
 notifications), and step 9 (SEO check, compliance, polish) (see
 `CLAUDE.md`).
