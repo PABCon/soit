@@ -1,7 +1,10 @@
-# SóIT
+# Just IT
 
-A transparency-first IT job board for the Portuguese market. *Só* is Portuguese
-for *only*: only IT, and only real salaries.
+A transparency-first IT job board for the Portuguese market: just IT jobs,
+always with a real salary shown. (Renamed from **SóIT** on 2026-09-28 — that
+name's pun only landed for Portuguese readers, a real problem for a site
+that's explicitly bilingual. See `CLAUDE.md` for the full rename writeup,
+including what was deliberately *not* renamed.)
 
 **Two rules define the product:**
 
@@ -99,7 +102,10 @@ src/
   `next-intl`; `npm run check:i18n` fails on catalogue drift.
 - Import `Link` / `redirect` / `usePathname` / `useRouter` from
   `@/i18n/navigation`, never from `next/*` — they must be locale-aware.
-- The brand is **SóIT**; every machine-readable identifier is ASCII **`soit`**.
+- The brand is **Just IT**; every pre-existing machine-readable identifier
+  stayed **`soit`** (npm package, repo/directory, localStorage keys, custom
+  event names) — deliberately not renamed alongside the brand, see
+  `CLAUDE.md`.
 - **RLS is the security model.** Never filter by tenant in client code.
 
 ## Status
@@ -261,6 +267,12 @@ once and only redrawing its markers on change; both confirmed against
 production afterward. This closes all 14 items from the original
 real-usage QA round, plus a mid-batch rail restyle. Per the spec,
 steps 1-7 being done means there's a working two-sided marketplace,
-loop closed, end to end. Next: the rest of the backlog — email/cron
-infra for real saved-search notifications, and step 9 (SEO check,
-compliance, polish) (see `CLAUDE.md`).
+loop closed, end to end. **Renamed to Just IT** (was SóIT) — the old
+name's pun only landed for Portuguese readers, a real problem for an
+explicitly bilingual site; the new name reads directly in both
+languages and matches the domain being bought, `justit.pt` (see
+`CLAUDE.md` for the full writeup, including what was deliberately left
+as `soit` internally). Next: connecting a real domain + email provider
+(unblocks both the application-email flow and real saved-search
+notifications), and step 9 (SEO check, compliance, polish) (see
+`CLAUDE.md`).

@@ -1,4 +1,7 @@
-# SóIT — working notes
+# Just IT — working notes
+
+Renamed from SóIT on 2026-09-28 — see the dated entry near the end of this
+file for the full rename writeup.
 
 Transparency-first IT job board for Portugal. **`docs/mvp-build-spec.md` is the
 source of truth** — read the relevant section before changing behaviour, and
@@ -9,8 +12,11 @@ update it *first* when adding a feature (§12.5).
 2. Every employer is a verified business entity (NIF, §5.7).
 
 ## Conventions
-- **Brand is `SóIT`; every machine-readable identifier is ASCII `soit`** (§1) —
-  npm forbids accented package names and an IDN punycodes to `xn--sit-zma.pt`.
+- **Brand is `Just IT`** (§1) — every *pre-existing* machine-readable
+  identifier stayed `soit` when the brand was renamed (npm package, repo/
+  directory, localStorage keys, custom event names): purely internal,
+  invisible to users, renaming them risked real regressions for zero
+  user-facing benefit. Domain: `justit.pt`.
 - **Bilingual PT + EN, both locale-prefixed** (`/pt/…`, `/en/…`, §2.2). Every
   string goes through `next-intl` — never hard-code UI text. Run
   `npm run check:i18n` before committing; it fails on catalogue drift.
@@ -1281,3 +1287,64 @@ privacy/terms content, consent, the §6.6 retention purge job, error
 monitoring, and the map tile provider's licensing gap, explicitly
 deferred earlier in this same round), with map/visual design polish
 deliberately last, per your own instruction.
+
+**Renamed from SóIT to Just IT (2026-09-28).** Came up while scoping
+the email-provider work above — connecting a real sender needs a real
+domain to verify (SPF/DKIM), which raised the question of what that
+domain (and the brand) should actually be. "SóIT" leans on a
+Portuguese-only pun (*Só* = only) that's completely invisible to an
+English reader — a real problem for a product that's explicitly
+bilingual from day one (§2.2), not a nice-to-have detail. "Just IT"
+reads directly as "only IT" in English, still reads naturally to a
+Portuguese audience (English loanwords are unremarkable in PT tech/
+business naming — plenty of real Portuguese startups use them), drops
+the diacritic (cleaner for a domain and email identity than an
+accented name that punycodes to `xn--sit-zma.pt` in certificates and
+every copied link), and matches the domain being bought: `justit.pt`.
+
+Updated every user-visible occurrence: `brand.name` (the one i18n key
+every wordmark in the app already reads dynamically — `TopNav`, the
+`(auth)`/`(legal)`/`(preview)` headers, and the root layout's `<title>`
+template all picked up the new name with zero other code changes,
+confirming the earlier design choice to route every wordmark through
+this single key rather than hardcoding it anywhere was worth it), the
+footer copyright line, the external-apply-URL hint, the NIF-
+verification "not a business" error copy, the team-invite email
+subject, both application-flow email templates' sign-offs (`src/lib/
+email/templates/*.ts` — plain strings, not i18n-routed, so these needed
+their own direct edits), and the two job-browse pages' hardcoded
+`<title>` tags (also plain strings, same reason). A couple of internal
+doc comments (`globals.css`, `vies.ts`) were updated too, for
+consistency — not user-facing, just kept accurate for anyone reading
+the code later. `docs/mvp-build-spec.md` (the source of truth) got the
+same treatment plus a proper rewrite of its own naming-convention
+section, since that section specifically explained the *old* pun and
+tied the ASCII form to "the domain" in a way that's no longer accurate.
+
+**Deliberately not renamed**, and documented as a conscious choice
+rather than an oversight: the npm package name (`package.json`'s
+`"name": "soit"`), the GitHub repository/directory, and every
+`soit`-prefixed internal identifier already in the codebase — the
+Rail's `soit:rail-collapsed` localStorage key and
+`soit:rail-collapsed-change` custom event, and the URL-params
+mechanism's `soit:search-params-change` event (`src/hooks/
+useUrlSearchParams.ts`). These are all purely internal, invisible to
+any real user — renaming them would only add risk (e.g. silently
+resetting an existing tester's saved rail-collapsed preference, since a
+renamed key wouldn't match what's already in their browser's
+localStorage) for zero user-facing benefit. Also left alone: the
+working directory name and the actual GitHub repo (`PABCon/soit`) —
+renaming either is a real operational/hosting decision with
+consequences well beyond a code edit (breaks the terminal paths this
+whole session has been navigating via, git remotes, any existing
+deploy hooks), and wasn't asked for.
+
+Verified live on both localhost and `https://soit.vercel.app`: page
+`<title>` reads "… · Just IT", the nav wordmark renders "Just IT", the
+footer copyright reads "© 2026 Just IT", and a full-page text search
+for the old name after the change comes back empty on both. The
+`NEXT_PUBLIC_SITE_URL` env var and the actual Vercel domain are still
+pointing at `soit.vercel.app` — updating those to `justit.pt` is a
+follow-up step once the domain purchase (in progress, your own doing,
+outside anything I can do directly) actually clears and DNS is pointed
+at Vercel.

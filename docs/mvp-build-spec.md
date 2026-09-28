@@ -1,4 +1,4 @@
-# Build Spec — SóIT MVP (Portugal)
+# Build Spec — Just IT MVP (Portugal)
 
 **Version:** v1.11 · 2026-09-22
 
@@ -12,9 +12,11 @@
 
 ## 1. What we're building
 
-**SóIT** — a transparency-first IT job board for the Portuguese market. *Só* is Portuguese for *only*: only IT, and only real salaries.
+**Just IT** — a transparency-first IT job board for the Portuguese market: just IT jobs, always with a real salary shown.
 
-> **Naming convention.** The brand is **SóIT**, accent included, everywhere a person sees it — logo, page titles, copy, `<title>` tags. Everything a machine reads uses the ASCII form **`soit`**: npm package name, repository, directory, Vercel project, database role names, env var prefixes and the domain. npm package names cannot contain accented characters, and an internationalised domain punycodes to `xn--sit-zma.pt` in certificates, analytics and every link a user copies. The whole product is **one working loop**:
+> **Naming convention.** Renamed from the original **SóIT** (2026-09-28) — that name's pun (*Só* is Portuguese for *only*) only lands if you already read Portuguese, a real problem for a site that's explicitly bilingual. **Just IT** reads directly as "only IT" in English and still reads naturally to a Portuguese audience (English loanwords are unremarkable in PT tech/business naming), everywhere a person sees it — logo, page titles, copy, `<title>` tags. The public domain is **justit.pt**.
+>
+> What did **not** get renamed, deliberately: the npm package name, the GitHub repository/directory, and every internal `soit`-prefixed machine identifier already in the codebase (localStorage keys, custom DOM event names, database role names, env var prefixes from the original build). These are invisible to users — renaming them risks real regressions (e.g. silently resetting an existing tester's saved UI preferences) for zero user-facing benefit, so they were left exactly as originally built. If you're hunting for something called `soit` in code, config, or infra and not finding "Just IT," that's why. The whole product is **one working loop**:
 
 > A company posts a job → it appears live on the public site → a candidate finds it and applies → the company sees the applicant → the candidate can track the application's status.
 
@@ -136,7 +138,7 @@ v1.1–v1.4 had a single `employers` table carrying both the business and its on
 - `title` · `description` (HTML) · `language` (`pt` | `en` — the language the ad is written in, §2.2) · `seniority` (junior | mid | senior | lead) · `work_model` (remote | hybrid | office)
 - `location?` · `latitude?` · `longitude?` (map; geocoded at post time)
 - `external_apply_url?` (new in v1.11) — when set, the public Apply button
-  is a plain outbound link to the employer's own site and SóIT never
+  is a plain outbound link to the employer's own site and Just IT never
   collects an application for this job (§6.7). Unset (the default): the
   normal account-free apply flow.
 - **Salary — the product's defining data (revised v1.2):**
@@ -408,7 +410,7 @@ that the caller can be anonymous:
 
 **External apply URL (new in v1.11, §5.2).** A job may set
 `external_apply_url`. When set, none of the above applies — the Apply
-button is a plain outbound link to the employer's own site, and SóIT
+button is a plain outbound link to the employer's own site, and Just IT
 never collects or stores an application for that job at all.
 
 ---
@@ -437,7 +439,7 @@ Public browsing, plus a personal account area reachable from a persistent **left
   account-gate). A modal collects name, email, CV and an optional note;
   submitting creates an unclaimed candidate profile (§6.5) and offers
   claiming *after*, not before. Unless the job has an `external_apply_url`
-  set (§5.2), in which case Apply is a plain outbound link and SóIT never
+  set (§5.2), in which case Apply is a plain outbound link and Just IT never
   collects an application for it at all.
 
 **Candidate account (logged in)**
@@ -803,7 +805,7 @@ After step 7 you have a working two-sided marketplace. Everything past step 9 is
 
 > **Resequenced in v1.9 — design and data moved forward.** The order above is
 > dependency-correct but confidence-wrong: it produced eight steps of unstyled,
-> empty UI before anyone could see what SóIT looks like, which makes it
+> empty UI before anyone could see what Just IT looks like, which makes it
 > impossible to tell whether the right thing is being built. So the **feed
 > design, seed data, filters, job detail page and map view were built during
 > step 1**, against a static `src/lib/jobs.ts` fixture rather than the database.
@@ -828,7 +830,7 @@ After step 7 you have a working two-sided marketplace. Everything past step 9 is
 | **Can a published job be edited?** | **Yes**, salary included (§5.2). Every salary change writes a `job.salary_changed` event, editing refreshes the JSON-LD and re-requests indexing, and editing never silently republishes. |
 | **Admin surface** | **None.** Verification is fully automatic (§5.7.3); GDPR erasure and `tech_tags` maintenance run from the Supabase dashboard. |
 | **NIF verification** | **Automatic, shipped in the MVP** — layer 1 inline + `ViesProvider` async behind `NifRegistryProvider` (§5.7.6). No human step. Sole traders (prefix 1–3) are rejected as non-business entities. |
-| **Product name** | **SóIT** (`soit` in all machine-readable identifiers, §1). |
+| **Product name** | **Just IT** (renamed from SóIT 2026-09-28, §1) — `soit` remains in every pre-existing machine-readable identifier (npm package, repo, internal localStorage keys/event names), deliberately not renamed. Domain: `justit.pt`. |
 | **Site language** | **PT + EN from day one** on a `.pt` domain, both locale-prefixed, `next-intl` (§2.2). Ad content is not translated; `jobs.language` records what the employer wrote. |
 
 ### 15.1 Still to lock before build
