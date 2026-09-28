@@ -1580,3 +1580,45 @@ fresh verified-employer fixture: the email field shows the correct
 login email and is genuinely disabled; setting a phone number, saving,
 and reloading the page confirms it persisted. Zero console errors
 either environment. Fixtures cleaned up on both afterward.
+
+**Phase 4 shipped**: items 2 and 4, the biggest phase so far. Applicants
+were only ever reachable per-job. New `getAllApplicantsForCompany()`
+(`src/lib/db/applications.ts`) reuses `getApplicantsForJob`'s exact
+shape — the same RLS-scoped `applications` read plus admin-client
+candidate lookup (`candidates` deliberately has no employer-read RLS
+policy) — just filtered by the embedded job's `company_id` instead of
+a single `job_id`, using the same "force `!inner` + dot-notation
+filter" trick `getBrowseJobs()` already established for restricting
+parent rows by an embedded resource's column. New `/recruit/applicants`
+page + Sidebar entry list every applicant across every job, each
+showing which job it's for.
+
+New canonical `/recruit/applicants/[id]` detail page — one route,
+reachable from both the per-job and the aggregated lists, rather than
+building two separate detail views. Shows the candidate's photo/name,
+contact info (phone, LinkedIn, email — the same fields the candidate's
+own profile form exposes, now also selected into `Applicant`/
+`CompanyApplicant`/`ApplicantDetail`, previously just name+email),
+skills, cover note, CV, and the same status control the list rows
+already have. Opening it calls the existing `updateApplicationStatus`
+directly from the server component (no need to route through a client
+action) to mark it "viewed" — but **only** when the current status is
+exactly `'applied'`, so reopening a candidate an employer already
+progressed to `responded`/`rejected`/`closed` never silently bumps them
+back to `'viewed'`.
+
+Verified live on both localhost and `https://soit.vercel.app` with a
+fresh fixture (one employer, two jobs, one candidate — full profile:
+phone, LinkedIn, skills — applied to both, a real PDF CV attached to
+each): the aggregated list shows both applications with correct job
+context per row; the detail page shows every field correctly; opening
+a fresh `'applied'` application auto-advances it to `'viewed'` and
+stays `'viewed'` on a second visit; manually setting the other
+application to `'responded'` first and then opening its detail page
+confirms it stays `'responded'`, not reset to `'viewed'` — the exact
+regression this design was meant to prevent, checked directly rather
+than assumed; the per-job list's candidate-name link and the
+aggregated list's own link both land on the same canonical detail
+route. Zero console errors either environment. Fixtures (including the
+uploaded CV storage objects, which row deletion doesn't cascade-remove)
+cleaned up on both afterward.

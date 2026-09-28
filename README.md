@@ -300,7 +300,11 @@ invites now show an expiry readout and support Revoke/Resend — the
 `employer_invites` RLS policy already covered this, only the app-code
 actions and UI were missing. **Phase 3 shipped**: the employer's own
 account page gained a phone field and a read-only display of their
-login email. Next up: connecting a real domain + email provider
-(unblocks both the application-email flow and real saved-search
-notifications), step 9 (SEO check, compliance, polish), and the rest
-of the console-review phases (see `CLAUDE.md`).
+login email. **Phase 4 shipped**: an aggregated `/recruit/applicants`
+tab across every job, and a canonical candidate detail page
+(`/recruit/applicants/[id]`) that auto-marks an application "viewed" —
+without ever downgrading a status the employer already moved further
+along. Next up: connecting a real domain + email provider (unblocks
+both the application-email flow and real saved-search notifications),
+step 9 (SEO check, compliance, polish), and the rest of the
+console-review phases (see `CLAUDE.md`).
