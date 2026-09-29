@@ -3,9 +3,10 @@
 import { useMemo, useState, type FormEvent } from "react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "@/i18n/navigation";
-import { saveJobAction } from "@/app/[locale]/(console)/recruit/jobs/actions";
+import { saveJobAction, extractJobFromUrlAction } from "@/app/[locale]/(console)/recruit/jobs/actions";
 import type { JobFormInput } from "@/lib/db/jobs";
 import type { SkillLevel } from "@/lib/types";
+import type { ExtractedJob } from "@/lib/ai/extract-job";
 
 type TechTagOption = { id: string; label: string; aliases: string[] };
 type LocationOption = { id: string; slug: string; name: string };
@@ -106,6 +107,10 @@ export function JobForm({
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [pending, setPending] = useState<"draft" | "publish" | null>(null);
+  const [extractUrl, setExtractUrl] = useState("");
+  const [extracting, setExtracting] = useState(false);
+  const [extractError, setExtractError] = useState<string | null>(null);
+  const [extractNotice, setExtractNotice] = useState<string | null>(null);
 
   const filteredTags = useMemo(() => {
     const q = tagFilter.trim().toLowerCase();
@@ -137,6 +142,67 @@ export function JobForm({
 
   function updateLanguageLevel(id: string, level: SkillLevel | null) {
     setSelectedLanguages((prev) => prev.map((l) => (l.id === id ? { ...l, level } : l)));
+  }
+
+  /** Applies whatever the model actually returned, field by field — a field
+   *  the model left null/empty is left completely untouched, never blanked
+   *  out. Tech/language labels are fuzzy-matched against the real vocab
+   *  here (not on the server) since this component already has both lists
+   *  as props; a label with no real match is silently dropped rather than
+   *  invented as a new tag. locationId/categoryId are never touched (§ plan
+   *  — an external posting's location text won't map onto our 14 curated
+   *  cities, and category is a judgment call for the employer). */
+  function applyExtractedData(data: ExtractedJob) {
+    if (data.title) setTitle(data.title);
+    if (data.description) setDescription(data.description);
+    if (data.seniority) setSeniority(data.seniority);
+    if (data.workModel) setWorkModel(data.workModel);
+    if (data.employmentType) setEmploymentType(data.employmentType);
+    if (data.salaryMin !== null) setSalaryMin(String(data.salaryMin));
+    if (data.salaryMax !== null) setSalaryMax(String(data.salaryMax));
+    if (data.salaryPeriod) setSalaryPeriod(data.salaryPeriod);
+    if (data.adLanguage) setLanguage(data.adLanguage);
+
+    if (data.techTagLabels.length > 0) {
+      const matched: SelectedTag[] = [];
+      for (const label of data.techTagLabels) {
+        const norm = label.trim().toLowerCase();
+        const tag = techTags.find(
+          (tg) => tg.label.toLowerCase() === norm || tg.aliases.some((a) => a.toLowerCase() === norm),
+        );
+        if (tag && !matched.some((m) => m.id === tag.id)) {
+          matched.push({ id: tag.id, level: null, required: true });
+        }
+      }
+      if (matched.length > 0) setSelectedTags(matched);
+    }
+
+    if (data.requiredLanguages.length > 0) {
+      const matched: SelectedLanguage[] = [];
+      for (const rl of data.requiredLanguages) {
+        const norm = rl.label.trim().toLowerCase();
+        const lang = spokenLanguages.find((l) => l.label.toLowerCase() === norm);
+        if (lang && !matched.some((m) => m.id === lang.id)) {
+          matched.push({ id: lang.id, level: rl.level });
+        }
+      }
+      if (matched.length > 0) setSelectedLanguages(matched);
+    }
+  }
+
+  async function handleExtract() {
+    if (!extractUrl.trim()) return;
+    setExtracting(true);
+    setExtractError(null);
+    setExtractNotice(null);
+    const result = await extractJobFromUrlAction(extractUrl.trim());
+    setExtracting(false);
+    if (!result.ok) {
+      setExtractError(t(`extractError.${result.reason}`));
+      return;
+    }
+    applyExtractedData(result.data);
+    setExtractNotice(t("extractSuccess"));
   }
 
   function validate(): string | null {
@@ -203,6 +269,31 @@ export function JobForm({
     <form className="flex max-w-2xl flex-col gap-5">
       {error && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
       {notice && <p className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800">{notice}</p>}
+
+      {!initial && (
+        <div className="rounded-lg border border-line bg-paper p-4">
+          <span className="text-sm font-medium">{t("pasteJobLink")}</span>
+          <div className="mt-2 flex gap-2">
+            <input
+              type="url"
+              value={extractUrl}
+              onChange={(e) => setExtractUrl(e.target.value)}
+              placeholder="https://…"
+              className={`${inputClass} flex-1`}
+            />
+            <button
+              type="button"
+              disabled={extracting || !extractUrl.trim()}
+              onClick={handleExtract}
+              className="h-9 shrink-0 rounded-lg bg-pine px-3 text-sm font-medium text-white hover:bg-pine/90 disabled:opacity-50"
+            >
+              {extracting ? t("extracting") : t("fetchAndFill")}
+            </button>
+          </div>
+          {extractError && <p className="mt-2 text-xs text-red-700">{extractError}</p>}
+          {extractNotice && <p className="mt-2 text-xs text-pine">{extractNotice}</p>}
+        </div>
+      )}
 
       <label className={labelClass}>
         <span>{t("title")}</span>

@@ -198,6 +198,17 @@
     },
     "mustHave": "Obrigatório",
     "requiredLanguages": "Idiomas necessários",
+    "pasteJobLink": "Colar link de uma vaga existente para preencher automaticamente",
+    "fetchAndFill": "Obter e preencher",
+    "extracting": "A processar…",
+    "extractSuccess": "Campos preenchidos a partir do link — reveja antes de publicar.",
+    "extractError": {
+      "invalid_url": "Esse link não é válido.",
+      "fetch_failed": "Não foi possível aceder a essa página.",
+      "too_large": "Essa página é demasiado grande.",
+      "empty_content": "Não encontrámos texto suficiente nessa página.",
+      "extraction_failed": "Não foi possível extrair os dados dessa vaga. Preencha manualmente."
+    },
     "expiresAt": "Vaga válida até",
     "expiresAtHint": "Se não escolher uma data, a vaga fica ativa durante 1 mês a partir da publicação.",
     "saveDraft": "Guardar rascunho",

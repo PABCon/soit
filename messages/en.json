@@ -198,6 +198,17 @@
     },
     "mustHave": "Must-have",
     "requiredLanguages": "Required languages",
+    "pasteJobLink": "Paste a link to an existing job posting to auto-fill",
+    "fetchAndFill": "Fetch & fill",
+    "extracting": "Processing…",
+    "extractSuccess": "Fields filled in from the link — review before publishing.",
+    "extractError": {
+      "invalid_url": "That link isn't valid.",
+      "fetch_failed": "Couldn't reach that page.",
+      "too_large": "That page is too large.",
+      "empty_content": "Couldn't find enough text on that page.",
+      "extraction_failed": "Couldn't extract job data from that link. Fill it in manually."
+    },
     "expiresAt": "Job valid until",
     "expiresAtHint": "Leave blank to keep the job live for 1 month from publish.",
     "saveDraft": "Save as draft",
