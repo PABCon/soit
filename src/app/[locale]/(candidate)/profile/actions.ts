@@ -1,5 +1,6 @@
 "use server";
 
+import { after } from "next/server";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { sniffFileType } from "@/lib/file-sniff";
@@ -7,6 +8,7 @@ import { extractCvText } from "@/lib/cv-text";
 import { extractCvProfile, type ExtractedCv } from "@/lib/ai/extract-cv";
 import { getTechTags } from "@/lib/db/tech-tags";
 import { getSpokenLanguages } from "@/lib/db/spoken-languages";
+import { recordSkillSuggestions } from "@/lib/db/skill-suggestions";
 import type { SkillLevel } from "@/lib/types";
 import {
   updateCandidateProfile,
@@ -126,6 +128,23 @@ export async function parseCvAction(formData: FormData): Promise<ParseCvResult> 
     } else {
       unmatchedLanguageLabels.push(lang.label.trim());
     }
+  }
+
+  // Never blocks the review UI the candidate is waiting on — same pattern
+  // as applications.ts's own notification scheduling: try after() first,
+  // fall back to fire-and-forget if there's no request scope to schedule in.
+  const recordUnmatched = async () => {
+    await Promise.all([
+      unmatchedSkillLabels.length > 0 ? recordSkillSuggestions(unmatchedSkillLabels, "skill") : Promise.resolve(),
+      unmatchedLanguageLabels.length > 0
+        ? recordSkillSuggestions(unmatchedLanguageLabels, "language")
+        : Promise.resolve(),
+    ]);
+  };
+  try {
+    after(recordUnmatched);
+  } catch {
+    void recordUnmatched();
   }
 
   return {
