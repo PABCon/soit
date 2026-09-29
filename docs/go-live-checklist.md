@@ -40,9 +40,42 @@ whatever order makes sense.
 
 ## Auth
 
-- [ ] Add real OAuth credentials for Google/GitHub/LinkedIn in the
-      Supabase dashboard — confirmed all three are still wired in code
-      but disabled (`external_*_enabled: false`) on the live project
+- [ ] Add real OAuth credentials for Google/GitHub/LinkedIn — the
+      buttons, click handlers, and `/auth/callback` exchange are all
+      already built and working (`AuthForm.tsx`, provider-agnostic);
+      confirmed all three are wired in code but disabled
+      (`external_*_enabled: false`) on the live project since no
+      `[auth.external.*]` block exists yet for any of them in
+      `supabase/config.toml`. Each provider needs its own app created
+      on **your own account** on that provider's platform — not
+      something that can be done on your behalf:
+      - **Google**: Google Cloud Console → new OAuth 2.0 Client ID
+        (Web application) → authorized redirect URI
+        `https://<project-ref>.supabase.co/auth/v1/callback`
+      - **GitHub**: github.com/settings/developers → New OAuth App →
+        same callback URL as the "Authorization callback URL"
+      - **LinkedIn**: LinkedIn Developer Portal → new app → request
+        the "Sign In with LinkedIn using OpenID Connect" product →
+        same callback URL as an authorized redirect URI
+      Once you have each Client ID/Secret, paste them into Supabase
+      Dashboard → Authentication → Providers (or hand them over and
+      they can be set via the Management API).
+- [ ] Real code gap found 2026-09-29, not yet fixed:
+      `ensureCandidateProfile()` (`src/lib/auth/complete-registration.ts`)
+      never actually reads what an OAuth provider returns — `avatar_url`
+      is never set by any path, `full_name` falls back to the email's
+      local-part, and `auth_provider` always resolves to `"email"`
+      (reads a `pending_auth_provider` field nothing in the codebase
+      ever sets). Fix is scoped and ready to execute (read
+      `user.app_metadata.provider`/`user.user_metadata` instead) — see
+      Phase 5 of `~/.claude/plans/refactored-zooming-wren.md`. Also
+      needs a one-line migration (`auth_provider` enum still has the
+      old value `'linkedin'`, not Supabase's real provider id
+      `'linkedin_oidc'`). Doesn't need any credentials to build — only
+      needs a real provider connected to verify end-to-end.
+- [ ] Facebook login is not wired at all yet (only Google/GitHub/
+      LinkedIn buttons exist) — add if/when wanted; Meta's own app
+      review process is stricter than the other three providers.
 
 ## Database / infra
 
