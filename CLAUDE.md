@@ -2156,3 +2156,93 @@ one-off scripts against the service-role key, which doesn't scale to a
 live product. `skill_suggestions` above is explicitly meant to be that
 future panel's first real screen. Scoped as its own separate project, not
 started here.
+
+## AI Pieces backlog — profile depth: work history, certifications, job preferences, always-editable sections
+
+Real-usage feedback after running a genuinely detailed profile through the
+CV-autofill feature, backed by two more justjoin.it reference screenshots
+(its "Experience" tab and an updated "Skills & Education" tab with a
+Certificates section): six real gaps — work history wasn't captured at all
+(only a derived `years_experience` number), no certifications, the CV file
+used by "Analyze my CV" was never actually stored (a candidate who only
+ever used Analyze ended up with a populated profile but nothing
+downloadable), no way to edit the AI's result after the fact short of
+re-running the whole analysis, and no job-preferences concept to scope a
+future recommendation engine's matches.
+
+**Phase 1 (data model)**: new migration
+(`20260929140000_candidate_experience_certs_preferences.sql`) —
+`candidate_experience` (title/company/location/dates/description),
+`candidate_certifications` (name/issuer/issued date), and job preferences
+split across `candidate_preferred_categories`/`candidate_preferred_
+locations` (join tables into the *existing* curated `job_categories`/
+`locations` — no new vocabulary needed, same shape as `candidate_tech_
+tags` → `tech_tags`) plus scalar `candidates` columns (`preferred_work_
+model`, `preferred_employment_type`, `desired_salary_min/max/period`,
+reusing the exact literal unions already defined for `WorkModel`/
+`EmploymentType`/`SalaryPeriod` elsewhere — null means "no preference,"
+not a 4th enum value). All owner-only RLS via `my_candidate_id()`, same
+convention as every candidate-side table before it.
+
+`src/lib/db/candidate-profile.ts`'s phase-1 `saveCandidateSkillsAndEducation`
+was **split into independent, narrow functions** — `saveCandidateBasics`/
+`saveCandidateSkills`/`saveCandidateLanguages`/`saveCandidateEducation`,
+plus new `saveCandidateCertifications`/`saveCandidateExperience`/
+`saveCandidateJobPreferences` — so each profile section's own "Save
+changes" button can only ever touch its own data. The original bundled
+function stays as a thin orchestrator over the four basics/skills/
+languages/education functions, used specifically by the CV-autofill
+"apply everything from the AI draft" moment, not by manual editing.
+
+**Phase 2 (tabbed UI, always-editable sections, CV storage fix)**: the
+candidate profile page was restructured into four tabs — **Overview**
+(name/email/phone/LinkedIn/avatar/CV file, plus a small headline/years-
+of-experience card), **Job Preferences** (new — category/location
+multi-select chips reusing `jobForm`'s own `categoryOption` i18n keys,
+work-model/employment-type selects with an explicit "Any" option,
+salary range+period), **Experience** (new — add/edit/remove work-history
+entries), **Skills & Education** (existing tech-tag chips w/ level,
+language chips w/ level, education list, plus a new **Certifications**
+list) — mirroring the reference screenshots' own structure. There was no
+reusable Tabs component anywhere in this codebase (checked); built a
+small one from scratch (a handful of buttons + one `activeTab` state, no
+library, `role="tab"`/`aria-selected` only). New shared `src/components/
+LevelSelect.tsx` (extracted so `CvAutofillReview`'s own skill-level
+picker and this phase's new editors don't each duplicate the same ~15
+lines a third time). Removed the old freeform comma-separated `skills`
+text input from the basic-info form entirely — `candidates.skills` is
+purely a derived cache column now (recomputed by `saveCandidateSkills`),
+never hand-edited via a raw text field.
+
+**CV storage fix**: `parseCvAction` now also calls the existing
+`uploadCandidateCv()` alongside text extraction, so "Analyze my CV" alone
+leaves a real, downloadable/previewable file behind (previously only the
+separate "Upload CV" button persisted anything — the analyzed file itself
+was read into memory and discarded). Preview stays "open the signed URL
+in a new tab" (browsers render PDFs inline natively that way) rather than
+building a custom in-page viewer — proportionate scope; DOCX stays
+download-only, same limitation as before.
+
+Verified live on both localhost and `https://soit.vercel.app` with a
+fresh fixture: filled and saved all four tabs independently (headline/
+years, job-preference chips + salary + work model, a work-experience
+entry, a skill/education/certification each), reloaded, and confirmed
+every field's actual `input_value()` persisted correctly (an early,
+wrong verification pass checked rendered *text* via `innerText`, which
+never captures `<input>` values at all — re-verified properly with
+`.input_value()` once that was caught) — zero console errors on either
+environment. Separately confirmed the CV storage fix: before analyzing,
+no preview/download link exists; after "Analyze my CV" → "Apply to
+profile," it appears immediately, on both environments (production
+needed a real reload-wait, not a fixed timeout, to observe correctly —
+another test-script timing issue, not an app bug). Fixtures (including
+storage objects and every new table's rows) cleaned up on both
+afterward.
+
+**Deliberately not done yet (next up)**: the AI extraction still only
+covers skills/languages/education/headline/years — not experience or
+certifications — and "Analyze my CV" still applies through the original
+one-shot modal rather than prefilling the new persistent Experience/
+Skills & Education tabs directly, so editing an AI-derived result and
+editing by hand aren't yet the exact same UI end-to-end. Both are a
+planned, scoped follow-up (phase 3 of the same plan file).

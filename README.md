@@ -366,6 +366,22 @@ duplicate. `docs/go-live-checklist.md` now also recommends building a real
 admin panel before launch (there currently isn't one — every admin action
 so far has been a one-off script).
 
+**Candidate profile depth shipped the same day**: real-usage feedback
+(a genuinely detailed profile run through CV-autofill, plus two more
+justjoin.it reference screenshots) surfaced six gaps — no work-history
+storage, no certifications, the analyzed CV file was never actually
+stored/downloadable, no editing after the fact, and no job-preferences
+concept. Fixed all of them: new `candidate_experience`/`candidate_
+certifications` tables, job preferences reusing the existing curated
+categories/locations, the profile page restructured into four tabs
+(Overview/Job Preferences/Experience/Skills & Education) where every
+section is independently, persistently editable with its own save — no
+longer a one-shot AI-review-only flow — and "Analyze my CV" now actually
+leaves a downloadable file behind. Verified live on both environments.
+Still open: the AI extraction itself doesn't yet cover experience/
+certifications, and applying an AI draft doesn't yet flow into these same
+tabs (next up).
+
 Next up: connecting a real domain + email provider
 (unblocks both the application-email flow and real saved-search
 notifications) and step 9 (SEO check, compliance, polish) (see
