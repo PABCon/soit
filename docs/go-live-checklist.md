@@ -108,7 +108,13 @@ whatever order makes sense.
 - [ ] Pricing model — deferred at your own request; needs a real
       business-model pass (compare against LinkedIn's model, not just
       port justjoin.it's tiers) before building any billing
-- [ ] Contact/support channel — in progress now
+- [x] Contact/support channel, email half — `/contact` page shipped
+      2026-09-29, sends through the same not-yet-connected email
+      pipeline as everything else (see Email section above)
+- [ ] Contact/support channel, chat half — deliberately skipped for
+      now (2026-09-29); building real-time chat from scratch isn't
+      worth it, a third-party widget (Crisp recommended) is the right
+      call if/when this gets revisited
 - [ ] **Cold-start supply plan** (spec §15.2, called out as "the risk
       the spec cannot engineer away") — a job board with zero listings
       converts nobody. Needs a manual outreach plan (target list of

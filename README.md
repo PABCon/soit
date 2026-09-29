@@ -317,8 +317,15 @@ employer-console review**: paste a link to an existing job posting and
 auto-fill the create-job form, this project's first-ever LLM
 integration — Vercel AI Gateway, model Claude, verified with a genuine
 real end-to-end extraction run (not mocked) on both localhost and
-production. Items 6 (pricing) and 7 (a contact channel) stay
-explicitly deferred, per your own call at the start of this round.
-Next up: connecting a real domain + email provider (unblocks both the
-application-email flow and real saved-search notifications) and step
-9 (SEO check, compliance, polish) (see `CLAUDE.md`).
+production. Item 6 (pricing) stays explicitly deferred. A real-usage report on
+session length led to a new **go-live checklist**
+(`docs/go-live-checklist.md`) consolidating every "before launch" item
+across this project — checked against the live Supabase/Vercel state,
+not assumed. **Item 7's email half shipped**: a `/contact` page
+reachable from the footer and the console sidebar; the chat half was
+deliberately skipped for now (build-vs-buy discussed — a third-party
+widget stays the right call whenever it's revisited, not building one
+from scratch). Next up: connecting a real domain + email provider
+(unblocks both the application-email flow and real saved-search
+notifications) and step 9 (SEO check, compliance, polish) (see
+`CLAUDE.md`).

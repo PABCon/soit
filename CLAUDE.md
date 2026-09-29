@@ -1829,3 +1829,41 @@ gap, legal/consent/retention, observability, SEO, pricing, the contact
 channel, and the spec's own §15.2 cold-start risk) — checked against
 the live project's actual current state via the Supabase/Vercel APIs,
 not assumed from memory. Update it as items close.
+
+**Item 7 (the contact channel) shipped — its email half.** Discussed
+build-vs-buy for the chat half first, since that was your own stated
+concern ("not sure we want to develop it"): building real-time chat
+(persistence, an agent inbox, notifications) from scratch is a real
+engineering lift almost never worth it for a support-contact use case;
+the standard move is embedding a third-party widget (Crisp recommended
+— generous free tier, EU-based). **You chose to skip chat entirely for
+now** and ship email-only, deferring the widget decision rather than
+building or embedding anything today.
+
+New `/contact` page under the existing `(legal)` route group — same
+universally-accessible shell already used for `/privacy`/`/terms`
+(works for anonymous visitors and any logged-in role, including an
+employer, which `(candidate)`'s own guard would otherwise block). The
+form sends through the exact same `EmailProvider` interface every
+other email in this app already goes through (`src/lib/email/
+templates/contact-message.ts` + the existing `sendEmail()` — currently
+just logs, same as application-confirmation/new-applicant, pending a
+real provider per the go-live checklist). Unlike the two pre-existing
+templates, this one HTML-escapes its interpolated fields before
+building the message body — the "message" field is longer, free-form,
+user-authored text, meaningfully more likely to contain HTML-like
+characters than a short profile field, and once a real provider is
+wired in, unescaped input here would actually render in whoever
+receives the email's client. Reachable from the footer (every
+candidate-facing shell) and from the console `Sidebar`'s existing
+`contact` entry, which had sat as a disabled placeholder since an
+earlier phase — it just needed a real page to point at.
+
+Verified live on both localhost and `https://soit.vercel.app`: the
+footer's Contact link and the console Sidebar's Contact link (now a
+real link, not a disabled `<span>`) both land on the same `/contact`
+page for an anonymous visitor and a logged-in employer respectively;
+submitting the form shows the success confirmation and (checked on
+localhost, where the log is directly visible) actually logs a
+correctly-rendered message with the submitter's name/email/text. Zero
+console errors on either environment. Fixtures cleaned up on both.
