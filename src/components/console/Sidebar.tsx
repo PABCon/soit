@@ -9,7 +9,7 @@ const MVP = [
   { key: "companyProfile", href: "/recruit/company" },
   { key: "team", href: "/recruit/team" },
   { key: "myAccount", href: "/recruit/settings" },
-  { key: "contact", href: "/contact" },
+  { key: "contact", href: "/recruit/contact" },
 ] as const;
 
 const LATER = ["matchmaking", "myProducts", "pricing"] as const;

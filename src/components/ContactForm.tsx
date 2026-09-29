@@ -2,17 +2,20 @@
 
 import { useState, type FormEvent } from "react";
 import { useTranslations } from "next-intl";
-import { sendContactMessageAction } from "@/app/[locale]/(legal)/contact/actions";
+import { sendContactMessageAction } from "@/app/[locale]/(console)/recruit/contact/actions";
 
 const inputClass = "h-9 rounded-lg border border-line bg-white px-3 text-sm";
 const labelClass = "flex flex-col gap-1 text-sm";
 
 /** Item 7 (§ real-usage QA, employer-console review), the email half —
  *  the chat half was deliberately skipped for now (2026-09-29: no live
- *  channel yet, revisit later rather than build or embed one now). Sends
- *  through the same EmailProvider interface every other email in this
- *  app already goes through — currently just logs (no real provider
- *  connected), same as application-confirmation/new-applicant. */
+ *  channel yet, revisit later rather than build or embed one now).
+ *  Employer-only by your own explicit confirmation (2026-09-29) — this
+ *  is why the page lives under (console)/recruit, inheriting that
+ *  layout's own auth guard, rather than a universally-reachable route.
+ *  Sends through the same EmailProvider interface every other email in
+ *  this app already goes through — currently just logs (no real
+ *  provider connected), same as application-confirmation/new-applicant. */
 export function ContactForm() {
   const t = useTranslations("contact");
   const [name, setName] = useState("");

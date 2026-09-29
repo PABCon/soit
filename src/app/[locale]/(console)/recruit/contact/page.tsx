@@ -7,7 +7,8 @@ type Props = { params: Promise<{ locale: string }> };
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale } = await params;
   const t = await getTranslations({ locale, namespace: "contact" });
-  return { title: t("title") };
+  // Same as every other page under (console): behind login, never indexed.
+  return { title: t("title"), robots: { index: false, follow: false } };
 }
 
 export default async function ContactPage({ params }: Props) {
