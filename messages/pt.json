@@ -475,6 +475,7 @@
     "jobs": "Vagas",
     "companies": "Empresas",
     "postJob": "Publicar vaga",
+    "contact": "Contacto",
     "privacy": "Política de privacidade",
     "terms": "Termos de utilização",
     "copyright": "© {year} Just IT"
@@ -483,5 +484,16 @@
     "privacyTitle": "Política de privacidade",
     "termsTitle": "Termos de utilização",
     "placeholderBody": "Esta página está em preparação. O conteúdo final será publicado brevemente."
+  },
+  "contact": {
+    "title": "Contacte-nos",
+    "intro": "Tem uma pergunta ou precisa de ajuda? Escreva-nos e responderemos assim que possível.",
+    "name": "Nome",
+    "email": "Email",
+    "message": "Mensagem",
+    "send": "Enviar",
+    "sending": "A enviar…",
+    "sentConfirmation": "Mensagem enviada. Entraremos em contacto brevemente.",
+    "errorGeneric": "Algo correu mal. Tente novamente."
   }
 }

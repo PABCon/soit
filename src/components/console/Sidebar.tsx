@@ -9,9 +9,10 @@ const MVP = [
   { key: "companyProfile", href: "/recruit/company" },
   { key: "team", href: "/recruit/team" },
   { key: "myAccount", href: "/recruit/settings" },
+  { key: "contact", href: "/contact" },
 ] as const;
 
-const LATER = ["matchmaking", "myProducts", "pricing", "contact"] as const;
+const LATER = ["matchmaking", "myProducts", "pricing"] as const;
 
 /** Employer console sidebar (§7.2) — its own navigation, not the candidate
  *  rail. Identity (avatar) and locale live in `ConsoleTopNav` above this,
