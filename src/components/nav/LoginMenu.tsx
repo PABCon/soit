@@ -161,8 +161,19 @@ export function LoginMenu() {
           </>
         )}
       </Dropdown>
+      {/* prefetch={false} is load-bearing, not cosmetic — same real
+       *  production bug as Footer's own links (see its own comment):
+       *  this link is visible (and re-rendered) the instant a session
+       *  logs out, so Next auto-prefetches /recruit while still
+       *  unauthenticated, caching a redirect-to-login response under
+       *  that exact path. A login moments later that pushes to /recruit
+       *  then reuses that stale cache entry instead of fetching fresh —
+       *  reproduced 6/6 on production via a real candidate-logout →
+       *  employer-login sequence with the redirect captured on the
+       *  wire, not guessed. */}
       <Link
         href="/recruit"
+        prefetch={false}
         className="flex h-9 items-center rounded-lg bg-pine px-3 text-sm font-medium text-white hover:bg-pine/90"
       >
         {t("addOffer")}
