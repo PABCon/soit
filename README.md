@@ -439,6 +439,22 @@ first, unrelated jobs correctly excluded. Future Rail entries in the
 same "clickbait" pattern (salary calculator, career advice, interview
 prep, CV review) are explicitly not built yet.
 
+**Match quality follow-up**: live usage caught a real false positive —
+a candidate with a business/delivery background (a couple of shallow,
+shared tags like Python/SQL) was shown as matched to a "Senior Big Data
+Engineer" role. Root cause was generous neutral defaults (half-credit
+for jobs with no tagged requirements, plus credit for preference
+alignment) stacking up past the old 30% floor with no real skill
+evidence behind them. Fixed with three changes together: the floor
+raised to 70%, the no-required-tags neutral default cut from 30 to 10
+so it can no longer coast a job to a passing score on preferences alone,
+and job preferences now enforced as a hard prerequisite (not just an
+optional scoring input) — recommendations only show once a candidate
+has both skills and preferences set. Verified live with fresh fixtures:
+a skills-only candidate now correctly hits a "set your preferences"
+prompt instead of a score, and a genuine full match still scores 90%
+and displays correctly.
+
 Next up: connecting a real domain + email provider
 (unblocks both the application-email flow and real saved-search
 notifications) and step 9 (SEO check, compliance, polish) (see

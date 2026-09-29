@@ -37,14 +37,21 @@ type RecsJobRow = Omit<JobRow, "job_tech_tags"> & {
 };
 
 // Below this, a job is excluded from results entirely — see the filter
-// where it's used for the real-usage reasoning.
-const MIN_MATCH_SCORE = 30;
+// where it's used for the real-usage reasoning. Raised from 30 after a
+// real false positive: a candidate with a purely business/delivery
+// background (no data-engineering skills at all) was shown a "Senior
+// Big Data Engineer" role as a match. Root cause was the neutral
+// defaults below stacking up to a plausible-looking score with zero
+// actual skill evidence — fixed together with this raise, since raising
+// the bar alone without shrinking those defaults would only move
+// where the same failure resurfaces.
+const MIN_MATCH_SCORE = 70;
 
 export type RecommendedJob = Job & { matchScore: number; matchedTechLabels: string[] };
 
 export type RecommendationsResult =
   | { ok: true; jobs: RecommendedJob[] }
-  | { ok: false; reason: "not_a_candidate" | "empty_profile" };
+  | { ok: false; reason: "not_a_candidate" | "empty_profile" | "no_preferences" };
 
 /** Scores one job against a candidate's skill-id set and job preferences.
  *  Every weighted bucket is additive-only — a preference the candidate
@@ -74,7 +81,11 @@ function scoreJob(
     const matched = requiredTags.filter((t) => skillIds.has(t.tech_tag_id)).length;
     score += (matched / requiredTags.length) * 60;
   } else {
-    score += 30; // neutral: nothing explicit to measure against
+    // Neutral, but deliberately *low* (not half-credit): an employer
+    // who never tagged required skills gives us no evidence this job
+    // fits the candidate at all, so this alone — even stacked with a
+    // full preference match — must stay well under MIN_MATCH_SCORE.
+    score += 10;
   }
 
   if (niceTags.length > 0) {
@@ -144,7 +155,13 @@ export async function getJobRecommendationsForCandidate(limit = 20): Promise<Rec
       prefs.salaryMin != null ||
       prefs.salaryMax != null);
 
-  if (skillIds.size === 0 && !hasPrefs) return { ok: false, reason: "empty_profile" };
+  // Preferences are enforced as a hard prerequisite, not just an
+  // optional scoring input — a candidate with skills but no job
+  // preferences was exactly the profile shape behind the Big Data
+  // Engineer false positive above (the missing-preferences neutral
+  // default was the other half of that stacked score).
+  if (skillIds.size === 0) return { ok: false, reason: "empty_profile" };
+  if (!hasPrefs) return { ok: false, reason: "no_preferences" };
 
   const { data } = await supabase
     .from("jobs")

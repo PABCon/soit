@@ -71,6 +71,26 @@ function EmptyProfilePrompt({ t }: { t: T }) {
   );
 }
 
+/** Skills alone aren't enough — preferences are enforced too, since a
+ *  candidate with skills but no scope (categories/locations/work model/
+ *  salary) is exactly the profile shape that produced a real bad match
+ *  (a business/delivery background matched to a "Senior Big Data
+ *  Engineer" role) before this was tightened. */
+function NoPreferencesPrompt({ t }: { t: T }) {
+  return (
+    <div className="mx-auto max-w-lg py-10 text-center">
+      <h1 className="font-display text-2xl font-bold text-ink">{t("noPreferencesTitle")}</h1>
+      <p className="mt-3 text-muted">{t("noPreferencesBody")}</p>
+      <Link
+        href="/profile?tab=preferences"
+        className="mt-6 inline-flex h-11 items-center justify-center rounded-lg bg-pine px-6 text-sm font-semibold text-white hover:bg-pine/90"
+      >
+        {t("setPreferences")}
+      </Link>
+    </div>
+  );
+}
+
 export default async function RecommendationsPage({ params }: Props) {
   const { locale } = await params;
   setRequestLocale(locale);
@@ -79,7 +99,8 @@ export default async function RecommendationsPage({ params }: Props) {
   const result = await getJobRecommendationsForCandidate();
 
   if (!result.ok && result.reason === "not_a_candidate") return <Pitch t={t} />;
-  if (!result.ok) return <EmptyProfilePrompt t={t} />;
+  if (!result.ok && result.reason === "empty_profile") return <EmptyProfilePrompt t={t} />;
+  if (!result.ok) return <NoPreferencesPrompt t={t} />;
 
   const favoriteJobIds = await getMyFavoriteJobIds();
 

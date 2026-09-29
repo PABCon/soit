@@ -566,13 +566,17 @@
     "createAccount": "Criar a minha conta gratuita",
     "alreadyHaveAccount": "Já tem conta? Entrar",
     "emptyProfileTitle": "Adicione as suas competências para ser correspondido",
-    "emptyProfileBody": "Ainda não tem competências ou preferências de vaga no seu perfil, por isso não conseguimos ordenar vagas para si. Adicione algumas competências — ou carregue o seu CV e fazemo-lo por si — para ver as suas correspondências.",
+    "emptyProfileBody": "Ainda não tem competências no seu perfil, por isso não conseguimos ordenar vagas para si. Adicione algumas competências — ou carregue o seu CV e fazemo-lo por si — para ver as suas correspondências.",
     "completeProfile": "Completar o meu perfil",
+    "noPreferencesTitle": "Defina as suas preferências de vaga para ser correspondido",
+    "noPreferencesBody": "Usamos as suas preferências de vaga — categorias, localizações, modelo de trabalho, salário — em conjunto com as suas competências para manter as correspondências relevantes. Defina-as para ver as suas correspondências.",
+    "setPreferences": "Definir as minhas preferências de vaga",
     "noMatches": "Não há vagas ativas muito compatíveis com o seu perfil neste momento — volte mais tarde ou veja todas as vagas."
   },
   "recommendationsTeaser": {
     "anonPitch": "Receba vagas à medida das suas competências — grátis",
     "emptyProfilePitch": "Adicione as suas competências para ver vagas à sua medida",
+    "noPreferencesPitch": "Defina as suas preferências de vaga para ver vagas à sua medida",
     "matchesPitch": "{count, plural, one {# vaga corresponde} other {# vagas correspondem}} ao seu perfil",
     "noMatchesPitch": "Veja vagas à medida do seu perfil",
     "cta": "Ver correspondências"

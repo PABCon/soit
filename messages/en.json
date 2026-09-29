@@ -566,13 +566,17 @@
     "createAccount": "Create my free account",
     "alreadyHaveAccount": "Already have an account? Log in",
     "emptyProfileTitle": "Add your skills to get matched",
-    "emptyProfileBody": "You don't have any skills or job preferences on your profile yet, so we can't rank jobs for you. Add a few skills — or just upload your CV and we'll do it for you — to see your matches.",
+    "emptyProfileBody": "You don't have any skills on your profile yet, so we can't rank jobs for you. Add a few skills — or just upload your CV and we'll do it for you — to see your matches.",
     "completeProfile": "Complete my profile",
+    "noPreferencesTitle": "Set your job preferences to get matched",
+    "noPreferencesBody": "We use your job preferences — categories, locations, work model, salary — together with your skills to keep matches relevant. Set them up to see your matches.",
+    "setPreferences": "Set my job preferences",
     "noMatches": "No live jobs match your profile closely right now — check back soon, or browse all jobs."
   },
   "recommendationsTeaser": {
     "anonPitch": "Get jobs matched to your skills — free",
     "emptyProfilePitch": "Add your skills to see jobs matched to you",
+    "noPreferencesPitch": "Set your job preferences to see jobs matched to you",
     "matchesPitch": "{count, plural, one {# job matches} other {# jobs match}} your profile",
     "noMatchesPitch": "See jobs matched to your profile",
     "cta": "View matches"

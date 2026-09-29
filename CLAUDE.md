@@ -2507,3 +2507,48 @@ correctly, and the Rail's new entry visibly stood out from the rest of
 the menu (confirmed via screenshot, not just code review). Zero console
 errors on either environment. Fixtures (company, jobs, candidates)
 cleaned up on both afterward.
+
+### Follow-up: a real bad match caught in production, threshold raised + preferences enforced
+
+Live usage surfaced a genuine false positive: the real candidate account
+`paul_william_24@hotmail.com` (business/delivery background — Nearshore
+Delivery, Business Development, Client Relationship Management, plus a
+few generic tags including Python and SQL) was shown as matched to
+"Senior Big Data Engineer – Financial Services," a role requiring Git/
+Kafka/Linux/Python/SQL. Read-only inspection of this real (never
+modified) account's actual data explained exactly how: 2 of 5 required
+tags matched (Python, SQL — real but shallow overlap) → 24 pts, plus a
+location + employment-type preference match → 15 pts = 39%, comfortably
+above the old `MIN_MATCH_SCORE = 30` floor despite the candidate having
+no real data-engineering skills.
+
+Two changes, not one — raising the floor alone would have hidden this
+specific case but left the underlying looseness in place for the next
+one:
+
+- `MIN_MATCH_SCORE` raised from 30 → 70. Hand-verified against the exact
+  real numbers above: 39% now correctly falls below the floor.
+- The "job has no required tech tags at all" neutral default (an
+  employer who never tagged requirements) dropped from 30 → 10 — it was
+  half-credit for zero evidence, generous enough that, stacked with
+  preference-alignment neutrals, an untagged job could still cross a
+  raised floor on preference proxies alone with no real skill signal at
+  all. Now it can't.
+- Job preferences are enforced as a hard prerequisite for recommendations,
+  not just an optional scoring input. `getJobRecommendationsForCandidate()`
+  now returns a new `"no_preferences"` reason (distinct from
+  `"empty_profile"`, which now means "no skills at all") whenever a
+  candidate has skills but hasn't set categories/locations/work model/
+  employment type/salary — recommendations only ever show once *both*
+  exist. New `NoPreferencesPrompt` on `/recommendations` and a matching
+  `noPreferencesPitch` on the homepage teaser link to
+  `/profile?tab=preferences`, which `CandidateProfileForm` now reads via
+  `useSearchParams` to land the candidate directly on the right tab.
+
+Verified live on localhost with two fresh mailinator fixtures (cleaned
+up after): a candidate with skills but no preferences correctly hit the
+new enforcement prompt instead of a score; a candidate with a genuine
+full skill+preference match against the same "Senior Big Data Engineer"
+job scored 90% and displayed correctly. The real
+`paul_william_24@hotmail.com` account was only ever read for diagnosis,
+never modified.

@@ -25,7 +25,9 @@ export async function RecommendationsTeaser() {
   } else {
     const result = await getJobRecommendationsForCandidate();
     if (!result.ok) {
-      body = result.reason === "empty_profile" ? t("emptyProfilePitch") : t("anonPitch");
+      if (result.reason === "empty_profile") body = t("emptyProfilePitch");
+      else if (result.reason === "no_preferences") body = t("noPreferencesPitch");
+      else body = t("anonPitch");
     } else if (result.jobs.length > 0) {
       body = t("matchesPitch", { count: result.jobs.length });
     } else {

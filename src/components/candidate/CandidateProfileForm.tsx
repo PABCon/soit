@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import type {
   CandidateProfile,
@@ -62,7 +63,12 @@ export function CandidateProfileForm({
   locations: LocationOption[];
 }) {
   const t = useTranslations("profile");
-  const [tab, setTab] = useState<Tab>("overview");
+  // Supports a `?tab=preferences` deep link (used by /recommendations'
+  // "set your preferences" prompt) so enforcing preferences actually
+  // lands the candidate on the right tab instead of just /profile.
+  const searchParams = useSearchParams();
+  const requestedTab = searchParams.get("tab") as Tab | null;
+  const [tab, setTab] = useState<Tab>(requestedTab && TABS.includes(requestedTab) ? requestedTab : "overview");
   const [aiDraft, setAiDraft] = useState<AiDraft | null>(null);
   const [draftVersion, setDraftVersion] = useState(0);
   // Lifted here rather than left as OverviewSection's own local state —
