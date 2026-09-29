@@ -2366,3 +2366,68 @@ Requirements), and publishing it rendered as three real `<ul>` elements
 with all 10 items on the candidate-facing page — not a wall of text.
 Fixtures (a verified test company + its job) cleaned up on both
 afterward.
+
+## AI Pieces backlog — profile UX: autosave, reuse existing CV, structured highlights
+
+Three more pieces of real-usage feedback after trying the reworked profile:
+
+**1) "I need to click save a million times."** Every section (Overview's
+two cards, Job Preferences, Experience, Skills & Education's four cards)
+had its own explicit "Save changes" button — real friction for even a
+one-field edit. New `src/hooks/useAutosave.ts`: debounced autosave,
+~800ms after the last change, `JSON.stringify`-compared so call sites
+never have to memoize their own value. All seven "Save changes" buttons
+are gone, replaced by a small "A guardar…"/"Guardado." status indicator.
+
+A real design gap this surfaced and had to fix before shipping: sections
+seeded from a fresh AI draft get key-remounted (same mechanism that
+prefills them), and the autosave hook's default behavior is to *skip*
+the very first render — correct for a section mounting with its already-
+persisted baseline, wrong for a section mounting with a brand-new,
+never-saved draft. Skipping there meant a candidate happy with the
+draft, who never touches a field and just switches tabs, would silently
+lose it — nothing had ever actually been sent to the server. Fixed with
+a `skipFirstRun` option threaded down from `CandidateProfileForm` as a
+`seededFromDraft` prop (`aiDraft !== null`) to every affected section —
+when true, the very first render *is* the pending change, not the
+baseline, and autosaves like any other edit.
+
+**2) "Why do I get asked to upload every time I already have a CV?"**
+`parseCvAction`'s guts were split into a shared `runCvExtraction(bytes,
+kind)` helper, and a new `analyzeStoredCvAction()` (new
+`downloadMyCv()` in `candidate-profile.ts`, reading the already-stored
+file straight from the `cvs` bucket) re-runs extraction against it
+directly. "Analyze my CV" now only opens the upload picker when there's
+genuinely no CV on file (`!profile.hasCv`); otherwise it re-analyzes
+immediately, with a small secondary "or analyze a different file" link
+for the upload path once a CV already exists.
+
+**3) "It's not even displaying as bullet points" — and does storing it
+pre-formatted make a future CV export straightforward? Yes, agreed.**
+Work-experience responsibilities/achievements were "- "-prefixed lines
+inside one `description` text blob — every future consumer (this form's
+own edit UI, a future public profile view, a future CV export) would
+have had to re-parse dashes out of a string to render real bullets.
+New migration adds `candidate_experience.highlights text[]`;
+`extract-cv.ts`'s schema now returns each point as its own array
+element (no leading "-", the array structure already represents that),
+and `description` narrows to an optional short narrative intro only
+when the CV itself writes one in prose. `ExperienceSection.tsx`'s edit
+UI renders `highlights` as real bullet-marker (•) rows — one input per
+point, add/remove — instead of a textarea of dashed lines. Answers the
+question directly: yes, this is exactly what makes a future CV export
+trivial — map over the array straight into real `<li>`s or PDF bullet
+points, no parsing step, ever.
+
+Verified live on both localhost and `https://soit.vercel.app`: typed a
+headline with zero button clicks, confirmed no "Guardar alterações"
+button exists anywhere, confirmed the value persisted after a reload;
+toggled a job-preference category with zero clicks, confirmed it
+persisted; analyzed a CV for the first time (upload picker shown, as
+expected), confirmed the unedited AI draft's experience data itself
+autosaved and persisted with zero manual save (the `skipFirstRun` fix
+working as intended); confirmed the highlights render as real bullet
+rows; clicked "Analyze my CV" a second time and confirmed no upload
+picker appeared, re-analyzing the stored file directly instead. Zero
+console errors on either environment. Fixtures cleaned up on both
+afterward.

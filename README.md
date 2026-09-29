@@ -410,6 +410,19 @@ page was silently collapsing line breaks in the description even when
 they were there — it now renders real `<ul>` lists. Verified live on
 both environments with a messy, unpunctuated paste.
 
+**Profile UX polish, same day**: three more real-usage complaints, all
+fixed. Every section's explicit "Save changes" button is gone, replaced
+by debounced autosave (~800ms after a change, new `useAutosave` hook) —
+caught and fixed a real gap where an AI draft's unedited first render
+needed to autosave too, or it would silently vanish if never touched.
+"Analyze my CV" no longer forces a re-upload when a CV is already on
+file — it just re-analyzes what's stored. And work-experience bullet
+points are now a real `text[]` column instead of dashes inside a text
+blob, rendering as actual bullet rows in the edit UI — and setting up
+exactly what a future CV-export feature will need (map the array
+straight into real bullets, no parsing). Verified live on both
+environments with zero button clicks and zero console errors.
+
 Next up: connecting a real domain + email provider
 (unblocks both the application-email flow and real saved-search
 notifications) and step 9 (SEO check, compliance, polish) (see
