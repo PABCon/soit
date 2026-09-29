@@ -2239,10 +2239,57 @@ another test-script timing issue, not an app bug). Fixtures (including
 storage objects and every new table's rows) cleaned up on both
 afterward.
 
-**Deliberately not done yet (next up)**: the AI extraction still only
-covers skills/languages/education/headline/years — not experience or
-certifications — and "Analyze my CV" still applies through the original
-one-shot modal rather than prefilling the new persistent Experience/
-Skills & Education tabs directly, so editing an AI-derived result and
-editing by hand aren't yet the exact same UI end-to-end. Both are a
-planned, scoped follow-up (phase 3 of the same plan file).
+**Phase 3 shipped — closing the loop**: `extract-cv.ts`'s schema grew
+`experience`/`certifications` arrays (same "every field optional, never
+invent" discipline as every other field; company/institution/title names
+aren't matched against any curated vocab, unlike skills/languages — free
+text, passed straight through). More significantly, **the flow itself
+changed**: `CvAutofillReview` no longer owns a separate one-shot review/
+apply screen — it shrank to upload-only, and once `parseCvAction`
+succeeds, the draft is handed up to `CandidateProfileForm`, which
+prefills the *same persistent, always-editable* Overview/Experience/
+Skills & Education tabs (key-remounted with the draft as their initial
+state) a candidate would also use for manual entry. Nothing is written to
+the database until the candidate saves each section themselves, same as
+manual entry — reviewing an AI-derived result and reviewing/editing by
+hand are now the exact same UI, closing item 5 end-to-end. A small amber
+notice banner (`profile.aiDraftNotice`) flags that a draft is sitting
+unsaved across the Overview/Experience/Skills tabs.
+
+The first-login onboarding popup (`CvOnboardingPrompt`) has no tab UI to
+hand off to, since it can appear on any page — it applies the draft
+directly via the same granular `saveCandidate*Action` functions the tabs
+themselves use (not a resurrected bundled apply), then reloads. Same
+underlying tables either way, so editing afterward on `/profile` works
+identically regardless of which entry point populated it. Removed the
+now-dead `saveCandidateSkillsAndEducation` orchestrator,
+`applyCvExtractionAction`, and the client-side vocab fetcher (no longer
+needed — `CvAutofillReview` doesn't do its own fuzzy-matching UI anymore).
+
+**A real bug caught by this phase's own live verification**: after
+analyzing, switching away from and back to the Overview tab made the CV
+preview/download link disappear again. Root cause: the freshly-fetched
+signed URL lived in `OverviewSection`'s own local state, but that
+component gets torn down and remounted on every tab switch after a draft
+arrives (it's keyed on draft version, same mechanism that seeds its
+initial fields from the draft) — the local state update was silently
+lost on unmount. Fixed by lifting the signed URL up to
+`CandidateProfileForm`, same as the draft itself already was, and
+re-verified live that it survives tab switches on both environments.
+
+Verified live on both localhost and `https://soit.vercel.app` with a
+second, richer synthetic CV (two work-experience entries with real date
+ranges, two certifications, technical skills): after analyzing, the UI
+auto-switched to Skills & Education with the draft correctly prefilled
+(including the new certifications), the Experience tab separately showed
+the draft's work history, and Overview showed the draft headline — all
+still fully editable and *unsaved*. Saved only the Experience tab
+deliberately, reloaded, and confirmed Experience persisted while Overview
+and Skills & Education correctly reverted to empty (proving per-section
+save isolation holds for the AI-draft path too, not just manual entry).
+Separately verified the first-login popup's direct-apply path end-to-end
+on localhost: CV analyzed → applied immediately via the granular actions
+→ reload → every field (headline, experience) correctly persisted, and
+the popup correctly didn't reappear on a later visit to `/profile` since
+`cv_url` was now set. Zero console errors across every run on both
+environments. Fixtures cleaned up on both afterward.

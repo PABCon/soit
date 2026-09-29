@@ -378,9 +378,16 @@ categories/locations, the profile page restructured into four tabs
 section is independently, persistently editable with its own save — no
 longer a one-shot AI-review-only flow — and "Analyze my CV" now actually
 leaves a downloadable file behind. Verified live on both environments.
-Still open: the AI extraction itself doesn't yet cover experience/
-certifications, and applying an AI draft doesn't yet flow into these same
-tabs (next up).
+
+**Closed the loop the same day**: AI extraction now also covers work
+experience and certifications, and — the bigger change — "Analyze my CV"
+no longer has its own separate review/apply screen. It hands the parsed
+draft straight into the same persistent, always-editable tabs a candidate
+uses for manual entry, prefilled but unsaved, so reviewing an AI result
+and editing by hand are the exact same UI. The first-login popup applies
+directly (no tab UI to hand off to on other pages) via the same granular
+save actions. A real bug — the CV preview link vanishing again after a
+tab switch — was caught by this phase's own live verification and fixed.
 
 Next up: connecting a real domain + email provider
 (unblocks both the application-email flow and real saved-search
