@@ -136,6 +136,27 @@ whatever order makes sense.
       (both already exist and are dynamically generated — just need
       re-checking against the real host, not rebuilding)
 
+## Admin panel
+
+- [ ] **Build a real admin panel before launch** — recommended
+      2026-09-29 (asked directly, giving an honest opinion): confirmed
+      there is currently zero admin panel or admin role anywhere in
+      this codebase. Every admin-style action this project has needed
+      so far (confirming a stuck signup whose confirmation email never
+      arrived, resetting a candidate's password, and now reviewing
+      pending skill tags) has been done via one-off Node scripts
+      against the service-role key — fine during development, not
+      viable once real users exist and you need to act without asking
+      an AI assistant to write a script each time. Minimum real scope:
+      account fixes (email confirm/password reset), company
+      verification override (fallback when the automated NIF/VIES
+      lookup fails), tech-tag vocabulary curation (the new
+      `skill_suggestions` table, added 2026-09-29, is explicitly meant
+      to be this screen's first real data — every CV-parse skill/
+      language label that didn't match the real vocab, with an
+      occurrence count), and basic abuse/moderation. Big enough to be
+      its own planning pass, not something to bolt onto another phase.
+
 ## Product / business (not code)
 
 - [ ] Pricing model — deferred at your own request; needs a real

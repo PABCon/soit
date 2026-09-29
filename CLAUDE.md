@@ -2069,4 +2069,90 @@ by any path, `full_name` falls back to the email's local-part,
 `auth_provider` always resolves to `"email"` via a `pending_auth_provider`
 field nothing ever sets). Plan captures the fix (a small, provider-agnostic
 change reading `user.app_metadata.provider`/`user.user_metadata` instead) —
-deferred, not yet implemented.
+deferred, not yet implemented; `docs/go-live-checklist.md` now has the
+exact per-provider setup steps (redirect URI, which product to request from
+each) plus this code gap written up.
+
+## AI Pieces backlog — vocabulary gap found via real usage
+
+Running a genuine functional/commercial CV (not a pure-engineering one)
+through the new CV-autofill feature came back thin — most of its real
+skills went unmatched. Checked the live database directly rather than
+guessing: **159 `tech_tags`, 100% technical** (languages, frameworks,
+tools, a handful of process terms like Agile/Scrum/TDD/Leadership) — zero
+coverage of sales, business development, recruitment, delivery/account
+management, marketing, or HR. `job_categories` already has `product-
+management`/`project-management` as real categories, so the platform's
+own scope already anticipated non-engineering roles; the tag vocabulary
+just never caught up.
+
+Two fixes, both agreed and shipped together rather than one instead of
+the other:
+
+**A bounded, curated vocabulary expansion** (new migration,
+`20260929130000_functional_skills_and_suggestions.sql`) — ~40 new
+`tech_tags` rows across sales/BD (Business Development, Sales, Account
+Management, Client Relationship Management, Lead Generation, B2B Sales,
+Pre-Sales, Contract Negotiation, Partnerships, Sales Strategy),
+recruitment/talent (Recruitment, IT Recruitment, Talent Acquisition,
+Sourcing, Onboarding, Employer Branding, HR, Interviewing), delivery/
+consulting (IT Staff Augmentation, Nearshore Delivery, Delivery
+Management, Resource Management, Vendor Management, Consulting,
+Stakeholder Management, Stakeholder Engagement, Change Management),
+marketing (Digital Marketing, Content Marketing, SEO, Marketing Strategy,
+Brand Strategy, Social Media Marketing, Copywriting), and a few leadership/
+process terms not already covered (Negotiation, Mentoring, Team
+Leadership, Public Speaking, Process Optimisation, People Management) —
+deliberately bounded and curated to match the platform's own IT-sector
+scope, not an open-ended dump.
+
+**A `skill_suggestions` table** so future gaps surface from real usage
+instead of guessing again: every CV-parse label that doesn't match the
+real vocab now gets logged (new `src/lib/db/skill-suggestions.ts`,
+`recordSkillSuggestions()`), incrementing an `occurrences` counter on
+repeat rather than inserting duplicates (matched by a generated
+`label_norm` column, `lower(trim(label))`, under a unique index on
+`(label_norm, kind)`). Same shape as the existing `events` table — RLS
+enabled, no policies, no client grants, service-role only; a candidate's
+own CV upload should never give them read/write access to this aggregate
+table. Wired into `parseCvAction` non-blocking, via the exact same
+`after()`-then-fire-and-forget pattern `applications.ts`'s own
+notification scheduling already established — never makes the candidate
+wait on this extra write before seeing their review UI. This is
+deliberately the seed data for the admin panel's future "review pending
+tags" screen (see below), not a finished feature on its own.
+
+Verified on both localhost and `https://soit.vercel.app` with a second
+synthetic-but-realistic CV (a Business Development Manager profile: sales,
+nearshore delivery, IT recruitment, marketing) plus one deliberately
+invented skill ("Frobnication Analytics") to prove the unmatched path:
+all 14 real functional skills correctly matched against the new
+vocabulary, the fake one was correctly reported as unmatched rather than
+silently dropped, and querying `skill_suggestions` directly on both
+environments confirmed the row was written with `occurrences: 1`, then
+running the exact same CV through a second time confirmed it incremented
+to `occurrences: 2` with `last_seen_at` updated rather than inserting a
+duplicate row. Fixtures (including the test `skill_suggestions` rows —
+not real usage data) cleaned up on both afterward.
+
+**Your own question, answered while scoping this**: do we keep the AI
+review of a CV somewhere, so we don't call the AI every time? Partially,
+by design — once you click "Apply to profile," the extracted data is
+permanently saved into `candidate_tech_tags`/`candidate_languages`/
+`candidate_education`/`headline`/`years_experience`; a future matching
+engine reads that directly and never needs to call the AI again. What's
+*not* cached is the raw extraction call itself — re-clicking "Analyze my
+CV" always re-runs the LLM, even on an unchanged file, since that action
+is deliberately rare/user-initiated rather than something expected to
+fire repeatedly. Not built (a content-hash cache would be cheap to add if
+re-analysis turns out to happen often).
+
+**Your admin-panel question, answered**: recommended building one before
+go-live. Confirmed there is currently zero admin panel or admin role
+anywhere in this codebase (grepped for it) — every admin-style action this
+entire project has needed (confirming a stuck signup, resetting a
+password, and now "approve this pending skill tag") has been done via
+one-off scripts against the service-role key, which doesn't scale to a
+live product. `skill_suggestions` above is explicitly meant to be that
+future panel's first real screen. Scoped as its own separate project, not
+started here.

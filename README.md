@@ -353,6 +353,19 @@ photo extraction. See `CLAUDE.md` for the full writeup, including a related
 finding (LinkedIn/Google/GitHub sign-in buttons already exist in the UI but
 are functionally inert — captured in the plan file, not yet implemented).
 
+**Vocabulary gap fixed the same day**: running a genuine functional/
+commercial CV through the new autofill came back thin — checked the live
+database and confirmed `tech_tags`' 159 entries were 100% technical, zero
+coverage of sales/recruitment/delivery/marketing despite `job_categories`
+already scoping for non-engineering roles. Added ~40 curated functional
+skills, plus a new `skill_suggestions` table that logs every unmatched
+CV-parse label with an occurrence count — seed data for a future admin
+panel's "review pending tags" screen. Verified on both environments,
+including confirming repeat unmatched labels increment rather than
+duplicate. `docs/go-live-checklist.md` now also recommends building a real
+admin panel before launch (there currently isn't one — every admin action
+so far has been a one-off script).
+
 Next up: connecting a real domain + email provider
 (unblocks both the application-email flow and real saved-search
 notifications) and step 9 (SEO check, compliance, polish) (see
