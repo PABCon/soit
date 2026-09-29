@@ -141,7 +141,11 @@ enable_manual_linking = false
 minimum_password_length = 6
 # Passwords that do not meet the following requirements will be rejected as weak. Supported values
 # are: `letters_digits`, `lower_upper_letters_digits`, `lower_upper_letters_digits_symbols`
-password_requirements = ""
+# Left undeclared (was `= ""`) — the live project has this genuinely unset
+# (`null`), and an explicit `""` showed up as a real diff on `config diff`
+# for no actual behavioral difference. Undeclaring it here avoids that
+# diff entirely, consistent with the twilio.enabled note above.
+# password_requirements = ""
 
 [auth.rate_limit]
 # Number of emails that can be sent per hour. Requires auth.email.smtp to be enabled.
@@ -210,11 +214,27 @@ max_frequency = "5s"
 # 4152127777 = "123456"
 
 # Configure logged in session timeouts.
-# [auth.sessions]
+# Real-usage report: a session was still active a full day after last use —
+# Supabase's own default is no timebox/inactivity limit at all, so a
+# refresh token just keeps renewing forever as long as the app is opened
+# occasionally. inactivity_timeout is the actual fix for that exact
+# complaint (logs out only once genuinely idle — never interrupts a long
+# continuously-active session); timebox is a no-cost 24h backstop on top,
+# in case a session somehow stays "active" unattended (e.g. a background
+# tab silently refreshing tokens).
+#
+# ⚠ Declared here but NOT YET LIVE: the Management API rejects this with
+# 402 "User sessions can only be configured on Pro Plans and up" — this
+# project is still on the free tier. Confirmed directly via
+# `PATCH /v1/projects/{ref}/config/auth`, not assumed. Either upgrade the
+# Supabase project to Pro and push this (`supabase config push` — but
+# read the file-header warning about auth.sms.twilio.enabled first), or
+# build the equivalent as app-level middleware logic instead.
+[auth.sessions]
 # Force log out after the specified duration.
-# timebox = "24h"
+timebox = "24h"
 # Force log out if the user has been inactive longer than the specified duration.
-# inactivity_timeout = "8h"
+inactivity_timeout = "2h"
 
 # This hook runs before a token is issued and allows you to add additional claims based on the authentication method used.
 # [auth.hook.custom_access_token]

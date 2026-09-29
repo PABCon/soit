@@ -1808,3 +1808,24 @@ employer-console review (items 6 and 7 remain explicitly deferred —
 pricing needs a real business-model conversation, and item 7's contact
 channel needs more of your own thinking first, per your own words at
 the start of this round). Fixtures cleaned up on both afterward.
+
+**Session length came up next**: a real-usage report that a session
+was still active a full day after last use. Investigated properly
+rather than guessing: Supabase supports both `inactivity_timeout` and
+an absolute `timebox` natively (`[auth.sessions]` in `supabase/
+config.toml`, currently disabled — Supabase's own default is no limit
+at all). Tried to apply `inactivity_timeout = 2h` + `timebox = 24h` via
+the Management API and hit a real, confirmed blocker: **`402 User
+sessions can only be configured on Pro Plans and up`** — this project
+is genuinely on the Free plan. Declared the intended settings in
+`config.toml` anyway (with a comment explaining why they're not live),
+rather than silently dropping the idea. **Decision, 2026-09-29: don't
+upgrade to Pro yet** — no reason to pay for it while still developing;
+revisit alongside real launch traffic. A full **go-live checklist**
+(`docs/go-live-checklist.md`) now consolidates this alongside every
+other "before launch" item scattered across this file and the spec
+(domain/DNS, email, OAuth credentials, the map tile-provider licensing
+gap, legal/consent/retention, observability, SEO, pricing, the contact
+channel, and the spec's own §15.2 cold-start risk) — checked against
+the live project's actual current state via the Supabase/Vercel APIs,
+not assumed from memory. Update it as items close.
