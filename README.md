@@ -321,11 +321,13 @@ production. Item 6 (pricing) stays explicitly deferred. A real-usage report on
 session length led to a new **go-live checklist**
 (`docs/go-live-checklist.md`) consolidating every "before launch" item
 across this project — checked against the live Supabase/Vercel state,
-not assumed. **Item 7's email half shipped**: a `/contact` page
-reachable from the footer and the console sidebar; the chat half was
-deliberately skipped for now (build-vs-buy discussed — a third-party
-widget stays the right call whenever it's revisited, not building one
-from scratch). Next up: connecting a real domain + email provider
+not assumed. **Item 7's email half shipped**: an employer-only
+`/recruit/contact` page (confirmed explicitly — not a general/
+candidate channel — genuinely gated via the console's own auth guard,
+reachable from the console sidebar); the chat half was deliberately
+skipped for now (build-vs-buy discussed — a third-party widget stays
+the right call whenever it's revisited, not building one from
+scratch). Next up: connecting a real domain + email provider
 (unblocks both the application-email flow and real saved-search
 notifications) and step 9 (SEO check, compliance, polish) (see
 `CLAUDE.md`).

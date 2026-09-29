@@ -1867,3 +1867,28 @@ submitting the form shows the success confirmation and (checked on
 localhost, where the log is directly visible) actually logs a
 correctly-rendered message with the submitter's name/email/text. Zero
 console errors on either environment. Fixtures cleaned up on both.
+
+**Immediate correction: you clarified the contact page is
+employer-only**, not a general/candidate channel — the initial build
+above had it universally reachable. Moved it from the universally-
+accessible `(legal)/contact` to `(console)/recruit/contact`, so it
+inherits that layout's own real auth guard instead of just being
+unlinked from candidate navigation — a meaningfully different
+guarantee: an anonymous visitor or a logged-in *candidate* hitting the
+URL directly now genuinely can't reach it (redirected to
+`/employer/login` or `/jobs` respectively), not just "isn't shown a
+link to it." Dropped the footer's Contact link entirely (`Footer` is
+shared by every candidate-facing shell) and the now-dead
+`footer.contact` i18n key; the console `Sidebar`'s own Contact entry
+now points at `/recruit/contact`.
+
+Verified live on both localhost and `https://soit.vercel.app` with a
+fresh fixture carrying **both** an employer and a genuine candidate
+account (not just an anonymous check): the footer no longer shows a
+Contact link at all; an anonymous visitor hitting `/recruit/contact`
+directly is redirected to `/employer/login`; a logged-in *candidate*
+hitting the same URL is separately redirected to `/jobs` — confirming
+this isn't merely "logged in," it specifically requires the employer
+role; the real employer reaches it via the Sidebar and a submission
+still succeeds. Zero console errors on either environment. Fixtures
+cleaned up on both.
