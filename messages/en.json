@@ -456,12 +456,55 @@
     "uploadCv": "Upload CV",
     "replaceCv": "Replace CV",
     "downloadCv": "Download my CV",
+    "analyzeCv": "Analyze my CV",
     "fileError": {
       "not_a_candidate": "Something went wrong. Try again.",
       "file_too_large": "That file is too large.",
       "bad_file": "That file isn't a supported format.",
       "upload_failed": "Couldn't upload that file. Try again."
+    },
+    "yearsExperience": "{years} years of experience",
+    "skillsWithLevel": "Skills",
+    "languagesWithLevel": "Languages",
+    "educationTitle": "Education",
+    "present": "present"
+  },
+  "cvAutofill": {
+    "title": "Analyze my CV",
+    "uploadHint": "Upload your CV (PDF or Word) and we'll fill in your skills, languages, and education for you — you can review and edit everything before saving.",
+    "chooseFile": "Choose file",
+    "analyzing": "Analyzing…",
+    "reviewHint": "Here's what we found. Edit anything before applying it to your profile.",
+    "headline": "Headline",
+    "yearsExperience": "Years of experience",
+    "skills": "Skills",
+    "unmatchedSkills": "Not recognized (search below to add)",
+    "addSkillPlaceholder": "Search skills to add…",
+    "languages": "Languages",
+    "unmatchedLanguages": "Not recognized",
+    "education": "Education",
+    "addEducation": "+ Add",
+    "institution": "Institution",
+    "degree": "Degree",
+    "fieldOfStudy": "Field of study",
+    "note": "Note",
+    "removeEducation": "Remove",
+    "apply": "Apply to profile",
+    "saving": "Saving…",
+    "cancel": "Cancel",
+    "error": {
+      "not_a_candidate": "Something went wrong. Try again.",
+      "file_too_large": "That file is too large.",
+      "bad_file": "That file isn't a supported format, or we couldn't read it.",
+      "extraction_failed": "Couldn't analyze that CV. Try again.",
+      "saveFailed": "Couldn't save. Try again."
     }
+  },
+  "cvOnboarding": {
+    "title": "Get better matches, faster",
+    "body": "Upload your CV and we'll fill in your skills, languages, and education for you. You can review and edit everything before saving — or skip this for now.",
+    "upload": "Upload my CV",
+    "skip": "Skip for now"
   },
   "engagement": {
     "title": "Looking for the right role?",

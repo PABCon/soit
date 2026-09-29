@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sniffFileType } from "@/lib/file-sniff";
+import type { SkillLevel } from "@/lib/types";
 
 export type CandidateProfile = {
   fullName: string;
@@ -10,6 +11,7 @@ export type CandidateProfile = {
   avatarUrl: string | null;
   skills: string[];
   hasCv: boolean;
+  cvPromptDismissed: boolean;
 };
 
 /** RLS already scopes this to the caller's own row (`auth_user_id =
@@ -19,7 +21,7 @@ export async function getMyCandidateProfile(): Promise<CandidateProfile | null> 
   const supabase = await createClient();
   const { data } = await supabase
     .from("candidates")
-    .select("full_name, email, phone, linkedin_url, avatar_url, skills, cv_url")
+    .select("full_name, email, phone, linkedin_url, avatar_url, skills, cv_url, cv_prompt_dismissed")
     .maybeSingle();
 
   if (!data) return null;
@@ -31,7 +33,19 @@ export async function getMyCandidateProfile(): Promise<CandidateProfile | null> 
     avatarUrl: data.avatar_url,
     skills: data.skills ?? [],
     hasCv: !!data.cv_url,
+    cvPromptDismissed: data.cv_prompt_dismissed,
   };
+}
+
+/** First-login CV prompt (§ AI Pieces backlog, phase 4): "seen it" is
+ *  permanent regardless of whether the candidate ends up uploading later —
+ *  the prompt's other suppression condition (`hasCv`) already covers that
+ *  case on its own. */
+export async function dismissCvPrompt(): Promise<void> {
+  const supabase = await createClient();
+  const { data: candidateId } = await supabase.rpc("my_candidate_id");
+  if (!candidateId) return;
+  await supabase.from("candidates").update({ cv_prompt_dismissed: true }).eq("id", candidateId);
 }
 
 export async function updateCandidateProfile(fields: {
@@ -131,4 +145,156 @@ export async function getMyCvSignedUrl(): Promise<string | null> {
   const admin = createAdminClient();
   const { data: signed } = await admin.storage.from("cvs").createSignedUrl(candidate.cv_url, 900);
   return signed?.signedUrl ?? null;
+}
+
+// ── CV-upload profile autofill: skills, languages, education ────────────────
+// §AI Pieces backlog, phase 1. candidate_tech_tags/candidate_languages
+// deliberately reuse the exact tech_tags/spoken_languages vocabulary the
+// job side already uses (job_tech_tags/job_languages) — same vocabulary on
+// both sides is what will let a future matching engine compare them at all.
+
+export type CandidateTechTag = { techTagId: string; label: string; level: SkillLevel | null };
+export type CandidateLanguage = { spokenLanguageId: string; label: string; level: SkillLevel | null };
+export type CandidateEducationEntry = {
+  id: string;
+  institution: string;
+  degree: string | null;
+  fieldOfStudy: string | null;
+  startDate: string | null;
+  endDate: string | null;
+  note: string | null;
+};
+
+export type CandidateSkillsAndEducation = {
+  headline: string | null;
+  yearsExperience: number | null;
+  techTags: CandidateTechTag[];
+  languages: CandidateLanguage[];
+  education: CandidateEducationEntry[];
+};
+
+export async function getMyCandidateSkillsAndEducation(): Promise<CandidateSkillsAndEducation | null> {
+  const supabase = await createClient();
+  const { data: candidateId } = await supabase.rpc("my_candidate_id");
+  if (!candidateId) return null;
+
+  const [{ data: base }, { data: techRows }, { data: langRows }, { data: eduRows }] = await Promise.all([
+    supabase.from("candidates").select("headline, years_experience").eq("id", candidateId).maybeSingle(),
+    supabase
+      .from("candidate_tech_tags")
+      .select("tech_tag_id, level, tech_tags ( label )")
+      .eq("candidate_id", candidateId),
+    supabase
+      .from("candidate_languages")
+      .select("spoken_language_id, level, spoken_languages ( label )")
+      .eq("candidate_id", candidateId),
+    supabase
+      .from("candidate_education")
+      .select("id, institution, degree, field_of_study, start_date, end_date, note")
+      .eq("candidate_id", candidateId)
+      .order("start_date", { ascending: false, nullsFirst: false }),
+  ]);
+
+  return {
+    headline: base?.headline ?? null,
+    yearsExperience: base?.years_experience ?? null,
+    techTags: (techRows ?? []).map((r) => ({
+      techTagId: r.tech_tag_id,
+      label: (r.tech_tags as unknown as { label: string } | null)?.label ?? "",
+      level: r.level,
+    })),
+    languages: (langRows ?? []).map((r) => ({
+      spokenLanguageId: r.spoken_language_id,
+      label: (r.spoken_languages as unknown as { label: string } | null)?.label ?? "",
+      level: r.level,
+    })),
+    education: (eduRows ?? []).map((r) => ({
+      id: r.id,
+      institution: r.institution,
+      degree: r.degree,
+      fieldOfStudy: r.field_of_study,
+      startDate: r.start_date,
+      endDate: r.end_date,
+      note: r.note,
+    })),
+  };
+}
+
+export type SaveSkillsAndEducationInput = {
+  headline: string | null;
+  yearsExperience: number | null;
+  techTags: { techTagId: string; level: SkillLevel | null }[];
+  languages: { spokenLanguageId: string; level: SkillLevel | null }[];
+  education: {
+    institution: string;
+    degree: string | null;
+    fieldOfStudy: string | null;
+    startDate: string | null;
+    endDate: string | null;
+    note: string | null;
+  }[];
+};
+
+/** Delete-then-reinsert for the two join tables, same idiom `saveJob`
+ *  already uses for `job_tech_tags`/`job_languages`; education rows have
+ *  no external references either, so the same wholesale replace is safe
+ *  there too. Also recomputes `candidates.skills` (the flat label array)
+ *  from the tech tags just saved — every existing reader of that column
+ *  (Applicant/CompanyApplicant, the profile page itself) keeps working
+ *  with zero call-site changes. */
+export async function saveCandidateSkillsAndEducation(input: SaveSkillsAndEducationInput): Promise<void> {
+  const supabase = await createClient();
+  const { data: candidateId } = await supabase.rpc("my_candidate_id");
+  if (!candidateId) throw new Error("Not a candidate");
+
+  await supabase
+    .from("candidates")
+    .update({ headline: input.headline, years_experience: input.yearsExperience })
+    .eq("id", candidateId);
+
+  await supabase.from("candidate_tech_tags").delete().eq("candidate_id", candidateId);
+  if (input.techTags.length > 0) {
+    await supabase.from("candidate_tech_tags").insert(
+      input.techTags.map((t) => ({ candidate_id: candidateId, tech_tag_id: t.techTagId, level: t.level })),
+    );
+  }
+
+  await supabase.from("candidate_languages").delete().eq("candidate_id", candidateId);
+  if (input.languages.length > 0) {
+    await supabase.from("candidate_languages").insert(
+      input.languages.map((l) => ({
+        candidate_id: candidateId,
+        spoken_language_id: l.spokenLanguageId,
+        level: l.level,
+      })),
+    );
+  }
+
+  await supabase.from("candidate_education").delete().eq("candidate_id", candidateId);
+  if (input.education.length > 0) {
+    await supabase.from("candidate_education").insert(
+      input.education.map((e) => ({
+        candidate_id: candidateId,
+        institution: e.institution,
+        degree: e.degree,
+        field_of_study: e.fieldOfStudy,
+        start_date: e.startDate,
+        end_date: e.endDate,
+        note: e.note,
+      })),
+    );
+  }
+
+  let labels: string[] = [];
+  if (input.techTags.length > 0) {
+    const { data: tags } = await supabase
+      .from("tech_tags")
+      .select("id, label")
+      .in(
+        "id",
+        input.techTags.map((t) => t.techTagId),
+      );
+    labels = (tags ?? []).map((t) => t.label);
+  }
+  await supabase.from("candidates").update({ skills: labels }).eq("id", candidateId);
 }

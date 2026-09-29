@@ -3,6 +3,7 @@ import { redirect } from "@/i18n/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { Rail } from "@/components/candidate/Rail";
 import { TopNav } from "@/components/candidate/TopNav";
+import { CvOnboardingPrompt } from "@/components/candidate/CvOnboardingPrompt";
 import { Footer } from "@/components/Footer";
 
 /**
@@ -55,6 +56,7 @@ export default async function CandidateLayout({
        *  flex sibling the content column has to share width with. */}
       <Rail />
       <TopNav />
+      <CvOnboardingPrompt />
       <main className="mx-auto w-full max-w-[1600px] flex-1 px-4 py-8 sm:px-6">
         {children}
       </main>

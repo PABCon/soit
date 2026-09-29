@@ -7,19 +7,37 @@ import {
   uploadAvatarAction,
   uploadCvAction,
 } from "@/app/[locale]/(candidate)/profile/actions";
-import type { CandidateProfile } from "@/lib/db/candidate-profile";
+import type { CandidateProfile, CandidateSkillsAndEducation } from "@/lib/db/candidate-profile";
+import { CvAutofillReview } from "@/components/candidate/CvAutofillReview";
 
 const inputClass = "h-9 rounded-lg border border-line bg-white px-3 text-sm";
 const labelClass = "flex flex-col gap-1 text-sm";
 
+type TechTagOption = { id: string; label: string; aliases: string[] };
+type SpokenLanguageOption = { id: string; slug: string; label: string };
+
+function formatDateRange(start: string | null, end: string | null, t: ReturnType<typeof useTranslations>): string {
+  const from = start ? start.slice(0, 7) : null;
+  const to = end ? end.slice(0, 7) : from ? t("present") : null;
+  if (!from) return "";
+  return `${from} – ${to}`;
+}
+
 export function CandidateProfileForm({
   profile,
   cvSignedUrl,
+  skillsAndEducation,
+  techTags,
+  spokenLanguages,
 }: {
   profile: CandidateProfile;
   cvSignedUrl: string | null;
+  skillsAndEducation: CandidateSkillsAndEducation | null;
+  techTags: TechTagOption[];
+  spokenLanguages: SpokenLanguageOption[];
 }) {
   const t = useTranslations("profile");
+  const jf = useTranslations("jobForm");
   const [fullName, setFullName] = useState(profile.fullName);
   const [phone, setPhone] = useState(profile.phone ?? "");
   const [linkedinUrl, setLinkedinUrl] = useState(profile.linkedinUrl ?? "");
@@ -27,6 +45,7 @@ export function CandidateProfileForm({
   const [saved, setSaved] = useState(false);
   const [pending, setPending] = useState(false);
   const [fileError, setFileError] = useState<string | null>(null);
+  const [autofillOpen, setAutofillOpen] = useState(false);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -105,7 +124,90 @@ export function CandidateProfileForm({
             {t("downloadCv")}
           </a>
         )}
+        <button
+          type="button"
+          onClick={() => setAutofillOpen(true)}
+          className="text-sm font-medium text-pine hover:underline"
+        >
+          {t("analyzeCv")}
+        </button>
       </div>
+
+      {autofillOpen && (
+        <CvAutofillReview
+          techTags={techTags}
+          spokenLanguages={spokenLanguages}
+          onClose={() => setAutofillOpen(false)}
+          onApplied={() => window.location.reload()}
+        />
+      )}
+
+      {skillsAndEducation &&
+        (skillsAndEducation.headline ||
+          skillsAndEducation.yearsExperience !== null ||
+          skillsAndEducation.techTags.length > 0 ||
+          skillsAndEducation.languages.length > 0 ||
+          skillsAndEducation.education.length > 0) && (
+          <div className="flex flex-col gap-4 rounded-lg border border-line bg-paper p-4">
+            {skillsAndEducation.headline && (
+              <p className="text-sm font-medium text-ink">{skillsAndEducation.headline}</p>
+            )}
+            {skillsAndEducation.yearsExperience !== null && (
+              <p className="text-xs text-muted">
+                {t("yearsExperience", { years: skillsAndEducation.yearsExperience })}
+              </p>
+            )}
+            {skillsAndEducation.techTags.length > 0 && (
+              <div>
+                <span className="text-xs font-semibold text-muted">{t("skillsWithLevel")}</span>
+                <ul className="mt-1 flex flex-wrap gap-1.5">
+                  {skillsAndEducation.techTags.map((tag) => (
+                    <li
+                      key={tag.techTagId}
+                      className="rounded-md border border-line bg-white px-2 py-0.5 text-xs text-ink"
+                    >
+                      {tag.label}
+                      {tag.level && <span className="text-muted"> · {jf(`levelOption.${tag.level}`)}</span>}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {skillsAndEducation.languages.length > 0 && (
+              <div>
+                <span className="text-xs font-semibold text-muted">{t("languagesWithLevel")}</span>
+                <ul className="mt-1 flex flex-wrap gap-1.5">
+                  {skillsAndEducation.languages.map((lang) => (
+                    <li
+                      key={lang.spokenLanguageId}
+                      className="rounded-md border border-line bg-white px-2 py-0.5 text-xs text-ink"
+                    >
+                      {lang.label}
+                      {lang.level && <span className="text-muted"> · {jf(`levelOption.${lang.level}`)}</span>}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {skillsAndEducation.education.length > 0 && (
+              <div>
+                <span className="text-xs font-semibold text-muted">{t("educationTitle")}</span>
+                <ul className="mt-1 flex flex-col gap-1">
+                  {skillsAndEducation.education.map((entry) => (
+                    <li key={entry.id} className="text-xs text-ink">
+                      <span className="font-medium">{entry.institution}</span>
+                      {entry.degree && ` · ${entry.degree}`}
+                      {entry.fieldOfStudy && ` · ${entry.fieldOfStudy}`}
+                      {(entry.startDate || entry.endDate) && (
+                        <span className="text-muted"> ({formatDateRange(entry.startDate, entry.endDate, t)})</span>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        )}
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         <label className={labelClass}>

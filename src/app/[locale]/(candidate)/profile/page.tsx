@@ -2,7 +2,13 @@ import type { Metadata } from "next";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { redirect } from "@/i18n/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { getMyCandidateProfile, getMyCvSignedUrl } from "@/lib/db/candidate-profile";
+import {
+  getMyCandidateProfile,
+  getMyCvSignedUrl,
+  getMyCandidateSkillsAndEducation,
+} from "@/lib/db/candidate-profile";
+import { getTechTags } from "@/lib/db/tech-tags";
+import { getSpokenLanguages } from "@/lib/db/spoken-languages";
 import { CandidateProfileForm } from "@/components/candidate/CandidateProfileForm";
 
 type Props = { params: Promise<{ locale: string }> };
@@ -27,13 +33,24 @@ export default async function CandidateProfilePage({ params }: Props) {
   const profile = await getMyCandidateProfile();
   if (!profile) return redirect({ href: "/candidate/login", locale });
 
-  const cvSignedUrl = await getMyCvSignedUrl();
+  const [cvSignedUrl, skillsAndEducation, techTags, spokenLanguages] = await Promise.all([
+    getMyCvSignedUrl(),
+    getMyCandidateSkillsAndEducation(),
+    getTechTags(),
+    getSpokenLanguages(),
+  ]);
 
   return (
     <>
       <h1 className="text-2xl font-bold">{t("title")}</h1>
       <div className="mt-6">
-        <CandidateProfileForm profile={profile} cvSignedUrl={cvSignedUrl} />
+        <CandidateProfileForm
+          profile={profile}
+          cvSignedUrl={cvSignedUrl}
+          skillsAndEducation={skillsAndEducation}
+          techTags={techTags}
+          spokenLanguages={spokenLanguages}
+        />
       </div>
     </>
   );
