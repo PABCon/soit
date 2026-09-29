@@ -6,9 +6,14 @@ import {
   getMyCandidateProfile,
   getMyCvSignedUrl,
   getMyCandidateSkillsAndEducation,
+  getMyCandidateCertifications,
+  getMyCandidateExperience,
+  getMyCandidateJobPreferences,
 } from "@/lib/db/candidate-profile";
 import { getTechTags } from "@/lib/db/tech-tags";
 import { getSpokenLanguages } from "@/lib/db/spoken-languages";
+import { getJobCategories } from "@/lib/db/job-categories";
+import { getLocations } from "@/lib/db/locations";
 import { CandidateProfileForm } from "@/components/candidate/CandidateProfileForm";
 
 type Props = { params: Promise<{ locale: string }> };
@@ -33,11 +38,26 @@ export default async function CandidateProfilePage({ params }: Props) {
   const profile = await getMyCandidateProfile();
   if (!profile) return redirect({ href: "/candidate/login", locale });
 
-  const [cvSignedUrl, skillsAndEducation, techTags, spokenLanguages] = await Promise.all([
+  const [
+    cvSignedUrl,
+    skillsAndEducation,
+    certifications,
+    experience,
+    jobPreferences,
+    techTags,
+    spokenLanguages,
+    jobCategories,
+    locations,
+  ] = await Promise.all([
     getMyCvSignedUrl(),
     getMyCandidateSkillsAndEducation(),
+    getMyCandidateCertifications(),
+    getMyCandidateExperience(),
+    getMyCandidateJobPreferences(),
     getTechTags(),
     getSpokenLanguages(),
+    getJobCategories(),
+    getLocations(),
   ]);
 
   return (
@@ -48,8 +68,13 @@ export default async function CandidateProfilePage({ params }: Props) {
           profile={profile}
           cvSignedUrl={cvSignedUrl}
           skillsAndEducation={skillsAndEducation}
+          certifications={certifications}
+          experience={experience}
+          jobPreferences={jobPreferences}
           techTags={techTags}
           spokenLanguages={spokenLanguages}
+          jobCategories={jobCategories}
+          locations={locations}
         />
       </div>
     </>

@@ -15,23 +15,69 @@ import {
   uploadCandidateAvatar,
   uploadCandidateCv,
   saveCandidateSkillsAndEducation,
+  saveCandidateBasics,
+  saveCandidateSkills,
+  saveCandidateLanguages,
+  saveCandidateEducation,
+  saveCandidateCertifications,
+  saveCandidateExperience,
+  saveCandidateJobPreferences,
   dismissCvPrompt,
   type UploadResult,
   type SaveSkillsAndEducationInput,
+  type CandidateEducationInput,
+  type CandidateCertificationInput,
+  type CandidateExperienceInput,
+  type CandidateJobPreferences,
 } from "@/lib/db/candidate-profile";
 
 export async function updateProfileAction(formData: FormData) {
-  const skills = String(formData.get("skills") ?? "")
-    .split(",")
-    .map((s) => s.trim())
-    .filter(Boolean);
-
   await updateCandidateProfile({
     full_name: String(formData.get("full_name") ?? "").trim(),
     phone: (formData.get("phone") as string)?.trim() || null,
     linkedin_url: (formData.get("linkedin_url") as string)?.trim() || null,
-    skills,
   });
+  revalidatePath("/profile");
+}
+
+// ── Per-section profile editing (§AI Pieces backlog, profile-depth phase) ───
+// One action per section, mirroring the granular save functions — editing
+// one section (e.g. Experience) can never touch another's data.
+
+export async function saveCandidateBasicsAction(headline: string | null, yearsExperience: number | null) {
+  await saveCandidateBasics(headline, yearsExperience);
+  revalidatePath("/profile");
+}
+
+export async function saveCandidateSkillsAction(entries: { techTagId: string; level: SkillLevel | null }[]) {
+  await saveCandidateSkills(entries);
+  revalidatePath("/profile");
+}
+
+export async function saveCandidateLanguagesAction(
+  entries: { spokenLanguageId: string; level: SkillLevel | null }[],
+) {
+  await saveCandidateLanguages(entries);
+  revalidatePath("/profile");
+}
+
+export async function saveCandidateEducationAction(entries: CandidateEducationInput[]) {
+  await saveCandidateEducation(entries);
+  revalidatePath("/profile");
+}
+
+export async function saveCandidateCertificationsAction(entries: CandidateCertificationInput[]) {
+  await saveCandidateCertifications(entries);
+  revalidatePath("/profile");
+}
+
+export async function saveCandidateExperienceAction(entries: CandidateExperienceInput[]) {
+  await saveCandidateExperience(entries);
+  revalidatePath("/profile");
+}
+
+export async function saveCandidateJobPreferencesAction(input: CandidateJobPreferences) {
+  await saveCandidateJobPreferences(input);
   revalidatePath("/profile");
 }
 
@@ -97,6 +143,14 @@ export async function parseCvAction(formData: FormData): Promise<ParseCvResult> 
 
   const result = await extractCvProfile(text);
   if (!result.ok) return { ok: false, reason: result.reason === "empty_content" ? "bad_file" : result.reason };
+
+  // Real-usage finding: analyzing a CV never used to store the file
+  // itself — a candidate who only ever used "Analyze" ended up with a
+  // fully-populated profile but nothing to download/preview. Persist it
+  // as the master CV now, same as the plain "Upload CV" button already
+  // does. A storage failure here doesn't block the review the candidate
+  // is waiting on — the extraction itself already succeeded.
+  await uploadCandidateCv(file);
 
   const [techTags, spokenLanguages] = await Promise.all([getTechTags(), getSpokenLanguages()]);
 

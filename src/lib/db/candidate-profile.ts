@@ -9,19 +9,21 @@ export type CandidateProfile = {
   phone: string | null;
   linkedinUrl: string | null;
   avatarUrl: string | null;
-  skills: string[];
   hasCv: boolean;
   cvPromptDismissed: boolean;
 };
 
 /** RLS already scopes this to the caller's own row (`auth_user_id =
  *  auth.uid()`) — same pattern as `getMyApplications` in applications.ts,
- *  no explicit filter needed. */
+ *  no explicit filter needed. `skills` deliberately isn't read here any
+ *  more (§ AI Pieces backlog, profile-depth phase) — it's a derived cache
+ *  column now, recomputed by `saveCandidateSkills`, never hand-edited via
+ *  this form. */
 export async function getMyCandidateProfile(): Promise<CandidateProfile | null> {
   const supabase = await createClient();
   const { data } = await supabase
     .from("candidates")
-    .select("full_name, email, phone, linkedin_url, avatar_url, skills, cv_url, cv_prompt_dismissed")
+    .select("full_name, email, phone, linkedin_url, avatar_url, cv_url, cv_prompt_dismissed")
     .maybeSingle();
 
   if (!data) return null;
@@ -31,7 +33,6 @@ export async function getMyCandidateProfile(): Promise<CandidateProfile | null> 
     phone: data.phone,
     linkedinUrl: data.linkedin_url,
     avatarUrl: data.avatar_url,
-    skills: data.skills ?? [],
     hasCv: !!data.cv_url,
     cvPromptDismissed: data.cv_prompt_dismissed,
   };
@@ -52,7 +53,6 @@ export async function updateCandidateProfile(fields: {
   full_name: string;
   phone: string | null;
   linkedin_url: string | null;
-  skills: string[];
 }) {
   const supabase = await createClient();
   const { data: candidateId } = await supabase.rpc("my_candidate_id");
@@ -220,60 +220,94 @@ export async function getMyCandidateSkillsAndEducation(): Promise<CandidateSkill
   };
 }
 
-export type SaveSkillsAndEducationInput = {
-  headline: string | null;
-  yearsExperience: number | null;
-  techTags: { techTagId: string; level: SkillLevel | null }[];
-  languages: { spokenLanguageId: string; level: SkillLevel | null }[];
-  education: {
-    institution: string;
-    degree: string | null;
-    fieldOfStudy: string | null;
-    startDate: string | null;
-    endDate: string | null;
-    note: string | null;
-  }[];
+export type CandidateEducationInput = {
+  institution: string;
+  degree: string | null;
+  fieldOfStudy: string | null;
+  startDate: string | null;
+  endDate: string | null;
+  note: string | null;
 };
 
-/** Delete-then-reinsert for the two join tables, same idiom `saveJob`
- *  already uses for `job_tech_tags`/`job_languages`; education rows have
- *  no external references either, so the same wholesale replace is safe
- *  there too. Also recomputes `candidates.skills` (the flat label array)
- *  from the tech tags just saved — every existing reader of that column
- *  (Applicant/CompanyApplicant, the profile page itself) keeps working
- *  with zero call-site changes. */
-export async function saveCandidateSkillsAndEducation(input: SaveSkillsAndEducationInput): Promise<void> {
+/** §AI Pieces backlog, profile-depth phase — split from the original
+ *  single `saveCandidateSkillsAndEducation` into independent, narrow
+ *  functions, one per profile section, so the tabbed profile UI's
+ *  per-section "Save changes" button can touch only its own data. Each
+ *  still requires its own `my_candidate_id()` lookup (RLS + PostgREST's
+ *  own "UPDATE requires an explicit filter" rule, same as
+ *  `updateCandidateProfile`) — small, deliberate duplication over a
+ *  shared "get candidateId or throw" helper that would just move the
+ *  same four lines around. */
+
+export async function saveCandidateBasics(headline: string | null, yearsExperience: number | null): Promise<void> {
+  const supabase = await createClient();
+  const { data: candidateId } = await supabase.rpc("my_candidate_id");
+  if (!candidateId) throw new Error("Not a candidate");
+  await supabase
+    .from("candidates")
+    .update({ headline, years_experience: yearsExperience })
+    .eq("id", candidateId);
+}
+
+/** Delete-then-reinsert, same idiom `saveJob` already uses for
+ *  `job_tech_tags`. Also recomputes `candidates.skills` (the flat label
+ *  array) from the tags just saved — every existing reader of that
+ *  column (Applicant/CompanyApplicant) keeps working with zero call-site
+ *  changes; it's a derived cache now, never hand-edited directly. */
+export async function saveCandidateSkills(entries: { techTagId: string; level: SkillLevel | null }[]): Promise<void> {
   const supabase = await createClient();
   const { data: candidateId } = await supabase.rpc("my_candidate_id");
   if (!candidateId) throw new Error("Not a candidate");
 
-  await supabase
-    .from("candidates")
-    .update({ headline: input.headline, years_experience: input.yearsExperience })
-    .eq("id", candidateId);
-
   await supabase.from("candidate_tech_tags").delete().eq("candidate_id", candidateId);
-  if (input.techTags.length > 0) {
+  if (entries.length > 0) {
     await supabase.from("candidate_tech_tags").insert(
-      input.techTags.map((t) => ({ candidate_id: candidateId, tech_tag_id: t.techTagId, level: t.level })),
+      entries.map((t) => ({ candidate_id: candidateId, tech_tag_id: t.techTagId, level: t.level })),
     );
   }
 
+  let labels: string[] = [];
+  if (entries.length > 0) {
+    const { data: tags } = await supabase
+      .from("tech_tags")
+      .select("id, label")
+      .in(
+        "id",
+        entries.map((t) => t.techTagId),
+      );
+    labels = (tags ?? []).map((t) => t.label);
+  }
+  await supabase.from("candidates").update({ skills: labels }).eq("id", candidateId);
+}
+
+export async function saveCandidateLanguages(
+  entries: { spokenLanguageId: string; level: SkillLevel | null }[],
+): Promise<void> {
+  const supabase = await createClient();
+  const { data: candidateId } = await supabase.rpc("my_candidate_id");
+  if (!candidateId) throw new Error("Not a candidate");
+
   await supabase.from("candidate_languages").delete().eq("candidate_id", candidateId);
-  if (input.languages.length > 0) {
+  if (entries.length > 0) {
     await supabase.from("candidate_languages").insert(
-      input.languages.map((l) => ({
+      entries.map((l) => ({
         candidate_id: candidateId,
         spoken_language_id: l.spokenLanguageId,
         level: l.level,
       })),
     );
   }
+}
+
+export async function saveCandidateEducation(entries: CandidateEducationInput[]): Promise<void> {
+  const supabase = await createClient();
+  const { data: candidateId } = await supabase.rpc("my_candidate_id");
+  if (!candidateId) throw new Error("Not a candidate");
 
   await supabase.from("candidate_education").delete().eq("candidate_id", candidateId);
-  if (input.education.length > 0) {
+  if (entries.length > 0) {
     await supabase.from("candidate_education").insert(
-      input.education.map((e) => ({
+      entries.map((e) => ({
         candidate_id: candidateId,
         institution: e.institution,
         degree: e.degree,
@@ -284,17 +318,199 @@ export async function saveCandidateSkillsAndEducation(input: SaveSkillsAndEducat
       })),
     );
   }
+}
 
-  let labels: string[] = [];
-  if (input.techTags.length > 0) {
-    const { data: tags } = await supabase
-      .from("tech_tags")
-      .select("id, label")
-      .in(
-        "id",
-        input.techTags.map((t) => t.techTagId),
-      );
-    labels = (tags ?? []).map((t) => t.label);
+export type SaveSkillsAndEducationInput = {
+  headline: string | null;
+  yearsExperience: number | null;
+  techTags: { techTagId: string; level: SkillLevel | null }[];
+  languages: { spokenLanguageId: string; level: SkillLevel | null }[];
+  education: CandidateEducationInput[];
+};
+
+/** Thin orchestrator over the four granular functions above — used
+ *  specifically by the "apply the AI draft in one go" moment (CV
+ *  autofill), not by the tabbed profile UI's own per-section saves. */
+export async function saveCandidateSkillsAndEducation(input: SaveSkillsAndEducationInput): Promise<void> {
+  await saveCandidateBasics(input.headline, input.yearsExperience);
+  await saveCandidateSkills(input.techTags);
+  await saveCandidateLanguages(input.languages);
+  await saveCandidateEducation(input.education);
+}
+
+// ── Experience, certifications, job preferences ──────────────────────────────
+// §AI Pieces backlog, profile-depth phase (real-usage feedback: work
+// history and certifications weren't captured at all; no way to scope a
+// future recommendation engine's matches without stated preferences).
+
+export type CandidateExperienceEntry = {
+  id: string;
+  title: string;
+  company: string;
+  location: string | null;
+  startDate: string | null;
+  endDate: string | null;
+  description: string | null;
+};
+export type CandidateExperienceInput = {
+  title: string;
+  company: string;
+  location: string | null;
+  startDate: string | null;
+  endDate: string | null;
+  description: string | null;
+};
+
+export async function getMyCandidateExperience(): Promise<CandidateExperienceEntry[]> {
+  const supabase = await createClient();
+  const { data: candidateId } = await supabase.rpc("my_candidate_id");
+  if (!candidateId) return [];
+  const { data } = await supabase
+    .from("candidate_experience")
+    .select("id, title, company, location, start_date, end_date, description")
+    .eq("candidate_id", candidateId)
+    .order("start_date", { ascending: false, nullsFirst: false });
+  return (data ?? []).map((r) => ({
+    id: r.id,
+    title: r.title,
+    company: r.company,
+    location: r.location,
+    startDate: r.start_date,
+    endDate: r.end_date,
+    description: r.description,
+  }));
+}
+
+export async function saveCandidateExperience(entries: CandidateExperienceInput[]): Promise<void> {
+  const supabase = await createClient();
+  const { data: candidateId } = await supabase.rpc("my_candidate_id");
+  if (!candidateId) throw new Error("Not a candidate");
+
+  await supabase.from("candidate_experience").delete().eq("candidate_id", candidateId);
+  if (entries.length > 0) {
+    await supabase.from("candidate_experience").insert(
+      entries.map((e) => ({
+        candidate_id: candidateId,
+        title: e.title,
+        company: e.company,
+        location: e.location,
+        start_date: e.startDate,
+        end_date: e.endDate,
+        description: e.description,
+      })),
+    );
   }
-  await supabase.from("candidates").update({ skills: labels }).eq("id", candidateId);
+}
+
+export type CandidateCertificationEntry = {
+  id: string;
+  name: string;
+  issuer: string | null;
+  issuedDate: string | null;
+};
+export type CandidateCertificationInput = {
+  name: string;
+  issuer: string | null;
+  issuedDate: string | null;
+};
+
+export async function getMyCandidateCertifications(): Promise<CandidateCertificationEntry[]> {
+  const supabase = await createClient();
+  const { data: candidateId } = await supabase.rpc("my_candidate_id");
+  if (!candidateId) return [];
+  const { data } = await supabase
+    .from("candidate_certifications")
+    .select("id, name, issuer, issued_date")
+    .eq("candidate_id", candidateId)
+    .order("issued_date", { ascending: false, nullsFirst: false });
+  return (data ?? []).map((r) => ({ id: r.id, name: r.name, issuer: r.issuer, issuedDate: r.issued_date }));
+}
+
+export async function saveCandidateCertifications(entries: CandidateCertificationInput[]): Promise<void> {
+  const supabase = await createClient();
+  const { data: candidateId } = await supabase.rpc("my_candidate_id");
+  if (!candidateId) throw new Error("Not a candidate");
+
+  await supabase.from("candidate_certifications").delete().eq("candidate_id", candidateId);
+  if (entries.length > 0) {
+    await supabase.from("candidate_certifications").insert(
+      entries.map((c) => ({
+        candidate_id: candidateId,
+        name: c.name,
+        issuer: c.issuer,
+        issued_date: c.issuedDate,
+      })),
+    );
+  }
+}
+
+export type WorkModelPreference = "remote" | "hybrid" | "office";
+export type EmploymentTypePreference = "permanent" | "fixed_term" | "contractor" | "freelance" | "internship";
+export type SalaryPeriodPreference = "hour" | "day" | "month" | "year";
+
+export type CandidateJobPreferences = {
+  categoryIds: string[];
+  locationIds: string[];
+  workModel: WorkModelPreference | null;
+  employmentType: EmploymentTypePreference | null;
+  salaryMin: number | null;
+  salaryMax: number | null;
+  salaryPeriod: SalaryPeriodPreference | null;
+};
+
+export async function getMyCandidateJobPreferences(): Promise<CandidateJobPreferences | null> {
+  const supabase = await createClient();
+  const { data: candidateId } = await supabase.rpc("my_candidate_id");
+  if (!candidateId) return null;
+
+  const [{ data: base }, { data: cats }, { data: locs }] = await Promise.all([
+    supabase
+      .from("candidates")
+      .select("preferred_work_model, preferred_employment_type, desired_salary_min, desired_salary_max, desired_salary_period")
+      .eq("id", candidateId)
+      .maybeSingle(),
+    supabase.from("candidate_preferred_categories").select("category_id").eq("candidate_id", candidateId),
+    supabase.from("candidate_preferred_locations").select("location_id").eq("candidate_id", candidateId),
+  ]);
+
+  return {
+    categoryIds: (cats ?? []).map((c) => c.category_id),
+    locationIds: (locs ?? []).map((l) => l.location_id),
+    workModel: (base?.preferred_work_model as WorkModelPreference | null) ?? null,
+    employmentType: (base?.preferred_employment_type as EmploymentTypePreference | null) ?? null,
+    salaryMin: base?.desired_salary_min ?? null,
+    salaryMax: base?.desired_salary_max ?? null,
+    salaryPeriod: (base?.desired_salary_period as SalaryPeriodPreference | null) ?? null,
+  };
+}
+
+export async function saveCandidateJobPreferences(input: CandidateJobPreferences): Promise<void> {
+  const supabase = await createClient();
+  const { data: candidateId } = await supabase.rpc("my_candidate_id");
+  if (!candidateId) throw new Error("Not a candidate");
+
+  await supabase
+    .from("candidates")
+    .update({
+      preferred_work_model: input.workModel,
+      preferred_employment_type: input.employmentType,
+      desired_salary_min: input.salaryMin,
+      desired_salary_max: input.salaryMax,
+      desired_salary_period: input.salaryPeriod,
+    })
+    .eq("id", candidateId);
+
+  await supabase.from("candidate_preferred_categories").delete().eq("candidate_id", candidateId);
+  if (input.categoryIds.length > 0) {
+    await supabase.from("candidate_preferred_categories").insert(
+      input.categoryIds.map((categoryId) => ({ candidate_id: candidateId, category_id: categoryId })),
+    );
+  }
+
+  await supabase.from("candidate_preferred_locations").delete().eq("candidate_id", candidateId);
+  if (input.locationIds.length > 0) {
+    await supabase.from("candidate_preferred_locations").insert(
+      input.locationIds.map((locationId) => ({ candidate_id: candidateId, location_id: locationId })),
+    );
+  }
 }
