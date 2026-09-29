@@ -1736,3 +1736,75 @@ exact level/required state and English/French as checked (Portuguese,
 never selected, correctly unchecked) — a genuine round trip, not just
 a one-way save. Zero console errors on either environment across every
 step. Fixtures cleaned up on both afterward.
+
+**Phase 7 shipped — the last phase of the employer-console review**:
+item 10a, "paste a link to an existing job posting and auto-fill the
+form." This was the batch's first-ever AI/LLM integration
+(genuinely greenfield — nothing in this codebase touched an LLM
+before), routed through **Vercel AI Gateway** rather than a direct
+provider SDK, model Claude (`anthropic/claude-sonnet-5.5`), per your
+own explicit call after weighing it against a direct Anthropic API key
+— same model either way, but Gateway means one account/one bill
+(the existing Vercel account) instead of a second one to manage.
+Followed this project's `ai-sdk` skill throughout rather than trusting
+prior knowledge of the SDK — its own first line warns "everything you
+know about the AI SDK is outdated or wrong," and it was right:
+`generateObject` turned out to be **deprecated** in the installed SDK
+version (`ai@7.0.122`); the current API is `generateText` with an
+`output: Output.object({ schema })` option. Also fetched the live
+model list from the Gateway's own `/v1/models` endpoint rather than
+using a remembered model id, per the skill's explicit instruction —
+caught nothing wrong this time, but it's exactly the kind of check
+that would.
+
+**Getting the Gateway connection live needed two real, sequential
+account-side steps, neither of which I could do myself** — a first
+`generateText` call came back "AI Gateway requires a valid credit card
+on file"; after you added one, the *next* call came back "Free tier
+users do not have access to this model" — the account needed an
+actual credits top-up, not just a card, before any model access
+unlocked. Both are genuine Vercel-dashboard steps outside anything a
+CLI/API can do; you completed both live in this same session, and a
+`generateText` call succeeded that same session, purely by re-running
+the plain sanity check rather than reasoning about it.
+
+`src/lib/ai/extract-job.ts` fetches the target page server-side (10s
+timeout, 2MB cap on the response — a real posting page is a few
+hundred KB at most; this is a hard backstop, not a tuned limit),
+strips it to plain text with a blunt tag-strip (no readability
+library — good enough for an LLM prompt, not a human reading view),
+and asks the model to fill only fields it's genuinely confident about:
+every field in the zod schema is nullable, and the prompt explicitly
+tells it never to invent salary numbers, tech, or languages that
+aren't actually in the text. Deliberately returns no location/category
+at all — an external posting's location text won't map cleanly onto
+the 14 curated Portuguese cities, and category is a judgment call left
+to the employer, matching the plan's own framing of "leaving other
+essential fields." Tech-tag and required-language labels come back as
+plain strings and are fuzzy-matched **client-side**, in `JobForm.tsx`,
+against the real `techTags`/`spokenLanguages` vocab already available
+there as props — a label with no real match is silently dropped, never
+invented as new vocabulary. New "paste a job link" section sits at the
+top of `JobForm.tsx`, **create mode only** — autofilling over an
+employer's own in-progress edit would be destructive — and
+`applyExtractedData()` only ever *sets* a field the model actually
+returned; a field it left null is left completely untouched, never
+blanked.
+
+Verified with a genuine, real end-to-end run on both localhost and
+`https://soit.vercel.app` — not a mocked LLM response: created a real
+source job (rich description, React/Node.js tags, a 3500-4500 EUR
+salary, hybrid/senior/permanent, English required) on each environment
+first, then, from a **separate** fresh employer account's real
+`/recruit/jobs/new` page, pasted that source job's own live public URL
+and clicked "Fetch & fill." The actual Gateway call correctly
+extracted title, description, seniority, work model, salary range, and
+employment type; correctly fuzzy-matched React and Node.js as selected
+tech tags and English as a required language; and correctly left
+location/category untouched — confirming both the real extraction
+quality and the "never touch these two fields" rule at once. Zero
+console errors on either environment. This closes all 11 items of the
+employer-console review (items 6 and 7 remain explicitly deferred —
+pricing needs a real business-model conversation, and item 7's contact
+channel needs more of your own thinking first, per your own words at
+the start of this round). Fixtures cleaned up on both afterward.

@@ -312,8 +312,13 @@ can mark tech tags as must-have with a proficiency level and set
 required working languages (both feed the future candidate-scoring
 engine, not scoring itself), the job detail page shows required
 languages, and a new expiry progress bar matches the reference
-screenshot. Only the LLM-based job-link autofill (item 10a) remains
-from this review round. Next up: that phase, then connecting a real
-domain + email provider (unblocks both the application-email flow and
-real saved-search notifications) and step 9 (SEO check, compliance,
-polish) (see `CLAUDE.md`).
+screenshot. **Phase 7 shipped — closing the
+employer-console review**: paste a link to an existing job posting and
+auto-fill the create-job form, this project's first-ever LLM
+integration — Vercel AI Gateway, model Claude, verified with a genuine
+real end-to-end extraction run (not mocked) on both localhost and
+production. Items 6 (pricing) and 7 (a contact channel) stay
+explicitly deferred, per your own call at the start of this round.
+Next up: connecting a real domain + email provider (unblocks both the
+application-email flow and real saved-search notifications) and step
+9 (SEO check, compliance, polish) (see `CLAUDE.md`).
