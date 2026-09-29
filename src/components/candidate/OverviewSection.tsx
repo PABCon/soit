@@ -1,15 +1,17 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useState } from "react";
 import { useTranslations } from "next-intl";
 import {
-  updateProfileAction,
+  updateCandidateProfileAction,
   uploadAvatarAction,
   uploadCvAction,
   saveCandidateBasicsAction,
   getCvSignedUrlAction,
+  analyzeStoredCvAction,
   type ParseCvResult,
 } from "@/app/[locale]/(candidate)/profile/actions";
+import { useAutosave, type AutosaveStatus } from "@/hooks/useAutosave";
 import type { CandidateProfile } from "@/lib/db/candidate-profile";
 import { CvAutofillReview } from "@/components/candidate/CvAutofillReview";
 
@@ -18,24 +20,36 @@ const labelClass = "flex flex-col gap-1 text-sm";
 
 type AiDraft = Extract<ParseCvResult, { ok: true }>["data"];
 
+function StatusIndicator({ status, t }: { status: AutosaveStatus; t: ReturnType<typeof useTranslations> }) {
+  if (status === "pending" || status === "saving") return <span className="text-sm text-muted">{t("saving")}</span>;
+  if (status === "saved") return <span className="text-sm text-pine">{t("saved")}</span>;
+  return null;
+}
+
 /** Basic account facts + CV file — today's original `CandidateProfileForm`
  *  content, minus the freeform `skills` text input (moved to a structured
  *  editor on the Skills & Education tab; `candidates.skills` is a derived
  *  cache column now, never hand-edited here). Also owns the short
- *  headline/years-of-experience summary (its own card, own Save) — the
- *  natural "Overview" home for it, same fields the CV-autofill draft fills
- *  in via `saveCandidateBasicsAction`. */
+ *  headline/years-of-experience summary (its own card), same fields the
+ *  CV-autofill draft fills in via `saveCandidateBasicsAction`. Both cards
+ *  autosave ~800ms after a change (real-usage feedback: too many explicit
+ *  Save clicks). */
 export function OverviewSection({
   profile,
   cvSignedUrl,
   headline,
   yearsExperience,
+  seededFromDraft = false,
   onDraftReady,
 }: {
   profile: CandidateProfile;
   cvSignedUrl: string | null;
   headline: string | null;
   yearsExperience: number | null;
+  /** True when this mount's `profile`/`headline`/`yearsExperience` came
+   *  from a freshly-parsed AI draft, not the persisted baseline — see
+   *  `useAutosave`'s own `skipFirstRun` doc. */
+  seededFromDraft?: boolean;
   /** `signedUrl` is passed back up too — this component gets remounted
    *  (tab switches key it) whenever a new draft arrives, so any local
    *  state it set itself would be lost; the parent has to hold the fresh
@@ -46,13 +60,37 @@ export function OverviewSection({
   onDraftReady: (data: AiDraft, signedUrl: string | null) => void;
 }) {
   const t = useTranslations("profile");
-  const [fullName, setFullName] = useState(profile.fullName);
-  const [phone, setPhone] = useState(profile.phone ?? "");
-  const [linkedinUrl, setLinkedinUrl] = useState(profile.linkedinUrl ?? "");
-  const [saved, setSaved] = useState(false);
-  const [pending, setPending] = useState(false);
+  const [basics, setBasics] = useState({ fullName: profile.fullName, phone: profile.phone ?? "", linkedinUrl: profile.linkedinUrl ?? "" });
   const [fileError, setFileError] = useState<string | null>(null);
   const [autofillOpen, setAutofillOpen] = useState(false);
+  const [analyzingStored, setAnalyzingStored] = useState(false);
+
+  const basicsStatus = useAutosave(
+    basics,
+    (value) =>
+      updateCandidateProfileAction({
+        full_name: value.fullName.trim(),
+        phone: value.phone.trim() || null,
+        linkedin_url: value.linkedinUrl.trim() || null,
+      }),
+    800,
+    { skipFirstRun: !seededFromDraft },
+  );
+
+  const [headlineDraft, setHeadlineDraft] = useState({
+    headline: headline ?? "",
+    yearsExperience: yearsExperience?.toString() ?? "",
+  });
+  const headlineStatus = useAutosave(
+    headlineDraft,
+    (value) =>
+      saveCandidateBasicsAction(
+        value.headline.trim() || null,
+        value.yearsExperience.trim() ? Number(value.yearsExperience) : null,
+      ),
+    800,
+    { skipFirstRun: !seededFromDraft },
+  );
 
   // A full page reload would discard the AI draft this hands up to
   // CandidateProfileForm's in-memory state — refresh just the signed URL
@@ -63,29 +101,25 @@ export function OverviewSection({
     onDraftReady(data, url);
   }
 
-  const [headlineValue, setHeadlineValue] = useState(headline ?? "");
-  const [yearsValue, setYearsValue] = useState(yearsExperience?.toString() ?? "");
-  const [basicsSaved, setBasicsSaved] = useState(false);
-  const [basicsPending, setBasicsPending] = useState(false);
-
-  async function saveBasics() {
-    setBasicsPending(true);
-    await saveCandidateBasicsAction(headlineValue.trim() || null, yearsValue.trim() ? Number(yearsValue) : null);
-    setBasicsPending(false);
-    setBasicsSaved(true);
-  }
-
-  async function handleSubmit(e: FormEvent) {
-    e.preventDefault();
-    setPending(true);
-    setSaved(false);
-    const formData = new FormData();
-    formData.set("full_name", fullName);
-    formData.set("phone", phone);
-    formData.set("linkedin_url", linkedinUrl);
-    await updateProfileAction(formData);
-    setPending(false);
-    setSaved(true);
+  /** Real-usage feedback: "why do I get asked to upload every time I
+   *  already have a CV on file?" — when one's already stored, re-analyze
+   *  it directly, no upload picker. The plain upload modal (`CvAutofillReview`)
+   *  stays available as a secondary "analyze a different file" action. */
+  async function handleAnalyzeClick() {
+    if (!profile.hasCv) {
+      setAutofillOpen(true);
+      return;
+    }
+    setFileError(null);
+    setAnalyzingStored(true);
+    const result = await analyzeStoredCvAction();
+    setAnalyzingStored(false);
+    if (!result.ok) {
+      setFileError(t(`fileError.${result.reason === "not_a_candidate" ? "not_a_candidate" : "upload_failed"}`));
+      return;
+    }
+    // The file is already stored — cvSignedUrl doesn't change.
+    onDraftReady(result.data, cvSignedUrl);
   }
 
   async function handleAvatar(file: File) {
@@ -122,7 +156,7 @@ export function OverviewSection({
           <img src={profile.avatarUrl} alt="" className="h-16 w-16 rounded-full object-cover" />
         ) : (
           <div className="flex h-16 w-16 items-center justify-center rounded-full bg-pine font-display text-lg font-bold text-white">
-            {fullName.slice(0, 1).toUpperCase() || "?"}
+            {basics.fullName.slice(0, 1).toUpperCase() || "?"}
           </div>
         )}
         <label className="cursor-pointer text-sm font-medium text-pine hover:underline">
@@ -153,25 +187,36 @@ export function OverviewSection({
         )}
         <button
           type="button"
-          onClick={() => setAutofillOpen(true)}
-          className="text-sm font-medium text-pine hover:underline"
+          disabled={analyzingStored}
+          onClick={handleAnalyzeClick}
+          className="text-sm font-medium text-pine hover:underline disabled:opacity-50"
         >
-          {t("analyzeCv")}
+          {analyzingStored ? t("analyzing") : t("analyzeCv")}
         </button>
+        {profile.hasCv && (
+          <button
+            type="button"
+            onClick={() => setAutofillOpen(true)}
+            className="text-xs text-muted hover:text-ink hover:underline"
+          >
+            {t("analyzeDifferentCv")}
+          </button>
+        )}
       </div>
 
       {autofillOpen && <CvAutofillReview onClose={() => setAutofillOpen(false)} onDraftReady={handleDraftReady} />}
 
       <div className="rounded-lg border border-line bg-white p-4">
-        <div className="grid grid-cols-2 gap-4">
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-semibold text-muted uppercase">{t("headline")}</span>
+          <StatusIndicator status={headlineStatus} t={t} />
+        </div>
+        <div className="mt-2 grid grid-cols-2 gap-4">
           <label className={labelClass}>
             <span>{t("headline")}</span>
             <input
-              value={headlineValue}
-              onChange={(e) => {
-                setHeadlineValue(e.target.value);
-                setBasicsSaved(false);
-              }}
+              value={headlineDraft.headline}
+              onChange={(e) => setHeadlineDraft((prev) => ({ ...prev, headline: e.target.value }))}
               className={inputClass}
             />
           </label>
@@ -180,62 +225,50 @@ export function OverviewSection({
             <input
               type="number"
               min={0}
-              value={yearsValue}
-              onChange={(e) => {
-                setYearsValue(e.target.value);
-                setBasicsSaved(false);
-              }}
+              value={headlineDraft.yearsExperience}
+              onChange={(e) => setHeadlineDraft((prev) => ({ ...prev, yearsExperience: e.target.value }))}
               className={inputClass}
             />
           </label>
         </div>
-        <div className="mt-3 flex items-center gap-3">
-          <button
-            type="button"
-            disabled={basicsPending}
-            onClick={saveBasics}
-            className="h-9 rounded-lg bg-pine px-3 text-sm font-medium text-white hover:bg-pine/90 disabled:opacity-50"
-          >
-            {basicsPending ? t("saving") : t("saveChanges")}
-          </button>
-          {basicsSaved && <span className="text-sm text-pine">{t("saved")}</span>}
-        </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-        <label className={labelClass}>
-          <span>{t("fullName")}</span>
-          <input value={fullName} onChange={(e) => setFullName(e.target.value)} className={inputClass} />
-        </label>
-        <label className={labelClass}>
-          <span>{t("email")}</span>
-          <input value={profile.email} disabled className={`${inputClass} bg-paper text-muted`} />
-        </label>
-        <label className={labelClass}>
-          <span>{t("phone")}</span>
-          <input value={phone} onChange={(e) => setPhone(e.target.value)} className={inputClass} />
-        </label>
-        <label className={labelClass}>
-          <span>{t("linkedinUrl")}</span>
-          <input
-            type="url"
-            value={linkedinUrl}
-            onChange={(e) => setLinkedinUrl(e.target.value)}
-            className={inputClass}
-          />
-        </label>
-
-        <div className="flex items-center gap-3">
-          <button
-            type="submit"
-            disabled={pending}
-            className="h-10 rounded-lg bg-pine px-4 text-sm font-medium text-white hover:bg-pine/90 disabled:opacity-50"
-          >
-            {t("save")}
-          </button>
-          {saved && <span className="text-sm text-pine">{t("saved")}</span>}
+      <div className="rounded-lg border border-line bg-white p-4">
+        <div className="flex items-center justify-end">
+          <StatusIndicator status={basicsStatus} t={t} />
         </div>
-      </form>
+        <div className="mt-2 flex flex-col gap-4">
+          <label className={labelClass}>
+            <span>{t("fullName")}</span>
+            <input
+              value={basics.fullName}
+              onChange={(e) => setBasics((prev) => ({ ...prev, fullName: e.target.value }))}
+              className={inputClass}
+            />
+          </label>
+          <label className={labelClass}>
+            <span>{t("email")}</span>
+            <input value={profile.email} disabled className={`${inputClass} bg-paper text-muted`} />
+          </label>
+          <label className={labelClass}>
+            <span>{t("phone")}</span>
+            <input
+              value={basics.phone}
+              onChange={(e) => setBasics((prev) => ({ ...prev, phone: e.target.value }))}
+              className={inputClass}
+            />
+          </label>
+          <label className={labelClass}>
+            <span>{t("linkedinUrl")}</span>
+            <input
+              type="url"
+              value={basics.linkedinUrl}
+              onChange={(e) => setBasics((prev) => ({ ...prev, linkedinUrl: e.target.value }))}
+              className={inputClass}
+            />
+          </label>
+        </div>
+      </div>
     </div>
   );
 }

@@ -147,6 +147,27 @@ export async function getMyCvSignedUrl(): Promise<string | null> {
   return signed?.signedUrl ?? null;
 }
 
+/** Real-usage feedback: "Analyze my CV" always asked for a fresh upload,
+ *  even when a candidate already had one on file — annoying busywork.
+ *  Downloads the already-stored file's raw bytes (plus its sniffed kind)
+ *  so `analyzeStoredCvAction` can re-run extraction against it directly,
+ *  no upload step needed. Returns null when there's no CV on file at
+ *  all (the caller falls back to the upload flow in that case). */
+export async function downloadMyCv(): Promise<{ bytes: Uint8Array; kind: NonNullable<ReturnType<typeof sniffFileType>> } | null> {
+  const supabase = await createClient();
+  const { data: candidate } = await supabase.from("candidates").select("cv_url").maybeSingle();
+  if (!candidate?.cv_url) return null;
+
+  const admin = createAdminClient();
+  const { data: blob, error } = await admin.storage.from("cvs").download(candidate.cv_url);
+  if (error || !blob) return null;
+
+  const bytes = new Uint8Array(await blob.arrayBuffer());
+  const kind = sniffFileType(bytes);
+  if (!kind) return null;
+  return { bytes, kind };
+}
+
 // ── CV-upload profile autofill: skills, languages, education ────────────────
 // §AI Pieces backlog, phase 1. candidate_tech_tags/candidate_languages
 // deliberately reuse the exact tech_tags/spoken_languages vocabulary the
@@ -333,6 +354,11 @@ export type CandidateExperienceEntry = {
   startDate: string | null;
   endDate: string | null;
   description: string | null;
+  /** Real-usage feedback: responsibilities/achievements as a real array,
+   *  not "- "-prefixed lines inside `description` — every consumer
+   *  (this form's own edit UI, a future public profile view, a future
+   *  CV export) can just map over it instead of re-parsing a blob. */
+  highlights: string[];
 };
 export type CandidateExperienceInput = {
   title: string;
@@ -341,6 +367,7 @@ export type CandidateExperienceInput = {
   startDate: string | null;
   endDate: string | null;
   description: string | null;
+  highlights: string[];
 };
 
 export async function getMyCandidateExperience(): Promise<CandidateExperienceEntry[]> {
@@ -349,7 +376,7 @@ export async function getMyCandidateExperience(): Promise<CandidateExperienceEnt
   if (!candidateId) return [];
   const { data } = await supabase
     .from("candidate_experience")
-    .select("id, title, company, location, start_date, end_date, description")
+    .select("id, title, company, location, start_date, end_date, description, highlights")
     .eq("candidate_id", candidateId)
     .order("start_date", { ascending: false, nullsFirst: false });
   return (data ?? []).map((r) => ({
@@ -360,6 +387,7 @@ export async function getMyCandidateExperience(): Promise<CandidateExperienceEnt
     startDate: r.start_date,
     endDate: r.end_date,
     description: r.description,
+    highlights: r.highlights ?? [],
   }));
 }
 
@@ -379,6 +407,7 @@ export async function saveCandidateExperience(entries: CandidateExperienceInput[
         start_date: e.startDate,
         end_date: e.endDate,
         description: e.description,
+        highlights: e.highlights,
       })),
     );
   }

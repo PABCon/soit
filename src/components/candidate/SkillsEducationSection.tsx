@@ -9,6 +9,7 @@ import {
   saveCandidateEducationAction,
   saveCandidateCertificationsAction,
 } from "@/app/[locale]/(candidate)/profile/actions";
+import { useAutosave, type AutosaveStatus } from "@/hooks/useAutosave";
 import type { CandidateSkillsAndEducation, CandidateCertificationEntry } from "@/lib/db/candidate-profile";
 import type { SkillLevel } from "@/lib/types";
 
@@ -30,15 +31,21 @@ type DraftCertification = { name: string; issuer: string | null; issuedDate: str
 const fieldClass = "h-8 rounded border border-line bg-white px-2 text-xs";
 const cardClass = "rounded-lg border border-line bg-white p-4";
 
+function StatusIndicator({ status, t }: { status: AutosaveStatus; t: ReturnType<typeof useTranslations> }) {
+  if (status === "pending" || status === "saving") return <span className="text-xs text-muted">{t("saving")}</span>;
+  if (status === "saved") return <span className="text-xs text-pine">{t("saved")}</span>;
+  return null;
+}
+
 /**
  * §AI Pieces backlog, profile-depth phase — four independent cards
  * (Skills, Languages, Education, Certifications), each with its own
- * always-editable state and its own "Save changes" button, matching the
- * reference screenshots' own per-card save behavior. This is the
- * persistent editing surface `CvAutofillReview`'s AI draft will prefill
- * into (a later phase) instead of writing straight to the database on its
- * own — so editing an AI-derived result and editing by hand end up being
- * the exact same UI.
+ * always-editable state, autosaving ~800ms after any change (real-usage
+ * feedback: an explicit "Save changes" button per card was too much
+ * friction). This is the persistent editing surface `CvAutofillReview`'s
+ * AI draft prefills into instead of writing straight to the database on
+ * its own — editing an AI-derived result and editing by hand are the
+ * exact same UI.
  */
 export function SkillsEducationSection({
   skillsAndEducation,
@@ -47,6 +54,7 @@ export function SkillsEducationSection({
   spokenLanguages,
   unmatchedSkillLabels = [],
   unmatchedLanguageLabels = [],
+  seededFromDraft = false,
 }: {
   skillsAndEducation: CandidateSkillsAndEducation | null;
   certifications: CandidateCertificationEntry[];
@@ -57,15 +65,24 @@ export function SkillsEducationSection({
    *  they're not silently lost; search-to-add above covers adding them. */
   unmatchedSkillLabels?: string[];
   unmatchedLanguageLabels?: string[];
+  /** True when this mount's initial data came from a freshly-parsed AI
+   *  draft, not the persisted baseline — see `useAutosave`'s own
+   *  `skipFirstRun` doc. */
+  seededFromDraft?: boolean;
 }) {
   const t = useTranslations("skillsEducation");
+  const autosaveOpts = { skipFirstRun: !seededFromDraft };
 
   const [skills, setSkills] = useState<DraftSkill[]>(
     (skillsAndEducation?.techTags ?? []).map((s) => ({ techTagId: s.techTagId, label: s.label, level: s.level })),
   );
   const [skillFilter, setSkillFilter] = useState("");
-  const [skillsSaved, setSkillsSaved] = useState(false);
-  const [skillsPending, setSkillsPending] = useState(false);
+  const skillsStatus = useAutosave(
+    skills,
+    (value) => saveCandidateSkillsAction(value.map((s) => ({ techTagId: s.techTagId, level: s.level }))),
+    800,
+    autosaveOpts,
+  );
 
   const [languages, setLanguages] = useState<DraftLanguage[]>(
     (skillsAndEducation?.languages ?? []).map((l) => ({
@@ -74,8 +91,12 @@ export function SkillsEducationSection({
       level: l.level,
     })),
   );
-  const [languagesSaved, setLanguagesSaved] = useState(false);
-  const [languagesPending, setLanguagesPending] = useState(false);
+  const languagesStatus = useAutosave(
+    languages,
+    (value) => saveCandidateLanguagesAction(value.map((l) => ({ spokenLanguageId: l.spokenLanguageId, level: l.level }))),
+    800,
+    autosaveOpts,
+  );
 
   const [education, setEducation] = useState<DraftEducation[]>(
     (skillsAndEducation?.education ?? []).map((e) => ({
@@ -87,33 +108,32 @@ export function SkillsEducationSection({
       note: e.note,
     })),
   );
-  const [educationSaved, setEducationSaved] = useState(false);
-  const [educationPending, setEducationPending] = useState(false);
+  const educationStatus = useAutosave(
+    education,
+    (value) => saveCandidateEducationAction(value.filter((e) => e.institution.trim())),
+    800,
+    autosaveOpts,
+  );
 
   const [certs, setCerts] = useState<DraftCertification[]>(
     certifications.map((c) => ({ name: c.name, issuer: c.issuer, issuedDate: c.issuedDate })),
   );
-  const [certsSaved, setCertsSaved] = useState(false);
-  const [certsPending, setCertsPending] = useState(false);
+  const certsStatus = useAutosave(
+    certs,
+    (value) => saveCandidateCertificationsAction(value.filter((c) => c.name.trim())),
+    800,
+    autosaveOpts,
+  );
 
   function addSkill(tag: TechTagOption) {
     if (skills.some((s) => s.techTagId === tag.id)) return;
     setSkills((prev) => [...prev, { techTagId: tag.id, label: tag.label, level: null }]);
-    setSkillsSaved(false);
   }
   function removeSkill(id: string) {
     setSkills((prev) => prev.filter((s) => s.techTagId !== id));
-    setSkillsSaved(false);
   }
   function updateSkillLevel(id: string, level: SkillLevel | null) {
     setSkills((prev) => prev.map((s) => (s.techTagId === id ? { ...s, level } : s)));
-    setSkillsSaved(false);
-  }
-  async function saveSkills() {
-    setSkillsPending(true);
-    await saveCandidateSkillsAction(skills.map((s) => ({ techTagId: s.techTagId, level: s.level })));
-    setSkillsPending(false);
-    setSkillsSaved(true);
   }
 
   function toggleLanguage(lang: SpokenLanguageOption) {
@@ -122,60 +142,32 @@ export function SkillsEducationSection({
         ? prev.filter((l) => l.spokenLanguageId !== lang.id)
         : [...prev, { spokenLanguageId: lang.id, label: lang.label, level: null }],
     );
-    setLanguagesSaved(false);
   }
   function updateLanguageLevel(id: string, level: SkillLevel | null) {
     setLanguages((prev) => prev.map((l) => (l.spokenLanguageId === id ? { ...l, level } : l)));
-    setLanguagesSaved(false);
-  }
-  async function saveLanguages() {
-    setLanguagesPending(true);
-    await saveCandidateLanguagesAction(
-      languages.map((l) => ({ spokenLanguageId: l.spokenLanguageId, level: l.level })),
-    );
-    setLanguagesPending(false);
-    setLanguagesSaved(true);
   }
 
   function updateEducation(i: number, patch: Partial<DraftEducation>) {
     setEducation((prev) => prev.map((e, idx) => (idx === i ? { ...e, ...patch } : e)));
-    setEducationSaved(false);
   }
   function addEducation() {
     setEducation((prev) => [
       ...prev,
       { institution: "", degree: null, fieldOfStudy: null, startDate: null, endDate: null, note: null },
     ]);
-    setEducationSaved(false);
   }
   function removeEducation(i: number) {
     setEducation((prev) => prev.filter((_, idx) => idx !== i));
-    setEducationSaved(false);
-  }
-  async function saveEducation() {
-    setEducationPending(true);
-    await saveCandidateEducationAction(education.filter((e) => e.institution.trim()));
-    setEducationPending(false);
-    setEducationSaved(true);
   }
 
   function updateCert(i: number, patch: Partial<DraftCertification>) {
     setCerts((prev) => prev.map((c, idx) => (idx === i ? { ...c, ...patch } : c)));
-    setCertsSaved(false);
   }
   function addCert() {
     setCerts((prev) => [...prev, { name: "", issuer: null, issuedDate: null }]);
-    setCertsSaved(false);
   }
   function removeCert(i: number) {
     setCerts((prev) => prev.filter((_, idx) => idx !== i));
-    setCertsSaved(false);
-  }
-  async function saveCerts() {
-    setCertsPending(true);
-    await saveCandidateCertificationsAction(certs.filter((c) => c.name.trim()));
-    setCertsPending(false);
-    setCertsSaved(true);
   }
 
   const filteredTags = techTags.filter((tg) => {
@@ -187,7 +179,10 @@ export function SkillsEducationSection({
   return (
     <div className="max-w-2xl space-y-6">
       <div className={cardClass}>
-        <span className="text-sm font-semibold">{t("skills")}</span>
+        <div className="flex items-center justify-between">
+          <span className="text-sm font-semibold">{t("skills")}</span>
+          <StatusIndicator status={skillsStatus} t={t} />
+        </div>
         {skills.length > 0 && (
           <ul className="mt-2 flex flex-wrap gap-1.5">
             {skills.map((s) => (
@@ -233,21 +228,13 @@ export function SkillsEducationSection({
             ))}
           </ul>
         )}
-        <div className="mt-3 flex items-center gap-3">
-          <button
-            type="button"
-            disabled={skillsPending}
-            onClick={saveSkills}
-            className="h-9 rounded-lg bg-pine px-3 text-sm font-medium text-white hover:bg-pine/90 disabled:opacity-50"
-          >
-            {skillsPending ? t("saving") : t("saveChanges")}
-          </button>
-          {skillsSaved && <span className="text-sm text-pine">{t("saved")}</span>}
-        </div>
       </div>
 
       <div className={cardClass}>
-        <span className="text-sm font-semibold">{t("languages")}</span>
+        <div className="flex items-center justify-between">
+          <span className="text-sm font-semibold">{t("languages")}</span>
+          <StatusIndicator status={languagesStatus} t={t} />
+        </div>
         <ul className="mt-2 flex flex-col gap-1.5">
           {spokenLanguages.map((lang) => {
             const sel = languages.find((l) => l.spokenLanguageId === lang.id);
@@ -267,25 +254,17 @@ export function SkillsEducationSection({
             {t("unmatchedLanguages")}: {unmatchedLanguageLabels.join(", ")}
           </p>
         )}
-        <div className="mt-3 flex items-center gap-3">
-          <button
-            type="button"
-            disabled={languagesPending}
-            onClick={saveLanguages}
-            className="h-9 rounded-lg bg-pine px-3 text-sm font-medium text-white hover:bg-pine/90 disabled:opacity-50"
-          >
-            {languagesPending ? t("saving") : t("saveChanges")}
-          </button>
-          {languagesSaved && <span className="text-sm text-pine">{t("saved")}</span>}
-        </div>
       </div>
 
       <div className={cardClass}>
         <div className="flex items-center justify-between">
           <span className="text-sm font-semibold">{t("education")}</span>
-          <button type="button" onClick={addEducation} className="text-xs font-medium text-pine hover:underline">
-            {t("addEducation")}
-          </button>
+          <div className="flex items-center gap-3">
+            <StatusIndicator status={educationStatus} t={t} />
+            <button type="button" onClick={addEducation} className="text-xs font-medium text-pine hover:underline">
+              {t("addEducation")}
+            </button>
+          </div>
         </div>
         <ul className="mt-2 flex flex-col gap-3">
           {education.map((entry, i) => (
@@ -334,25 +313,17 @@ export function SkillsEducationSection({
             </li>
           ))}
         </ul>
-        <div className="mt-3 flex items-center gap-3">
-          <button
-            type="button"
-            disabled={educationPending}
-            onClick={saveEducation}
-            className="h-9 rounded-lg bg-pine px-3 text-sm font-medium text-white hover:bg-pine/90 disabled:opacity-50"
-          >
-            {educationPending ? t("saving") : t("saveChanges")}
-          </button>
-          {educationSaved && <span className="text-sm text-pine">{t("saved")}</span>}
-        </div>
       </div>
 
       <div className={cardClass}>
         <div className="flex items-center justify-between">
           <span className="text-sm font-semibold">{t("certifications")}</span>
-          <button type="button" onClick={addCert} className="text-xs font-medium text-pine hover:underline">
-            {t("addCertification")}
-          </button>
+          <div className="flex items-center gap-3">
+            <StatusIndicator status={certsStatus} t={t} />
+            <button type="button" onClick={addCert} className="text-xs font-medium text-pine hover:underline">
+              {t("addCertification")}
+            </button>
+          </div>
         </div>
         <ul className="mt-2 flex flex-col gap-3">
           {certs.map((c, i) => (
@@ -383,17 +354,6 @@ export function SkillsEducationSection({
             </li>
           ))}
         </ul>
-        <div className="mt-3 flex items-center gap-3">
-          <button
-            type="button"
-            disabled={certsPending}
-            onClick={saveCerts}
-            className="h-9 rounded-lg bg-pine px-3 text-sm font-medium text-white hover:bg-pine/90 disabled:opacity-50"
-          >
-            {certsPending ? t("saving") : t("saveChanges")}
-          </button>
-          {certsSaved && <span className="text-sm text-pine">{t("saved")}</span>}
-        </div>
       </div>
     </div>
   );

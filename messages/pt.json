@@ -463,8 +463,6 @@
     "linkedinUrl": "URL do LinkedIn",
     "headline": "Título profissional",
     "yearsExperienceLabel": "Anos de experiência",
-    "save": "Guardar",
-    "saveChanges": "Guardar alterações",
     "saving": "A guardar…",
     "saved": "Guardado.",
     "uploadAvatar": "Carregar foto",
@@ -472,13 +470,15 @@
     "replaceCv": "Substituir CV",
     "previewOrDownloadCv": "Pré-visualizar / descarregar o meu CV",
     "analyzeCv": "Analisar o meu CV",
+    "analyzing": "A analisar…",
+    "analyzeDifferentCv": "ou analisar um ficheiro diferente",
     "fileError": {
       "not_a_candidate": "Algo correu mal. Tente novamente.",
       "file_too_large": "Esse ficheiro é demasiado grande.",
       "bad_file": "Esse ficheiro não tem um formato suportado.",
       "upload_failed": "Não foi possível carregar esse ficheiro. Tente novamente."
     },
-    "aiDraftNotice": "Preenchemos os separadores Competências e Formação e Experiência a partir do seu CV — reveja e edite antes de guardar cada secção."
+    "aiDraftNotice": "Preenchemos os separadores Competências e Formação e Experiência a partir do seu CV — reveja e edite à vontade, as alterações são guardadas automaticamente."
   },
   "skillsEducation": {
     "skills": "Competências",
@@ -497,7 +497,6 @@
     "certificationName": "Nome da certificação",
     "issuer": "Emissor",
     "remove": "Remover",
-    "saveChanges": "Guardar alterações",
     "saving": "A guardar…",
     "saved": "Guardado."
   },
@@ -509,9 +508,11 @@
     "location": "Localização",
     "startDate": "Data de início",
     "endDate": "Data de fim (vazio = atual)",
-    "description": "Descrição",
+    "description": "Resumo (opcional)",
+    "highlights": "Responsabilidades e conquistas",
+    "highlightPlaceholder": "ex.: Liderou a migração para microsserviços, reduzindo o tempo de deploy em 80%",
+    "addHighlight": "+ Adicionar ponto",
     "remove": "Remover",
-    "saveChanges": "Guardar alterações",
     "saving": "A guardar…",
     "saved": "Guardado."
   },
@@ -525,7 +526,6 @@
     "min": "Mín.",
     "max": "Máx.",
     "period": "Periodicidade",
-    "saveChanges": "Guardar alterações",
     "saving": "A guardar…",
     "saved": "Guardado."
   },

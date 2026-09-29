@@ -10,11 +10,13 @@ import { getTechTags } from "@/lib/db/tech-tags";
 import { getSpokenLanguages } from "@/lib/db/spoken-languages";
 import { recordSkillSuggestions } from "@/lib/db/skill-suggestions";
 import type { SkillLevel } from "@/lib/types";
+import type { SniffedType } from "@/lib/file-sniff";
 import {
   updateCandidateProfile,
   uploadCandidateAvatar,
   uploadCandidateCv,
   getMyCvSignedUrl,
+  downloadMyCv,
   saveCandidateBasics,
   saveCandidateSkills,
   saveCandidateLanguages,
@@ -30,12 +32,12 @@ import {
   type CandidateJobPreferences,
 } from "@/lib/db/candidate-profile";
 
-export async function updateProfileAction(formData: FormData) {
-  await updateCandidateProfile({
-    full_name: String(formData.get("full_name") ?? "").trim(),
-    phone: (formData.get("phone") as string)?.trim() || null,
-    linkedin_url: (formData.get("linkedin_url") as string)?.trim() || null,
-  });
+export async function updateCandidateProfileAction(fields: {
+  full_name: string;
+  phone: string | null;
+  linkedin_url: string | null;
+}) {
+  await updateCandidateProfile(fields);
   revalidatePath("/profile");
 }
 
@@ -130,27 +132,11 @@ export type ParseCvResult =
     }
   | { ok: false; reason: "not_a_candidate" | "file_too_large" | "bad_file" | "extraction_failed" };
 
-/** Parses an uploaded CV into a structured draft — nothing is written to
- *  the database here; the draft prefills the candidate's own persistent,
- *  always-editable profile tabs (`CandidateProfileForm`), and each
- *  section's existing `saveCandidate*Action` is what actually persists it,
- *  same as manual entry. Free-text skill/language labels the model returns
- *  are fuzzy-matched
- *  here against the real `tech_tags`/`spoken_languages` vocab (same
- *  label/alias match `JobForm.tsx`'s `applyExtractedData()` already uses
- *  in production), but unlike that flow, an unmatched label is *reported*
- *  back rather than silently dropped — a skill on a candidate's own CV
- *  that we don't recognize is worth surfacing, not hiding. */
-export async function parseCvAction(formData: FormData): Promise<ParseCvResult> {
-  const file = formData.get("file") as File | null;
-  if (!file || file.size === 0 || file.size > MAX_CV_BYTES) return { ok: false, reason: "file_too_large" };
-
-  const supabase = await createClient();
-  const { data: candidateId } = await supabase.rpc("my_candidate_id");
-  if (!candidateId) return { ok: false, reason: "not_a_candidate" };
-
-  const bytes = new Uint8Array(await file.arrayBuffer());
-  const kind = sniffFileType(bytes);
+/** Shared by both entry points below (fresh upload vs. re-analyzing the
+ *  file already on record) — everything past "we have bytes + a sniffed
+ *  kind" is identical: extract text, run the LLM, fuzzy-match skills/
+ *  languages against the real vocab, record unmatched labels. */
+async function runCvExtraction(bytes: Uint8Array, kind: SniffedType): Promise<ParseCvResult> {
   if (!kind) return { ok: false, reason: "bad_file" };
 
   const text = await extractCvText(bytes, kind);
@@ -158,14 +144,6 @@ export async function parseCvAction(formData: FormData): Promise<ParseCvResult> 
 
   const result = await extractCvProfile(text);
   if (!result.ok) return { ok: false, reason: result.reason === "empty_content" ? "bad_file" : result.reason };
-
-  // Real-usage finding: analyzing a CV never used to store the file
-  // itself — a candidate who only ever used "Analyze" ended up with a
-  // fully-populated profile but nothing to download/preview. Persist it
-  // as the master CV now, same as the plain "Upload CV" button already
-  // does. A storage failure here doesn't block the review the candidate
-  // is waiting on — the extraction itself already succeeded.
-  await uploadCandidateCv(file);
 
   const [techTags, spokenLanguages] = await Promise.all([getTechTags(), getSpokenLanguages()]);
 
@@ -233,6 +211,51 @@ export async function parseCvAction(formData: FormData): Promise<ParseCvResult> 
       certifications: result.data.certifications,
     },
   };
+}
+
+/** Fresh-upload entry point — the draft prefills the candidate's own
+ *  persistent, always-editable profile tabs (`CandidateProfileForm`);
+ *  each section's existing `saveCandidate*Action` is what actually
+ *  persists it, same as manual entry. */
+export async function parseCvAction(formData: FormData): Promise<ParseCvResult> {
+  const file = formData.get("file") as File | null;
+  if (!file || file.size === 0 || file.size > MAX_CV_BYTES) return { ok: false, reason: "file_too_large" };
+
+  const supabase = await createClient();
+  const { data: candidateId } = await supabase.rpc("my_candidate_id");
+  if (!candidateId) return { ok: false, reason: "not_a_candidate" };
+
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  const kind = sniffFileType(bytes);
+
+  const result = await runCvExtraction(bytes, kind);
+  if (!result.ok) return result;
+
+  // Real-usage finding: analyzing a CV never used to store the file
+  // itself — a candidate who only ever used "Analyze" ended up with a
+  // fully-populated profile but nothing to download/preview. Persist it
+  // as the master CV now, same as the plain "Upload CV" button already
+  // does. A storage failure here doesn't block the review the candidate
+  // is waiting on — the extraction itself already succeeded.
+  await uploadCandidateCv(file);
+  return result;
+}
+
+/** Re-analyze entry point (§ real-usage feedback: "why do I get asked to
+ *  upload every time I already have a CV on file?") — re-runs extraction
+ *  against the CV already in storage, no fresh upload required. Falls
+ *  back to `not_a_candidate`'s sibling reason when there's genuinely
+ *  nothing on file yet (the UI only offers this path when `hasCv` is
+ *  already true, but a stale client state could still race it). */
+export async function analyzeStoredCvAction(): Promise<ParseCvResult> {
+  const supabase = await createClient();
+  const { data: candidateId } = await supabase.rpc("my_candidate_id");
+  if (!candidateId) return { ok: false, reason: "not_a_candidate" };
+
+  const stored = await downloadMyCv();
+  if (!stored) return { ok: false, reason: "bad_file" };
+
+  return runCvExtraction(stored.bytes, stored.kind);
 }
 
 export async function dismissCvPromptAction() {

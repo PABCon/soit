@@ -463,8 +463,6 @@
     "linkedinUrl": "LinkedIn URL",
     "headline": "Headline",
     "yearsExperienceLabel": "Years of experience",
-    "save": "Save",
-    "saveChanges": "Save changes",
     "saving": "Saving…",
     "saved": "Saved.",
     "uploadAvatar": "Upload photo",
@@ -472,13 +470,15 @@
     "replaceCv": "Replace CV",
     "previewOrDownloadCv": "Preview / download my CV",
     "analyzeCv": "Analyze my CV",
+    "analyzing": "Analyzing…",
+    "analyzeDifferentCv": "or analyze a different file",
     "fileError": {
       "not_a_candidate": "Something went wrong. Try again.",
       "file_too_large": "That file is too large.",
       "bad_file": "That file isn't a supported format.",
       "upload_failed": "Couldn't upload that file. Try again."
     },
-    "aiDraftNotice": "We've filled in your Skills & Education and Experience tabs from your CV — review and edit before saving each section."
+    "aiDraftNotice": "We've filled in your Skills & Education and Experience tabs from your CV — review and edit as you like, changes save automatically."
   },
   "skillsEducation": {
     "skills": "Skills",
@@ -497,7 +497,6 @@
     "certificationName": "Certification name",
     "issuer": "Issuer",
     "remove": "Remove",
-    "saveChanges": "Save changes",
     "saving": "Saving…",
     "saved": "Saved."
   },
@@ -509,9 +508,11 @@
     "location": "Location",
     "startDate": "Start date",
     "endDate": "End date (blank = present)",
-    "description": "Description",
+    "description": "Summary (optional)",
+    "highlights": "Responsibilities & achievements",
+    "highlightPlaceholder": "e.g. Led migration to microservices, cutting deploy time by 80%",
+    "addHighlight": "+ Add point",
     "remove": "Remove",
-    "saveChanges": "Save changes",
     "saving": "Saving…",
     "saved": "Saved."
   },
@@ -525,7 +526,6 @@
     "min": "Min",
     "max": "Max",
     "period": "Period",
-    "saveChanges": "Save changes",
     "saving": "Saving…",
     "saved": "Saved."
   },

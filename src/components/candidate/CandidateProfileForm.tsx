@@ -113,6 +113,7 @@ export function CandidateProfileForm({
         startDate: e.startDate,
         endDate: e.endDate,
         description: e.description,
+        highlights: e.highlights,
       }))
     : experience;
 
@@ -162,6 +163,7 @@ export function CandidateProfileForm({
             cvSignedUrl={signedUrl}
             headline={effectiveSkillsAndEducation?.headline ?? null}
             yearsExperience={effectiveSkillsAndEducation?.yearsExperience ?? null}
+            seededFromDraft={aiDraft !== null}
             onDraftReady={handleDraftReady}
           />
         )}
@@ -169,13 +171,18 @@ export function CandidateProfileForm({
           <JobPreferencesSection preferences={jobPreferences} jobCategories={jobCategories} locations={locations} />
         )}
         {tab === "experience" && (
-          <ExperienceSection key={`experience-${draftVersion}`} experience={effectiveExperience} />
+          <ExperienceSection
+            key={`experience-${draftVersion}`}
+            experience={effectiveExperience}
+            seededFromDraft={aiDraft !== null}
+          />
         )}
         {tab === "skills" && (
           <SkillsEducationSection
             key={`skills-${draftVersion}`}
             skillsAndEducation={effectiveSkillsAndEducation}
             certifications={effectiveCertifications}
+            seededFromDraft={aiDraft !== null}
             techTags={techTags}
             spokenLanguages={spokenLanguages}
             unmatchedSkillLabels={aiDraft?.unmatchedSkillLabels ?? []}

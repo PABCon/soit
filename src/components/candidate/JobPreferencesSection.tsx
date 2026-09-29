@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { saveCandidateJobPreferencesAction } from "@/app/[locale]/(candidate)/profile/actions";
+import { useAutosave } from "@/hooks/useAutosave";
 import type {
   CandidateJobPreferences,
   WorkModelPreference,
@@ -12,6 +13,16 @@ import type {
 
 type JobCategoryOption = { id: string; slug: string; label: string };
 type LocationOption = { id: string; slug: string; name: string };
+
+type Draft = {
+  categoryIds: string[];
+  locationIds: string[];
+  workModel: WorkModelPreference | "";
+  employmentType: EmploymentTypePreference | "";
+  salaryMin: string;
+  salaryMax: string;
+  salaryPeriod: SalaryPeriodPreference | "";
+};
 
 const WORK_MODELS: WorkModelPreference[] = ["remote", "hybrid", "office"];
 const EMPLOYMENT_TYPES: EmploymentTypePreference[] = [
@@ -31,7 +42,8 @@ const selectClass = "h-9 rounded-lg border border-line bg-white px-3 text-sm";
  *  remote work in Lisbon." Reuses the existing curated `job_categories`/
  *  `locations` taxonomies and the same `categoryOption`/`workModelOption`/
  *  `employmentTypeOption`/`salaryPeriodOption` i18n keys `JobForm.tsx`
- *  already uses for the identical concepts on the job-posting side. */
+ *  already uses for the identical concepts on the job-posting side.
+ *  Autosaves the whole preferences object ~800ms after any change. */
 export function JobPreferencesSection({
   preferences,
   jobCategories,
@@ -43,64 +55,72 @@ export function JobPreferencesSection({
 }) {
   const t = useTranslations("jobPreferences");
   const jf = useTranslations("jobForm");
-  const [categoryIds, setCategoryIds] = useState<string[]>(preferences?.categoryIds ?? []);
-  const [locationIds, setLocationIds] = useState<string[]>(preferences?.locationIds ?? []);
-  const [workModel, setWorkModel] = useState<WorkModelPreference | "">(preferences?.workModel ?? "");
-  const [employmentType, setEmploymentType] = useState<EmploymentTypePreference | "">(
-    preferences?.employmentType ?? "",
+  const [draft, setDraft] = useState<Draft>({
+    categoryIds: preferences?.categoryIds ?? [],
+    locationIds: preferences?.locationIds ?? [],
+    workModel: preferences?.workModel ?? "",
+    employmentType: preferences?.employmentType ?? "",
+    salaryMin: preferences?.salaryMin?.toString() ?? "",
+    salaryMax: preferences?.salaryMax?.toString() ?? "",
+    salaryPeriod: preferences?.salaryPeriod ?? "",
+  });
+
+  const status = useAutosave(draft, (value) =>
+    saveCandidateJobPreferencesAction({
+      categoryIds: value.categoryIds,
+      locationIds: value.locationIds,
+      workModel: value.workModel || null,
+      employmentType: value.employmentType || null,
+      salaryMin: value.salaryMin.trim() ? Number(value.salaryMin) : null,
+      salaryMax: value.salaryMax.trim() ? Number(value.salaryMax) : null,
+      salaryPeriod: value.salaryPeriod || null,
+    }),
   );
-  const [salaryMin, setSalaryMin] = useState(preferences?.salaryMin?.toString() ?? "");
-  const [salaryMax, setSalaryMax] = useState(preferences?.salaryMax?.toString() ?? "");
-  const [salaryPeriod, setSalaryPeriod] = useState<SalaryPeriodPreference | "">(preferences?.salaryPeriod ?? "");
-  const [pending, setPending] = useState(false);
-  const [saved, setSaved] = useState(false);
 
   function toggleCategory(id: string) {
-    setCategoryIds((prev) => (prev.includes(id) ? prev.filter((c) => c !== id) : [...prev, id]));
-    setSaved(false);
+    setDraft((prev) => ({
+      ...prev,
+      categoryIds: prev.categoryIds.includes(id)
+        ? prev.categoryIds.filter((c) => c !== id)
+        : [...prev.categoryIds, id],
+    }));
   }
   function toggleLocation(id: string) {
-    setLocationIds((prev) => (prev.includes(id) ? prev.filter((l) => l !== id) : [...prev, id]));
-    setSaved(false);
-  }
-
-  async function save() {
-    setPending(true);
-    await saveCandidateJobPreferencesAction({
-      categoryIds,
-      locationIds,
-      workModel: workModel || null,
-      employmentType: employmentType || null,
-      salaryMin: salaryMin.trim() ? Number(salaryMin) : null,
-      salaryMax: salaryMax.trim() ? Number(salaryMax) : null,
-      salaryPeriod: salaryPeriod || null,
-    });
-    setPending(false);
-    setSaved(true);
+    setDraft((prev) => ({
+      ...prev,
+      locationIds: prev.locationIds.includes(id)
+        ? prev.locationIds.filter((l) => l !== id)
+        : [...prev.locationIds, id],
+    }));
   }
 
   return (
     <div className="max-w-xl space-y-6">
-      <div>
+      <div className="flex items-center justify-between">
         <span className="text-sm font-semibold">{t("categories")}</span>
-        <ul className="mt-2 flex flex-wrap gap-1.5">
-          {jobCategories.map((cat) => (
-            <li key={cat.id}>
-              <button
-                type="button"
-                onClick={() => toggleCategory(cat.id)}
-                className={
-                  categoryIds.includes(cat.id)
-                    ? "rounded-md border border-pine bg-pine px-2 py-1 text-xs text-white"
-                    : "rounded-md border border-line px-2 py-1 text-xs text-muted hover:border-muted"
-                }
-              >
-                {jf(`categoryOption.${cat.slug}`)}
-              </button>
-            </li>
-          ))}
-        </ul>
+        {status === "pending" || status === "saving" ? (
+          <span className="text-xs text-muted">{t("saving")}</span>
+        ) : status === "saved" ? (
+          <span className="text-xs text-pine">{t("saved")}</span>
+        ) : null}
       </div>
+      <ul className="-mt-4 flex flex-wrap gap-1.5">
+        {jobCategories.map((cat) => (
+          <li key={cat.id}>
+            <button
+              type="button"
+              onClick={() => toggleCategory(cat.id)}
+              className={
+                draft.categoryIds.includes(cat.id)
+                  ? "rounded-md border border-pine bg-pine px-2 py-1 text-xs text-white"
+                  : "rounded-md border border-line px-2 py-1 text-xs text-muted hover:border-muted"
+              }
+            >
+              {jf(`categoryOption.${cat.slug}`)}
+            </button>
+          </li>
+        ))}
+      </ul>
 
       <div>
         <span className="text-sm font-semibold">{t("locations")}</span>
@@ -111,7 +131,7 @@ export function JobPreferencesSection({
                 type="button"
                 onClick={() => toggleLocation(loc.id)}
                 className={
-                  locationIds.includes(loc.id)
+                  draft.locationIds.includes(loc.id)
                     ? "rounded-md border border-pine bg-pine px-2 py-1 text-xs text-white"
                     : "rounded-md border border-line px-2 py-1 text-xs text-muted hover:border-muted"
                 }
@@ -127,11 +147,8 @@ export function JobPreferencesSection({
         <label className="flex flex-col gap-1 text-sm">
           <span>{t("workModel")}</span>
           <select
-            value={workModel}
-            onChange={(e) => {
-              setWorkModel(e.target.value as WorkModelPreference | "");
-              setSaved(false);
-            }}
+            value={draft.workModel}
+            onChange={(e) => setDraft((prev) => ({ ...prev, workModel: e.target.value as WorkModelPreference | "" }))}
             className={selectClass}
           >
             <option value="">{t("any")}</option>
@@ -145,11 +162,10 @@ export function JobPreferencesSection({
         <label className="flex flex-col gap-1 text-sm">
           <span>{t("employmentType")}</span>
           <select
-            value={employmentType}
-            onChange={(e) => {
-              setEmploymentType(e.target.value as EmploymentTypePreference | "");
-              setSaved(false);
-            }}
+            value={draft.employmentType}
+            onChange={(e) =>
+              setDraft((prev) => ({ ...prev, employmentType: e.target.value as EmploymentTypePreference | "" }))
+            }
             className={selectClass}
           >
             <option value="">{t("any")}</option>
@@ -170,11 +186,8 @@ export function JobPreferencesSection({
             <input
               type="number"
               min={0}
-              value={salaryMin}
-              onChange={(e) => {
-                setSalaryMin(e.target.value);
-                setSaved(false);
-              }}
+              value={draft.salaryMin}
+              onChange={(e) => setDraft((prev) => ({ ...prev, salaryMin: e.target.value }))}
               className={selectClass}
             />
           </label>
@@ -183,22 +196,18 @@ export function JobPreferencesSection({
             <input
               type="number"
               min={0}
-              value={salaryMax}
-              onChange={(e) => {
-                setSalaryMax(e.target.value);
-                setSaved(false);
-              }}
+              value={draft.salaryMax}
+              onChange={(e) => setDraft((prev) => ({ ...prev, salaryMax: e.target.value }))}
               className={selectClass}
             />
           </label>
           <label className="flex flex-col gap-1 text-sm">
             <span>{t("period")}</span>
             <select
-              value={salaryPeriod}
-              onChange={(e) => {
-                setSalaryPeriod(e.target.value as SalaryPeriodPreference | "");
-                setSaved(false);
-              }}
+              value={draft.salaryPeriod}
+              onChange={(e) =>
+                setDraft((prev) => ({ ...prev, salaryPeriod: e.target.value as SalaryPeriodPreference | "" }))
+              }
               className={selectClass}
             >
               <option value="">—</option>
@@ -211,18 +220,6 @@ export function JobPreferencesSection({
           </label>
         </div>
       </fieldset>
-
-      <div className="flex items-center gap-3">
-        <button
-          type="button"
-          disabled={pending}
-          onClick={save}
-          className="h-10 rounded-lg bg-pine px-4 text-sm font-medium text-white hover:bg-pine/90 disabled:opacity-50"
-        >
-          {pending ? t("saving") : t("saveChanges")}
-        </button>
-        {saved && <span className="text-sm text-pine">{t("saved")}</span>}
-      </div>
     </div>
   );
 }

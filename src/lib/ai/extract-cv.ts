@@ -52,11 +52,18 @@ const ExtractedCvSchema = z.object({
       location: z.string().nullable(),
       startDate: z.string().nullable(),
       endDate: z.string().nullable(),
+      // A short narrative intro *only* if the CV actually writes one in
+      // prose — most roles won't have this; leave null rather than
+      // inventing a summary from the highlights.
+      description: z.string().nullable(),
       // Real-usage feedback: the first version of this prompt let the
       // model compress a role's own detailed bullet points into one
       // short, semicolon-joined sentence — worse than what the CV
-      // actually said. The prompt below now explicitly forbids that.
-      description: z.string().nullable(),
+      // actually said, and even once fixed to preserve them as "- "
+      // lines, that's still not a real structured shape for a UI (or a
+      // future CV export) to render as actual bullets. Each
+      // responsibility/achievement is now its own array element instead.
+      highlights: z.array(z.string()),
     }),
   ),
   certifications: z.array(
@@ -115,16 +122,19 @@ export async function extractCvProfile(text: string): Promise<ExtractCvResult> {
         "\"yyyy-mm-dd\" and default to the 1st of the month when only a month/year " +
         "is given — never invent a day. Leave an `endDate` null when the entry is " +
         "ongoing (a current job, an in-progress degree).\n\n" +
-        "For each `experience` entry's `description`: reproduce the actual detail " +
-        "the CV gives for that role — do not compress it into a single short " +
-        "summary sentence, and do not drop responsibilities or achievements the " +
-        "CV lists. If the source lists multiple bullet points or sentences for a " +
-        "role, keep them as separate lines in the output (join them with \\n), " +
-        "one point per line, not run together with semicolons. Only shorten " +
-        "wording that is genuinely redundant (e.g. repeated boilerplate) — never " +
-        "shorten to save space. If a role genuinely has no description in the " +
-        "source (a bare title/company/dates line), leave `description` null " +
-        "rather than inventing content.\n\n" +
+        "For each `experience` entry: `highlights` is an array with one array " +
+        "element per responsibility/achievement/bullet point the CV lists for " +
+        "that role — reproduce the actual detail and wording, do not compress " +
+        "multiple points into one, do not drop any the CV lists, and do not " +
+        "add a leading \"-\" or bullet character (the array structure already " +
+        "represents that). Only shorten wording that is genuinely redundant " +
+        "(e.g. repeated boilerplate) — never shorten to save space. `description` " +
+        "is a separate, short narrative intro sentence — only fill it if the CV " +
+        "itself writes one in prose *before* its bullet points; leave it null " +
+        "when the role is just a bullet list, rather than inventing a summary " +
+        "of the highlights. If a role genuinely has no detail at all in the " +
+        "source (a bare title/company/dates line), leave both `description` " +
+        "null and `highlights` an empty array rather than inventing content.\n\n" +
         `CV text:\n${prompt}`,
     });
     return { ok: true, data: output };
