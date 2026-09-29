@@ -470,12 +470,15 @@
       "file_too_large": "That file is too large.",
       "bad_file": "That file isn't a supported format.",
       "upload_failed": "Couldn't upload that file. Try again."
-    }
+    },
+    "aiDraftNotice": "We've filled in your Skills & Education and Experience tabs from your CV — review and edit before saving each section."
   },
   "skillsEducation": {
     "skills": "Skills",
+    "unmatchedSkills": "Not recognized (search below to add)",
     "addSkillPlaceholder": "Search skills to add…",
     "languages": "Languages",
+    "unmatchedLanguages": "Not recognized",
     "education": "Education",
     "addEducation": "+ Add",
     "institution": "Institution",
@@ -521,33 +524,14 @@
   },
   "cvAutofill": {
     "title": "Analyze my CV",
-    "uploadHint": "Upload your CV (PDF or Word) and we'll fill in your skills, languages, and education for you — you can review and edit everything before saving.",
+    "uploadHint": "Upload your CV (PDF or Word) and we'll fill in your skills, languages, education, experience, and certifications for you — you can review and edit everything on your profile before it's final.",
     "chooseFile": "Choose file",
     "analyzing": "Analyzing…",
-    "reviewHint": "Here's what we found. Edit anything before applying it to your profile.",
-    "headline": "Headline",
-    "yearsExperience": "Years of experience",
-    "skills": "Skills",
-    "unmatchedSkills": "Not recognized (search below to add)",
-    "addSkillPlaceholder": "Search skills to add…",
-    "languages": "Languages",
-    "unmatchedLanguages": "Not recognized",
-    "education": "Education",
-    "addEducation": "+ Add",
-    "institution": "Institution",
-    "degree": "Degree",
-    "fieldOfStudy": "Field of study",
-    "note": "Note",
-    "removeEducation": "Remove",
-    "apply": "Apply to profile",
-    "saving": "Saving…",
-    "cancel": "Cancel",
     "error": {
       "not_a_candidate": "Something went wrong. Try again.",
       "file_too_large": "That file is too large.",
       "bad_file": "That file isn't a supported format, or we couldn't read it.",
-      "extraction_failed": "Couldn't analyze that CV. Try again.",
-      "saveFailed": "Couldn't save. Try again."
+      "extraction_failed": "Couldn't analyze that CV. Try again."
     }
   },
   "cvOnboarding": {

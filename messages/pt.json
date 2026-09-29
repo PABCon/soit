@@ -470,12 +470,15 @@
       "file_too_large": "Esse ficheiro é demasiado grande.",
       "bad_file": "Esse ficheiro não tem um formato suportado.",
       "upload_failed": "Não foi possível carregar esse ficheiro. Tente novamente."
-    }
+    },
+    "aiDraftNotice": "Preenchemos os separadores Competências e Formação e Experiência a partir do seu CV — reveja e edite antes de guardar cada secção."
   },
   "skillsEducation": {
     "skills": "Competências",
+    "unmatchedSkills": "Não reconhecidas (procure abaixo para adicionar)",
     "addSkillPlaceholder": "Procurar competências para adicionar…",
     "languages": "Idiomas",
+    "unmatchedLanguages": "Não reconhecidos",
     "education": "Formação",
     "addEducation": "+ Adicionar",
     "institution": "Instituição",
@@ -521,33 +524,14 @@
   },
   "cvAutofill": {
     "title": "Analisar o meu CV",
-    "uploadHint": "Carregue o seu CV (PDF ou Word) e preenchemos as suas competências, idiomas e formação — pode rever e editar tudo antes de guardar.",
+    "uploadHint": "Carregue o seu CV (PDF ou Word) e preenchemos as suas competências, idiomas, formação, experiência e certificações — pode rever e editar tudo no seu perfil antes de ser definitivo.",
     "chooseFile": "Escolher ficheiro",
     "analyzing": "A analisar…",
-    "reviewHint": "Aqui está o que encontrámos. Edite o que quiser antes de aplicar ao seu perfil.",
-    "headline": "Título profissional",
-    "yearsExperience": "Anos de experiência",
-    "skills": "Competências",
-    "unmatchedSkills": "Não reconhecidas (procure abaixo para adicionar)",
-    "addSkillPlaceholder": "Procurar competências para adicionar…",
-    "languages": "Idiomas",
-    "unmatchedLanguages": "Não reconhecidos",
-    "education": "Formação",
-    "addEducation": "+ Adicionar",
-    "institution": "Instituição",
-    "degree": "Grau",
-    "fieldOfStudy": "Área de estudo",
-    "note": "Nota",
-    "removeEducation": "Remover",
-    "apply": "Aplicar ao perfil",
-    "saving": "A guardar…",
-    "cancel": "Cancelar",
     "error": {
       "not_a_candidate": "Algo correu mal. Tente novamente.",
       "file_too_large": "Esse ficheiro é demasiado grande.",
       "bad_file": "Esse ficheiro não tem um formato suportado, ou não foi possível lê-lo.",
-      "extraction_failed": "Não foi possível analisar esse CV. Tente novamente.",
-      "saveFailed": "Não foi possível guardar. Tente novamente."
+      "extraction_failed": "Não foi possível analisar esse CV. Tente novamente."
     }
   },
   "cvOnboarding": {

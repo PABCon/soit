@@ -5,11 +5,18 @@ import { useTranslations } from "next-intl";
 import { createClient } from "@/lib/supabase/client";
 import { Modal } from "@/components/Modal";
 import { CvAutofillReview } from "@/components/candidate/CvAutofillReview";
-import { dismissCvPromptAction } from "@/app/[locale]/(candidate)/profile/actions";
-import { getVocabClient } from "@/lib/db/tech-tags-client";
+import {
+  dismissCvPromptAction,
+  saveCandidateBasicsAction,
+  saveCandidateSkillsAction,
+  saveCandidateLanguagesAction,
+  saveCandidateEducationAction,
+  saveCandidateCertificationsAction,
+  saveCandidateExperienceAction,
+  type ParseCvResult,
+} from "@/app/[locale]/(candidate)/profile/actions";
 
-type TechTagOption = { id: string; label: string; aliases: string[] };
-type SpokenLanguageOption = { id: string; slug: string; label: string };
+type AiDraft = Extract<ParseCvResult, { ok: true }>["data"];
 
 /**
  * §AI Pieces backlog, phase 4 — original item 1's "first-login popup," now
@@ -19,14 +26,20 @@ type SpokenLanguageOption = { id: string; slug: string; label: string };
  * and self-correcting: a candidate who uploads later never sees it again
  * regardless of dismiss state. Client-only, same pattern `LoginMenu.tsx`
  * already uses to read the browser session and the candidate's own row.
+ *
+ * Unlike the profile page's own "Analyze my CV" (which hands the draft up
+ * to the persistent, always-editable tabs for review), this popup can
+ * appear on *any* page, with no tab UI to hand off to — so it applies the
+ * AI draft directly via the same granular save actions the tabs
+ * themselves use (no bespoke bundled-apply path resurrected), then
+ * reloads. The result lands in the exact same tables either way, so
+ * editing it afterward on `/profile` works identically regardless of
+ * which entry point populated it.
  */
 export function CvOnboardingPrompt() {
   const t = useTranslations("cvOnboarding");
   const [visible, setVisible] = useState(false);
   const [reviewOpen, setReviewOpen] = useState(false);
-  const [vocab, setVocab] = useState<{ techTags: TechTagOption[]; spokenLanguages: SpokenLanguageOption[] } | null>(
-    null,
-  );
 
   useEffect(() => {
     const supabase = createClient();
@@ -42,26 +55,27 @@ export function CvOnboardingPrompt() {
     check();
   }, []);
 
-  async function loadVocabAndReview() {
-    if (!vocab) setVocab(await getVocabClient());
-    setReviewOpen(true);
-    setVisible(false);
-  }
-
   async function skip() {
     setVisible(false);
     await dismissCvPromptAction();
   }
 
-  if (reviewOpen && vocab) {
-    return (
-      <CvAutofillReview
-        techTags={vocab.techTags}
-        spokenLanguages={vocab.spokenLanguages}
-        onClose={() => setReviewOpen(false)}
-        onApplied={() => window.location.reload()}
-      />
-    );
+  async function applyDraft(data: AiDraft) {
+    await Promise.all([
+      saveCandidateBasicsAction(data.headline, data.yearsExperience),
+      saveCandidateSkillsAction(data.matchedSkills.map((s) => ({ techTagId: s.techTagId, level: null }))),
+      saveCandidateLanguagesAction(
+        data.matchedLanguages.map((l) => ({ spokenLanguageId: l.spokenLanguageId, level: l.level })),
+      ),
+      saveCandidateEducationAction(data.education),
+      saveCandidateCertificationsAction(data.certifications),
+      saveCandidateExperienceAction(data.experience),
+    ]);
+    window.location.reload();
+  }
+
+  if (reviewOpen) {
+    return <CvAutofillReview onClose={() => setReviewOpen(false)} onDraftReady={applyDraft} />;
   }
 
   if (!visible) return null;
@@ -73,7 +87,10 @@ export function CvOnboardingPrompt() {
       <div className="mt-4 flex gap-3">
         <button
           type="button"
-          onClick={loadVocabAndReview}
+          onClick={() => {
+            setVisible(false);
+            setReviewOpen(true);
+          }}
           className="h-10 rounded-lg bg-pine px-4 text-sm font-medium text-white hover:bg-pine/90"
         >
           {t("upload")}

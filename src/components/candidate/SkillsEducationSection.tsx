@@ -45,11 +45,18 @@ export function SkillsEducationSection({
   certifications,
   techTags,
   spokenLanguages,
+  unmatchedSkillLabels = [],
+  unmatchedLanguageLabels = [],
 }: {
   skillsAndEducation: CandidateSkillsAndEducation | null;
   certifications: CandidateCertificationEntry[];
   techTags: TechTagOption[];
   spokenLanguages: SpokenLanguageOption[];
+  /** From a just-applied AI draft (§ profile-depth phase 3) — labels the
+   *  CV mentioned that don't match the real vocab, surfaced once so
+   *  they're not silently lost; search-to-add above covers adding them. */
+  unmatchedSkillLabels?: string[];
+  unmatchedLanguageLabels?: string[];
 }) {
   const t = useTranslations("skillsEducation");
 
@@ -197,6 +204,11 @@ export function SkillsEducationSection({
             ))}
           </ul>
         )}
+        {unmatchedSkillLabels.length > 0 && (
+          <p className="mt-2 text-xs text-muted">
+            {t("unmatchedSkills")}: {unmatchedSkillLabels.join(", ")}
+          </p>
+        )}
         <input
           value={skillFilter}
           onChange={(e) => setSkillFilter(e.target.value)}
@@ -250,6 +262,11 @@ export function SkillsEducationSection({
             );
           })}
         </ul>
+        {unmatchedLanguageLabels.length > 0 && (
+          <p className="mt-2 text-xs text-muted">
+            {t("unmatchedLanguages")}: {unmatchedLanguageLabels.join(", ")}
+          </p>
+        )}
         <div className="mt-3 flex items-center gap-3">
           <button
             type="button"

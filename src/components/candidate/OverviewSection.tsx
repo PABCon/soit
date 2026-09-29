@@ -7,6 +7,8 @@ import {
   uploadAvatarAction,
   uploadCvAction,
   saveCandidateBasicsAction,
+  getCvSignedUrlAction,
+  type ParseCvResult,
 } from "@/app/[locale]/(candidate)/profile/actions";
 import type { CandidateProfile } from "@/lib/db/candidate-profile";
 import { CvAutofillReview } from "@/components/candidate/CvAutofillReview";
@@ -14,8 +16,7 @@ import { CvAutofillReview } from "@/components/candidate/CvAutofillReview";
 const inputClass = "h-9 rounded-lg border border-line bg-white px-3 text-sm";
 const labelClass = "flex flex-col gap-1 text-sm";
 
-type TechTagOption = { id: string; label: string; aliases: string[] };
-type SpokenLanguageOption = { id: string; slug: string; label: string };
+type AiDraft = Extract<ParseCvResult, { ok: true }>["data"];
 
 /** Basic account facts + CV file — today's original `CandidateProfileForm`
  *  content, minus the freeform `skills` text input (moved to a structured
@@ -29,17 +30,20 @@ export function OverviewSection({
   cvSignedUrl,
   headline,
   yearsExperience,
-  techTags,
-  spokenLanguages,
-  onAnalyzed,
+  onDraftReady,
 }: {
   profile: CandidateProfile;
   cvSignedUrl: string | null;
   headline: string | null;
   yearsExperience: number | null;
-  techTags: TechTagOption[];
-  spokenLanguages: SpokenLanguageOption[];
-  onAnalyzed: () => void;
+  /** `signedUrl` is passed back up too — this component gets remounted
+   *  (tab switches key it) whenever a new draft arrives, so any local
+   *  state it set itself would be lost; the parent has to hold the fresh
+   *  URL instead and feed it back in via the `cvSignedUrl` prop. A real
+   *  bug caught by this phase's own live verification: the preview link
+   *  silently reverted to absent after switching tabs, until this was
+   *  lifted. */
+  onDraftReady: (data: AiDraft, signedUrl: string | null) => void;
 }) {
   const t = useTranslations("profile");
   const [fullName, setFullName] = useState(profile.fullName);
@@ -49,6 +53,15 @@ export function OverviewSection({
   const [pending, setPending] = useState(false);
   const [fileError, setFileError] = useState<string | null>(null);
   const [autofillOpen, setAutofillOpen] = useState(false);
+
+  // A full page reload would discard the AI draft this hands up to
+  // CandidateProfileForm's in-memory state — refresh just the signed URL
+  // instead, client-side, now that "Analyze my CV" always stores the file.
+  async function handleDraftReady(data: AiDraft) {
+    setAutofillOpen(false);
+    const url = await getCvSignedUrlAction();
+    onDraftReady(data, url);
+  }
 
   const [headlineValue, setHeadlineValue] = useState(headline ?? "");
   const [yearsValue, setYearsValue] = useState(yearsExperience?.toString() ?? "");
@@ -147,14 +160,7 @@ export function OverviewSection({
         </button>
       </div>
 
-      {autofillOpen && (
-        <CvAutofillReview
-          techTags={techTags}
-          spokenLanguages={spokenLanguages}
-          onClose={() => setAutofillOpen(false)}
-          onApplied={onAnalyzed}
-        />
-      )}
+      {autofillOpen && <CvAutofillReview onClose={() => setAutofillOpen(false)} onDraftReady={handleDraftReady} />}
 
       <div className="rounded-lg border border-line bg-white p-4">
         <div className="grid grid-cols-2 gap-4">

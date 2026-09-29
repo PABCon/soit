@@ -14,7 +14,7 @@ import {
   updateCandidateProfile,
   uploadCandidateAvatar,
   uploadCandidateCv,
-  saveCandidateSkillsAndEducation,
+  getMyCvSignedUrl,
   saveCandidateBasics,
   saveCandidateSkills,
   saveCandidateLanguages,
@@ -24,7 +24,6 @@ import {
   saveCandidateJobPreferences,
   dismissCvPrompt,
   type UploadResult,
-  type SaveSkillsAndEducationInput,
   type CandidateEducationInput,
   type CandidateCertificationInput,
   type CandidateExperienceInput,
@@ -97,6 +96,14 @@ export async function uploadCvAction(formData: FormData): Promise<UploadResult> 
   return result;
 }
 
+/** Lets `OverviewSection` refresh its CV preview/download link right
+ *  after "Analyze my CV" stores the file, without a full page reload —
+ *  a reload would discard the AI draft now sitting in client state
+ *  (§AI Pieces backlog, profile-depth phase 3). */
+export async function getCvSignedUrlAction(): Promise<string | null> {
+  return getMyCvSignedUrl();
+}
+
 // ── CV-upload profile autofill (§AI Pieces backlog, phase 2/3) ──────────────
 const MAX_CV_BYTES = 5 * 1024 * 1024; // matches candidate-profile.ts's own cap, §6.7
 
@@ -114,13 +121,18 @@ export type ParseCvResult =
         matchedLanguages: MatchedLanguage[];
         unmatchedLanguageLabels: string[];
         education: ExtractedCv["education"];
+        experience: ExtractedCv["experience"];
+        certifications: ExtractedCv["certifications"];
       };
     }
   | { ok: false; reason: "not_a_candidate" | "file_too_large" | "bad_file" | "extraction_failed" };
 
-/** Parses an uploaded CV into a structured, fully-editable draft — nothing
- *  is written to the database here (`applyCvExtractionAction` owns that).
- *  Free-text skill/language labels the model returns are fuzzy-matched
+/** Parses an uploaded CV into a structured draft — nothing is written to
+ *  the database here; the draft prefills the candidate's own persistent,
+ *  always-editable profile tabs (`CandidateProfileForm`), and each
+ *  section's existing `saveCandidate*Action` is what actually persists it,
+ *  same as manual entry. Free-text skill/language labels the model returns
+ *  are fuzzy-matched
  *  here against the real `tech_tags`/`spoken_languages` vocab (same
  *  label/alias match `JobForm.tsx`'s `applyExtractedData()` already uses
  *  in production), but unlike that flow, an unmatched label is *reported*
@@ -211,13 +223,10 @@ export async function parseCvAction(formData: FormData): Promise<ParseCvResult> 
       matchedLanguages,
       unmatchedLanguageLabels,
       education: result.data.education,
+      experience: result.data.experience,
+      certifications: result.data.certifications,
     },
   };
-}
-
-export async function applyCvExtractionAction(input: SaveSkillsAndEducationInput) {
-  await saveCandidateSkillsAndEducation(input);
-  revalidatePath("/profile");
 }
 
 export async function dismissCvPromptAction() {

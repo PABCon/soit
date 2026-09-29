@@ -320,24 +320,6 @@ export async function saveCandidateEducation(entries: CandidateEducationInput[])
   }
 }
 
-export type SaveSkillsAndEducationInput = {
-  headline: string | null;
-  yearsExperience: number | null;
-  techTags: { techTagId: string; level: SkillLevel | null }[];
-  languages: { spokenLanguageId: string; level: SkillLevel | null }[];
-  education: CandidateEducationInput[];
-};
-
-/** Thin orchestrator over the four granular functions above — used
- *  specifically by the "apply the AI draft in one go" moment (CV
- *  autofill), not by the tabbed profile UI's own per-section saves. */
-export async function saveCandidateSkillsAndEducation(input: SaveSkillsAndEducationInput): Promise<void> {
-  await saveCandidateBasics(input.headline, input.yearsExperience);
-  await saveCandidateSkills(input.techTags);
-  await saveCandidateLanguages(input.languages);
-  await saveCandidateEducation(input.education);
-}
-
 // ── Experience, certifications, job preferences ──────────────────────────────
 // §AI Pieces backlog, profile-depth phase (real-usage feedback: work
 // history and certifications weren't captured at all; no way to scope a

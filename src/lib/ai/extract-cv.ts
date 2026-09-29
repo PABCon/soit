@@ -31,6 +31,28 @@ const ExtractedCvSchema = z.object({
       note: z.string().nullable(),
     }),
   ),
+  // §AI Pieces backlog, profile-depth phase — work history and
+  // certifications, added after real-usage feedback that a detailed
+  // profile came back thin without them. Company/institution/title names
+  // aren't matched against any curated vocab (unlike skills/languages) —
+  // free text, passed straight through.
+  experience: z.array(
+    z.object({
+      title: z.string(),
+      company: z.string(),
+      location: z.string().nullable(),
+      startDate: z.string().nullable(),
+      endDate: z.string().nullable(),
+      description: z.string().nullable(),
+    }),
+  ),
+  certifications: z.array(
+    z.object({
+      name: z.string(),
+      issuer: z.string().nullable(),
+      issuedDate: z.string().nullable(),
+    }),
+  ),
 });
 
 export type ExtractedCv = z.infer<typeof ExtractedCvSchema>;
@@ -74,9 +96,10 @@ export async function extractCvProfile(text: string): Promise<ExtractCvResult> {
         "that are not actually in the text. `headline` is a short current/target job " +
         "title (e.g. \"Senior Backend Engineer\"), not a summary paragraph. " +
         "`yearsExperience` is your best estimate of total professional experience in " +
-        "years, from the work-history dates if present. For education dates, use " +
-        "\"yyyy-mm-dd\" and default to the 1st of the month when only a month/year is " +
-        "given — never invent a day. Leave `endDate` null when the entry is ongoing.\n\n" +
+        "years, from the work-history dates if present. For education/experience/" +
+        "certification dates, use \"yyyy-mm-dd\" and default to the 1st of the month " +
+        "when only a month/year is given — never invent a day. Leave an `endDate` null " +
+        "when the entry is ongoing (a current job, an in-progress degree).\n\n" +
         `CV text:\n${prompt}`,
     });
     return { ok: true, data: output };
