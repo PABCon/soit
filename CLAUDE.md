@@ -2431,3 +2431,79 @@ rows; clicked "Analyze my CV" a second time and confirmed no upload
 picker appeared, re-analyzing the stored file directly instead. Zero
 console errors on either environment. Fixtures cleaned up on both
 afterward.
+
+## AI Pieces backlog — item 4: job recommendations + a growth funnel
+
+"Find me the top 5 best fitting jobs for me" — now buildable since
+candidates carry real structured skills and job preferences from the
+profile-depth phase. You explicitly framed this as a growth mechanic,
+not just a feature: a "clickbait"-style entry point in the Rail nav and
+on the homepage, working for anonymous visitors too, funneling toward
+registration — "ads mentality like google when they place ads in
+pages." Also explicit: a salary calculator, "book a career advice
+meeting," "prepare for interview," "review your CV" are future entries
+in the same pattern, not built here — this phase only builds the
+mechanism (a `highlight` flag on Rail items) and the one entry (job
+recommendations) that's ready now.
+
+**Scoring engine** (`src/lib/db/recommendations.ts`,
+`getJobRecommendationsForCandidate()`) — deliberately a lightweight,
+explainable heuristic, **not** the bigger, later, employer-paid
+matching engine (item 3): required-skill coverage (dominant weight),
+a small nice-to-have bonus, and preference-alignment bonuses
+(category/location/work-model/employment-type/salary), every bucket
+additive-only so a preference the candidate never set contributes
+neither points nor a penalty — a candidate who's only filled in skills
+still gets a meaningful score. Candidate-side and job-side tech-tag ids
+turned out to already share the same UUID space (confirmed via
+research, not assumed), so matching is a direct id-set comparison, no
+fuzzy logic needed. Needed its own dedicated `jobs` select
+(`RECS_SELECT`) rather than touching the shared, widely-reused `SELECT`/
+`toJob()` in `jobs.ts` — the candidate-facing `Job`/`JobDetail` types
+don't carry `job_tech_tags`' ids/levels or a scalar `category_id`, and
+extending the shared constant for this one new consumer risked
+regressing the public job feed for no good reason (same precedent
+`getJobForEdit` already set for its own distinct read shape).
+
+**A real issue caught by live verification, fixed before shipping**:
+the first version scored *every* live job (even ones with zero skill
+overlap) and returned them all, so a candidate would see "4 jobs match
+you" when 3 scored under 10% — technically true ("4 jobs got scored")
+but reads as clickbait in the bad sense once you look closer. Added a
+`MIN_MATCH_SCORE = 30` floor — below it, a job is excluded from the
+result entirely, not just sorted low, so the count and the list only
+ever mean something real.
+
+**The funnel**: new public route `/recommendations`
+(`src/app/[locale]/(candidate)/recommendations/page.tsx`) — public
+deliberately, since it has to work as the destination of an anonymous
+"ad click," not just a logged-in feature. Branches on session/profile
+state: no session → an honest pitch (value bullets, no fake numbers) +
+"Create my free account" CTA; candidate with an empty profile →
+"complete your profile" prompt (this is where "Analyze my CV" earns its
+keep — filling the profile is what unlocks real matches); candidate
+with real matches → the ranked list, reusing `JobRow` with a new
+optional `matchScore` prop (a small, backward-compatible addition — every
+other `JobRow` caller leaves it undefined and the badge never renders).
+
+Rail (`Rail.tsx`) gains a new entry, styled to actually stand out — a
+new `highlight?: boolean` flag renders it with a solid pine background
+instead of every other item's plain muted-text row, specifically so the
+future entries you mentioned can reuse the exact same visual treatment
+without re-deciding the pattern. New `RecommendationsTeaser.tsx` (server
+component) sits at the very top of `/jobs`, "ads mentality" positioning
+— and deliberately *never* renders nothing: even a candidate with a
+complete profile and zero current matches gets a neutral "check back
+soon" version, since a promo slot that sometimes vanishes unpredictably
+undermines the whole point of it being an always-there placement.
+
+Verified live on both localhost and `https://soit.vercel.app` with a
+real fixture (a verified test employer, a published React/TypeScript
+remote job, and a candidate with matching skills/preferences): the
+matched job correctly scored 90% and ranked first, unrelated real live
+jobs were correctly excluded (below the 30% floor) rather than padding
+the count, the anonymous pitch and empty-profile prompt both rendered
+correctly, and the Rail's new entry visibly stood out from the rest of
+the menu (confirmed via screenshot, not just code review). Zero console
+errors on either environment. Fixtures (company, jobs, candidates)
+cleaned up on both afterward.

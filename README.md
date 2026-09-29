@@ -423,6 +423,22 @@ exactly what a future CV-export feature will need (map the array
 straight into real bullets, no parsing). Verified live on both
 environments with zero button clicks and zero console errors.
 
+**AI Pieces item 4 shipped**: job recommendations for candidates, framed
+explicitly as a growth mechanic per your own request — a "clickbait"-
+style highlighted entry at the top of the Rail nav plus a homepage
+banner on `/jobs`, both leading to a new public `/recommendations`
+route that funnels an anonymous visitor toward registration ("ads
+mentality") while showing a real candidate their actual ranked matches.
+Scoring is a deliberate lightweight heuristic (skill + preference
+overlap) — not the bigger, later, employer-paid matching engine.
+Caught and fixed a real issue in verification: unmatched jobs were
+inflating the "N jobs match you" count, so a minimum match-score floor
+was added before anything counts as a real match. Verified live with a
+real fixture on both environments — a correctly-scored 90% match ranked
+first, unrelated jobs correctly excluded. Future Rail entries in the
+same "clickbait" pattern (salary calculator, career advice, interview
+prep, CV review) are explicitly not built yet.
+
 Next up: connecting a real domain + email provider
 (unblocks both the application-email flow and real saved-search
 notifications) and step 9 (SEO check, compliance, polish) (see
