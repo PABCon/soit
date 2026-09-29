@@ -1936,3 +1936,137 @@ an already-authenticated console session (the job-edit page's back
 link, `ConsoleTopNav`'s wordmark), where prefetching resolves to a
 genuine 200, not a stale redirect — confirmed none of them are at
 risk, not just assumed. Fixtures cleaned up on both environments.
+
+## AI Pieces backlog — phase 1: CV upload → LLM profile autofill
+
+Start of a much larger backlog you outlined (source material: justjoin.it's
+"Matchmaking Beta" PDF and a screenshot of their candidate "Skills &
+Education" profile tab). Your original ask had two separate items: (1) a
+first-login popup asking for a candidate's LinkedIn URL to fetch profile
+data, unless they signed up via LinkedIn login; (2) the same via CV upload.
+Investigation found LinkedIn has no free/legit API for fetching another
+profile by URL — the pattern tools like justjoin.it actually use is
+LinkedIn's own **native "Save to PDF" export**, fed through the same
+document parser as a regular CV. That collapses items 1 and 2 into one
+feature: **CV upload → parse → structured profile autofill** — built here.
+You also settled a monetization question mid-request: no paid features on
+the candidate side, everything paid lives on the employer side (matches how
+real job boards split free candidate use vs. paid recruiter tools) — this
+phase is entirely free-to-candidate, consistent with that.
+
+New migration (`20260929120000_candidate_skills_and_education.sql`):
+`candidates` gains `headline`, `years_experience`, and
+`cv_prompt_dismissed`; new `candidate_tech_tags`/`candidate_languages` join
+tables **deliberately reuse the exact `tech_tags`/`spoken_languages`
+vocabulary and `skill_level` enum the job side already uses**
+(`job_tech_tags`/`job_languages`, added in an earlier phase) — same
+vocabulary on both sides is what a future matching engine (item 3, not
+built yet) will need to compare a candidate against a job's requirements at
+all. New `candidate_education` table (institution/degree/field/dates/note).
+All three are owner-only via `my_candidate_id()`, same boundary as
+`candidates` itself — no employer-read policy; any future employer-facing
+display of this data goes through the admin client, same pattern
+`getApplicantsForJob` already uses for `candidates.skills`.
+
+Parsing pipeline, deliberately built on the **already-proven plain-text-
+prompt pattern** from `extract-job.ts` rather than the AI SDK's newer
+`messages` file-part multimodal API: the installed `ai@7.0.122` does
+support sending a raw PDF as multimodal input, and Anthropic models likely
+support it, but it's unverified whether this project's Gateway model-string
+routing (no `@ai-sdk/anthropic` package installed) forwards file parts the
+same way the dedicated provider package does — for a feature writing into
+a real candidate profile, the proven path won. So: two new deps, `unpdf`
+(WASM PDF text extraction, no native binary, safe on Vercel serverless) and
+`mammoth` (DOCX text extraction) — neither existed in this codebase before.
+New `src/lib/cv-text.ts` extracts plain text by sniffed file kind (reusing
+the existing `sniffFileType` magic-byte check, never trusting client
+MIME/extension). New `src/lib/ai/extract-cv.ts` mirrors `extract-job.ts`
+almost exactly: same gateway model string
+(`anthropic/claude-sonnet-5.5`, re-verified live against
+`ai-gateway.vercel.sh/v1/models`, never trusted from memory), same
+`generateText({model, output: Output.object({schema})})` call, every schema
+field nullable, a typed `{ok,reason}` result that never throws. Skill/
+language *labels* come back as plain strings from the model — the new
+`parseCvAction` (`(candidate)/profile/actions.ts`) fuzzy-matches them
+server-side against the real `tech_tags`/`spoken_languages` vocab (same
+label/alias match `JobForm.tsx`'s `applyExtractedData()` already validates
+in production for job-link extraction), but **unlike** that flow, an
+unmatched label is *reported back* to the client rather than silently
+dropped — a skill on a candidate's own CV that isn't recognized is worth
+surfacing, not hiding.
+
+New `CvAutofillReview.tsx` (a wider `Modal` — extended the shared component
+with an optional `maxWidthClassName`, defaulting to the original `max-w-md`
+so its two existing consumers are unaffected): upload step, then a fully
+editable review step — skill chips with a level `<select>` (reusing
+`jobForm`'s own `levelOption`/`levelUnspecified` i18n keys, same enum,
+no reason to duplicate strings) plus a search-to-add picker for anything
+unmatched, a language checklist + level the same way, a repeatable
+education list, headline/years-of-experience inputs. Nothing is written to
+the database until "Apply to profile," which calls
+`saveCandidateSkillsAndEducation` — delete-then-reinsert for the two join
+tables (same idiom `saveJob` already uses for `job_tech_tags`), and
+**recomputes the existing flat `candidates.skills` array** from the tech
+tags just saved, so every existing reader of that column
+(`Applicant`/`CompanyApplicant`, the profile page's own freeform skills
+input) keeps working with zero call-site changes.
+
+The profile page gained a new "Analyze my CV" action next to (not
+replacing) the existing plain CV upload — re-uploading an updated CV for
+applications should never silently trigger an unwanted profile rewrite, so
+this is a deliberately separate action, always asking for a fresh file
+rather than reusing whatever's already on `cv_url`. It also gained a
+read-only display of the saved skills/languages/education below the edit
+form, matching the reference screenshot's presentation.
+
+New `CvOnboardingPrompt.tsx`, mounted in `(candidate)/layout.tsx`: the
+"first login" nudge from your original ask, re-expressed as "hasn't
+uploaded a CV and hasn't dismissed this yet" (`!cv_url &&
+!cv_prompt_dismissed`) rather than a literal login-count check — simpler,
+and self-correcting, since a candidate who uploads later never sees it
+again regardless of dismiss state. Client-only (new
+`src/lib/db/tech-tags-client.ts` for the public `tech_tags`/
+`spoken_languages` reads it needs before any server page has passed that
+vocab down), same pattern `LoginMenu.tsx` already uses to read the browser
+session. "Skip for now" persists via a new `dismissCvPromptAction`.
+
+Verified live on both localhost and `https://soit.vercel.app`, with a real
+PDF (not a mocked LLM response) — an HTML CV rendered to PDF via headless
+Chromium, deliberately messy/real-world-shaped: abbreviated tech names
+("Postgres" instead of "PostgreSQL"), an internship with no clean dates, a
+languages section using CEFR levels, two education entries. Real extraction
+results: headline correctly inferred as "Senior Backend Engineer" from a
+summary paragraph that never stated a title outright, years of experience
+correctly read from "~6 yrs," "Postgres" correctly alias-matched to
+"PostgreSQL," "Jira"/"REST APIs" correctly reported as unmatched (no alias
+in the vocab) rather than silently dropped or invented, all three CEFR
+language levels mapped sensibly onto the `skill_level` enum, and both
+education entries with dates defaulted to the 1st of the stated month, as
+instructed. Applied the extraction, reloaded, and confirmed the saved data
+persisted correctly (including the recomputed flat `skills` array) on both
+environments — the first-login prompt appearing and its "skip" persisting
+across a reload were also confirmed live, not just code-reviewed. Zero
+console errors either environment. Fixtures (including uploaded CV storage
+objects and the new join-table rows) cleaned up on both afterward.
+
+Deliberately **not** built in this phase, flagged for later: the matching/
+scoring engine itself (item 3) and job recommendations (item 4) — both
+consume the structured data this phase creates, but are their own, larger
+pieces; extracting a profile photo from the CV file (a materially different
+task — parsing embedded images out of a PDF/DOCX binary, not text); company
+logo fetch during NIF search; CV export in Just-IT branded format; a full
+multi-entry work-experience timeline (captured here only as a single
+derived `years_experience` number + a short `headline`).
+
+**A related, smaller finding, not yet built**: while scoping the LinkedIn
+question, found that "Sign in with LinkedIn" (and Google/GitHub) are
+already fully wired in the UI (`AuthForm.tsx`'s OAuth buttons,
+`/auth/callback`'s generic code exchange) but functionally inert two ways —
+no real OAuth credentials configured in the Supabase dashboard yet (already
+tracked in `docs/go-live-checklist.md`), and separately, `ensureCandidateProfile()`
+never actually reads OAuth data even when it fires (`avatar_url` never set
+by any path, `full_name` falls back to the email's local-part,
+`auth_provider` always resolves to `"email"` via a `pending_auth_provider`
+field nothing ever sets). Plan captures the fix (a small, provider-agnostic
+change reading `user.app_metadata.provider`/`user.user_metadata` instead) —
+deferred, not yet implemented.

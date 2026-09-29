@@ -332,7 +332,28 @@ bug** was found (candidate logout → employer login hanging forever) and
 fixed the same way the first two were — `prefetch={false}` on the one
 remaining unguarded link — reproduced 6/6 on production before the fix,
 0/6 after, via a real UI-driven repro (see `CLAUDE.md` for two real
-testing-methodology traps hit while chasing it down). Next up: connecting a real domain + email provider
+testing-methodology traps hit while chasing it down).
+
+**AI Pieces backlog, phase 1 shipped**: candidates can now upload a CV
+(PDF/DOCX) and have it parsed by an LLM into a structured, fully-editable
+profile — skills and working languages (matched against the exact curated
+vocabulary the job side already uses, so a future matching engine can
+compare like-for-like), education, headline, years of experience. This
+collapses two originally-separate asks (a LinkedIn-fetch onboarding popup,
+and CV upload) into one feature, since LinkedIn has no legit fetch-by-URL
+API — the real pattern is LinkedIn's own "Save to PDF" export fed through
+the same parser as any other CV. Also settled: candidate side stays
+entirely free, all paid features (starting with a future matching/scoring
+engine) live on the employer side. A new first-login prompt nudges a
+CV-less candidate once, dismissible. Verified end-to-end on both localhost
+and production with a real generated PDF, not a mocked response. Deferred,
+not built yet: the matching engine and job recommendations themselves
+(item 3/4 — this phase only creates the data they'll need), CV export, and
+photo extraction. See `CLAUDE.md` for the full writeup, including a related
+finding (LinkedIn/Google/GitHub sign-in buttons already exist in the UI but
+are functionally inert — captured in the plan file, not yet implemented).
+
+Next up: connecting a real domain + email provider
 (unblocks both the application-email flow and real saved-search
 notifications) and step 9 (SEO check, compliance, polish) (see
 `CLAUDE.md`).
