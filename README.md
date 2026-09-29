@@ -389,6 +389,17 @@ directly (no tab UI to hand off to on other pages) via the same granular
 save actions. A real bug — the CV preview link vanishing again after a
 tab switch — was caught by this phase's own live verification and fixed.
 
+**Extraction quality fixed against real data**: inspecting a real
+account's stored experience (read-only, never modified) showed
+descriptions landing as thin, semicolon-joined summaries instead of the
+CV's actual detail, and name/phone/LinkedIn never being extracted at
+all. Fixed both — the prompt now explicitly preserves each bullet point
+as its own line rather than compressing them, and the draft prefills
+contact fields too (only when the CV states them, never overwriting
+silently). Verified live on both environments with a real bullet-pointed
+CV. Job-description formatting for employer-created postings was raised
+too, but needs your steer on direction before building anything.
+
 Next up: connecting a real domain + email provider
 (unblocks both the application-email flow and real saved-search
 notifications) and step 9 (SEO check, compliance, polish) (see

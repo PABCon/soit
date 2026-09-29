@@ -2293,3 +2293,43 @@ on localhost: CV analyzed → applied immediately via the granular actions
 the popup correctly didn't reappear on a later visit to `/profile` since
 `cv_url` was now set. Zero console errors across every run on both
 environments. Fixtures cleaned up on both afterward.
+
+## AI Pieces backlog — extraction quality: contact info + description compression
+
+Real-usage finding, grounded in the actual data stored for a real account
+(`paul_william_24@hotmail.com`, read-only inspected via the admin API,
+never modified): work-experience descriptions were landing as short,
+semicolon-joined summary sentences — much thinner than what the CV
+actually said — and `fullName`/`phone`/`linkedinUrl` were never extracted
+at all, even though a CV's own header almost always states them.
+
+`extract-cv.ts`'s schema gained `fullName`/`phone`/`linkedinUrl`
+(nullable, same "never invent" discipline as every other field), and the
+prompt now explicitly instructs the model not to compress a role's bullet
+points into one run-on sentence — each point should land as its own line
+(`\n`-joined) in the `description` field, only trimming genuinely
+redundant boilerplate, never for length. Also bumped `MAX_PROMPT_CHARS`
+from 15k to 24k — the real CV that surfaced this had 12 roles of genuine
+detail, long enough that truncation was a plausible secondary factor.
+
+The draft now also prefills the Overview tab's name/phone/LinkedIn
+fields via the same `effectiveProfile` merge pattern already used for
+headline/years (`CandidateProfileForm.tsx`) — only overrides a field the
+CV actually stated, never blanks an existing account value, still fully
+editable and unsaved until "Guardar" is clicked, same principle as
+everything else in this flow.
+
+Verified live on both localhost and `https://soit.vercel.app` with a
+real bullet-pointed CV (4 distinct responsibilities for one role, a
+header line with name/phone/LinkedIn): the description came back as 4
+separate lines instead of one compressed sentence, and all three contact
+fields extracted correctly — identical results on both environments.
+Fixtures cleaned up on both afterward.
+
+**Job-description formatting (companies creating a job posting) was
+raised in the same conversation but is a separate, bigger decision** —
+unlike CV extraction, an employer's job description is typed directly,
+not AI-derived, so "fix the prompt" doesn't apply the same way. Options
+put to you: Markdown authoring + rendering, an optional "polish this
+with AI" action, or just improving the plain-textarea UX. Not built yet,
+pending your steer.
