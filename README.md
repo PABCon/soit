@@ -397,8 +397,18 @@ all. Fixed both — the prompt now explicitly preserves each bullet point
 as its own line rather than compressing them, and the draft prefills
 contact fields too (only when the CV states them, never overwriting
 silently). Verified live on both environments with a real bullet-pointed
-CV. Job-description formatting for employer-created postings was raised
-too, but needs your steer on direction before building anything.
+CV.
+
+**Job-description formatting fixed too**: for links pasted in ("paste a
+job link"), the real bug was that the HTML-stripping step destroyed
+paragraph/list structure before the model ever saw the text — fixed at
+the source, plus the same "don't compress" prompt discipline. For an
+employer's own typed/pasted text, a new "Polish with AI" button
+reformats it into clean paragraphs and bullet lists without changing the
+content. Also fixed a related rendering bug: the candidate-facing job
+page was silently collapsing line breaks in the description even when
+they were there — it now renders real `<ul>` lists. Verified live on
+both environments with a messy, unpunctuated paste.
 
 Next up: connecting a real domain + email provider
 (unblocks both the application-email flow and real saved-search

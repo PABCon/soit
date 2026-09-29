@@ -2326,10 +2326,43 @@ separate lines instead of one compressed sentence, and all three contact
 fields extracted correctly — identical results on both environments.
 Fixtures cleaned up on both afterward.
 
-**Job-description formatting (companies creating a job posting) was
-raised in the same conversation but is a separate, bigger decision** —
-unlike CV extraction, an employer's job description is typed directly,
-not AI-derived, so "fix the prompt" doesn't apply the same way. Options
-put to you: Markdown authoring + rendering, an optional "polish this
-with AI" action, or just improving the plain-textarea UX. Not built yet,
-pending your steer.
+**Job-description formatting — your steer, then shipped**: link-fetched
+descriptions should stay a close, properly-formatted copy of the source;
+pasted/typed content gets a "Polish with AI" button.
+
+For the link-fetch path (`extractJobFromUrl`), the real root cause wasn't
+the prompt at all — `stripHtml()` collapsed every tag to a single space,
+destroying paragraph/list structure *before* the model ever saw the text.
+No prompt instruction can recover structure that's already gone. Fixed by
+converting block/list boundaries (`</p>`, `</div>`, `<li>`, `<br>`) to
+real newlines and `- ` bullet markers first, then stripping tags — the
+model now sees (and can faithfully reproduce) the source's own structure.
+The prompt also now explicitly forbids compressing the description into
+a summary, same discipline as the CV-extraction fix.
+
+New `src/lib/ai/polish-text.ts` (`polishJobDescription`) — a formatting-
+only pass on whatever an employer already typed or pasted, explicitly
+forbidden from adding/removing/changing meaning (plain `generateText`,
+not `Output.object`, since the result is one string). New "Polish with
+AI" button in `JobForm.tsx`, next to the description field, available in
+both create and edit mode — unlike the link-paste autofill (create-only,
+since overwriting an employer's in-progress edits would be destructive),
+Polish transforms the *current* draft, so it's safe and useful any time.
+
+**A related rendering bug, also fixed**: even a well-formatted
+description (single-`\n`-separated bullet lines) was being displayed
+inside a plain `<p>` with no whitespace preservation — the structure
+would exist in the string but render invisibly, collapsed by normal HTML
+whitespace rules. New `src/components/JobDescriptionBody.tsx` parses
+`- `/`* `-prefixed lines into real `<ul>`/`<li>` lists and everything
+else into paragraphs; wired into the candidate-facing job detail page in
+place of the old `paragraphs.map((p) => <p>{p}</p>)`.
+
+Verified live on both localhost and `https://soit.vercel.app`: a messy,
+unpunctuated paste ("we need someone who knows react and node.js also
+should have exp with...") came back from Polish as clean paragraphs plus
+three correctly-grouped bullet lists (Responsibilities/We offer/
+Requirements), and publishing it rendered as three real `<ul>` elements
+with all 10 items on the candidate-facing page — not a wall of text.
+Fixtures (a verified test company + its job) cleaned up on both
+afterward.
