@@ -39,14 +39,32 @@ export type ExtractJobResult =
       reason: "invalid_url" | "fetch_failed" | "too_large" | "empty_content" | "extraction_failed";
     };
 
+/**
+ * Real-usage feedback: the original blunt tag-strip collapsed every tag to
+ * a single space, which destroyed paragraph/list structure *before* the
+ * model ever saw the text — no amount of prompt instruction can recover
+ * structure that's already gone. This still isn't a readability library,
+ * but it now converts block/list boundaries to real newlines (and `<li>`
+ * to a `- ` bullet marker) first, so a source page's own paragraph and
+ * list breaks survive into the prompt for the model to reproduce.
+ */
 function stripHtml(html: string): string {
   return html
     .replace(/<script[\s\S]*?<\/script>/gi, " ")
     .replace(/<style[\s\S]*?<\/style>/gi, " ")
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<li[^>]*>/gi, "\n- ")
+    .replace(/<\/(p|div|h[1-6]|li|tr)>/gi, "\n")
     .replace(/<[^>]+>/g, " ")
     .replace(/&nbsp;/gi, " ")
     .replace(/&amp;/gi, "&")
-    .replace(/\s+/g, " ")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+    .replace(/&#39;|&apos;/gi, "'")
+    .replace(/&quot;/gi, '"')
+    .replace(/[ \t]+/g, " ")
+    .replace(/[ \t]*\n[ \t]*/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
     .trim();
 }
 
@@ -105,6 +123,14 @@ export async function extractJobFromUrl(url: string): Promise<ExtractJobResult> 
         "when it is genuinely stated or clearly implied — leave it null (or an " +
         "empty array) if you are not confident. Never invent salary numbers, " +
         "technologies, or languages that are not actually in the text.\n\n" +
+        "`description` should be a close, faithfully-formatted copy of the " +
+        "posting's own description — not a summary. Keep the actual wording; " +
+        "only clean up obvious extraction noise (stray whitespace, broken line " +
+        "wraps). Preserve the source's own structure: separate paragraphs and " +
+        "list items (e.g. a Requirements/Responsibilities/Benefits list) onto " +
+        "their own lines (join with \\n), each list item starting with \"- \". " +
+        "Do not merge multiple bullet points into one run-on sentence, and do " +
+        "not drop items the posting lists.\n\n" +
         `Page text:\n${text}`,
     });
     return { ok: true, data: output };

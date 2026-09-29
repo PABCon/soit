@@ -130,7 +130,7 @@
   "jobForm": {
     "title": "Título da vaga",
     "description": "Descrição",
-    "descriptionHint": "Texto simples — deixe uma linha em branco entre parágrafos.",
+    "descriptionHint": "Texto simples — deixe uma linha em branco entre parágrafos, e comece uma linha com \"- \" para um tópico.",
     "externalApplyUrl": "URL externo de candidatura (opcional)",
     "externalApplyUrlHint": "Se definido, o botão Candidatar envia os candidatos para o seu próprio site — a Just IT não recolhe candidaturas para esta vaga.",
     "language": "Idioma do anúncio",
@@ -208,6 +208,13 @@
       "too_large": "Essa página é demasiado grande.",
       "empty_content": "Não encontrámos texto suficiente nessa página.",
       "extraction_failed": "Não foi possível extrair os dados dessa vaga. Preencha manualmente."
+    },
+    "polishWithAi": "Polir com IA",
+    "polishing": "A polir…",
+    "polishError": {
+      "empty_content": "Escreva um pouco mais primeiro.",
+      "too_long": "Isso é demasiado longo para polir de uma vez.",
+      "polish_failed": "Não foi possível polir esse texto. Tente novamente."
     },
     "expiresAt": "Vaga válida até",
     "expiresAtHint": "Se não escolher uma data, a vaga fica ativa durante 1 mês a partir da publicação.",

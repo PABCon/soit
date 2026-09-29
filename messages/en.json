@@ -130,7 +130,7 @@
   "jobForm": {
     "title": "Job title",
     "description": "Description",
-    "descriptionHint": "Plain text — leave a blank line between paragraphs.",
+    "descriptionHint": "Plain text — leave a blank line between paragraphs, and start a line with \"- \" for a bullet point.",
     "externalApplyUrl": "External application URL (optional)",
     "externalApplyUrlHint": "If set, the Apply button sends candidates to your own site instead — Just IT won't collect applications for this job.",
     "language": "Ad language",
@@ -208,6 +208,13 @@
       "too_large": "That page is too large.",
       "empty_content": "Couldn't find enough text on that page.",
       "extraction_failed": "Couldn't extract job data from that link. Fill it in manually."
+    },
+    "polishWithAi": "Polish with AI",
+    "polishing": "Polishing…",
+    "polishError": {
+      "empty_content": "Write a bit more first.",
+      "too_long": "That's too long to polish in one go.",
+      "polish_failed": "Couldn't polish that. Try again."
     },
     "expiresAt": "Job valid until",
     "expiresAtHint": "Leave blank to keep the job live for 1 month from publish.",

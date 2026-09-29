@@ -9,6 +9,7 @@ import { ApplyModal } from "@/components/ApplyModal";
 import { EngagementPopup } from "@/components/EngagementPopup";
 import { FavoriteButton } from "@/components/FavoriteButton";
 import { JobExpiryBar, expiryPercentLeft } from "@/components/JobExpiryBar";
+import { JobDescriptionBody } from "@/components/JobDescriptionBody";
 import { getLiveJobBySlug, type JobDetail } from "@/lib/db/jobs";
 import { getApplyStatus } from "@/lib/db/applications";
 import { getMyFavoriteJobIds } from "@/lib/db/favorites";
@@ -108,7 +109,6 @@ export default async function JobDetailPage({ params }: Props) {
     getMyFavoriteJobIds(),
   ]);
 
-  const paragraphs = job.description.split(/\n{2,}/).filter(Boolean);
   const expiryPercent = expiryPercentLeft(job.publishedAt, job.expiresAt);
 
   return (
@@ -199,10 +199,8 @@ export default async function JobDetailPage({ params }: Props) {
             <h2 className="font-display text-lg font-semibold">
               {t("aboutRole")}
             </h2>
-            <div className="mt-2 space-y-3 text-sm leading-relaxed text-muted">
-              {paragraphs.map((p, i) => (
-                <p key={i}>{p}</p>
-              ))}
+            <div className="mt-2">
+              <JobDescriptionBody description={job.description} />
             </div>
           </section>
         </div>

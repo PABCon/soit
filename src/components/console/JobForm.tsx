@@ -3,7 +3,11 @@
 import { useMemo, useState, type FormEvent } from "react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "@/i18n/navigation";
-import { saveJobAction, extractJobFromUrlAction } from "@/app/[locale]/(console)/recruit/jobs/actions";
+import {
+  saveJobAction,
+  extractJobFromUrlAction,
+  polishJobDescriptionAction,
+} from "@/app/[locale]/(console)/recruit/jobs/actions";
 import type { JobFormInput } from "@/lib/db/jobs";
 import type { SkillLevel } from "@/lib/types";
 import type { ExtractedJob } from "@/lib/ai/extract-job";
@@ -111,6 +115,8 @@ export function JobForm({
   const [extracting, setExtracting] = useState(false);
   const [extractError, setExtractError] = useState<string | null>(null);
   const [extractNotice, setExtractNotice] = useState<string | null>(null);
+  const [polishing, setPolishing] = useState(false);
+  const [polishError, setPolishError] = useState<string | null>(null);
 
   const filteredTags = useMemo(() => {
     const q = tagFilter.trim().toLowerCase();
@@ -203,6 +209,25 @@ export function JobForm({
     }
     applyExtractedData(result.data);
     setExtractNotice(t("extractSuccess"));
+  }
+
+  /** Formatting pass only — reformats whatever the employer already typed
+   *  or pasted, never rewrites its meaning (see polish-text.ts's own
+   *  prompt). Available in both create and edit mode, unlike the link-
+   *  paste autofill above (which only makes sense before any content
+   *  exists) — this transforms the employer's *current* draft, so it's
+   *  useful any time. */
+  async function handlePolish() {
+    if (!description.trim()) return;
+    setPolishing(true);
+    setPolishError(null);
+    const result = await polishJobDescriptionAction(description);
+    setPolishing(false);
+    if (!result.ok) {
+      setPolishError(t(`polishError.${result.reason}`));
+      return;
+    }
+    setDescription(result.text);
   }
 
   function validate(): string | null {
@@ -301,7 +326,17 @@ export function JobForm({
       </label>
 
       <label className={labelClass}>
-        <span>{t("description")}</span>
+        <div className="flex items-center justify-between">
+          <span>{t("description")}</span>
+          <button
+            type="button"
+            disabled={polishing || !description.trim()}
+            onClick={handlePolish}
+            className="text-xs font-medium text-pine hover:underline disabled:opacity-50"
+          >
+            {polishing ? t("polishing") : t("polishWithAi")}
+          </button>
+        </div>
         <textarea
           value={description}
           onChange={(e) => setDescription(e.target.value)}
@@ -309,6 +344,7 @@ export function JobForm({
           className={`${inputClass} h-auto py-2`}
         />
         <span className="text-xs text-muted">{t("descriptionHint")}</span>
+        {polishError && <span className="text-xs text-red-700">{polishError}</span>}
       </label>
 
       <label className={labelClass}>
