@@ -7,9 +7,18 @@ import { z } from "zod";
 // https://ai-gateway.vercel.sh/v1/models before bumping this — never trust
 // a remembered model id (per this project's AI SDK skill).
 const MODEL = "anthropic/claude-sonnet-5.5";
-const MAX_PROMPT_CHARS = 15_000;
+// Bumped from 15k after real-usage feedback: a genuinely detailed,
+// multi-role CV can run long, and truncating it mid-history silently
+// thins out exactly the content candidates most want captured.
+const MAX_PROMPT_CHARS = 24_000;
 
 const ExtractedCvSchema = z.object({
+  // Real-usage feedback: never extracted at all before, even though a
+  // CV's header block almost always states these — a candidate shouldn't
+  // have to retype what's already right there.
+  fullName: z.string().nullable(),
+  phone: z.string().nullable(),
+  linkedinUrl: z.string().nullable(),
   headline: z.string().nullable(),
   yearsExperience: z.number().int().nullable(),
   skillLabels: z.array(z.string()),
@@ -43,6 +52,10 @@ const ExtractedCvSchema = z.object({
       location: z.string().nullable(),
       startDate: z.string().nullable(),
       endDate: z.string().nullable(),
+      // Real-usage feedback: the first version of this prompt let the
+      // model compress a role's own detailed bullet points into one
+      // short, semicolon-joined sentence — worse than what the CV
+      // actually said. The prompt below now explicitly forbids that.
       description: z.string().nullable(),
     }),
   ),
@@ -92,14 +105,26 @@ export async function extractCvProfile(text: string): Promise<ExtractCvResult> {
       prompt:
         "Extract profile fields from the CV text below. Only fill a field when it " +
         "is genuinely stated or clearly implied — leave it null (or an empty array) " +
-        "if you are not confident. Never invent skills, languages, schools, or dates " +
-        "that are not actually in the text. `headline` is a short current/target job " +
-        "title (e.g. \"Senior Backend Engineer\"), not a summary paragraph. " +
-        "`yearsExperience` is your best estimate of total professional experience in " +
-        "years, from the work-history dates if present. For education/experience/" +
-        "certification dates, use \"yyyy-mm-dd\" and default to the 1st of the month " +
-        "when only a month/year is given — never invent a day. Leave an `endDate` null " +
-        "when the entry is ongoing (a current job, an in-progress degree).\n\n" +
+        "if you are not confident. Never invent skills, languages, schools, names, " +
+        "contact details, or dates that are not actually in the text. `fullName`/" +
+        "`phone`/`linkedinUrl` usually appear in the CV's own header block. " +
+        "`headline` is a short current/target job title (e.g. \"Senior Backend " +
+        "Engineer\"), not a summary paragraph. `yearsExperience` is your best " +
+        "estimate of total professional experience in years, from the work-history " +
+        "dates if present. For education/experience/certification dates, use " +
+        "\"yyyy-mm-dd\" and default to the 1st of the month when only a month/year " +
+        "is given — never invent a day. Leave an `endDate` null when the entry is " +
+        "ongoing (a current job, an in-progress degree).\n\n" +
+        "For each `experience` entry's `description`: reproduce the actual detail " +
+        "the CV gives for that role — do not compress it into a single short " +
+        "summary sentence, and do not drop responsibilities or achievements the " +
+        "CV lists. If the source lists multiple bullet points or sentences for a " +
+        "role, keep them as separate lines in the output (join them with \\n), " +
+        "one point per line, not run together with semicolons. Only shorten " +
+        "wording that is genuinely redundant (e.g. repeated boilerplate) — never " +
+        "shorten to save space. If a role genuinely has no description in the " +
+        "source (a bare title/company/dates line), leave `description` null " +
+        "rather than inventing content.\n\n" +
         `CV text:\n${prompt}`,
     });
     return { ok: true, data: output };

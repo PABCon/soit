@@ -114,6 +114,9 @@ export type ParseCvResult =
   | {
       ok: true;
       data: {
+        fullName: string | null;
+        phone: string | null;
+        linkedinUrl: string | null;
         headline: string | null;
         yearsExperience: number | null;
         matchedSkills: MatchedSkill[];
@@ -216,6 +219,9 @@ export async function parseCvAction(formData: FormData): Promise<ParseCvResult> 
   return {
     ok: true,
     data: {
+      fullName: result.data.fullName,
+      phone: result.data.phone,
+      linkedinUrl: result.data.linkedinUrl,
       headline: result.data.headline,
       yearsExperience: result.data.yearsExperience,
       matchedSkills,

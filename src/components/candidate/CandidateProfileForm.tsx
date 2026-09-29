@@ -116,6 +116,19 @@ export function CandidateProfileForm({
       }))
     : experience;
 
+  // Real-usage feedback: name/phone/LinkedIn were never extracted at all
+  // — usually right there in a CV's own header block. Only overrides a
+  // field the draft actually found; an account's existing name is never
+  // blanked out just because a CV didn't restate it.
+  const effectiveProfile: CandidateProfile = aiDraft
+    ? {
+        ...profile,
+        fullName: aiDraft.fullName ?? profile.fullName,
+        phone: aiDraft.phone ?? profile.phone,
+        linkedinUrl: aiDraft.linkedinUrl ?? profile.linkedinUrl,
+      }
+    : profile;
+
   return (
     <div>
       {aiDraft && (
@@ -145,7 +158,7 @@ export function CandidateProfileForm({
         {tab === "overview" && (
           <OverviewSection
             key={`overview-${draftVersion}`}
-            profile={profile}
+            profile={effectiveProfile}
             cvSignedUrl={signedUrl}
             headline={effectiveSkillsAndEducation?.headline ?? null}
             yearsExperience={effectiveSkillsAndEducation?.yearsExperience ?? null}
