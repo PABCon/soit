@@ -1892,3 +1892,47 @@ this isn't merely "logged in," it specifically requires the employer
 role; the real employer reaches it via the Sidebar and a submission
 still succeeds. Zero console errors on either environment. Fixtures
 cleaned up on both.
+
+**A third instance of the recurring footer-prefetch bug class, found
+via a real-usage report and a screenshot**: logging out of a candidate
+session, then logging in as employer, hung on "Logging in…" forever —
+a hard refresh was the only way out. Same root cause already found and
+fixed twice before for other links (see the Phase 2 footer-prefetch
+entry earlier in this file): `LoginMenu.tsx`'s "Add offer" link had no
+`prefetch={false}`. Unlike the earlier two fixes, this link isn't on a
+static page — it's rendered (and freshly re-rendered) **the instant
+any session logs out**, since `LoginMenu` reactively re-renders from
+logged-in to logged-out state on whatever page the user is already on.
+Next auto-prefetches it right then, while genuinely unauthenticated,
+caching a redirect-to-login response under `/recruit`'s own path — and
+the real post-login `router.push("/recruit")` moments later reuses
+that stale cached redirect instead of fetching fresh.
+
+**Two real testing-methodology traps surfaced while chasing this down,
+both worth remembering**: first, driving the "go to employer login"
+step with `page.goto()` instead of a real UI click **completely masked
+the bug** — a full browser navigation resets the client-side Router
+Cache this bug depends on, so the very first repro attempt came back
+clean and would have been a false "can't reproduce" if taken at face
+value. Second, a `text=Sair` locator for the logout button matched an
+*unrelated real job listing* containing that word (a common Portuguese
+word, "to leave") instead of the actual button, silently clicking
+through to a job detail page instead of logging out at all — caught by
+inspecting a screenshot and the element's actual tag name (`UL`, not
+`BUTTON`) rather than trusting the click "succeeded." Fixed by scoping
+to a real `button:has-text(...)` and, for the dropdown trigger, an
+`aria-label` exclusion — after both fixes, the exact real sequence
+(candidate login → logout via a real click → employer-login navigated
+to via a real click, not `page.goto()`) reproduced **6/6** on
+production, confirmed on the wire via a captured `307` redirect served
+twice for the same `/recruit` request.
+
+Fixed the same way both earlier instances were: `prefetch={false}` on
+this one `Link`. Re-ran the identical real repro sequence against
+production after deploying: **0/6** stuck. Grepped every other
+`href="/recruit"` in the codebase to check for further instances of
+this same class — the other three are all only ever rendered *inside*
+an already-authenticated console session (the job-edit page's back
+link, `ConsoleTopNav`'s wordmark), where prefetching resolves to a
+genuine 200, not a stale redirect — confirmed none of them are at
+risk, not just assumed. Fixtures cleaned up on both environments.

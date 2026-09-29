@@ -327,7 +327,12 @@ candidate channel — genuinely gated via the console's own auth guard,
 reachable from the console sidebar); the chat half was deliberately
 skipped for now (build-vs-buy discussed — a third-party widget stays
 the right call whenever it's revisited, not building one from
-scratch). Next up: connecting a real domain + email provider
+scratch). **A third instance of the recurring footer-prefetch login-hang
+bug** was found (candidate logout → employer login hanging forever) and
+fixed the same way the first two were — `prefetch={false}` on the one
+remaining unguarded link — reproduced 6/6 on production before the fix,
+0/6 after, via a real UI-driven repro (see `CLAUDE.md` for two real
+testing-methodology traps hit while chasing it down). Next up: connecting a real domain + email provider
 (unblocks both the application-email flow and real saved-search
 notifications) and step 9 (SEO check, compliance, polish) (see
 `CLAUDE.md`).
