@@ -71,19 +71,20 @@ export function Rail() {
       {open && (
         <nav
           aria-label={t("offers")}
-          className="absolute top-1/2 left-full ml-2 flex -translate-y-1/2 flex-col items-center gap-1 rounded-xl border border-line bg-white px-1.5 py-2 shadow-lg"
+          className="absolute top-1/2 left-full ml-2 flex min-w-[190px] -translate-y-1/2 flex-col gap-0.5 rounded-xl border border-line bg-white p-1.5 shadow-lg"
         >
           {ITEMS.map((item) => {
             if (!item.mvp) {
               return (
                 <span
                   key={item.key}
-                  title={`${t(item.key)} — ${t("soon")}`}
                   aria-disabled="true"
-                  className="flex h-11 w-11 cursor-not-allowed items-center justify-center rounded-lg text-line"
+                  className="flex cursor-not-allowed items-center gap-3 rounded-lg px-3 py-2.5 text-line"
                 >
                   {item.icon}
-                  <span className="sr-only">{`${t(item.key)} — ${t("soon")}`}</span>
+                  <span className="text-sm font-medium">
+                    {t(item.key)} <span className="text-xs">— {t("soon")}</span>
+                  </span>
                 </span>
               );
             }
@@ -93,21 +94,17 @@ export function Rail() {
               <Link
                 key={item.key}
                 href={item.href}
-                title={t(item.key)}
                 onClick={() => setOpen(false)}
-                className={`relative flex h-11 w-11 items-center justify-center rounded-xl transition-colors ${
+                className={`flex items-center gap-3 rounded-lg px-3 py-2.5 transition-colors ${
                   item.highlight
                     ? "bg-pine text-white shadow-sm hover:bg-pine/90"
                     : active
-                      ? "text-pine"
-                      : "text-muted hover:text-pine"
+                      ? "bg-pine/10 text-pine"
+                      : "text-muted hover:bg-paper hover:text-pine"
                 }`}
               >
-                {active && !item.highlight && (
-                  <span aria-hidden="true" className="absolute inset-[-4px] rounded-2xl bg-pine/10 blur-[6px]" />
-                )}
-                <span className="relative">{item.icon}</span>
-                <span className="sr-only">{t(item.key)}</span>
+                {item.icon}
+                <span className="text-sm font-medium whitespace-nowrap">{t(item.key)}</span>
               </Link>
             );
           })}
