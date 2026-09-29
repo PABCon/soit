@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { JobsExplorer } from "@/components/JobsExplorer";
+import { RecommendationsTeaser } from "@/components/candidate/RecommendationsTeaser";
 import { Link } from "@/i18n/navigation";
 import { getLiveJobs } from "@/lib/db/jobs";
 import { getFeaturedTechCounts } from "@/lib/db/tech-tags";
@@ -55,6 +56,10 @@ export default async function JobsPage({ params }: Props) {
   return (
     <>
       <h1 className="text-2xl font-bold">{t("title")}</h1>
+
+      <div className="mt-4">
+        <RecommendationsTeaser />
+      </div>
 
       <div className="mt-6">
         <JobsExplorer

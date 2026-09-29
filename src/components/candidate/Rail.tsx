@@ -5,7 +5,7 @@ import { useTranslations } from "next-intl";
 import { Link, usePathname } from "@/i18n/navigation";
 import { useClickOutside } from "@/hooks/useClickOutside";
 
-type Item = { key: string; href: string; icon: React.ReactNode; mvp: boolean };
+type Item = { key: string; href: string; icon: React.ReactNode; mvp: boolean; highlight?: boolean };
 
 const icon = (d: string) => (
   <svg
@@ -23,6 +23,13 @@ const icon = (d: string) => (
 );
 
 const ITEMS: Item[] = [
+  {
+    key: "recommendations",
+    href: "/recommendations",
+    icon: icon("M12 2 14.5 9H22l-6 4.5L18 22l-6-4.5L6 22l2-8.5L2 9h7.5Z"),
+    mvp: true,
+    highlight: true,
+  },
   { key: "offers", href: "/jobs", icon: icon("M4 7h16M4 12h16M4 17h10"), mvp: true },
   { key: "applications", href: "/applications", icon: icon("M9 5h6m-7 4h8m-8 4h8m-8 4h5M5 3h14v18H5Z"), mvp: true },
   { key: "companies", href: "/companies", icon: icon("M3 21h18M5 21V7l7-4 7 4v14M9 10h2m2 0h2m-6 4h2m2 0h2"), mvp: true },
@@ -89,10 +96,14 @@ export function Rail() {
                 title={t(item.key)}
                 onClick={() => setOpen(false)}
                 className={`relative flex h-11 w-11 items-center justify-center rounded-xl transition-colors ${
-                  active ? "text-pine" : "text-muted hover:text-pine"
+                  item.highlight
+                    ? "bg-pine text-white shadow-sm hover:bg-pine/90"
+                    : active
+                      ? "text-pine"
+                      : "text-muted hover:text-pine"
                 }`}
               >
-                {active && (
+                {active && !item.highlight && (
                   <span aria-hidden="true" className="absolute inset-[-4px] rounded-2xl bg-pine/10 blur-[6px]" />
                 )}
                 <span className="relative">{item.icon}</span>

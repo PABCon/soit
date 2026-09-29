@@ -25,6 +25,7 @@
     "saveSearchError": "Inicie sessão como candidato para guardar pesquisas."
   },
   "rail": {
+    "recommendations": "Vagas à sua medida",
     "offers": "Vagas",
     "applications": "Candidaturas",
     "companies": "Empresas",
@@ -271,6 +272,7 @@
   },
   "feed": {
     "new": "Novo",
+    "matchScore": "{percent}% compatível",
     "daysLeft": "{days, plural, =0 {Último dia} one {Falta # dia} other {Faltam # dias}}",
     "favorite": "Guardar vaga",
     "unfavorite": "Remover dos guardados",
@@ -552,6 +554,28 @@
     "body": "Reparámos que tem estado a ver várias vagas — crie uma conta gratuita para acompanhar as suas candidaturas e continuar onde ficou.",
     "createAccount": "Criar a minha conta",
     "maybeLater": "Talvez mais tarde"
+  },
+  "recommendations": {
+    "title": "Vagas à sua medida",
+    "subtitle": "Ordenadas de acordo com as suas competências e preferências de vaga.",
+    "pitchTitle": "Receba vagas à medida das suas competências",
+    "pitchBody": "Crie uma conta gratuita, adicione as suas competências (ou carregue o seu CV e fazemo-lo por si) e ordenamos as vagas ativas de acordo com o seu perfil real.",
+    "pitchBullet1": "À medida das suas competências e experiência reais",
+    "pitchBullet2": "Atualizado automaticamente à medida que surgem novas vagas",
+    "pitchBullet3": "100% gratuito, sempre",
+    "createAccount": "Criar a minha conta gratuita",
+    "alreadyHaveAccount": "Já tem conta? Entrar",
+    "emptyProfileTitle": "Adicione as suas competências para ser correspondido",
+    "emptyProfileBody": "Ainda não tem competências ou preferências de vaga no seu perfil, por isso não conseguimos ordenar vagas para si. Adicione algumas competências — ou carregue o seu CV e fazemo-lo por si — para ver as suas correspondências.",
+    "completeProfile": "Completar o meu perfil",
+    "noMatches": "Não há vagas ativas muito compatíveis com o seu perfil neste momento — volte mais tarde ou veja todas as vagas."
+  },
+  "recommendationsTeaser": {
+    "anonPitch": "Receba vagas à medida das suas competências — grátis",
+    "emptyProfilePitch": "Adicione as suas competências para ver vagas à sua medida",
+    "matchesPitch": "{count, plural, one {# vaga corresponde} other {# vagas correspondem}} ao seu perfil",
+    "noMatchesPitch": "Veja vagas à medida do seu perfil",
+    "cta": "Ver correspondências"
   },
   "footer": {
     "pagesNav": "Páginas",

@@ -12,7 +12,18 @@ import type { Job } from "@/lib/types";
  * logo, title, company, location, work model, stack, and the salary as the
  * one bold element.
  */
-export function JobRow({ job, isFavorited }: { job: Job; isFavorited?: boolean }) {
+export function JobRow({
+  job,
+  isFavorited,
+  matchScore,
+}: {
+  job: Job;
+  isFavorited?: boolean;
+  /** §AI Pieces backlog, item 4 — only ever passed by `/recommendations`;
+   *  every other caller leaves this undefined and the badge never renders,
+   *  so this stays a safe, additive change to a widely-reused component. */
+  matchScore?: number;
+}) {
   const t = useTranslations("feed");
   const isNew = job.postedDaysAgo <= 2;
   const daysLeft = job.daysLeft;
@@ -40,6 +51,11 @@ export function JobRow({ job, isFavorited }: { job: Job; isFavorited?: boolean }
               <h2 className="font-display text-[15px] font-semibold text-ink group-hover:text-pine">
                 {job.title}
               </h2>
+              {matchScore !== undefined && (
+                <span className="rounded bg-pine/10 px-1.5 py-0.5 text-[10px] font-semibold tracking-wide text-pine uppercase">
+                  {t("matchScore", { percent: matchScore })}
+                </span>
+              )}
               {isNew && (
                 <span className="rounded bg-mint/25 px-1.5 py-0.5 text-[10px] font-semibold tracking-wide text-pine uppercase">
                   {t("new")}
