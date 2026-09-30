@@ -5,8 +5,13 @@ import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { CompanyLogo } from "@/components/CompanyLogo";
 import { updateProfileAction, uploadImageAction } from "@/app/[locale]/(console)/recruit/company/actions";
-import type { MyCompany } from "@/lib/db/companies";
+import type { MyCompany, CompanyRichProfileLists } from "@/lib/db/companies";
 import type { LocationOption } from "@/lib/db/locations";
+import { TopEmployerBlurGate } from "@/components/console/TopEmployerBlurGate";
+import { TeamMembersSection } from "@/components/console/TeamMembersSection";
+import { TestimonialsSection } from "@/components/console/TestimonialsSection";
+import { PhotoGallerySection } from "@/components/console/PhotoGallerySection";
+import { VideoGallerySection } from "@/components/console/VideoGallerySection";
 
 const inputClass = "h-9 rounded-lg border border-line bg-white px-3 text-sm";
 const labelClass = "flex flex-col gap-1 text-sm";
@@ -29,10 +34,12 @@ export function CompanyProfileForm({
   company,
   canEdit,
   locations,
+  richProfile,
 }: {
   company: MyCompany;
   canEdit: boolean;
   locations: LocationOption[];
+  richProfile: CompanyRichProfileLists;
 }) {
   const t = useTranslations("console");
   const [name, setName] = useState(company.company_name);
@@ -51,9 +58,16 @@ export function CompanyProfileForm({
     tiktok_url: company.tiktok_url ?? "",
     x_url: company.x_url ?? "",
   });
+  const [aboutUs, setAboutUs] = useState(company.about_us_text ?? "");
+  const [howWeWork, setHowWeWork] = useState(company.how_we_work_text ?? "");
+  const [benefits, setBenefits] = useState(company.benefits_text ?? "");
+  const [customTitle, setCustomTitle] = useState(company.custom_section_title ?? "");
+  const [customBody, setCustomBody] = useState(company.custom_section_body ?? "");
   const [saved, setSaved] = useState(false);
   const [pending, setPending] = useState(false);
   const [imageError, setImageError] = useState<string | null>(null);
+
+  const isTopEmployer = company.top_employer_active;
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -69,6 +83,11 @@ export function CompanyProfileForm({
     formData.set("location_id", locationId);
     formData.set("address", address);
     for (const field of SOCIAL_FIELDS) formData.set(field, socials[field]);
+    formData.set("about_us_text", aboutUs);
+    formData.set("how_we_work_text", howWeWork);
+    formData.set("benefits_text", benefits);
+    formData.set("custom_section_title", customTitle);
+    formData.set("custom_section_body", customBody);
     await updateProfileAction(formData);
     setPending(false);
     setSaved(true);
@@ -191,6 +210,64 @@ export function CompanyProfileForm({
           </div>
         </fieldset>
 
+        {(() => {
+          const fields = (
+            <fieldset className="flex flex-col gap-4">
+              <legend className="text-sm font-medium">{t("richProfileHeading")}</legend>
+              <label className={labelClass}>
+                <span>{t("richProfileAboutUs")}</span>
+                <textarea
+                  value={aboutUs}
+                  onChange={(e) => setAboutUs(e.target.value)}
+                  placeholder={t("richProfileAboutUsPlaceholder")}
+                  rows={3}
+                  className={`${inputClass} h-auto py-2`}
+                />
+              </label>
+              <label className={labelClass}>
+                <span>{t("richProfileHowWeWork")}</span>
+                <textarea
+                  value={howWeWork}
+                  onChange={(e) => setHowWeWork(e.target.value)}
+                  placeholder={t("richProfileHowWeWorkPlaceholder")}
+                  rows={3}
+                  className={`${inputClass} h-auto py-2`}
+                />
+              </label>
+              <label className={labelClass}>
+                <span>{t("richProfileBenefits")}</span>
+                <textarea
+                  value={benefits}
+                  onChange={(e) => setBenefits(e.target.value)}
+                  placeholder={t("richProfileBenefitsPlaceholder")}
+                  rows={3}
+                  className={`${inputClass} h-auto py-2`}
+                />
+              </label>
+              <label className={labelClass}>
+                <span>{t("richProfileCustomSectionTitle")}</span>
+                <input
+                  value={customTitle}
+                  onChange={(e) => setCustomTitle(e.target.value)}
+                  placeholder={t("richProfileCustomSectionTitlePlaceholder")}
+                  className={inputClass}
+                />
+              </label>
+              <label className={labelClass}>
+                <span>{t("richProfileCustomSectionBody")}</span>
+                <textarea
+                  value={customBody}
+                  onChange={(e) => setCustomBody(e.target.value)}
+                  placeholder={t("richProfileCustomSectionBodyPlaceholder")}
+                  rows={3}
+                  className={`${inputClass} h-auto py-2`}
+                />
+              </label>
+            </fieldset>
+          );
+          return isTopEmployer ? fields : <TopEmployerBlurGate>{fields}</TopEmployerBlurGate>;
+        })()}
+
         <div className="flex items-center gap-3">
           <button
             type="submit"
@@ -209,6 +286,18 @@ export function CompanyProfileForm({
           </Link>
         </div>
       </form>
+
+      {(() => {
+        const lists = (
+          <div className="space-y-6">
+            <TeamMembersSection members={richProfile.teamMembers} />
+            <TestimonialsSection testimonials={richProfile.testimonials} />
+            <PhotoGallerySection photos={richProfile.galleryPhotos} />
+            <VideoGallerySection videos={richProfile.galleryVideos} />
+          </div>
+        );
+        return isTopEmployer ? lists : <TopEmployerBlurGate>{lists}</TopEmployerBlurGate>;
+      })()}
     </div>
   );
 }

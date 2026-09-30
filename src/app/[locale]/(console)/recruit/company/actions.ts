@@ -1,7 +1,15 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
-import { updateCompanyProfile, updateCompanyImage } from "@/lib/db/companies";
+import {
+  updateCompanyProfile,
+  updateCompanyImage,
+  saveCompanyTeamMembers,
+  saveCompanyTestimonials,
+  saveCompanyGalleryVideos,
+  addCompanyGalleryPhoto,
+  removeCompanyGalleryPhoto,
+} from "@/lib/db/companies";
 import { revalidatePath } from "next/cache";
 
 function trimmedOrNull(formData: FormData, key: string): string | null {
@@ -24,6 +32,11 @@ export async function updateProfileAction(formData: FormData) {
     x_url: trimmedOrNull(formData, "x_url"),
     location_id: trimmedOrNull(formData, "location_id"),
     address: trimmedOrNull(formData, "address"),
+    about_us_text: trimmedOrNull(formData, "about_us_text"),
+    how_we_work_text: trimmedOrNull(formData, "how_we_work_text"),
+    benefits_text: trimmedOrNull(formData, "benefits_text"),
+    custom_section_title: trimmedOrNull(formData, "custom_section_title"),
+    custom_section_body: trimmedOrNull(formData, "custom_section_body"),
   });
   revalidatePath("/recruit/company");
 
@@ -80,4 +93,65 @@ export async function uploadImageAction(
   }
   revalidatePath("/recruit/company");
   return { ok: true };
+}
+
+export async function saveTeamMembersAction(members: { name: string; role: string | null }[]) {
+  await saveCompanyTeamMembers(members);
+  revalidatePath("/recruit/company");
+}
+
+export async function saveTestimonialsAction(
+  testimonials: { name: string; role: string | null; quote: string }[],
+) {
+  await saveCompanyTestimonials(testimonials);
+  revalidatePath("/recruit/company");
+}
+
+export async function saveGalleryVideosAction(videos: { title: string; url: string }[]) {
+  await saveCompanyGalleryVideos(videos);
+  revalidatePath("/recruit/company");
+}
+
+export async function uploadGalleryPhotoAction(formData: FormData): Promise<UploadImageResult> {
+  const file = formData.get("file") as File | null;
+  if (!file || file.size === 0) return { ok: true };
+
+  if (file.size > MAX_IMAGE_BYTES) return { ok: false, reason: "file_too_large" };
+  if (!ALLOWED_IMAGE_TYPES.includes(file.type)) return { ok: false, reason: "bad_file" };
+
+  const supabase = await createClient();
+  const { data: companyId } = await supabase.rpc("my_company_id");
+  if (!companyId) return { ok: false, reason: "not_employer" };
+
+  const ext = file.name.split(".").pop() || "png";
+  const path = `${companyId}/gallery/${crypto.randomUUID()}.${ext}`;
+
+  const { error: uploadError } = await supabase.storage
+    .from("branding")
+    .upload(path, file, { contentType: file.type });
+  if (uploadError) return { ok: false, reason: "upload_failed" };
+
+  const { data: publicUrl } = supabase.storage.from("branding").getPublicUrl(path);
+
+  try {
+    await addCompanyGalleryPhoto(publicUrl.publicUrl);
+  } catch {
+    return { ok: false, reason: "upload_failed" };
+  }
+  revalidatePath("/recruit/company");
+  return { ok: true };
+}
+
+export async function removeGalleryPhotoAction(photoId: string) {
+  const url = await removeCompanyGalleryPhoto(photoId);
+  if (url) {
+    const marker = "/public/branding/";
+    const idx = url.indexOf(marker);
+    if (idx !== -1) {
+      const path = url.slice(idx + marker.length).split("?")[0];
+      const supabase = await createClient();
+      await supabase.storage.from("branding").remove([path]);
+    }
+  }
+  revalidatePath("/recruit/company");
 }

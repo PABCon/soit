@@ -27,7 +27,148 @@ export type MyCompany = {
   ad_credits_available: number;
   top_employer_active: boolean;
   top_employer_period_end: string | null;
+  about_us_text: string | null;
+  how_we_work_text: string | null;
+  benefits_text: string | null;
+  custom_section_title: string | null;
+  custom_section_body: string | null;
 };
+
+export type CompanyTeamMember = { id: string; name: string; role: string | null };
+export type CompanyTestimonial = { id: string; name: string; role: string | null; quote: string };
+export type CompanyGalleryPhoto = { id: string; url: string };
+export type CompanyGalleryVideo = { id: string; title: string; url: string };
+
+export type CompanyRichProfileLists = {
+  teamMembers: CompanyTeamMember[];
+  testimonials: CompanyTestimonial[];
+  galleryPhotos: CompanyGalleryPhoto[];
+  galleryVideos: CompanyGalleryVideo[];
+};
+
+/** Shared by the console page (always, so an owner can see/edit their own
+ *  data even while Top-Employer-gated and blurred) and `getCompanyBySlug`
+ *  (only when `top_employer_active`). All four tables are public-select, so
+ *  a plain scoped client is enough — no admin client needed. */
+async function fetchCompanyRichProfileLists(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  companyId: string,
+): Promise<CompanyRichProfileLists> {
+  const [team, testimonials, photos, videos] = await Promise.all([
+    supabase
+      .from("company_team_members")
+      .select("id, name, role")
+      .eq("company_id", companyId)
+      .order("created_at", { ascending: true }),
+    supabase
+      .from("company_testimonials")
+      .select("id, name, role, quote")
+      .eq("company_id", companyId)
+      .order("created_at", { ascending: true }),
+    supabase
+      .from("company_gallery_photos")
+      .select("id, url")
+      .eq("company_id", companyId)
+      .order("created_at", { ascending: true }),
+    supabase
+      .from("company_gallery_videos")
+      .select("id, title, url")
+      .eq("company_id", companyId)
+      .order("created_at", { ascending: true }),
+  ]);
+
+  return {
+    teamMembers: team.data ?? [],
+    testimonials: testimonials.data ?? [],
+    galleryPhotos: photos.data ?? [],
+    galleryVideos: videos.data ?? [],
+  };
+}
+
+export async function getMyCompanyRichProfile(companyId: string): Promise<CompanyRichProfileLists> {
+  const supabase = await createClient();
+  return fetchCompanyRichProfileLists(supabase, companyId);
+}
+
+/** Delete-then-reinsert — same convention as `job_tech_tags`/
+ *  `candidate_experience`: no explicit `position` column, order is array
+ *  order at save time + `order by created_at asc` on read. */
+export async function saveCompanyTeamMembers(members: { name: string; role: string | null }[]) {
+  const supabase = await createClient();
+  const { data: companyId } = await supabase.rpc("my_company_id");
+  if (!companyId) throw new Error("not an employer");
+
+  await supabase.from("company_team_members").delete().eq("company_id", companyId);
+  const rows = members.filter((m) => m.name.trim()).map((m) => ({
+    company_id: companyId,
+    name: m.name.trim(),
+    role: m.role?.trim() || null,
+  }));
+  if (rows.length > 0) {
+    const { error } = await supabase.from("company_team_members").insert(rows);
+    if (error) throw new Error(error.message);
+  }
+}
+
+export async function saveCompanyTestimonials(
+  testimonials: { name: string; role: string | null; quote: string }[],
+) {
+  const supabase = await createClient();
+  const { data: companyId } = await supabase.rpc("my_company_id");
+  if (!companyId) throw new Error("not an employer");
+
+  await supabase.from("company_testimonials").delete().eq("company_id", companyId);
+  const rows = testimonials
+    .filter((t) => t.name.trim() && t.quote.trim())
+    .map((t) => ({ company_id: companyId, name: t.name.trim(), role: t.role?.trim() || null, quote: t.quote.trim() }));
+  if (rows.length > 0) {
+    const { error } = await supabase.from("company_testimonials").insert(rows);
+    if (error) throw new Error(error.message);
+  }
+}
+
+export async function saveCompanyGalleryVideos(videos: { title: string; url: string }[]) {
+  const supabase = await createClient();
+  const { data: companyId } = await supabase.rpc("my_company_id");
+  if (!companyId) throw new Error("not an employer");
+
+  await supabase.from("company_gallery_videos").delete().eq("company_id", companyId);
+  const rows = videos
+    .filter((v) => v.title.trim() && v.url.trim())
+    .map((v) => ({ company_id: companyId, title: v.title.trim(), url: v.url.trim() }));
+  if (rows.length > 0) {
+    const { error } = await supabase.from("company_gallery_videos").insert(rows);
+    if (error) throw new Error(error.message);
+  }
+}
+
+/** Photo gallery rows are inserted one at a time (upload-then-insert), not
+ *  saved as a whole array like the other three — each "add" is an
+ *  immediate upload, not queued for a batch save (see
+ *  `uploadGalleryPhotoAction`). */
+export async function addCompanyGalleryPhoto(url: string) {
+  const supabase = await createClient();
+  const { data: companyId } = await supabase.rpc("my_company_id");
+  if (!companyId) throw new Error("not an employer");
+  const { error } = await supabase.from("company_gallery_photos").insert({ company_id: companyId, url });
+  if (error) throw new Error(error.message);
+}
+
+/** Returns the removed row's `url` (or `null` if nothing matched — RLS
+ *  scopes the delete to the caller's own company, so a foreign id is a
+ *  silent no-op, not an error) so the caller can also clean up the
+ *  underlying `branding` bucket object. */
+export async function removeCompanyGalleryPhoto(photoId: string): Promise<string | null> {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("company_gallery_photos")
+    .delete()
+    .eq("id", photoId)
+    .select("url")
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  return data?.url ?? null;
+}
 
 export type EmployerContext = {
   employerId: string;
@@ -83,9 +224,19 @@ export type PublicSocialLinks = {
 
 export type CompanyLocation = { name: string; latitude: number; longitude: number };
 
+export type PublicRichProfile = CompanyRichProfileLists & {
+  topEmployerActive: boolean;
+  aboutUsText: string | null;
+  howWeWorkText: string | null;
+  benefitsText: string | null;
+  customSectionTitle: string | null;
+  customSectionBody: string | null;
+};
+
 export async function getCompanyBySlug(slug: string): Promise<
   | (Company &
-      PublicSocialLinks & {
+      PublicSocialLinks &
+      PublicRichProfile & {
         description: string | null;
         website: string | null;
         industry: string | null;
@@ -101,7 +252,7 @@ export async function getCompanyBySlug(slug: string): Promise<
   const { data } = await supabase
     .from("companies")
     .select(
-      `slug, company_name, company_logo_url, cover_image_url, company_description, website, industry, company_size, company_type, address, locations ( name, latitude, longitude ), ${PUBLIC_SOCIAL_FIELDS}`,
+      `id, slug, company_name, company_logo_url, cover_image_url, company_description, website, industry, company_size, company_type, address, top_employer_active, about_us_text, how_we_work_text, benefits_text, custom_section_title, custom_section_body, locations ( name, latitude, longitude ), ${PUBLIC_SOCIAL_FIELDS}`,
     )
     .eq("slug", slug)
     .maybeSingle();
@@ -109,6 +260,15 @@ export async function getCompanyBySlug(slug: string): Promise<
   if (!data) return null;
 
   const location = data.locations as unknown as CompanyLocation | null;
+
+  // The rich-profile perk is Top-Employer-only: a non-subscriber's fields
+  // are fetched (they're not gated by a column grant, same convention as
+  // every other public profile field) but deliberately discarded here, so
+  // the public page's existing "omit when empty" rendering does the right
+  // thing with zero new conditional logic on that side.
+  const richLists = data.top_employer_active
+    ? await fetchCompanyRichProfileLists(supabase, data.id)
+    : { teamMembers: [], testimonials: [], galleryPhotos: [], galleryVideos: [] };
 
   return {
     slug: data.slug,
@@ -128,6 +288,13 @@ export async function getCompanyBySlug(slug: string): Promise<
     youtubeUrl: data.youtube_url,
     tiktokUrl: data.tiktok_url,
     xUrl: data.x_url,
+    topEmployerActive: data.top_employer_active,
+    aboutUsText: data.top_employer_active ? data.about_us_text : null,
+    howWeWorkText: data.top_employer_active ? data.how_we_work_text : null,
+    benefitsText: data.top_employer_active ? data.benefits_text : null,
+    customSectionTitle: data.top_employer_active ? data.custom_section_title : null,
+    customSectionBody: data.top_employer_active ? data.custom_section_body : null,
+    ...richLists,
   };
 }
 
@@ -204,6 +371,11 @@ export async function updateCompanyProfile(fields: {
   x_url: string | null;
   location_id: string | null;
   address: string | null;
+  about_us_text: string | null;
+  how_we_work_text: string | null;
+  benefits_text: string | null;
+  custom_section_title: string | null;
+  custom_section_body: string | null;
 }) {
   const supabase = await createClient();
   const { data: companyId } = await supabase.rpc("my_company_id");

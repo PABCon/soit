@@ -111,7 +111,14 @@ export async function CompanyProfileBody({ locale, slug }: { locale: string; slu
           </div>
         )}
 
-        <h1 className="font-display text-2xl font-bold">{company.name}</h1>
+        <div className="flex items-center justify-center gap-2">
+          <h1 className="font-display text-2xl font-bold">{company.name}</h1>
+          {company.topEmployerActive && (
+            <span className="rounded bg-amber-400/90 px-1.5 py-0.5 text-[10px] font-semibold tracking-wide text-ink uppercase">
+              {t("topEmployer")}
+            </span>
+          )}
+        </div>
 
         {company.description && (
           <p className="mt-3 max-w-2xl text-sm leading-relaxed text-muted">{company.description}</p>
@@ -140,6 +147,110 @@ export async function CompanyProfileBody({ locale, slug }: { locale: string; slu
           <div className="mt-4 overflow-hidden rounded-xl border border-line">
             <CompanyMap latitude={company.location.latitude} longitude={company.location.longitude} />
           </div>
+        </section>
+      )}
+
+      {company.aboutUsText && (
+        <section className="mt-10">
+          <h2 className="font-display text-lg font-semibold">{t("aboutUs")}</h2>
+          <p className="mt-2 max-w-2xl text-sm leading-relaxed whitespace-pre-line text-muted">
+            {company.aboutUsText}
+          </p>
+        </section>
+      )}
+
+      {company.howWeWorkText && (
+        <section className="mt-10">
+          <h2 className="font-display text-lg font-semibold">{t("howWeWork")}</h2>
+          <p className="mt-2 max-w-2xl text-sm leading-relaxed whitespace-pre-line text-muted">
+            {company.howWeWorkText}
+          </p>
+        </section>
+      )}
+
+      {company.benefitsText && (
+        <section className="mt-10">
+          <h2 className="font-display text-lg font-semibold">{t("benefits")}</h2>
+          <p className="mt-2 max-w-2xl text-sm leading-relaxed whitespace-pre-line text-muted">
+            {company.benefitsText}
+          </p>
+        </section>
+      )}
+
+      {company.teamMembers.length > 0 && (
+        <section className="mt-10">
+          <h2 className="font-display text-lg font-semibold">{t("ourTeam")}</h2>
+          <ul className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-3">
+            {company.teamMembers.map((m) => (
+              <li key={m.id} className="rounded-xl border border-line bg-white px-4 py-3 text-center">
+                <p className="text-sm font-semibold text-ink">{m.name}</p>
+                {m.role && <p className="mt-0.5 text-xs text-muted">{m.role}</p>}
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {company.testimonials.length > 0 && (
+        <section className="mt-10">
+          <h2 className="font-display text-lg font-semibold">{t("testimonials")}</h2>
+          <ul className="mt-4 grid gap-4 sm:grid-cols-2">
+            {company.testimonials.map((x) => (
+              <li key={x.id} className="rounded-xl border border-line bg-white p-4">
+                <p className="text-sm text-ink italic">&ldquo;{x.quote}&rdquo;</p>
+                <p className="mt-2 text-xs font-semibold text-muted">
+                  {x.name}
+                  {x.role ? ` · ${x.role}` : ""}
+                </p>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {company.galleryPhotos.length > 0 && (
+        <section className="mt-10">
+          <h2 className="font-display text-lg font-semibold">{t("photoGallery")}</h2>
+          <ul className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+            {company.galleryPhotos.map((p) => (
+              <li key={p.id} className="aspect-square overflow-hidden rounded-lg border border-line">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={p.url} alt="" className="h-full w-full object-cover" />
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {company.galleryVideos.length > 0 && (
+        <section className="mt-10">
+          <h2 className="font-display text-lg font-semibold">{t("videoGallery")}</h2>
+          <ul className="mt-4 flex flex-col gap-2">
+            {company.galleryVideos.map((v) => (
+              <li key={v.id}>
+                <a
+                  href={v.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex items-center gap-2 rounded-lg border border-line bg-white px-3 py-2 text-sm text-pine hover:bg-paper"
+                >
+                  <svg viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4 shrink-0">
+                    <path d="M8 5.5v13l11-6.5-11-6.5Z" />
+                  </svg>
+                  {v.title}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {company.customSectionTitle && company.customSectionBody && (
+        <section className="mt-10">
+          <h2 className="font-display text-lg font-semibold">{company.customSectionTitle}</h2>
+          <p className="mt-2 max-w-2xl text-sm leading-relaxed whitespace-pre-line text-muted">
+            {company.customSectionBody}
+          </p>
         </section>
       )}
 
