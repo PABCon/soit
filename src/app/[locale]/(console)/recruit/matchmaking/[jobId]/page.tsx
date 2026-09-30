@@ -3,6 +3,8 @@ import { getTranslations, getFormatter, setRequestLocale } from "next-intl/serve
 import { Link } from "@/i18n/navigation";
 import { getCandidateMatchesForJob, type CandidateMatch } from "@/lib/db/candidate-matches";
 import { TechTags } from "@/components/TechTags";
+import { StartThreadButton } from "@/components/StartThreadButton";
+import { startMatchThreadAction } from "./actions";
 
 type Props = { params: Promise<{ locale: string; jobId: string }> };
 type T = Awaited<ReturnType<typeof getTranslations>>;
@@ -22,11 +24,13 @@ function salaryRangeLabel(min: number, max: number, period: string, format: Form
 
 function MatchCard({
   match,
+  jobId,
   format,
   t,
   tJobForm,
 }: {
   match: CandidateMatch;
+  jobId: string;
   format: Formatter;
   t: T;
   tJobForm: T;
@@ -60,6 +64,12 @@ function MatchCard({
             {salaryRangeLabel(match.desiredSalary.min, match.desiredSalary.max, match.desiredSalary.period, format, tJobForm)}
           </p>
         )}
+        <div className="mt-2">
+          <StartThreadButton
+            redirectBase="/recruit/messages"
+            onSend={startMatchThreadAction.bind(null, match.candidateId, jobId)}
+          />
+        </div>
       </div>
     </li>
   );
@@ -114,7 +124,7 @@ export default async function JobMatchesPage({ params }: Props) {
       ) : (
         <ul className="mt-6 border-t border-line">
           {result.matches.map((match) => (
-            <MatchCard key={match.candidateId} match={match} format={format} t={t} tJobForm={tJobForm} />
+            <MatchCard key={match.candidateId} match={match} jobId={jobId} format={format} t={t} tJobForm={tJobForm} />
           ))}
         </ul>
       )}

@@ -489,8 +489,18 @@ can't drift apart). Messaging and identity-unlock-on-reply are a
 deliberately separate phase B — not built yet, and not promised as if
 they were.
 
-Next up: phase B of matching (messaging + identity unlock), Top
-Employer's badge/site-wide placement and rich company profile (phases
-3-4), then connecting a real domain + email provider (unblocks both the
-application-email flow and real saved-search notifications) and step 9
-(SEO check, compliance, polish) (see `CLAUDE.md`).
+**Matching phase B shipped**: direct messaging, unifying two real needs
+into one system — blind matching outreach (identity unlocks only once
+the candidate replies) and direct contact with an already-applied
+candidate (identity known from the start). New inboxes on both sides
+(`/recruit/messages`, `/messages`), unread badges, notification emails.
+Verified live with the full two-origin loop: a blinded match stayed
+fully anonymous until the candidate's own reply flipped it, an applicant
+thread was unlocked from the first message, checked directly against
+the raw HTML response for any identity leak.
+
+Next up: Top Employer's badge/site-wide placement and rich company
+profile (phases 3-4), then connecting a real domain + email provider
+(unblocks both the application-email flow and real saved-search
+notifications) and step 9 (SEO check, compliance, polish) (see
+`CLAUDE.md`).

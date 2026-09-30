@@ -28,6 +28,7 @@
     "recommendations": "Jobs matched to you",
     "offers": "Offers",
     "applications": "Applications",
+    "communication": "Messages",
     "companies": "Companies",
     "favorites": "Favorites",
     "profile": "Profile",
@@ -52,6 +53,7 @@
     "empty": "You have not published any job ads yet.",
     "matchmaking": "Matchmaking",
     "matchmakingSubtitle": "Candidates matched to your live job ads — ranked by fit, shown anonymously.",
+    "messages": "Messages",
     "matchmakingUpsell": "Matching is included with any paid job ad — buy ad credits or subscribe to Top Employer to see matched candidates.",
     "matchCount": "{count, plural, =0 {No matches yet} one {# match} other {# matches}}",
     "noMatchesYet": "No candidates match this job closely yet — check back as more candidates join.",
@@ -503,6 +505,18 @@
       "rejected": "Rejected",
       "closed": "Closed"
     }
+  },
+  "messaging": {
+    "inboxTitle": "Messages",
+    "noThreads": "No conversations yet.",
+    "candidateAnonymous": "Candidate",
+    "notEmployer": "You don't have an employer profile for this company.",
+    "message": "Message",
+    "messagePlaceholder": "Write a message…",
+    "send": "Send",
+    "sending": "Sending…",
+    "cancel": "Cancel",
+    "errorGeneric": "Something went wrong. Try again."
   },
   "profile": {
     "title": "My profile",

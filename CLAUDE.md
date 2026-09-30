@@ -2853,3 +2853,71 @@ candidate identity string (name, email) — none present; the one
 in their nav avatar, not a leak. Fixtures (companies, jobs, candidates,
 including an orphaned company from a failed fixture-script attempt
 earlier — swept up in the same cleanup pass) removed afterward.
+
+## Direct messaging — matching outreach + applicant contact
+
+Your framing, and the right one: matching phase B (blind outreach,
+identity unlocking on reply) and direct applicant contact (a real,
+previously-missing capability — the only "contact" an employer had with
+an applicant before this was changing their status) are the same
+underlying thing, one thread of messages between a company and a
+candidate about a job, differing only in whether identity is visible
+from the start. Built as one system.
+
+**Data model**: `message_threads`/`messages`, RLS mirroring
+`applications`' existing employer/candidate split exactly. Deliberately
+carries **zero candidate PII on either table** — blinding lives entirely
+in `src/lib/db/messaging.ts`'s application code, the same
+admin-client-scoped-in-code discipline `candidate-matches.ts`/
+`applications.ts` already established, never a new RLS policy reaching
+into `candidates`. `identity_unlocked`/`last_message_at` have no column
+grant for either role at all — only the admin client can touch them,
+since they're server-computed state, not something either party
+directly controls.
+
+**The actual unlock moment**: `sendMessage()` is the single place
+`messages` ever gets written, for both roles. If the sender is a
+candidate, the thread's `origin` is `'match'`, and it's still locked,
+the flip to `identity_unlocked = true` happens in the same call —
+permanent, one-way. One notification email template
+(`new-message.ts`), parameterized by recipient role, covers both real
+moments from the reference doc: a candidate's first look at outreach,
+and an employer learning a blinded match finally replied.
+
+**A real bug caught by live verification, not a design flaw**: passing
+`onSend={(body) => someServerAction(threadId, body)}` as a prop from a
+Server Component to the new Client Components (`StartThreadButton`,
+`ThreadReplyBox`) crashed with "Event handlers cannot be passed to
+Client Component props" — a plain closure isn't a valid serializable
+reference across that boundary, even when it wraps a real server
+action. Fixed with `.bind(null, ...)` instead
+(`startMatchThreadAction.bind(null, candidateId, jobId)`,
+`sendEmployerMessageAction.bind(null, threadId)`) — a bound server
+action *is* a valid reference. The same components used from
+already-`"use client"` parents (`ApplicantsList.tsx`) never hit this,
+since no server/client boundary is crossed there — worth remembering
+for the next server-component caller of either component.
+
+New entry points, not new pages of their own: a "Message" button on
+every applicant row (`ApplicantsList.tsx`/`AllApplicantsList.tsx`) and
+on every blinded match card (`matchmaking/[jobId]/page.tsx`). New
+inboxes: `/recruit/messages` (+`[threadId]`) and `/messages`
+(+`[threadId]`, candidate-side — `Rail.tsx`'s `communication` entry,
+named in the original MVP spec's "later" list but never actually built
+as a disabled placeholder until now). Unread-count badges on
+`Sidebar.tsx`/`Rail.tsx`, computed in each layout server-side and passed
+down as a prop — the first badge UI anywhere in this codebase.
+
+**Verified live on localhost**, the full two-origin loop with real
+fixtures: an employer messaged a real applicant — unlocked from the
+first message, as designed; separately, messaged a blinded match
+candidate — confirmed "Candidato" everywhere (inbox list, thread header,
+raw HTML) with zero trace of the real name; logged in as that candidate,
+confirmed they saw the *real* company name and job title immediately
+(never blinded on their side) and replied; confirmed the reply flipped
+`identity_unlocked` in the database and the employer's inbox/thread
+immediately showed the real name; confirmed both notification emails
+fired (visible in the console-log email provider's output) in both
+directions; confirmed the employer's unread-count badge appeared after
+the candidate's reply and cleared after reading. Fixtures (companies,
+jobs, applications, candidates, threads) cleaned up.

@@ -4,6 +4,7 @@ import { redirect } from "@/i18n/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { verifyCompany } from "@/lib/verification/verify-company";
+import { getMyEmployerUnreadThreadCount } from "@/lib/db/messaging";
 import { Sidebar } from "@/components/console/Sidebar";
 import { ConsoleTopNav } from "@/components/console/ConsoleTopNav";
 
@@ -61,6 +62,7 @@ export default async function ConsoleLayout({ children, params }: Props) {
   }
 
   const metadata = user!.user_metadata as { full_name?: string; avatar_url?: string } | undefined;
+  const unreadMessageCount = await getMyEmployerUnreadThreadCount();
 
   return (
     <div className="flex min-h-dvh flex-col">
@@ -70,7 +72,7 @@ export default async function ConsoleLayout({ children, params }: Props) {
         email={user!.email ?? ""}
       />
       <div className="flex flex-1 flex-col md:flex-row">
-        <Sidebar />
+        <Sidebar unreadMessageCount={unreadMessageCount} />
         <main className="min-w-0 flex-1 px-4 py-8 md:px-8">{children}</main>
       </div>
     </div>

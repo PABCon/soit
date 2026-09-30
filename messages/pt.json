@@ -28,6 +28,7 @@
     "recommendations": "Vagas à sua medida",
     "offers": "Vagas",
     "applications": "Candidaturas",
+    "communication": "Mensagens",
     "companies": "Empresas",
     "favorites": "Favoritos",
     "profile": "Perfil",
@@ -52,6 +53,7 @@
     "empty": "Ainda não tem vagas publicadas.",
     "matchmaking": "Matchmaking",
     "matchmakingSubtitle": "Candidatos correspondentes às suas vagas ativas — ordenados por compatibilidade, mostrados de forma anónima.",
+    "messages": "Mensagens",
     "matchmakingUpsell": "O Matchmaking está incluído em qualquer anúncio pago — compre créditos de anúncio ou subscreva o Top Employer para ver candidatos correspondentes.",
     "matchCount": "{count, plural, =0 {Ainda sem correspondências} one {# correspondência} other {# correspondências}}",
     "noMatchesYet": "Ainda não há candidatos muito compatíveis com esta vaga — volte a verificar à medida que mais candidatos se juntam.",
@@ -503,6 +505,18 @@
       "rejected": "Rejeitado",
       "closed": "Fechado"
     }
+  },
+  "messaging": {
+    "inboxTitle": "Mensagens",
+    "noThreads": "Ainda não há conversas.",
+    "candidateAnonymous": "Candidato",
+    "notEmployer": "Não tem um perfil de empresa associado.",
+    "message": "Mensagem",
+    "messagePlaceholder": "Escreva uma mensagem…",
+    "send": "Enviar",
+    "sending": "A enviar…",
+    "cancel": "Cancelar",
+    "errorGeneric": "Algo correu mal. Tente novamente."
   },
   "profile": {
     "title": "O meu perfil",

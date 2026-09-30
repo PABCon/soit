@@ -6,6 +6,7 @@ import { Link } from "@/i18n/navigation";
 const MVP = [
   { key: "myJobAds", href: "/recruit" },
   { key: "matchmaking", href: "/recruit/matchmaking" },
+  { key: "messages", href: "/recruit/messages" },
   { key: "pricing", href: "/recruit/jobs/ads" },
   { key: "applicants", href: "/recruit/applicants" },
   { key: "companyProfile", href: "/recruit/company" },
@@ -19,7 +20,7 @@ const LATER = ["myProducts"] as const;
 /** Employer console sidebar (§7.2) — its own navigation, not the candidate
  *  rail. Identity (avatar) and locale live in `ConsoleTopNav` above this,
  *  not here — this is nav links only. */
-export function Sidebar() {
+export function Sidebar({ unreadMessageCount = 0 }: { unreadMessageCount?: number }) {
   const t = useTranslations("console");
 
   return (
@@ -29,9 +30,14 @@ export function Sidebar() {
           <Link
             key={key}
             href={href}
-            className="shrink-0 rounded-lg px-2 py-2 text-sm whitespace-nowrap text-ink hover:bg-paper"
+            className="flex shrink-0 items-center gap-2 rounded-lg px-2 py-2 text-sm whitespace-nowrap text-ink hover:bg-paper"
           >
             {t(key)}
+            {key === "messages" && unreadMessageCount > 0 && (
+              <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-pine px-1 text-[11px] font-semibold text-white">
+                {unreadMessageCount}
+              </span>
+            )}
           </Link>
         ))}
         {LATER.map((key) => (

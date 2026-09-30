@@ -1,6 +1,7 @@
 import { setRequestLocale } from "next-intl/server";
 import { redirect } from "@/i18n/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getMyCandidateUnreadThreadCount } from "@/lib/db/messaging";
 import { Rail } from "@/components/candidate/Rail";
 import { TopNav } from "@/components/candidate/TopNav";
 import { CvOnboardingPrompt } from "@/components/candidate/CvOnboardingPrompt";
@@ -32,6 +33,7 @@ export default async function CandidateLayout({
   // broken/stale session cookie must never 500 it for an anonymous visitor
   // — worst case here is just skipping the redirect, not crashing the page.
   let blockEmployer = false;
+  let unreadMessageCount = 0;
   try {
     const supabase = await createClient();
     const {
@@ -43,6 +45,7 @@ export default async function CandidateLayout({
         supabase.from("candidates").select("id").eq("auth_user_id", user.id).maybeSingle(),
       ]);
       blockEmployer = !!employer && !candidate;
+      if (candidate) unreadMessageCount = await getMyCandidateUnreadThreadCount();
     }
   } catch {
     blockEmployer = false;
@@ -54,7 +57,7 @@ export default async function CandidateLayout({
       {/* Rail is always `fixed` now — a floating trigger + popover, never a
        *  layout-affecting sidebar — so it's just an overlay here, not a
        *  flex sibling the content column has to share width with. */}
-      <Rail />
+      <Rail unreadMessageCount={unreadMessageCount} />
       <TopNav />
       <CvOnboardingPrompt />
       <main className="mx-auto w-full max-w-[1600px] flex-1 px-4 py-8 sm:px-6">

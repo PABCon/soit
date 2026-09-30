@@ -32,6 +32,12 @@ const ITEMS: Item[] = [
   },
   { key: "offers", href: "/jobs", icon: icon("M4 7h16M4 12h16M4 17h10"), mvp: true },
   { key: "applications", href: "/applications", icon: icon("M9 5h6m-7 4h8m-8 4h8m-8 4h5M5 3h14v18H5Z"), mvp: true },
+  {
+    key: "communication",
+    href: "/messages",
+    icon: icon("M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2Z"),
+    mvp: true,
+  },
   { key: "companies", href: "/companies", icon: icon("M3 21h18M5 21V7l7-4 7 4v14M9 10h2m2 0h2m-6 4h2m2 0h2"), mvp: true },
   { key: "favorites", href: "/favorites", icon: icon("m12 20-7-7a4 4 0 0 1 7-5 4 4 0 0 1 7 5Z"), mvp: true },
   { key: "profile", href: "/profile", icon: icon("M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm-8 8a8 8 0 0 1 16 0"), mvp: true },
@@ -47,7 +53,7 @@ const ITEMS: Item[] = [
  *  sidebar; a momentary popover doesn't need to remember anything across
  *  page loads — it always starts closed). Closes on outside click/Escape
  *  via the shared useClickOutside hook, and on picking an item. */
-export function Rail() {
+export function Rail({ unreadMessageCount = 0 }: { unreadMessageCount?: number }) {
   const t = useTranslations("rail");
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
@@ -104,7 +110,14 @@ export function Rail() {
                 }`}
               >
                 {item.icon}
-                <span className="text-sm font-medium whitespace-nowrap">{t(item.key)}</span>
+                <span className="flex flex-1 items-center justify-between gap-2 text-sm font-medium whitespace-nowrap">
+                  {t(item.key)}
+                  {item.key === "communication" && unreadMessageCount > 0 && (
+                    <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-pine px-1 text-[11px] font-semibold text-white">
+                      {unreadMessageCount}
+                    </span>
+                  )}
+                </span>
               </Link>
             );
           })}

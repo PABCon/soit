@@ -2,7 +2,8 @@
 
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
-import { updateStatusAction } from "@/app/[locale]/(console)/recruit/jobs/[id]/applicants/actions";
+import { updateStatusAction, startApplicantThreadAction } from "@/app/[locale]/(console)/recruit/jobs/[id]/applicants/actions";
+import { StartThreadButton } from "@/components/StartThreadButton";
 import type { Applicant, MyApplication } from "@/lib/db/applications";
 
 const STATUSES: MyApplication["status"][] = ["applied", "viewed", "responded", "rejected", "closed"];
@@ -41,6 +42,10 @@ export function ApplicantsList({ jobId, applicants }: { jobId: string; applicant
           ) : (
             <span className="shrink-0 text-sm text-muted">{t("cvUnavailable")}</span>
           )}
+          <StartThreadButton
+            redirectBase="/recruit/messages"
+            onSend={(body) => startApplicantThreadAction(a.id, body)}
+          />
           <select
             defaultValue={a.status}
             onChange={(e) => handleStatusChange(a.id, e.target.value as MyApplication["status"])}
