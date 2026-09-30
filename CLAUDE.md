@@ -2704,3 +2704,61 @@ both fixes: real Stripe Checkout redirect worked, and the webhook,
 tested against the *production* signing secret (a separate registered
 endpoint + secret from local dev's `stripe listen` one), correctly
 granted a credit. Fixtures cleaned up on both environments.
+
+## Employer pricing & billing, phase 2: Top Employer subscription + a real pricing-page redesign
+
+Direct, sharp feedback on the phase-1 page: no discount highlighted, no
+perk descriptions, no free tier shown, no Top Employer at all, and a
+"contact us for volume pricing" line with no actual link. Took it as a
+real quality bar to fix, not just a nice-to-have — rebuilt the page
+properly rather than patching around the edges.
+
+**Redesign** (`recruit/jobs/ads/page.tsx`, `AdCreditPacks.tsx`, new
+`TopEmployerCard.tsx`): a free-tier info card up top (no button — just
+what it is); each ad pack now shows a real discount badge (−24%/−34%/
+−42%, computed against the 1-ad price) and a perk bullet list (bump
+credits, the salary-hide/auto-boost tradeoff, the 30-day/whenever-you-
+want redemption); "talk to sales" is now a real `Link` to the already-
+shipped `/recruit/contact` page. Top Employer gets its own section: full
+perk list, a monthly/annual toggle with a "Save 15%" badge, the real
+price, and an "Active" state once subscribed (subscribe UI hides itself
+rather than staying clickable).
+
+**This also completed phase 2's actual checkout/webhook scope**, not
+just the page — building the UI made it obvious the "where do I even
+subscribe" gap was the bigger problem, so `createTopEmployerCheckoutAction`
+(Stripe Checkout, `mode: "subscription"`, referencing the
+`top_employer_monthly`/`top_employer_annual` lookup-keyed Prices already
+provisioned in phase 1's setup script) and the webhook's subscription
+lifecycle shipped together. The lifecycle resolution is worth noting:
+`checkout.session.completed` (mode=subscription) activates from the
+session's `client_reference_id`, but `customer.subscription.updated`/
+`.deleted` — the events that actually matter for renewals and
+cancellations — don't carry the checkout session at all, so those
+resolve through `subscription.metadata.company_id`, set once at
+creation via `subscription_data.metadata` on the Checkout Session. A
+`TOP_EMPLOYER_ACTIVE_STATUSES` allowlist (`active`/`trialing`/
+`past_due`) gives a grace period on a missed payment rather than
+revoking on the very first failure, matching common SaaS practice.
+`current_period_end` lives on the subscription's line item in this API
+version, not the subscription object itself — confirmed against the
+installed SDK's own type definitions rather than assumed from memory,
+since Stripe has moved this field around across API versions.
+
+**Verified live on both environments**, real subscriptions throughout
+(not hand-built fake events): created a genuine test-mode Stripe
+subscription via the API with a real attached payment method, activated
+it through the actual webhook (triggered by a real
+`checkout.session.completed`-shaped call referencing that real
+subscription), confirmed `top_employer_active` flipped true with the
+correct `current_period_end`; then canceled the real subscription via
+the Stripe API and confirmed — on localhost through the live
+`stripe listen` forwarder, and separately on production through the
+*real* registered webhook endpoint (whose event list had to be updated
+to add the two subscription events, initially registered with only the
+checkout ones from phase 1) — that `customer.subscription.deleted`
+correctly flipped `top_employer_active` back to false through the real
+webhook delivery, not a simulated one. The subscribe Checkout page
+itself rendered correctly on both environments too (€5,967.00/year,
+"€497.25/month billed annually", the real Product description).
+Fixtures (companies, Stripe customers/subscriptions) cleaned up on both.

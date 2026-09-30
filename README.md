@@ -469,7 +469,17 @@ same as always; publishing more spends a purchased credit. Hiding the
 salary publicly is now a paid-tier-only choice — the free tier's salary
 stays mandatory and public, unchanged.
 
-Next up: Top Employer's own subscription (phases 2-4), then connecting a
-real domain + email provider (unblocks both the application-email flow
-and real saved-search notifications) and step 9 (SEO check, compliance,
-polish) (see `CLAUDE.md`).
+**Phase 2 shipped**: real, direct feedback that the pricing page was
+"extremely poor" (no discounts highlighted, no perk descriptions, no
+free tier shown, no Top Employer at all, a dead-end "contact us") led to
+a full redesign — discount badges, perk bullets, a real contact link —
+and, alongside it, Top Employer's actual subscription checkout and
+webhook lifecycle (real Stripe subscriptions, verified activating and
+canceling correctly on both localhost and production, the latter
+through the real registered webhook, not a simulation).
+
+Next up: Top Employer's badge/site-wide placement, the rich company
+profile, and API access (phases 3-4), then connecting a real domain +
+email provider (unblocks both the application-email flow and real
+saved-search notifications) and step 9 (SEO check, compliance, polish)
+(see `CLAUDE.md`).
