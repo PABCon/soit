@@ -2,7 +2,32 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { slugify } from "@/lib/slug";
 import type { Job, SkillLevel } from "@/lib/types";
-import { getMyEmployerContext } from "./companies";
+import { getMyEmployerContext, type MyCompany } from "./companies";
+
+/** An API-key-authenticated request has no cookie session at all — only
+ *  the caller's already-verified `companyId` (from
+ *  `authenticateApiRequest`). `saveJob`/`setJobStatus`/`deleteJob` each
+ *  accept this as an optional override; with no override they behave
+ *  exactly as before (the one console call site never passes one). */
+export type JobWriteOverride = { companyId: string };
+
+type JobWriteContext = {
+  supabase: Awaited<ReturnType<typeof createClient>> | ReturnType<typeof createAdminClient>;
+  employerId: string | null;
+  company: MyCompany;
+};
+
+async function resolveJobWriteContext(override?: JobWriteOverride): Promise<JobWriteContext | null> {
+  if (override) {
+    const admin = createAdminClient();
+    const { data: company } = await admin.from("companies").select("*").eq("id", override.companyId).maybeSingle();
+    if (!company) return null;
+    return { supabase: admin, employerId: null, company: company as MyCompany };
+  }
+  const ctx = await getMyEmployerContext();
+  if (!ctx) return null;
+  return { supabase: await createClient(), employerId: ctx.employerId, company: ctx.company };
+}
 
 export const SELECT = `
   id, slug, title, description, language, seniority, work_model, location,
@@ -249,7 +274,7 @@ export type JobFormInput = {
   salaryPublic: boolean;
 };
 
-export type SaveResult = { slug: string; published: boolean; message?: string };
+export type SaveResult = { id: string; slug: string; published: boolean; message?: string };
 
 /** How many of this company's OTHER jobs are currently live (published,
  *  not expired) — "other" so editing an already-published job doesn't
@@ -283,11 +308,15 @@ async function countOtherLiveJobs(
  *  active Top Employer subscription) — not tied to which specific slot
  *  this job happens to occupy, so a paying company's "free" first job can
  *  hide its salary too, same as any of its others. */
-export async function saveJob(jobId: string | null, input: JobFormInput): Promise<SaveResult> {
-  const ctx = await getMyEmployerContext();
-  if (!ctx) throw new Error("Not an employer");
+export async function saveJob(
+  jobId: string | null,
+  input: JobFormInput,
+  override?: JobWriteOverride,
+): Promise<SaveResult> {
+  const resolved = await resolveJobWriteContext(override);
+  if (!resolved) throw new Error("Not an employer");
+  const { supabase, employerId, company } = resolved;
 
-  const supabase = await createClient();
   const isRemote = input.workModel === "remote";
 
   let location: string | null = null;
@@ -307,13 +336,13 @@ export async function saveJob(jobId: string | null, input: JobFormInput): Promis
   }
 
   const wantsPublish = input.publish;
-  const isVerified = ctx.company.verification_status === "verified";
+  const isVerified = company.verification_status === "verified";
 
-  const liveCount = await countOtherLiveJobs(supabase, ctx.company.id, jobId);
-  const isPayingCustomer = ctx.company.ad_credits_available > 0 || ctx.company.top_employer_active;
-  const effectiveFreeCap = ctx.company.top_employer_active ? 10 : 1;
+  const liveCount = await countOtherLiveJobs(supabase, company.id, jobId);
+  const isPayingCustomer = company.ad_credits_available > 0 || company.top_employer_active;
+  const effectiveFreeCap = company.top_employer_active ? 10 : 1;
   const canPublishFree = liveCount < effectiveFreeCap;
-  const canPublishWithCredit = ctx.company.ad_credits_available > 0;
+  const canPublishWithCredit = company.ad_credits_available > 0;
   const canPublish = isVerified && (canPublishFree || canPublishWithCredit);
   const willPublish = wantsPublish && canPublish;
   const consumesCredit = willPublish && !canPublishFree;
@@ -341,7 +370,7 @@ export async function saveJob(jobId: string | null, input: JobFormInput): Promis
   const autoBoost = isNewPublish && isPayingCustomer && salaryPublic;
 
   const base = {
-    company_id: ctx.company.id,
+    company_id: company.id,
     title: input.title,
     description: input.description,
     language: input.language,
@@ -378,7 +407,7 @@ export async function saveJob(jobId: string | null, input: JobFormInput): Promis
   } else {
     const { data, error } = await supabase
       .from("jobs")
-      .insert({ ...base, slug: slugify(input.title), created_by: ctx.employerId })
+      .insert({ ...base, slug: slugify(input.title), created_by: employerId })
       .select("id, slug")
       .single();
     if (error) throw new Error(error.message);
@@ -391,8 +420,8 @@ export async function saveJob(jobId: string | null, input: JobFormInput): Promis
     // cheaper than a raw SQL decrement RPC, and sufficient at this volume.
     await admin
       .from("companies")
-      .update({ ad_credits_available: ctx.company.ad_credits_available - 1 })
-      .eq("id", ctx.company.id)
+      .update({ ad_credits_available: company.ad_credits_available - 1 })
+      .eq("id", company.id)
       .gt("ad_credits_available", 0);
   }
 
@@ -422,6 +451,7 @@ export async function saveJob(jobId: string | null, input: JobFormInput): Promis
   const { data: saved } = await supabase.from("jobs").select("slug").eq("id", id).single();
 
   return {
+    id: id!,
     slug: saved!.slug,
     published: willPublish,
     message: wantsPublish && !willPublish ? (isVerified ? "noAdCredits" : "notVerified") : undefined,
@@ -441,27 +471,30 @@ export type SetStatusResult = { ok: boolean; message?: string };
  *  production, so a message the UI needs to read back has to travel as a
  *  normal return value, same convention `saveJob`'s `SaveResult` already
  *  uses for "notVerified". */
-export async function setJobStatus(jobId: string, status: "inactive" | "published"): Promise<SetStatusResult> {
-  const ctx = await getMyEmployerContext();
-  if (!ctx) throw new Error("Not an employer");
-
-  const supabase = await createClient();
+export async function setJobStatus(
+  jobId: string,
+  status: "inactive" | "published",
+  override?: JobWriteOverride,
+): Promise<SetStatusResult> {
+  const resolved = await resolveJobWriteContext(override);
+  if (!resolved) throw new Error("Not an employer");
+  const { supabase, company } = resolved;
 
   if (status === "inactive") {
     const { error } = await supabase
       .from("jobs")
       .update({ status: "inactive" })
       .eq("id", jobId)
-      .eq("company_id", ctx.company.id);
+      .eq("company_id", company.id);
     if (error) throw new Error(error.message);
     return { ok: true };
   }
 
-  const liveCount = await countOtherLiveJobs(supabase, ctx.company.id, jobId);
-  const isPayingCustomer = ctx.company.ad_credits_available > 0 || ctx.company.top_employer_active;
-  const effectiveFreeCap = ctx.company.top_employer_active ? 10 : 1;
+  const liveCount = await countOtherLiveJobs(supabase, company.id, jobId);
+  const isPayingCustomer = company.ad_credits_available > 0 || company.top_employer_active;
+  const effectiveFreeCap = company.top_employer_active ? 10 : 1;
   const canPublishFree = liveCount < effectiveFreeCap;
-  const canPublishWithCredit = ctx.company.ad_credits_available > 0;
+  const canPublishWithCredit = company.ad_credits_available > 0;
   if (!(canPublishFree || canPublishWithCredit)) return { ok: false, message: "noAdCredits" };
   const consumesCredit = !canPublishFree;
 
@@ -482,15 +515,15 @@ export async function setJobStatus(jobId: string, status: "inactive" | "publishe
       bump_credits_remaining: consumesCredit ? 2 : 0,
     })
     .eq("id", jobId)
-    .eq("company_id", ctx.company.id);
+    .eq("company_id", company.id);
   if (error) throw new Error(error.message);
 
   if (consumesCredit) {
     const admin = createAdminClient();
     await admin
       .from("companies")
-      .update({ ad_credits_available: ctx.company.ad_credits_available - 1 })
-      .eq("id", ctx.company.id)
+      .update({ ad_credits_available: company.ad_credits_available - 1 })
+      .eq("id", company.id)
       .gt("ad_credits_available", 0);
   }
 
@@ -501,16 +534,16 @@ export async function setJobStatus(jobId: string, status: "inactive" | "publishe
  *  `applications.job_id ... on delete restrict`) — close/pause it instead.
  *  This only ever gets a real chance to run against a draft in the console
  *  UI, but the ownership check + DB constraint hold regardless of tab. */
-export async function deleteJob(jobId: string): Promise<void> {
-  const ctx = await getMyEmployerContext();
-  if (!ctx) throw new Error("Not an employer");
+export async function deleteJob(jobId: string, override?: JobWriteOverride): Promise<void> {
+  const resolved = await resolveJobWriteContext(override);
+  if (!resolved) throw new Error("Not an employer");
+  const { supabase, company } = resolved;
 
-  const supabase = await createClient();
   const { error } = await supabase
     .from("jobs")
     .delete()
     .eq("id", jobId)
-    .eq("company_id", ctx.company.id);
+    .eq("company_id", company.id);
   if (error) throw new Error(error.message);
 }
 
@@ -637,4 +670,143 @@ export async function getBrowseJobs(params: {
       ? []
       : sortForFeed(data as unknown as JobRow[]).map((row) => hideSalaryIfPrivate(row, toJob(row)));
   return { jobs, locationName, facetKind, facetSlug: params.facetSlug ?? null, facetLabel };
+}
+
+// ── API (billing phase 4 — "API access for programmatic job posting") ──────
+// The public API deliberately speaks in slugs, never internal UUIDs — an
+// external integrator shouldn't need to know this product's ids, only what
+// `GET /api/v1/reference` hands them. Both reads below explicitly filter by
+// `companyId` in code (never trusting RLS alone) — same convention every
+// other write in this file already follows; `getJobForEdit` is NOT reused
+// here for exactly that reason, since it trusts RLS instead.
+
+export type ApiJobSummary = {
+  id: string;
+  slug: string;
+  title: string;
+  status: JobRow["status"];
+  language: "pt" | "en";
+  publishedAt: string | null;
+  expiresAt: string | null;
+  path: string;
+};
+
+export async function getAllCompanyJobsForApi(companyId: string): Promise<ApiJobSummary[]> {
+  // Admin client, not the cookie-bound one: an API-key request has no
+  // Supabase auth session at all, so it hits `jobs`' anon-role RLS policy,
+  // which only exposes published-and-unexpired rows (§5.5) — a draft or
+  // paused job would silently vanish. The admin client bypasses RLS; the
+  // `.eq("company_id", companyId)` below is the real security boundary,
+  // same convention every cross-session read in this codebase already uses.
+  const supabase = createAdminClient();
+  const { data } = await supabase
+    .from("jobs")
+    .select("id, slug, title, status, language, published_at, expires_at")
+    .eq("company_id", companyId)
+    .order("created_at", { ascending: false });
+
+  return (data ?? []).map((row) => ({
+    id: row.id,
+    slug: row.slug,
+    title: row.title,
+    status: row.status,
+    language: row.language,
+    publishedAt: row.published_at,
+    expiresAt: row.expires_at,
+    path: `/${row.language}/jobs/${row.slug}`,
+  }));
+}
+
+export type ApiJobDetail = {
+  id: string;
+  slug: string;
+  path: string;
+  status: JobRow["status"];
+  title: string;
+  description: string;
+  language: "pt" | "en";
+  seniority: Job["seniority"];
+  workModel: Job["workModel"];
+  locationSlug: string | null;
+  categorySlug: string | null;
+  salaryMin: number;
+  salaryMax: number;
+  salaryPeriod: Job["salaryPeriod"];
+  salaryMonths: number | null;
+  employmentType: Job["employmentType"];
+  techTags: { slug: string; level: SkillLevel | null; required: boolean }[];
+  languages: { slug: string; level: SkillLevel | null }[];
+  externalApplyUrl: string | null;
+  salaryPublic: boolean;
+  publishedAt: string | null;
+  expiresAt: string | null;
+};
+
+type ApiJobDetailRow = {
+  id: string;
+  slug: string;
+  status: JobRow["status"];
+  title: string;
+  description: string;
+  language: "pt" | "en";
+  seniority: Job["seniority"];
+  work_model: Job["workModel"];
+  salary_min: number;
+  salary_max: number;
+  salary_period: Job["salaryPeriod"];
+  salary_months: number | null;
+  employment_type: Job["employmentType"];
+  external_apply_url: string | null;
+  salary_public: boolean;
+  published_at: string | null;
+  expires_at: string | null;
+  job_categories: { slug: string } | null;
+  locations: { slug: string } | null;
+  job_tech_tags: { level: SkillLevel | null; required: boolean; tech_tags: { slug: string } }[];
+  job_languages: { level: SkillLevel | null; spoken_languages: { slug: string } }[];
+};
+
+export async function getCompanyJobById(companyId: string, jobId: string): Promise<ApiJobDetail | null> {
+  // Same reasoning as `getAllCompanyJobsForApi` above — admin client,
+  // `.eq("company_id", companyId)` is the real guard.
+  const supabase = createAdminClient();
+  const { data } = await supabase
+    .from("jobs")
+    .select(
+      `id, slug, status, title, description, language, seniority, work_model, salary_min, salary_max,
+       salary_period, salary_months, employment_type, external_apply_url, salary_public, published_at,
+       expires_at, job_categories ( slug ), locations ( slug ),
+       job_tech_tags ( level, required, tech_tags ( slug ) ),
+       job_languages ( level, spoken_languages ( slug ) )`,
+    )
+    .eq("id", jobId)
+    .eq("company_id", companyId)
+    .maybeSingle();
+  if (!data) return null;
+
+  const row = data as unknown as ApiJobDetailRow;
+  return {
+    id: row.id,
+    slug: row.slug,
+    path: `/${row.language}/jobs/${row.slug}`,
+    status: row.status,
+    title: row.title,
+    description: row.description,
+    language: row.language,
+    seniority: row.seniority,
+    workModel: row.work_model,
+    locationSlug: row.locations?.slug ?? null,
+    categorySlug: row.job_categories?.slug ?? null,
+    salaryMin: row.salary_min,
+    salaryMax: row.salary_max,
+    salaryPeriod: row.salary_period,
+    salaryMonths: row.salary_months,
+    employmentType: row.employment_type,
+    techTags: row.job_tech_tags.map((t) => ({ slug: t.tech_tags.slug, level: t.level, required: t.required })),
+    languages: row.job_languages.map((l) => ({ slug: l.spoken_languages.slug, level: l.level })),
+    externalApplyUrl: row.external_apply_url,
+    salaryPublic: row.salary_public,
+    publishedAt: row.published_at,
+    expiresAt: row.expires_at,
+  };
 }

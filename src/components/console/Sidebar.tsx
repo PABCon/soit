@@ -7,6 +7,7 @@ const MVP = [
   { key: "myJobAds", href: "/recruit" },
   { key: "matchmaking", href: "/recruit/matchmaking" },
   { key: "messages", href: "/recruit/messages" },
+  { key: "api", href: "/recruit/api" },
   { key: "pricing", href: "/recruit/jobs/ads" },
   { key: "applicants", href: "/recruit/applicants" },
   { key: "companyProfile", href: "/recruit/company" },
