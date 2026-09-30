@@ -527,6 +527,18 @@ every state transition and error case (bad slug, missing field, a
 job with applications, a lapsed subscription) checked directly against
 the real API, not just code review.
 
-Next up: connecting a real domain + email provider (unblocks both the
-application-email flow and real saved-search notifications) and step 9
-(SEO check, compliance, polish) (see `CLAUDE.md`).
+**The real domain and real email are live**: `justit.pt` is registered
+and serving the site; Resend is connected as a real, verified sending
+domain (SPF/DKIM, its own free tier rather than Vercel's $20+/mo
+marketplace listing); Supabase's own auth emails (verification,
+password reset) go through the same domain via custom SMTP. Both send
+paths verified against real inboxes, not just code review — a real
+registration's confirmation email arrived and its link worked;
+the app's own contact-form email was confirmed sent via Resend's own
+API. One real gap surfaced and flagged, not silently assumed away:
+`justit.pt` has no mailbox yet, so `hello@justit.pt` (the contact
+form's destination) can send but nothing can read it — needs a real
+mailbox provider next.
+
+Next up: a real mailbox for `@justit.pt`, then step 9 (SEO check,
+compliance, polish) (see `CLAUDE.md`).

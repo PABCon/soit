@@ -3114,3 +3114,72 @@ Confirmed the console shows the key manager only for a Top Employer
 and the upsell for everyone else, on both environments. Fixtures
 (companies, auth users, jobs, applications, candidates, API keys)
 cleaned up on both.
+
+## Real domain + real email (§9.1)
+
+`justit.pt` is live and email actually sends — the last "not yet
+connected" gap called out since the build spec's original §9.1a.
+
+**Domain**: registered by the user, attached to the Vercel project
+(`justit.pt` + `www.justit.pt`, both resolving via
+`A 76.76.21.21`). `NEXT_PUBLIC_SITE_URL` updated to `https://justit.pt`
+in Production — this is a build-time-inlined var, so the change only
+took effect on the next deploy, not retroactively on the already-live
+build.
+
+**Email provider — a real cost decision, not just a technical one**:
+asked before provisioning anything, because Vercel's own Resend
+marketplace listing turned out to only offer paid plans ($20/mo Pro,
+$90/mo Scale) for marketplace-billed installs — confirmed live via
+`vercel integration discover --category messaging`, not assumed. Chose
+a direct Resend account instead (its own free tier, 3,000 emails/
+month — plenty for this site's current volume) over paying for
+Vercel's bundled billing. `src/lib/email/resend-provider.ts`
+implements the existing `EmailProvider` interface exactly as
+`§9.1a` always intended; `console-provider.ts` deleted (dead code once
+`send.ts` pointed at the real one, not kept around as a fallback —
+matches every other credential in this codebase, which is trusted to
+just be configured, not defended against being absent).
+
+**Two independent email paths, both verified live, not assumed working
+just because one did**:
+1. **Supabase's own auth emails** (verification, password reset) —
+   custom SMTP configured in the Supabase Dashboard
+   (`smtp.resend.com:465`, sender `noreply@justit.pt`) pointed at the
+   same Resend account/domain. A real registration's confirmation
+   email was inspected directly (Mailinator's raw-message API, not
+   just its rendered UI) — `From: noreply@justit.pt`, DKIM-signed for
+   `justit.pt`, delivered via Amazon SES (Resend's sending
+   infrastructure) — and clicking through actually completed sign-in.
+   One real test-methodology trap hit and resolved along the way: the
+   first click-through attempt landed on a generic auth-error page —
+   not a real bug, but Supabase's PKCE signup flow needs the
+   `code_verifier` cookie set at `signUp()` time, which only exists in
+   the *same browser context* that registered — clicking the link from
+   a separate Playwright browser launch (a different process checking
+   the inbox) can never succeed regardless of how correct the email
+   itself is. Fixed the test by keeping registration and link-click in
+   one shared browser context; not a code change.
+2. **The app's own notification emails** (contact form, application
+   confirmation, new applicant, new message) — go through
+   `sendEmail()` → `ResendEmailProvider` → Resend's HTTP API directly,
+   a different code path than Supabase's SMTP relay. Verified
+   separately: submitted the real contact form, then confirmed via
+   Resend's own `/emails` API that the send actually happened
+   (`last_event: "sent"`, correct from/to/subject) — not inferred from
+   the UI's own "message sent" text alone.
+
+**A real, still-open gap, found and flagged rather than silently
+assumed fine**: `justit.pt` has no MX record — no mailbox exists for
+`hello@justit.pt` (the contact form's destination) or any other
+`@justit.pt` address yet. The send succeeds (confirmed above); nothing
+can currently read it. Needs a real mailbox provider (Google Workspace/
+Zoho Mail/Migadu/…), recommended to the user but not set up as of this
+writing — tracked in `docs/go-live-checklist.md`.
+
+**Unrelated but caught in the same pass**: `npm install resend`
+surfaced a critical RCE advisory in the installed Next.js range
+(16.2.0–16.3.5, this project was on 16.3.5 exactly) via `next/og`
+`ImageResponse`. Bumped to 16.3.8 (the patched version `npm audit`
+itself pointed at), full verification suite re-run clean
+(`tsc`/`eslint`/`build`/`vitest`/`check:i18n`).

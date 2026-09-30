@@ -14,29 +14,42 @@ whatever order makes sense.
 
 ## Domain & DNS
 
-- [ ] Register/confirm `justit.pt` (in progress)
-- [ ] Point DNS at Vercel; add as a custom domain on the `soit` Vercel
-      project
-- [ ] Update `NEXT_PUBLIC_SITE_URL` (Vercel env var) to the real domain
-- [ ] Update Supabase Auth's `site_url` and redirect allow-list to the
-      real domain — confirmed still `https://soit-soit.vercel.app/` +
-      Vercel preview URL patterns only; `https://soit.vercel.app/**` is
-      in the allow-list (that gap closed at some point), but the real
-      domain isn't yet
+- [x] Register/confirm `justit.pt` — registered, DNS delegated to
+      Vercel (`A justit.pt 76.76.21.21`, same for `www`)
+- [x] Point DNS at Vercel; add as a custom domain on the `soit` Vercel
+      project — both `justit.pt` and `www.justit.pt` attached and
+      resolving (2026-10-01)
+- [x] Update `NEXT_PUBLIC_SITE_URL` (Vercel env var) to the real domain
+- [x] Update Supabase Auth's `site_url` and redirect allow-list to the
+      real domain — done via the Dashboard (Authentication → URL
+      Configuration): `site_url = https://justit.pt`,
+      `https://justit.pt/**` and `https://www.justit.pt/**` added to
+      the allow-list
 
 ## Email
 
-- [ ] Connect a real email provider (Resend/Postmark) — `src/lib/
-      email/` already has the provider interface and two real,
-      fully-built templates (application confirmation, new applicant);
-      swapping `ConsoleEmailProvider` for a real one is a one-line
-      change once a provider + API key exist
-- [ ] Verify the sending domain (SPF/DKIM/DMARC) — needs the real
-      domain first
-- [ ] Consider custom SMTP for Supabase's own auth emails (confirm/
-      reset-password/magic-link) — confirmed still on Supabase's
-      default sender (no `smtp_host` configured), which is rate-limited
-      enough to slow down real usage, not just local testing
+- [x] Connect a real email provider — **Resend**, direct account (not
+      the Vercel Marketplace listing, which only offers paid $20+/mo
+      plans; Resend's own free tier covers this site's current volume).
+      `src/lib/email/resend-provider.ts` implements `EmailProvider`;
+      `console-provider.ts` deleted, `send.ts` now calls it for real.
+- [x] Verify the sending domain (SPF/DKIM/DMARC) — `justit.pt` shows
+      `status: "verified"`, `sending: enabled`, region `eu-west-1` in
+      Resend
+- [x] Custom SMTP for Supabase's own auth emails (confirm/
+      reset-password/magic-link) — Dashboard → Authentication → SMTP
+      Settings, `smtp.resend.com:465`, sender `noreply@justit.pt`.
+      Verified live end-to-end: a real registration's confirmation
+      email arrived from `noreply@justit.pt` (DKIM-signed for
+      `justit.pt`, delivered via Amazon SES/Resend), and clicking
+      through actually completed sign-in.
+- [ ] **`hello@justit.pt` has no real mailbox behind it yet** — the
+      contact form (`/recruit/contact`) sends there for real now (send
+      confirmed via Resend's API, `last_event: "sent"`), but `justit.pt`
+      has no MX record, so nothing is actually deliverable/readable
+      there today. Needs a real mailbox provider (Google Workspace,
+      Zoho Mail, Migadu, …) — recommended and not yet set up as of
+      2026-10-01.
 
 ## Auth
 

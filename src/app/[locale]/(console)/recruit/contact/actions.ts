@@ -3,9 +3,10 @@
 import { sendEmail } from "@/lib/email/send";
 import { contactMessageEmail } from "@/lib/email/templates/contact-message";
 
-// A real inbox once the domain is live — see docs/go-live-checklist.md.
-// Harmless as a placeholder today: sendEmail() only ever logs (no real
-// provider connected yet), never actually delivers anywhere.
+// sendEmail() delivers for real now (§9.1, Resend). hello@justit.pt has
+// no mailbox behind it yet — see docs/go-live-checklist.md — so a
+// message sent there today bounces rather than reaching anyone; set
+// CONTACT_EMAIL to a real inbox once one exists.
 const CONTACT_EMAIL = process.env.CONTACT_EMAIL || "hello@justit.pt";
 
 export type SendContactMessageResult = { ok: true } | { ok: false; reason: "invalid_input" };
