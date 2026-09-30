@@ -9,8 +9,11 @@ const SENIORITIES: Seniority[] = ["junior", "mid", "senior", "lead"];
 const WORK_MODELS: WorkModel[] = ["remote", "hybrid", "office"];
 const AD_LANGUAGES: ("pt" | "en")[] = ["pt", "en"];
 
-/** Monthly-equivalent floor, so a day rate and a monthly salary sort comparably. */
-function monthlyFloor(job: Job): number {
+/** Monthly-equivalent floor, so a day rate and a monthly salary sort
+ *  comparably — null when the employer has hidden the salary (§pricing),
+ *  which a minSalary filter must never use to silently exclude the job. */
+function monthlyFloor(job: Job): number | null {
+  if (job.salaryMin == null) return null;
   switch (job.salaryPeriod) {
     case "hour":
       return job.salaryMin * 8 * 21;
@@ -67,16 +70,20 @@ export function JobFeed({
 
   const jobs = useMemo(
     () =>
-      allJobs
-        .filter(
-          (j: Job) =>
-            (f.tech.length === 0 || f.tech.some((x) => j.tech.includes(x))) &&
-            (f.seniority.length === 0 || f.seniority.includes(j.seniority)) &&
-            (f.workModel.length === 0 || f.workModel.includes(j.workModel)) &&
-            (f.adLanguage.length === 0 || f.adLanguage.includes(j.language)) &&
-            monthlyFloor(j) >= f.minSalary,
-        )
-        .sort((a, b) => a.postedDaysAgo - b.postedDaysAgo),
+      // No re-sort here — allJobs already arrives ordered by the server's
+      // own feed ranking (Top Employer first, then boost_rank_at desc);
+      // re-deriving order from postedDaysAgo would flatten same-day bumps
+      // and Top-Employer placement back to plain chronological order.
+      allJobs.filter((j: Job) => {
+        const floor = monthlyFloor(j);
+        return (
+          (f.tech.length === 0 || f.tech.some((x) => j.tech.includes(x))) &&
+          (f.seniority.length === 0 || f.seniority.includes(j.seniority)) &&
+          (f.workModel.length === 0 || f.workModel.includes(j.workModel)) &&
+          (f.adLanguage.length === 0 || f.adLanguage.includes(j.language)) &&
+          (floor === null || floor >= f.minSalary)
+        );
+      }),
     [allJobs, f],
   );
 

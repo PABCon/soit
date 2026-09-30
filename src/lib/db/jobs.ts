@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { slugify } from "@/lib/slug";
 import type { Job, SkillLevel } from "@/lib/types";
 import { getMyEmployerContext } from "./companies";
@@ -7,8 +8,8 @@ export const SELECT = `
   id, slug, title, description, language, seniority, work_model, location,
   latitude, longitude, salary_min, salary_max, salary_currency, salary_period,
   salary_months, employment_type, status, published_at, expires_at, created_at,
-  external_apply_url, location_id,
-  companies!inner ( slug, company_name, company_logo_url ),
+  external_apply_url, location_id, salary_public, boost_rank_at, boosted_until,
+  companies!inner ( slug, company_name, company_logo_url, top_employer_active ),
   job_tech_tags ( tech_tags ( slug, label ) ),
   job_categories ( slug ),
   locations ( slug ),
@@ -38,13 +39,25 @@ export type JobRow = {
   created_at: string;
   external_apply_url: string | null;
   location_id: string | null;
-  companies: { slug: string; company_name: string; company_logo_url: string | null };
+  salary_public: boolean;
+  boost_rank_at: string | null;
+  boosted_until: string | null;
+  companies: {
+    slug: string;
+    company_name: string;
+    company_logo_url: string | null;
+    top_employer_active: boolean;
+  };
   job_tech_tags: { tech_tags: { slug: string; label: string } }[];
   job_categories: { slug: string } | null;
   locations: { slug: string } | null;
   job_languages: { level: SkillLevel | null; spoken_languages: { slug: string; label: string } }[];
 };
 
+/** Always includes the real salary — callers on the public path (getLiveJobs
+ *  etc.) null it out afterward when `salary_public` is false. Console reads
+ *  (the employer's own jobs) skip that step entirely: an employer always
+ *  sees their own real numbers regardless of what candidates are shown. */
 export function toJob(row: JobRow): Job {
   const posted = row.published_at ?? row.created_at;
   const daysLeft = row.expires_at
@@ -75,7 +88,36 @@ export function toJob(row: JobRow): Job {
     language: row.language,
     postedDaysAgo: Math.max(0, Math.floor((Date.now() - new Date(posted).getTime()) / 86_400_000)),
     daysLeft,
+    isTopEmployer: row.companies.top_employer_active,
+    isBoosted: !!row.boosted_until && new Date(row.boosted_until).getTime() > Date.now(),
   };
+}
+
+/** Hides the salary on the public path when the employer has chosen to —
+ *  a distinct step from toJob() itself, so the exact same mapper can serve
+ *  both the public feed (hidden) and the console's own job list (always
+ *  real), without duplicating every other field. Exported for
+ *  recommendations.ts, the one other candidate-facing consumer of raw
+ *  JobRow-shaped data outside this file. */
+export function hideSalaryIfPrivate(row: JobRow, job: Job): Job {
+  if (row.salary_public) return job;
+  return { ...job, salaryMin: null, salaryMax: null };
+}
+
+/** Top-Employer jobs sort first (their own subscription perk), then by
+ *  `boost_rank_at` — a manual bump or the salary-transparency auto-boost
+ *  jumps a job back to the top of its own bracket, same idea as a repost,
+ *  not a fixed multi-day pinned state. Stable sort: within each bracket,
+ *  rows already arrive `boost_rank_at desc` from the DB `order()` clause,
+ *  so this only ever reorders across the Top-Employer/regular boundary. */
+function sortForFeed(rows: JobRow[]): JobRow[] {
+  return [...rows].sort((a, b) => {
+    const topEmployerDelta = Number(b.companies.top_employer_active) - Number(a.companies.top_employer_active);
+    if (topEmployerDelta !== 0) return topEmployerDelta;
+    const aRank = a.boost_rank_at ? new Date(a.boost_rank_at).getTime() : 0;
+    const bRank = b.boost_rank_at ? new Date(b.boost_rank_at).getTime() : 0;
+    return bRank - aRank;
+  });
 }
 
 export type RequiredLanguage = { slug: string; label: string; level: SkillLevel | null };
@@ -91,7 +133,7 @@ export type JobDetail = Job & {
 
 function toJobDetail(row: JobRow): JobDetail {
   return {
-    ...toJob(row),
+    ...hideSalaryIfPrivate(row, toJob(row)),
     id: row.id,
     description: row.description,
     publishedAt: row.published_at ?? row.created_at,
@@ -115,10 +157,10 @@ export async function getLiveJobs(): Promise<Job[]> {
     .select(SELECT)
     .eq("status", "published")
     .gt("expires_at", new Date().toISOString())
-    .order("published_at", { ascending: false });
+    .order("boost_rank_at", { ascending: false });
 
   if (error || !data) return [];
-  return (data as unknown as JobRow[]).map(toJob);
+  return sortForFeed(data as unknown as JobRow[]).map((row) => hideSalaryIfPrivate(row, toJob(row)));
 }
 
 export async function getLiveJobBySlug(slug: string): Promise<JobDetail | null> {
@@ -201,14 +243,46 @@ export type JobFormInput = {
    *  doesn't get an expires_at at all, same as before. */
   expiresAt: string | null;
   publish: boolean;
+  /** The employer's requested choice — `saveJob` overrides this to `true`
+   *  unless the company is currently a paying customer (§pricing: hiding
+   *  the salary is a paid-tier perk, never available on the free slot). */
+  salaryPublic: boolean;
 };
 
 export type SaveResult = { slug: string; published: boolean; message?: string };
 
+/** How many of this company's OTHER jobs are currently live (published,
+ *  not expired) — "other" so editing an already-published job doesn't
+ *  count itself against its own allowance. */
+async function countOtherLiveJobs(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  companyId: string,
+  excludeJobId: string | null,
+): Promise<number> {
+  let query = supabase
+    .from("jobs")
+    .select("id", { count: "exact", head: true })
+    .eq("company_id", companyId)
+    .eq("status", "published")
+    .gt("expires_at", new Date().toISOString());
+  if (excludeJobId) query = query.neq("id", excludeJobId);
+  const { count } = await query;
+  return count ?? 0;
+}
+
 /** Creates or updates a job (existing `jobId` = edit). Publish is gated
  *  server-side on live `verification_status` (§5.7.4) — RLS only checks
  *  company ownership, so an unverified employer's own client could
- *  otherwise write status='published' directly; the gate has to live here. */
+ *  otherwise write status='published' directly; the gate has to live here.
+ *
+ *  §pricing adds a second gate on top: every verified company may always
+ *  have 1 job live for free (Top Employer raises that standing allowance
+ *  to 10); beyond that, publishing needs a purchased ad credit. Hiding the
+ *  salary publicly and getting bump credits/the auto-boost are both perks
+ *  of being a paying customer in *either* form (a spent credit or an
+ *  active Top Employer subscription) — not tied to which specific slot
+ *  this job happens to occupy, so a paying company's "free" first job can
+ *  hide its salary too, same as any of its others. */
 export async function saveJob(jobId: string | null, input: JobFormInput): Promise<SaveResult> {
   const ctx = await getMyEmployerContext();
   if (!ctx) throw new Error("Not an employer");
@@ -233,8 +307,29 @@ export async function saveJob(jobId: string | null, input: JobFormInput): Promis
   }
 
   const wantsPublish = input.publish;
-  const canPublish = ctx.company.verification_status === "verified";
+  const isVerified = ctx.company.verification_status === "verified";
+
+  const liveCount = await countOtherLiveJobs(supabase, ctx.company.id, jobId);
+  const isPayingCustomer = ctx.company.ad_credits_available > 0 || ctx.company.top_employer_active;
+  const effectiveFreeCap = ctx.company.top_employer_active ? 10 : 1;
+  const canPublishFree = liveCount < effectiveFreeCap;
+  const canPublishWithCredit = ctx.company.ad_credits_available > 0;
+  const canPublish = isVerified && (canPublishFree || canPublishWithCredit);
   const willPublish = wantsPublish && canPublish;
+  const consumesCredit = willPublish && !canPublishFree;
+
+  // Only a genuine draft/inactive → published transition spends a credit,
+  // resets the 30-day window and the boost/bump state — re-saving an
+  // already-published job (editing its description, say) must not look
+  // like a fresh publish and silently re-charge or reset its clock.
+  let wasAlreadyPublished = false;
+  if (jobId) {
+    const { data: existing } = await supabase.from("jobs").select("status").eq("id", jobId).maybeSingle();
+    wasAlreadyPublished = existing?.status === "published";
+  }
+  const isNewPublish = willPublish && !wasAlreadyPublished;
+
+  const salaryPublic = isPayingCustomer ? input.salaryPublic : true;
 
   const now = new Date();
   const defaultExpiry = new Date(now.getTime() + 30 * 864e5);
@@ -243,6 +338,7 @@ export async function saveJob(jobId: string | null, input: JobFormInput): Promis
   // producing an invalid or already-expired listing.
   const chosenExpiry = input.expiresAt ? new Date(input.expiresAt) : null;
   const expiresAt = chosenExpiry && chosenExpiry.getTime() > now.getTime() ? chosenExpiry : defaultExpiry;
+  const autoBoost = isNewPublish && isPayingCustomer && salaryPublic;
 
   const base = {
     company_id: ctx.company.id,
@@ -262,8 +358,17 @@ export async function saveJob(jobId: string | null, input: JobFormInput): Promis
     salary_months: input.salaryPeriod === "month" ? input.salaryMonths : null,
     employment_type: input.employmentType,
     external_apply_url: input.externalApplyUrl.trim() || null,
+    salary_public: salaryPublic,
     status: willPublish ? "published" : "draft",
-    ...(willPublish ? { published_at: now.toISOString(), expires_at: expiresAt.toISOString() } : {}),
+    ...(isNewPublish
+      ? {
+          published_at: now.toISOString(),
+          expires_at: expiresAt.toISOString(),
+          boost_rank_at: now.toISOString(),
+          boosted_until: autoBoost ? new Date(now.getTime() + 72 * 3600e3).toISOString() : null,
+          bump_credits_remaining: consumesCredit ? 2 : 0,
+        }
+      : {}),
   };
 
   let id = jobId;
@@ -278,6 +383,17 @@ export async function saveJob(jobId: string | null, input: JobFormInput): Promis
       .single();
     if (error) throw new Error(error.message);
     id = data.id;
+  }
+
+  if (consumesCredit) {
+    const admin = createAdminClient();
+    // `.gt` guards against a double-spend race under concurrent publishes —
+    // cheaper than a raw SQL decrement RPC, and sufficient at this volume.
+    await admin
+      .from("companies")
+      .update({ ad_credits_available: ctx.company.ad_credits_available - 1 })
+      .eq("id", ctx.company.id)
+      .gt("ad_credits_available", 0);
   }
 
   await supabase.from("job_tech_tags").delete().eq("job_id", id);
@@ -308,33 +424,77 @@ export async function saveJob(jobId: string | null, input: JobFormInput): Promis
   return {
     slug: saved!.slug,
     published: willPublish,
-    message: wantsPublish && !canPublish ? "notVerified" : undefined,
+    message: wantsPublish && !willPublish ? (isVerified ? "noAdCredits" : "notVerified") : undefined,
   };
 }
 
+export type SetStatusResult = { ok: boolean; message?: string };
+
 /** Pause/reactivate (§7.2) — the only two transitions this exposes.
  *  Reactivating a paused job renews its 30-day window, same as a fresh
- *  publish, so it's actually live again rather than instantly re-expiring. */
-export async function setJobStatus(jobId: string, status: "inactive" | "published"): Promise<void> {
+ *  publish, so it's actually live again rather than instantly re-expiring —
+ *  and, like a fresh publish in `saveJob`, is gated on the same free-slot/
+ *  credit/Top-Employer allowance, spending a credit and resetting the
+ *  boost state exactly the same way. Returns `{ok:false, message:
+ *  "noAdCredits"}` rather than throwing for that expected, business-rule
+ *  case — Next.js redacts thrown Server Action error messages in
+ *  production, so a message the UI needs to read back has to travel as a
+ *  normal return value, same convention `saveJob`'s `SaveResult` already
+ *  uses for "notVerified". */
+export async function setJobStatus(jobId: string, status: "inactive" | "published"): Promise<SetStatusResult> {
   const ctx = await getMyEmployerContext();
   if (!ctx) throw new Error("Not an employer");
 
   const supabase = await createClient();
-  const patch =
-    status === "published"
-      ? {
-          status,
-          published_at: new Date().toISOString(),
-          expires_at: new Date(Date.now() + 30 * 864e5).toISOString(),
-        }
-      : { status };
+
+  if (status === "inactive") {
+    const { error } = await supabase
+      .from("jobs")
+      .update({ status: "inactive" })
+      .eq("id", jobId)
+      .eq("company_id", ctx.company.id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  }
+
+  const liveCount = await countOtherLiveJobs(supabase, ctx.company.id, jobId);
+  const isPayingCustomer = ctx.company.ad_credits_available > 0 || ctx.company.top_employer_active;
+  const effectiveFreeCap = ctx.company.top_employer_active ? 10 : 1;
+  const canPublishFree = liveCount < effectiveFreeCap;
+  const canPublishWithCredit = ctx.company.ad_credits_available > 0;
+  if (!(canPublishFree || canPublishWithCredit)) return { ok: false, message: "noAdCredits" };
+  const consumesCredit = !canPublishFree;
+
+  const { data: job } = await supabase.from("jobs").select("salary_public").eq("id", jobId).maybeSingle();
+  const salaryPublic = isPayingCustomer ? (job?.salary_public ?? true) : true;
+  const now = new Date();
+  const autoBoost = isPayingCustomer && salaryPublic;
 
   const { error } = await supabase
     .from("jobs")
-    .update(patch)
+    .update({
+      status: "published",
+      salary_public: salaryPublic,
+      published_at: now.toISOString(),
+      expires_at: new Date(now.getTime() + 30 * 864e5).toISOString(),
+      boost_rank_at: now.toISOString(),
+      boosted_until: autoBoost ? new Date(now.getTime() + 72 * 3600e3).toISOString() : null,
+      bump_credits_remaining: consumesCredit ? 2 : 0,
+    })
     .eq("id", jobId)
     .eq("company_id", ctx.company.id);
   if (error) throw new Error(error.message);
+
+  if (consumesCredit) {
+    const admin = createAdminClient();
+    await admin
+      .from("companies")
+      .update({ ad_credits_available: ctx.company.ad_credits_available - 1 })
+      .eq("id", ctx.company.id)
+      .gt("ad_credits_available", 0);
+  }
+
+  return { ok: true };
 }
 
 /** A job with any applications is DB-restricted from deletion (§15.1,
@@ -373,6 +533,7 @@ export type JobForEdit = {
   external_apply_url: string | null;
   status: "draft" | "published" | "inactive" | "closed";
   expires_at: string | null;
+  salary_public: boolean;
   job_tech_tags: { tech_tag_id: string; level: SkillLevel | null; required: boolean }[];
   job_languages: { spoken_language_id: string; level: SkillLevel | null }[];
 };
@@ -382,7 +543,7 @@ export async function getJobForEdit(jobId: string): Promise<JobForEdit | null> {
   const { data } = await supabase
     .from("jobs")
     .select(
-      "id, company_id, title, description, language, seniority, work_model, location, location_id, category_id, salary_min, salary_max, salary_period, salary_months, employment_type, external_apply_url, status, expires_at, job_tech_tags(tech_tag_id, level, required), job_languages(spoken_language_id, level)",
+      "id, company_id, title, description, language, seniority, work_model, location, location_id, category_id, salary_min, salary_max, salary_period, salary_months, employment_type, external_apply_url, status, expires_at, salary_public, job_tech_tags(tech_tag_id, level, required), job_languages(spoken_language_id, level)",
     )
     .eq("id", jobId)
     .maybeSingle();
@@ -470,7 +631,10 @@ export async function getBrowseJobs(params: {
   if (categoryId) query = query.eq("category_id", categoryId);
   if (techId) query = query.eq("job_tech_tags.tech_tag_id", techId);
 
-  const { data, error } = await query.order("published_at", { ascending: false });
-  const jobs = error || !data ? [] : (data as unknown as JobRow[]).map(toJob);
+  const { data, error } = await query.order("boost_rank_at", { ascending: false });
+  const jobs =
+    error || !data
+      ? []
+      : sortForFeed(data as unknown as JobRow[]).map((row) => hideSalaryIfPrivate(row, toJob(row)));
   return { jobs, locationName, facetKind, facetSlug: params.facetSlug ?? null, facetLabel };
 }

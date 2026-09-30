@@ -40,8 +40,11 @@ const AD_LANGUAGES: ("pt" | "en")[] = ["pt", "en"];
 const PANEL_WORK_MODELS: WorkModel[] = ["hybrid", "office"];
 type Sort = "recent" | "oldest" | "salary";
 
-/** Monthly-equivalent floor, so a day rate and a monthly salary sort comparably. */
-function monthlyFloor(job: Job): number {
+/** Monthly-equivalent floor, so a day rate and a monthly salary sort
+ *  comparably — null when the employer has hidden the salary (§pricing),
+ *  which a minSalary filter must never use to silently exclude the job. */
+function monthlyFloor(job: Job): number | null {
+  if (job.salaryMin == null) return null;
   switch (job.salaryPeriod) {
     case "hour":
       return job.salaryMin * 8 * 21;
@@ -178,7 +181,7 @@ export function JobsExplorer({
         (adLanguage.length === 0 || adLanguage.includes(j.language)) &&
         (workModel.length === 0 || workModel.includes(j.workModel)) &&
         (!remoteOnly || j.workModel === "remote") &&
-        monthlyFloor(j) >= minSalary &&
+        (monthlyFloor(j) === null || monthlyFloor(j)! >= minSalary) &&
         (!query || j.title.toLowerCase().includes(query)) &&
         (!nearLocation ||
           radiusKm <= 0 ||
@@ -190,9 +193,17 @@ export function JobsExplorer({
       case "oldest":
         return filtered.sort((a, b) => b.postedDaysAgo - a.postedDaysAgo);
       case "salary":
-        return filtered.sort((a, b) => monthlyFloor(b) - monthlyFloor(a));
+        // Hidden-salary jobs sort last regardless of direction — there's
+        // nothing to rank them by, and burying them silently among real
+        // numbers would misrepresent what "sorted by salary" means.
+        return filtered.sort((a, b) => (monthlyFloor(b) ?? -1) - (monthlyFloor(a) ?? -1));
       default:
-        return filtered.sort((a, b) => a.postedDaysAgo - b.postedDaysAgo);
+        // No re-sort — allJobs already arrives ordered by the server's own
+        // feed ranking (Top Employer first, then boost_rank_at desc);
+        // re-deriving order from postedDaysAgo would flatten same-day
+        // bumps and Top-Employer placement back to plain chronological
+        // order.
+        return filtered;
     }
     // tech/cat/seniority/adLanguage/workModel/remoteOnly/minSalary/sort are
     // all derived fresh from searchParams every render — depending on

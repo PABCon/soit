@@ -56,6 +56,16 @@ export function JobRow({
                   {t("matchScore", { percent: matchScore })}
                 </span>
               )}
+              {job.isTopEmployer && (
+                <span className="rounded bg-amber-400/90 px-1.5 py-0.5 text-[10px] font-semibold tracking-wide text-ink uppercase">
+                  {t("topEmployer")}
+                </span>
+              )}
+              {job.isBoosted && (
+                <span className="rounded bg-violet-100 px-1.5 py-0.5 text-[10px] font-semibold tracking-wide text-violet-800 uppercase">
+                  {t("boosted")}
+                </span>
+              )}
               {isNew && (
                 <span className="rounded bg-mint/25 px-1.5 py-0.5 text-[10px] font-semibold tracking-wide text-pine uppercase">
                   {t("new")}

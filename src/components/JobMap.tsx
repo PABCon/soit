@@ -50,13 +50,15 @@ export function JobMap({ jobs }: { jobs: Job[] }) {
   const labelRef = useRef<(job: Job) => string>(() => "");
   useEffect(() => {
     labelRef.current = (job: Job) =>
-      format.number(job.salaryMin, {
-        style: "currency",
-        currency: "EUR",
-        maximumFractionDigits: 1,
-        notation: "compact",
-      });
-  }, [format]);
+      job.salaryMin == null
+        ? t("salaryHidden")
+        : format.number(job.salaryMin, {
+            style: "currency",
+            currency: "EUR",
+            maximumFractionDigits: 1,
+            notation: "compact",
+          });
+  }, [format, t]);
 
   const jobsRef = useRef(jobs);
   useEffect(() => {

@@ -5,6 +5,7 @@ import { Link } from "@/i18n/navigation";
 
 const MVP = [
   { key: "myJobAds", href: "/recruit" },
+  { key: "pricing", href: "/recruit/jobs/ads" },
   { key: "applicants", href: "/recruit/applicants" },
   { key: "companyProfile", href: "/recruit/company" },
   { key: "team", href: "/recruit/team" },
@@ -12,7 +13,7 @@ const MVP = [
   { key: "contact", href: "/recruit/contact" },
 ] as const;
 
-const LATER = ["matchmaking", "myProducts", "pricing"] as const;
+const LATER = ["matchmaking", "myProducts"] as const;
 
 /** Employer console sidebar (§7.2) — its own navigation, not the candidate
  *  rail. Identity (avatar) and locale live in `ConsoleTopNav` above this,

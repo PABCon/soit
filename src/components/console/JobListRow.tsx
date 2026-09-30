@@ -12,11 +12,12 @@ export function JobListRow({ job, tab }: { job: ConsoleJob; tab: ConsoleTab }) {
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
-  function run(action: () => Promise<void>) {
+  function run(action: () => Promise<{ message?: string } | void>) {
     setError(null);
     startTransition(async () => {
       try {
-        await action();
+        const result = await action();
+        if (result?.message === "noAdCredits") setError(t("errorNoAdCredits"));
       } catch (e) {
         setError(e instanceof Error ? e.message : t("errorGeneric"));
       }

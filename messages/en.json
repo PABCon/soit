@@ -126,7 +126,16 @@
       "file_too_large": "That image is too large — 2MB maximum.",
       "bad_file": "That file isn't a PNG, JPEG, or WEBP image.",
       "upload_failed": "Couldn't upload that image. Try again."
-    }
+    },
+    "errorNoAdCredits": "You're out of ad credits — buy more to publish another job.",
+    "adCreditsRemaining": "{count, plural, =0 {No ad credits remaining} one {# ad credit remaining} other {# ad credits remaining}}",
+    "adPackLabel": "{count, plural, one {# job ad} other {# job ads}}",
+    "perAd": "per ad",
+    "buyPack": "Buy",
+    "redirecting": "Redirecting…",
+    "talkToSales": "Need more than 5 at once? Contact us for volume pricing.",
+    "purchaseSuccess": "Purchase complete — your ad credits are ready to use.",
+    "purchaseCanceled": "Checkout canceled — no charge was made."
   },
   "jobForm": {
     "title": "Job title",
@@ -222,6 +231,9 @@
     "saveDraft": "Save as draft",
     "publish": "Publish",
     "notVerified": "Saved as a draft — your company isn't verified yet, so this can't go live until it is.",
+    "noAdCredits": "Saved as a draft — you've used your free job slot and have no ad credits left. Buy more to publish this one.",
+    "hideSalaryPublicly": "Hide the salary from the public listing",
+    "hideSalaryUpsell": "Buy an ad credit or subscribe to Top Employer to hide the salary from the public listing.",
     "errorTitle": "Enter a job title.",
     "errorDescription": "Enter a description.",
     "errorLocation": "Enter a location, or switch to Remote.",
@@ -258,7 +270,8 @@
       "contractor": "Contractor",
       "freelance": "Freelance",
       "internship": "Internship"
-    }
+    },
+    "notDisclosed": "Salary not disclosed"
   },
   "jobs": {
     "title": "IT jobs",
@@ -273,6 +286,9 @@
   "feed": {
     "new": "New",
     "matchScore": "{percent}% match",
+    "topEmployer": "Top Employer",
+    "boosted": "Boosted",
+    "salaryHidden": "Salary hidden",
     "daysLeft": "{days, plural, =0 {Last day} one {# day left} other {# days left}}",
     "favorite": "Save job",
     "unfavorite": "Remove from saved",

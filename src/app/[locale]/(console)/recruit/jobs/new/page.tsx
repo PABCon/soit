@@ -3,6 +3,7 @@ import { getTechTags } from "@/lib/db/tech-tags";
 import { getLocations } from "@/lib/db/locations";
 import { getJobCategories } from "@/lib/db/job-categories";
 import { getSpokenLanguages } from "@/lib/db/spoken-languages";
+import { getMyEmployerContext } from "@/lib/db/companies";
 import { JobForm } from "@/components/console/JobForm";
 
 type Props = { params: Promise<{ locale: string }> };
@@ -11,12 +12,14 @@ export default async function NewJobPage({ params }: Props) {
   const { locale } = await params;
   setRequestLocale(locale);
   const t = await getTranslations({ locale, namespace: "console" });
-  const [techTags, locations, jobCategories, spokenLanguages] = await Promise.all([
+  const [techTags, locations, jobCategories, spokenLanguages, ctx] = await Promise.all([
     getTechTags(),
     getLocations(),
     getJobCategories(),
     getSpokenLanguages(),
+    getMyEmployerContext(),
   ]);
+  const isPayingCustomer = !!ctx && (ctx.company.ad_credits_available > 0 || ctx.company.top_employer_active);
 
   return (
     <>
@@ -27,6 +30,7 @@ export default async function NewJobPage({ params }: Props) {
           locations={locations}
           jobCategories={jobCategories}
           spokenLanguages={spokenLanguages}
+          isPayingCustomer={isPayingCustomer}
         />
       </div>
     </>

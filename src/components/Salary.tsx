@@ -9,8 +9,11 @@ export type EmploymentType =
   | "internship";
 
 export type SalaryProps = {
-  min: number;
-  max: number;
+  /** null when the employer has chosen to hide the salary publicly
+   *  (§pricing, paid-tier-only) — renders a "not disclosed" fallback
+   *  instead of the amount. Never null for a free-tier job. */
+  min: number | null;
+  max: number | null;
   currency?: string;
   period: SalaryPeriod;
   /** Only meaningful when period is "month". Portugal pays over 14 (§5.2). */
@@ -53,6 +56,22 @@ export function Salary({
       currency,
       maximumFractionDigits: 0,
     });
+
+  if (min == null || max == null) {
+    return (
+      <div>
+        <p
+          className={
+            size === "detail"
+              ? "font-display text-3xl font-bold text-muted tabular-nums"
+              : "font-display text-base font-bold text-muted tabular-nums"
+          }
+        >
+          {t("notDisclosed")}
+        </p>
+      </div>
+    );
+  }
 
   const showMonths = period === "month" && typeof months === "number";
 

@@ -2552,3 +2552,133 @@ full skill+preference match against the same "Senior Big Data Engineer"
 job scored 90% and displayed correctly. The real
 `paul_william_24@hotmail.com` account was only ever read for diagnosis,
 never modified.
+
+## Employer pricing & billing, phase 1: job-ad credits + the publish gate rewrite
+
+Pricing had been explicitly deferred all session ("needs a real
+business-model conversation, not code to write") — that conversation
+happened next, at length: researched real competitor pricing (justjoin.it's
+actual per-post tiers *and* its separate company-profile/branding tiers,
+LinkedIn Jobs vs. Recruiter, Indeed, Landing.jobs), caught and corrected a
+wrong number pulled from the wrong page mid-conversation, and then used one
+real, first-hand data point — ITDS's actual justjoin.it spend (108 ads/
+month at ~€20/ad) — to reverse-engineer a volume-discount curve
+(`price(n) = 20 + 39 × n^(-0.634)`, anchored on a real €59-at-n=1 self-serve
+price and that real €20-at-scale floor) rather than inventing discount
+percentages by feel. Landed on two genuinely separate products — job-ad
+credits (self-serve, per-post) and a Top Employer subscription (badge,
+site-wide sponsor placement, unlimited bumps, a rich company profile, API
+access, mandatorily bundling 10 ad slots) — plus a salary-transparency
+mechanic: hiding the salary publicly is a paid-tier-only choice, and
+showing it anyway on a paid ad auto-triggers a visibility boost. This
+phase builds product 1 (job-ad credits) and every piece of shared
+infrastructure (the publish gate, salary visibility, the bump mechanic)
+both products need; Top Employer's own subscription/webhook lifecycle,
+its badge/site-wide placement, its rich company profile, and its API
+access are follow-up phases against the same plan, not built here.
+
+**Stripe, provisioned for real** (Vercel Marketplace skill's rule: install
+before writing any billing code): `vercel integration add stripe` — a
+sandbox/test-mode resource, `vercel env pull` for real
+`STRIPE_SECRET_KEY`/publishable key. This also auto-installed a
+`stripe-best-practices` agent skill (`.claude/skills/stripe-best-practices`)
+— read in full before writing any Stripe code, and it changed real
+decisions: Checkout Sessions over raw PaymentIntents, `integration_identifier`
+on every session (an 8-random-letter-suffixed label, required on this API
+version for Dashboard flow tracking), never passing `payment_method_types`
+(dynamic payment methods instead — the real test-mode Checkout page
+offered Card/Pay by Bank/MB WAY/Bancontact automatically, no config),
+handling both `checkout.session.completed` and
+`checkout.session.async_payment_succeeded` gated on `payment_status`, and
+one Product per genuinely distinct plan with Prices as billing variants
+within it (not one Product with differently-priced tiers). New
+`scripts/stripe-setup.mjs` idempotently creates the real "Job Ad Credits"
+Product (4 one-time Prices, `lookup_key`-referenced, never a hardcoded
+Price ID) and the "Top Employer" Product (2 recurring Prices, monthly/
+annual) in the sandbox — safe to rerun, reuses what's already there.
+
+**Schema** (`20260930100000_billing_foundation.sql` +
+`20260930100100_top_employer_public_grant.sql`): `companies` gains
+`ad_credits_available`/`top_employer_active`/`top_employer_period_end`,
+kept off both the public *and* the broad `authenticated` column grants —
+same treatment as `nif`/`verification_*`, readable only through
+`my_company()` — except `top_employer_active` itself, which got its own
+follow-up public grant once it became clear a badge/sort fact needs to be
+public even though the billing details around it shouldn't be (a real
+gap caught before it shipped, not after). `jobs` gains `salary_public`,
+`boost_rank_at`/`boosted_until` (the bump mechanic's sort key and
+"Boosted" badge window), `bump_credits_remaining`. New
+`job_ad_purchases` (audit ledger) and `company_subscriptions` (Top
+Employer lifecycle, unused until phase 2) — both service-role-write-only,
+same shape as the long-dormant `events` table, with one read policy so a
+company sees its own history.
+
+**The publish-gate rewrite** (`saveJob()`, `src/lib/db/jobs.ts`) — the
+single most-touched piece of logic this phase. Every verified company may
+always have 1 job live free (Top Employer raises that standing allowance
+to 10, not built here but the arithmetic already accounts for it);
+beyond that, publishing spends a purchased ad credit. Getting this right
+took real care around what "free" means: hiding the salary and getting
+bump credits/the auto-boost are perks of being a paying customer *in
+either form* (a spent credit or an active subscription) — not tied to
+which specific slot a job occupies, so a paying company's "free" first
+job can hide its salary too, same as any other. And a second, subtler
+correctness fix: the *old* code reset `published_at`/`expires_at` on
+every single edit-save of an already-published job, not just a genuine
+new publish — harmless before credits existed, but would have silently
+re-charged or reset the boost state on routine edits once they did. Fixed
+by checking the job's prior status before deciding whether this save is
+a real publish transition — a genuine bug fix surfaced by this phase, not
+just new gating. `setJobStatus()`'s reactivate path got the identical
+gate (verified live: pausing a job that pushed the company over its free
+slot, then trying to reactivate it with 0 credits, correctly blocked with
+the same translated message rather than silently succeeding).
+
+**Salary-visibility plumbing**: `Job.salaryMin`/`salaryMax` became
+`number | null` — a deliberately cross-cutting type change (13 files
+touched) rather than a shortcut, because silently leaking a hidden salary
+through one missed component would break the whole feature's promise.
+`hideSalaryIfPrivate()` is a separate step from `toJob()` itself, applied
+only on public-facing reads (`getLiveJobs`/`getLiveJobBySlug`/
+`getBrowseJobs`/`recommendations.ts`) — the console's own job list keeps
+seeing real numbers always, matching that an employer should never be
+confused about their own job's real salary. The `Salary` component,
+`JobMap`'s pin labels, both jobs-feed components' salary-sort/filter
+logic, and the job detail page's `JobPosting` JSON-LD all got a real null
+path — a hidden salary now correctly disappears from structured data
+too, not just the visible UI. `JobsExplorer`'s and `JobFeed`'s default
+sort also stopped re-deriving order from `postedDaysAgo` (a coarse day-
+count) and now trusts the array order the server already computed — a
+prerequisite for the bump mechanic to have any visible effect on same-day
+posts, not a cosmetic change.
+
+**Feed ranking**: `getLiveJobs()`/`getBrowseJobs()` sort by `boost_rank_at`
+instead of `published_at`, then a lightweight JS pass
+(`sortForFeed()`) places Top-Employer jobs first — deliberately not a
+SQL-level join-order, since the query already fetches the joined
+`companies` row and a stable JS sort over an already-DB-sorted array is
+simplest-correct at this data volume.
+
+**Verified live on localhost**, real Stripe test-mode throughout (not
+mocked): a fresh verified employer published a first job free (salary
+forced public, no bumps); a second job correctly saved as a draft with
+the translated "no ad credits" message; bought 1 ad credit through the
+*actual* Stripe-hosted Checkout page (confirmed the real product name/
+price rendered correctly); the webhook (tested by constructing a real,
+correctly-signed `checkout.session.completed` event via
+`stripe.webhooks.generateTestHeaderString` — Stripe's own recommended way
+to test webhook handlers directly, since automating their hosted page's
+bot-protected card-entry UI would be testing Stripe's code, not this
+app's) granted the credit and logged the purchase row; replaying the
+identical event confirmed idempotency (still 1 credit, still 1 purchase
+row); the now-unblocked second job published successfully, with the
+salary-hide toggle now visible and working, `bump_credits_remaining = 2`,
+and — correctly — no auto-boost, because hiding the salary forfeits it.
+The public feed showed the real salary on the free job and "Salário não
+divulgado" on the hidden one. Fixture (company, employer account, jobs,
+Stripe purchase row) cleaned up afterward.
+
+Phases 2-4 (Top Employer's own subscription checkout/webhook lifecycle,
+its badge/site-wide placement, the rich company profile, API access) are
+scoped in the plan but not built yet — Phase 1 alone is a complete,
+correct, shippable unit on its own.

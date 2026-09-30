@@ -1,7 +1,14 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { saveJob, setJobStatus, deleteJob, type JobFormInput, type SaveResult } from "@/lib/db/jobs";
+import {
+  saveJob,
+  setJobStatus,
+  deleteJob,
+  type JobFormInput,
+  type SaveResult,
+  type SetStatusResult,
+} from "@/lib/db/jobs";
 import { extractJobFromUrl, type ExtractJobResult } from "@/lib/ai/extract-job";
 import { polishJobDescription, type PolishResult } from "@/lib/ai/polish-text";
 
@@ -17,9 +24,13 @@ export async function polishJobDescriptionAction(text: string): Promise<PolishRe
   return polishJobDescription(text);
 }
 
-export async function setJobStatusAction(jobId: string, status: "inactive" | "published") {
-  await setJobStatus(jobId, status);
+export async function setJobStatusAction(
+  jobId: string,
+  status: "inactive" | "published",
+): Promise<SetStatusResult> {
+  const result = await setJobStatus(jobId, status);
   revalidatePath("/recruit");
+  return result;
 }
 
 export async function deleteJobAction(jobId: string) {

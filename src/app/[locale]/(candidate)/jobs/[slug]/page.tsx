@@ -81,16 +81,24 @@ function jobPostingJsonLd(job: JobDetail, locale: string) {
             },
           },
         }),
-    baseSalary: {
-      "@type": "MonetaryAmount",
-      currency: "EUR",
-      value: {
-        "@type": "QuantitativeValue",
-        minValue: job.salaryMin,
-        maxValue: job.salaryMax,
-        unitText: UNIT[job.salaryPeriod],
-      },
-    },
+    // Omitted entirely when the employer has hidden the salary publicly
+    // (§pricing) — job.salaryMin/Max are already null on that path
+    // (hideSalaryIfPrivate, applied in getLiveJobBySlug), so there's
+    // nothing real to put in structured data here either.
+    ...(job.salaryMin != null && job.salaryMax != null
+      ? {
+          baseSalary: {
+            "@type": "MonetaryAmount",
+            currency: "EUR",
+            value: {
+              "@type": "QuantitativeValue",
+              minValue: job.salaryMin,
+              maxValue: job.salaryMax,
+              unitText: UNIT[job.salaryPeriod],
+            },
+          },
+        }
+      : {}),
   };
 }
 

@@ -455,7 +455,21 @@ a skills-only candidate now correctly hits a "set your preferences"
 prompt instead of a score, and a genuine full match still scores 90%
 and displays correctly.
 
-Next up: connecting a real domain + email provider
-(unblocks both the application-email flow and real saved-search
-notifications) and step 9 (SEO check, compliance, polish) (see
-`CLAUDE.md`).
+**Employer pricing & billing shipped, phase 1 of 4**: the long-deferred
+pricing conversation happened for real this round — grounded in actual
+competitor pricing (justjoin.it, LinkedIn, Indeed) and one real data
+point (an existing customer's real spend at scale on a competitor board),
+reverse-engineered into a volume-discount curve rather than guessed
+percentages. Two separate products came out of it: self-serve job-ad
+credits (built this phase, real Stripe Checkout, real webhook,
+end-to-end verified in Stripe test mode) and a Top Employer subscription
+(badge, site-wide placement, rich company profile, API access — scoped,
+not built yet). Every verified company still gets 1 free job live,
+same as always; publishing more spends a purchased credit. Hiding the
+salary publicly is now a paid-tier-only choice — the free tier's salary
+stays mandatory and public, unchanged.
+
+Next up: Top Employer's own subscription (phases 2-4), then connecting a
+real domain + email provider (unblocks both the application-email flow
+and real saved-search notifications) and step 9 (SEO check, compliance,
+polish) (see `CLAUDE.md`).

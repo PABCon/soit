@@ -157,11 +157,49 @@ whatever order makes sense.
       occurrence count), and basic abuse/moderation. Big enough to be
       its own planning pass, not something to bolt onto another phase.
 
+## Billing / Stripe
+
+- [ ] Currently on a Stripe **sandbox/test-mode** resource
+      (`stripe-camel-ribbon`, provisioned via `vercel integration add
+      stripe` 2026-09-30) — claim it (`vercel integration resource claim`)
+      and switch to live mode before real money should move. Test-mode
+      keys (`sk_test_...`) are in `.env.local`/Vercel dev env only.
+- [ ] The Stripe webhook (`/api/stripe/webhook`) only has a signing
+      secret configured for local dev (via `stripe listen`). Before
+      production traffic hits it: register a real webhook endpoint
+      pointing at the real domain in the Stripe Dashboard (or via the
+      API) and set ITS OWN `STRIPE_WEBHOOK_SECRET` in Vercel's
+      production env — the local dev secret is not valid for it.
+- [ ] Currently using the Vercel-provisioned `STRIPE_SECRET_KEY`
+      (full access). The Stripe security skill's own recommendation:
+      switch to a restricted API key (`rk_...`) scoped to only what
+      `src/lib/stripe.ts` actually calls (Checkout Sessions, Prices,
+      Products, webhook construction) before going live — narrows the
+      blast radius if it ever leaks.
+- [ ] **Stripe Tax not configured.** Charging real customers (especially
+      in the EU) needs VAT handling — either enable Stripe Tax
+      (`automatic_tax`) with an active tax registration, or handle VAT
+      manually. Nothing here charges tax today; confirm this deliberately
+      before real invoices go out, not by omission.
+- [ ] Top Employer's own subscription checkout/webhook lifecycle, its
+      badge/site-wide placement, the rich company profile content, and
+      API access are scoped (see CLAUDE.md/the saved plan) but not built
+      — phases 2-4 of the same pricing work.
+- [ ] The "6+ ads" tier is deliberately not self-serve (a "talk to
+      sales" contact link only) — when a real deal happens, the Stripe
+      Checkout Session/invoice for it is created manually via the
+      Dashboard, not through this codebase's checkout action.
+
 ## Product / business (not code)
 
-- [ ] Pricing model — deferred at your own request; needs a real
-      business-model pass (compare against LinkedIn's model, not just
-      port justjoin.it's tiers) before building any billing
+- [x] Pricing model — the real business-model conversation finally
+      happened 2026-09-30, grounded in real competitor pricing (justjoin.it,
+      LinkedIn, Indeed) and one real data point (an existing customer's
+      actual spend at scale on a competitor board), reverse-engineered
+      into a volume-discount curve rather than guessed at. Two products:
+      self-serve job-ad credits (building now) and a Top Employer
+      subscription (scoped, not built yet). See CLAUDE.md's "Employer
+      pricing & billing" entries for the full numbers and reasoning.
 - [x] Contact/support channel, email half — `/recruit/contact` page
       shipped 2026-09-29 (employer-only by your own explicit call, not
       a general/candidate channel — genuinely gated via the console's

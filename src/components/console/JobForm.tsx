@@ -38,6 +38,7 @@ type Initial = {
   selectedLanguages: SelectedLanguage[];
   externalApplyUrl: string;
   expiresAt: string | null;
+  salaryPublic: boolean;
 };
 
 const LEVELS: SkillLevel[] = ["basic", "intermediate", "advanced", "expert"];
@@ -77,12 +78,18 @@ export function JobForm({
   jobCategories,
   spokenLanguages,
   initial,
+  isPayingCustomer,
 }: {
   techTags: TechTagOption[];
   locations: LocationOption[];
   jobCategories: JobCategoryOption[];
   spokenLanguages: SpokenLanguageOption[];
   initial?: Initial;
+  /** §pricing — hiding the salary publicly is a paid-tier perk (a spent ad
+   *  credit or an active Top Employer subscription), never available on
+   *  the free slot. The server re-enforces this regardless of what's
+   *  submitted here; this only controls whether the toggle is shown. */
+  isPayingCustomer: boolean;
 }) {
   const t = useTranslations("jobForm");
   const router = useRouter();
@@ -107,6 +114,7 @@ export function JobForm({
   const [selectedLanguages, setSelectedLanguages] = useState<SelectedLanguage[]>(initial?.selectedLanguages ?? []);
   const [externalApplyUrl, setExternalApplyUrl] = useState(initial?.externalApplyUrl ?? "");
   const [expiresAt, setExpiresAt] = useState(initial?.expiresAt ?? "");
+  const [salaryPublic, setSalaryPublic] = useState(initial?.salaryPublic ?? true);
   const [tagFilter, setTagFilter] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -274,10 +282,13 @@ export function JobForm({
         externalApplyUrl,
         expiresAt: expiresAt || null,
         publish,
+        salaryPublic,
       });
 
       if (result.message === "notVerified") {
         setNotice(t("notVerified"));
+      } else if (result.message === "noAdCredits") {
+        setNotice(t("noAdCredits"));
       } else {
         router.push("/recruit");
         router.refresh();
@@ -492,6 +503,18 @@ export function JobForm({
             </label>
           )}
         </div>
+        {isPayingCustomer ? (
+          <label className="mt-4 flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={!salaryPublic}
+              onChange={(e) => setSalaryPublic(!e.target.checked)}
+            />
+            <span>{t("hideSalaryPublicly")}</span>
+          </label>
+        ) : (
+          <p className="mt-4 text-xs text-muted">{t("hideSalaryUpsell")}</p>
+        )}
         <label className={`${labelClass} mt-4`}>
           <span>{t("employmentType")}</span>
           <select

@@ -24,6 +24,9 @@ export type MyCompany = {
   x_url: string | null;
   location_id: string | null;
   address: string | null;
+  ad_credits_available: number;
+  top_employer_active: boolean;
+  top_employer_period_end: string | null;
 };
 
 export type EmployerContext = {

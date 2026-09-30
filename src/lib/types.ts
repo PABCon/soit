@@ -26,8 +26,11 @@ export type Job = {
   seniority: Seniority;
   tech: string[];
   categorySlug: string | null;
-  salaryMin: number;
-  salaryMax: number;
+  /** null when the employer has chosen to hide the salary from the public
+   *  listing (a paid-tier-only choice, §pricing) — still collected/stored,
+   *  just not sent to the client. Never null for a free-tier job. */
+  salaryMin: number | null;
+  salaryMax: number | null;
   salaryPeriod: SalaryPeriod;
   salaryMonths?: number;
   employmentType: EmploymentType;
@@ -35,4 +38,9 @@ export type Job = {
   postedDaysAgo: number;
   /** null for a draft/never-published job — "days left" has no meaning yet. */
   daysLeft: number | null;
+  /** §pricing — badge + feed-ranking fact, deliberately public. */
+  isTopEmployer: boolean;
+  /** §pricing bump mechanic — true for 72h after a manual bump or the
+   *  auto-boost, then reverts to false on its own (no separate expiry job). */
+  isBoosted: boolean;
 };

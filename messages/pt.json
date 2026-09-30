@@ -126,7 +126,16 @@
       "file_too_large": "Essa imagem é demasiado grande — máximo 2MB.",
       "bad_file": "Esse ficheiro não é uma imagem PNG, JPEG ou WEBP.",
       "upload_failed": "Não foi possível carregar essa imagem. Tente novamente."
-    }
+    },
+    "errorNoAdCredits": "Não tem créditos de anúncio — compre mais para publicar outra vaga.",
+    "adCreditsRemaining": "{count, plural, =0 {Sem créditos de anúncio} one {# crédito de anúncio restante} other {# créditos de anúncio restantes}}",
+    "adPackLabel": "{count, plural, one {# vaga} other {# vagas}}",
+    "perAd": "por vaga",
+    "buyPack": "Comprar",
+    "redirecting": "A redirecionar…",
+    "talkToSales": "Precisa de mais de 5 de uma vez? Contacte-nos para preços por volume.",
+    "purchaseSuccess": "Compra concluída — os seus créditos de anúncio já estão disponíveis.",
+    "purchaseCanceled": "Checkout cancelado — não foi feita qualquer cobrança."
   },
   "jobForm": {
     "title": "Título da vaga",
@@ -222,6 +231,9 @@
     "saveDraft": "Guardar rascunho",
     "publish": "Publicar",
     "notVerified": "Guardado como rascunho — a sua empresa ainda não está verificada, por isso não pode ficar ativa até estar.",
+    "noAdCredits": "Guardado como rascunho — já usou a sua vaga gratuita e não tem créditos de anúncio. Compre mais para publicar esta.",
+    "hideSalaryPublicly": "Ocultar o salário no anúncio público",
+    "hideSalaryUpsell": "Compre um crédito de anúncio ou subscreva o Top Employer para ocultar o salário no anúncio público.",
     "errorTitle": "Indique um título para a vaga.",
     "errorDescription": "Indique uma descrição.",
     "errorLocation": "Indique uma localização, ou mude para Remoto.",
@@ -258,7 +270,8 @@
       "contractor": "Prestação de serviços",
       "freelance": "Freelance",
       "internship": "Estágio"
-    }
+    },
+    "notDisclosed": "Salário não divulgado"
   },
   "jobs": {
     "title": "Vagas de IT",
@@ -272,6 +285,9 @@
   },
   "feed": {
     "new": "Novo",
+    "topEmployer": "Top Employer",
+    "boosted": "Impulsionado",
+    "salaryHidden": "Salário oculto",
     "matchScore": "{percent}% compatível",
     "daysLeft": "{days, plural, =0 {Último dia} one {Falta # dia} other {Faltam # dias}}",
     "favorite": "Guardar vaga",
