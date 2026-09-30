@@ -512,6 +512,21 @@ in order with a Top Employer badge, jobs staying last; a non-subscriber
 fixture confirmed the console blur/teaser and confirmed the public
 page shows none of it.
 
+**Phase 4 shipped**: Top Employer API access for programmatic job
+posting — the last unbuilt perk from the pricing page, built for a
+real pilot company to test. A key-authenticated REST API
+(`/api/v1/jobs`, `/api/v1/reference`) that can list, create, read,
+replace, pause, publish and delete job ads, speaking entirely in
+human-readable slugs rather than internal ids. Access is gated live on
+an active Top Employer subscription on every request, not just at key
+generation. New `/recruit/api` console page: key generation (shown
+once, never stored), in-product docs with real curl examples. Verified
+live on both environments with the full HTTP lifecycle via curl — a
+real key created and published a job that appeared on the public feed,
+every state transition and error case (bad slug, missing field, a
+job with applications, a lapsed subscription) checked directly against
+the real API, not just code review.
+
 Next up: connecting a real domain + email provider (unblocks both the
 application-email flow and real saved-search notifications) and step 9
 (SEO check, compliance, polish) (see `CLAUDE.md`).

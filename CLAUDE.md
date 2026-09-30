@@ -3014,3 +3014,103 @@ sections — confirmed via raw HTML inspection, not just visual absence.
 Confirmed the photo upload actually wrote to the `branding` bucket and
 cleanup actually removed it. Fixtures (companies, auth users, storage
 objects) removed on both environments afterward.
+
+## Employer pricing & billing, phase 4: Top Employer API access
+
+"API access for programmatic job posting" — the last unbuilt perk the
+pricing page has sold since phase 2 — built so a real pilot company
+can test it, per your explicit ask. First externally-authenticated
+(non-cookie-session) API surface in the codebase; everything else
+assumes a logged-in browser session via Supabase auth cookies.
+
+**Key model**: `company_api_keys` (new table) stores only a sha256
+hash (`key_hash`) and a short display prefix (`key_prefix`) — the
+secret itself (`sit_live_<32 url-safe chars>`) is shown to the owner
+exactly once, at generation time, never persisted. One active key per
+company: generating a new one revokes the current one first (revoked
+rows kept for audit, not deleted). Same defensive-grant posture as
+`companies.nif`/`verification_*`: `key_hash` is excluded from every
+grant, reachable only via the admin-client lookup in
+`src/lib/api/auth.ts` — never through RLS/PostgREST.
+
+**Auth is checked live on every request, not just at key generation**:
+`authenticateApiRequest()` joins the key lookup to
+`companies.top_employer_active` and returns 403 the moment a
+subscription lapses — verified directly (inserted a key for a non-
+Top-Employer company via the admin client, bypassing the console's own
+generation gate, and confirmed the API still rejects it with
+`403 not_top_employer`).
+
+**The `saveJob`/`setJobStatus`/`deleteJob` refactor**
+(`src/lib/db/jobs.ts`): each gained an optional trailing
+`override?: { companyId }`. With no override (the one real console
+call site, `recruit/jobs/actions.ts`) they behave exactly as before,
+resolving the caller's company via the cookie-bound
+`getMyEmployerContext()`. With an override (the new API routes) a
+shared `resolveJobWriteContext()` helper fetches the company via the
+admin client instead and skips the cookie lookup entirely — every
+existing `.eq("company_id", company.id)` ownership guard in these
+three functions was already explicit in code (not just trusted to
+RLS), so it carries over unchanged under either path.
+
+**A real bug caught by live curl verification, not a design flaw**:
+the plan assumed the new `getCompanyJobById`/`getAllCompanyJobsForApi`
+read functions could use the plain cookie-bound server client, since
+`jobs` grants `select` to `anon, authenticated`. True, but incomplete —
+that grant is split across two RLS policies: one exposes only
+`status='published' and expires_at > now()` rows to `anon`/no-session
+callers, the other exposes a company's *full* job list but only to a
+real `authenticated` session (`company_id = my_company_id()`, which
+needs `auth.uid()`). An API-key request has neither a session nor a
+published/live job in every case — so a freshly created draft, or a
+job the API had just paused, silently vanished from both the list and
+detail reads (zero error, RLS just made the row invisible), even
+though the explicit `.eq("company_id", companyId)` filter was already
+correct in the query. Caught by an end-to-end curl script, not by
+`tsc`/`eslint`/the build. Fixed by switching both functions to the
+admin client — the `.eq("company_id", companyId)` filter is the real
+security boundary either way, same admin-client-scoped-in-code
+pattern this session has used repeatedly for candidate/messaging data.
+
+**API surface** (`src/app/api/v1/...`, all routes call
+`authenticateApiRequest()` first): `GET /reference` (categories,
+locations, tech tags, spoken languages — slug+label — plus the fixed
+enums, so an integrator never needs this product's internal ids);
+`GET /jobs`, `POST /jobs`; `GET /jobs/:id`, `PUT /jobs/:id` (full
+replace, not a partial patch — stated plainly in the in-console docs),
+`DELETE /jobs/:id` (catches the `applications.job_id ... on delete
+restrict` FK violation and returns `409 job_has_applications` instead
+of a raw 500); `POST /jobs/:id/pause`, `POST /jobs/:id/publish`. The
+API speaks entirely in slugs (`categorySlug`, `locationSlug`,
+`techTags[].slug`, `languages[].slug`) — `src/lib/api/resolve-refs.ts`
+(a zod schema, the first real external-input-validation boundary in
+this codebase — everywhere else trusts TS-typed internal callers)
+resolves them to the UUIDs `saveJob` expects, returning a clear
+`unknown_*_slug` 400 rather than a raw DB error for a bad one.
+
+**Console UI**: new `/recruit/api` page — the same page-level
+Top-Employer upsell shape as `/recruit/matchmaking/[jobId]` for a
+non-subscriber (no shared gate component exists for this shape; each
+caller checks `top_employer_active` itself), `ApiKeyManager.tsx` for a
+subscriber (masked key state, "Generate new key" with a regenerate
+warning, a reveal-once copyable secret), and `ApiDocs.tsx` — plain
+in-console docs (base URL, bearer-auth header, an endpoint table, a
+`GET /reference` and a `POST /jobs` curl example) for the one pilot
+integration this ships for, not a public developer portal.
+
+**Verified live on both localhost and production** with the full HTTP
+lifecycle via curl (not Playwright — a pure HTTP surface): generated a
+real key through the actual console UI; `GET /reference` with no auth
+(401), a garbage key (401), and the real key (200 real data);
+`POST /jobs` created and published a job that actually appeared on the
+public job page; `GET /jobs` and `GET /jobs/:id` round-tripped it;
+`POST .../pause` then `GET /jobs/:id` (the bug above, then confirmed
+fixed) then `POST .../publish`; `PUT /jobs/:id` full-replaced it;
+an unknown category slug and a body missing a required field both
+returned clear 400s; `DELETE` removed a fresh draft (204) but was
+correctly refused (409) for a job with a real application; a directly-
+inserted key for a non-Top-Employer company got 403 on every route.
+Confirmed the console shows the key manager only for a Top Employer
+and the upsell for everyone else, on both environments. Fixtures
+(companies, auth users, jobs, applications, candidates, API keys)
+cleaned up on both.
