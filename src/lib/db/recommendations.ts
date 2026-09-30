@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { toJob, hideSalaryIfPrivate, type JobRow } from "./jobs";
 import { getMyCandidateSkillsAndEducation, getMyCandidateJobPreferences } from "./candidate-profile";
+import { scoreJobMatch, MIN_MATCH_SCORE } from "./matching-scoring";
 import type { Job, SkillLevel } from "@/lib/types";
 
 // §AI Pieces backlog, item 4 — "find me the top 5 best fitting jobs for
@@ -36,98 +37,41 @@ type RecsJobRow = Omit<JobRow, "job_tech_tags"> & {
   }[];
 };
 
-// Below this, a job is excluded from results entirely — see the filter
-// where it's used for the real-usage reasoning. Raised from 30 after a
-// real false positive: a candidate with a purely business/delivery
-// background (no data-engineering skills at all) was shown a "Senior
-// Big Data Engineer" role as a match. Root cause was the neutral
-// defaults below stacking up to a plausible-looking score with zero
-// actual skill evidence — fixed together with this raise, since raising
-// the bar alone without shrinking those defaults would only move
-// where the same failure resurfaces.
-const MIN_MATCH_SCORE = 70;
-
 export type RecommendedJob = Job & { matchScore: number; matchedTechLabels: string[] };
 
 export type RecommendationsResult =
   | { ok: true; jobs: RecommendedJob[] }
   | { ok: false; reason: "not_a_candidate" | "empty_profile" | "no_preferences" };
 
-/** Scores one job against a candidate's skill-id set and job preferences.
- *  Every weighted bucket is additive-only — a preference the candidate
- *  never set contributes neither points nor a penalty, so a candidate
- *  who's only filled in skills (no preferences yet) still gets a
- *  meaningful, non-punished score. Max ~100: 60 required-skill coverage
- *  + 10 nice-to-have bonus + up to 30 spread across whichever
- *  preferences are actually set (category/location/work model/
- *  employment type/salary), reweighted so unset ones don't shrink the
- *  achievable total. Salary is only compared when the job and the
- *  candidate's preference share the same period — comparing e.g. an
- *  hourly rate against an annual preference would be meaningless, so
- *  that case contributes nothing rather than guessing. */
+/** Thin wrapper around the shared `scoreJobMatch` bucket math
+ *  (`matching-scoring.ts`) — only adds `matchedTechLabels`, which is
+ *  specific to this direction's own UI (the candidate-matches direction
+ *  in `candidate-matches.ts` doesn't need it). */
 function scoreJob(
   row: RecsJobRow,
   skillIds: Set<string>,
   prefs: Awaited<ReturnType<typeof getMyCandidateJobPreferences>>,
 ): { score: number; matchedTechLabels: string[] } {
-  const requiredTags = row.job_tech_tags.filter((t) => t.required);
-  const niceTags = row.job_tech_tags.filter((t) => !t.required);
   const matchedTechLabels = row.job_tech_tags
     .filter((t) => skillIds.has(t.tech_tag_id))
     .map((t) => t.tech_tags.label);
 
-  let score = 0;
-  if (requiredTags.length > 0) {
-    const matched = requiredTags.filter((t) => skillIds.has(t.tech_tag_id)).length;
-    score += (matched / requiredTags.length) * 60;
-  } else {
-    // Neutral, but deliberately *low* (not half-credit): an employer
-    // who never tagged required skills gives us no evidence this job
-    // fits the candidate at all, so this alone — even stacked with a
-    // full preference match — must stay well under MIN_MATCH_SCORE.
-    score += 10;
-  }
+  const score = scoreJobMatch(
+    {
+      categoryId: row.category_id,
+      locationId: row.location_id,
+      workModel: row.work_model,
+      employmentType: row.employment_type,
+      salaryMin: row.salary_min,
+      salaryMax: row.salary_max,
+      salaryPeriod: row.salary_period,
+    },
+    row.job_tech_tags.map((t) => ({ techTagId: t.tech_tag_id, required: t.required })),
+    skillIds,
+    prefs,
+  );
 
-  if (niceTags.length > 0) {
-    const matched = niceTags.filter((t) => skillIds.has(t.tech_tag_id)).length;
-    score += Math.min(10, (matched / niceTags.length) * 10);
-  }
-
-  if (prefs) {
-    let prefPoints = 0;
-    let prefWeight = 0;
-
-    if (prefs.categoryIds.length > 0) {
-      prefWeight += 10;
-      if (row.category_id && prefs.categoryIds.includes(row.category_id)) prefPoints += 10;
-    }
-    if (prefs.locationIds.length > 0) {
-      prefWeight += 10;
-      if ((row.location_id && prefs.locationIds.includes(row.location_id)) || row.work_model === "remote") {
-        prefPoints += 10;
-      }
-    }
-    if (prefs.workModel) {
-      prefWeight += 5;
-      if (row.work_model === prefs.workModel) prefPoints += 5;
-    }
-    if (prefs.employmentType) {
-      prefWeight += 5;
-      if (row.employment_type === prefs.employmentType) prefPoints += 5;
-    }
-    if (prefs.salaryMin != null || prefs.salaryMax != null) {
-      prefWeight += 5;
-      if (prefs.salaryPeriod && prefs.salaryPeriod === row.salary_period) {
-        const prefMin = prefs.salaryMin ?? 0;
-        const prefMax = prefs.salaryMax ?? Number.POSITIVE_INFINITY;
-        if (row.salary_max >= prefMin && row.salary_min <= prefMax) prefPoints += 5;
-      }
-    }
-
-    score += prefWeight > 0 ? (prefPoints / prefWeight) * 30 : 15;
-  }
-
-  return { score: Math.round(Math.min(100, score)), matchedTechLabels };
+  return { score, matchedTechLabels };
 }
 
 /** Same `my_candidate_id()` guard every candidate-scoped function uses

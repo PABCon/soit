@@ -478,8 +478,19 @@ webhook lifecycle (real Stripe subscriptions, verified activating and
 canceling correctly on both localhost and production, the latter
 through the real registered webhook, not a simulation).
 
-Next up: Top Employer's badge/site-wide placement, the rich company
-profile, and API access (phases 3-4), then connecting a real domain +
-email provider (unblocks both the application-email flow and real
-saved-search notifications) and step 9 (SEO check, compliance, polish)
-(see `CLAUDE.md`).
+**AI Pieces item 3 shipped, phase A**: the big employer-paid matching
+engine, deferred all session — built off the real justjoin.it
+"Matchmaking Beta" source document. A blinded, scored candidate list per
+job ad (match %, skills, experience, salary expectation — never name,
+contact, or any identity) at `/recruit/matchmaking`, available to any
+paying employer. The scoring math is now provably shared with the
+candidate-facing recommendation engine (one formula, two call sites,
+can't drift apart). Messaging and identity-unlock-on-reply are a
+deliberately separate phase B — not built yet, and not promised as if
+they were.
+
+Next up: phase B of matching (messaging + identity unlock), Top
+Employer's badge/site-wide placement and rich company profile (phases
+3-4), then connecting a real domain + email provider (unblocks both the
+application-email flow and real saved-search notifications) and step 9
+(SEO check, compliance, polish) (see `CLAUDE.md`).

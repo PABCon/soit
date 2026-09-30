@@ -2762,3 +2762,94 @@ webhook delivery, not a simulated one. The subscribe Checkout page
 itself rendered correctly on both environments too (€5,967.00/year,
 "€497.25/month billed annually", the real Product description).
 Fixtures (companies, Stripe customers/subscriptions) cleaned up on both.
+
+## AI Pieces item 3, phase A: the employer-paid matching engine — a matched-candidates list
+
+Pointed, direct feedback that I'd been "just executing" — iterating on
+pricing-page visuals without checking whether the underlying promises
+(a rich company profile, a matching tool) were real. They weren't. This
+phase builds the first genuinely real piece of "item 3," the big
+employer-paid matching engine that's been deferred all session while
+its prerequisites got built (shared tech-tag vocabulary, the candidate-
+facing recommendation engine, and now real billing).
+
+**The source material, finally located and read**: you'd referenced a
+justjoin.it "Matchmaking Beta" PDF early in the session; it wasn't
+saved to disk as a findable file and the summary I had only cited it,
+not its mechanics. You re-shared it this round. The real mechanic,
+precisely: an employer with an active job ad gets an automatic,
+scored candidate list — no candidate opt-in gate to *appear*. Each card
+shows match %, skills, years of experience, salary expectation, work
+model, a "work history added" badge — **never name, photo, email,
+phone, or socials**. The employer can message a blinded card; personal
+data only unlocks once the *candidate* responds. That's the real
+consent mechanism — not an upfront settings toggle, an implicit one
+triggered by the candidate's own action. You also confirmed matching is
+available to any paying employer (ad credits or Top Employer), not
+Top-Employer-exclusive, consistent with the earlier per-post pricing
+conversation.
+
+**Deliberately split into two phases**, since bundling them would
+repeat the exact mistake just called out: phase A (this one) is the
+blinded, scored candidate list — a read-only feature reusing
+infrastructure that already exists. Phase B (messaging, identity unlock
+on reply, a candidate-side inbox, email notifications) is a genuinely
+new subsystem, not built here.
+
+**The scoring math is provably shared, not duplicated**: extracted the
+`recommendations.ts` bucket formula (60 pts required-skill overlap +
+10 nice-to-have + 30 preference alignment, `MIN_MATCH_SCORE = 70`) into
+`src/lib/db/matching-scoring.ts` — both directions (jobs-for-a-candidate,
+candidates-for-a-job) now call the identical `scoreJobMatch()`, so they
+can't silently drift apart later. `recommendations.ts` was refactored
+to use it with zero behavior change (same tests, same live-verified
+formula).
+
+**The real architectural question was candidate privacy, not UI**:
+`candidates` has genuinely zero RLS read access for employers
+("Employers never read this table" is a real, confirmed constraint —
+one SELECT policy, scoped to the candidate's own `auth_user_id`, no
+employer policy anywhere). The only existing precedent for an employer
+legitimately seeing any candidate field is `getApplicantsForJob`
+(`applications.ts`) — admin client, scoped in application code by a
+real ownership join, never a new RLS policy. New
+`src/lib/db/candidate-matches.ts` follows the identical shape, with one
+deliberate tightening: applicants are scoped by a real relationship (an
+application exists); matches have no relationship yet, only company
+ownership + paying-customer status — so the admin-client select list is
+hard-limited to non-identifying columns (skills, years of experience,
+salary expectation, work-model preference, a work-history-filled
+boolean) and `full_name`/`email`/`phone`/`linkedin_url`/`avatar_url`/
+`cv_url` never appear in the query at all, not just unused in the
+response type.
+
+**Eligibility follows an existing precedent exactly rather than adding
+a new stored flag**: neither `saveJob` nor `setJobStatus` stores a
+per-job "paid" flag — hiding a salary, bump credits, and the auto-boost
+are all computed fresh from company-level state
+(`ad_credits_available > 0 || top_employer_active`). Matching access
+uses the identical check, computed when the employer opens the view —
+consistent with the already-shipped principle that paying-customer
+perks apply account-wide, not per-slot.
+
+New `/recruit/matchmaking` (live job ads + their match counts, mirroring
+page 3 of the reference doc) and `/recruit/matchmaking/[jobId]` (the
+blinded list). `Sidebar.tsx`'s long-standing disabled "Matchmaking"
+placeholder — sitting in the `LATER` list since the very first version
+of the console nav — finally moves into `MVP`.
+
+**Verified live on localhost** with real fixtures: a job requiring
+React+TypeScript, one candidate with exactly those skills (scored 75% —
+hand-verified against the formula: 60 full skill match + 15 neutral,
+since the candidate had set no preferences), one candidate with
+unrelated skills (correctly absent, filtered by the 70% floor); the
+overview's match count badge (1) matched the detail page's actual list
+length; a non-paying employer got the upsell instead of a fake empty
+list; a non-paying employer directly hitting another company's
+`/recruit/matchmaking/[jobId]` URL correctly 404'd (cross-tenant *and*
+non-paying at once). Checked the raw HTML response specifically for any
+candidate identity string (name, email) — none present; the one
+`@mailinator.com` match found was the *employer's own* logged-in email
+in their nav avatar, not a leak. Fixtures (companies, jobs, candidates,
+including an orphaned company from a failed fixture-script attempt
+earlier — swept up in the same cleanup pass) removed afterward.
