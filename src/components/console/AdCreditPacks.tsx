@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { createAdCreditCheckoutAction, type AdCreditPackSize } from "@/app/[locale]/(console)/recruit/jobs/ads/actions";
 
 // §pricing — the reverse-engineered volume curve (anchored on €59 at n=1
@@ -17,6 +17,7 @@ const PACKS: { quantity: AdCreditPackSize; totalEur: number }[] = [
 
 export function AdCreditPacks() {
   const t = useTranslations("console");
+  const locale = useLocale();
   const [pending, setPending] = useState<AdCreditPackSize | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -24,7 +25,7 @@ export function AdCreditPacks() {
     setError(null);
     setPending(quantity);
     try {
-      const result = await createAdCreditCheckoutAction(quantity);
+      const result = await createAdCreditCheckoutAction(quantity, locale);
       if (result.ok) {
         window.location.assign(result.url);
         return;

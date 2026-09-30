@@ -20,7 +20,9 @@ const PACK_LOOKUP_KEYS = {
 
 export type AdCreditPackSize = keyof typeof PACK_LOOKUP_KEYS;
 
-export type CreateCheckoutResult = { ok: true; url: string } | { ok: false; reason: "not_an_employer" | "price_not_found" };
+export type CreateCheckoutResult =
+  | { ok: true; url: string }
+  | { ok: false; reason: "not_an_employer" | "price_not_found" | "stripe_error" };
 
 /** Self-serve job-ad credit purchase (§pricing) — one-time Stripe Checkout,
  *  `mode: "payment"`. 6+ packs are deliberately not offered here at all —
@@ -30,24 +32,33 @@ export type CreateCheckoutResult = { ok: true; url: string } | { ok: false; reas
  *  handler, never here or on the success page — a customer can pay and
  *  lose their connection before ever seeing the success page, and
  *  fulfillment must not depend on that page loading. */
-export async function createAdCreditCheckoutAction(quantity: AdCreditPackSize): Promise<CreateCheckoutResult> {
+export async function createAdCreditCheckoutAction(
+  quantity: AdCreditPackSize,
+  locale: string,
+): Promise<CreateCheckoutResult> {
   const ctx = await getMyEmployerContext();
   if (!ctx) return { ok: false, reason: "not_an_employer" };
 
-  const lookupKey = PACK_LOOKUP_KEYS[quantity];
-  const prices = await stripe.prices.list({ lookup_keys: [lookupKey], limit: 1 });
-  const price = prices.data[0];
-  if (!price) return { ok: false, reason: "price_not_found" };
+  try {
+    const lookupKey = PACK_LOOKUP_KEYS[quantity];
+    const prices = await stripe.prices.list({ lookup_keys: [lookupKey], limit: 1 });
+    const price = prices.data[0];
+    if (!price) return { ok: false, reason: "price_not_found" };
 
-  const session = await stripe.checkout.sessions.create({
-    mode: "payment",
-    line_items: [{ price: price.id, quantity: 1 }],
-    client_reference_id: ctx.company.id,
-    metadata: { ad_credit_quantity: String(quantity) },
-    integration_identifier: newIntegrationIdentifier("ad_credits"),
-    success_url: `${SITE}/recruit/jobs/ads?purchase=success`,
-    cancel_url: `${SITE}/recruit/jobs/ads?purchase=canceled`,
-  });
+    const session = await stripe.checkout.sessions.create({
+      mode: "payment",
+      line_items: [{ price: price.id, quantity: 1 }],
+      client_reference_id: ctx.company.id,
+      metadata: { ad_credit_quantity: String(quantity) },
+      integration_identifier: newIntegrationIdentifier("ad_credits"),
+      success_url: `${SITE}/${locale}/recruit/jobs/ads?purchase=success`,
+      cancel_url: `${SITE}/${locale}/recruit/jobs/ads?purchase=canceled`,
+    });
 
-  return { ok: true, url: session.url! };
+    if (!session.url) return { ok: false, reason: "stripe_error" };
+    return { ok: true, url: session.url };
+  } catch (err) {
+    console.error("createAdCreditCheckoutAction failed:", err);
+    return { ok: false, reason: "stripe_error" };
+  }
 }
