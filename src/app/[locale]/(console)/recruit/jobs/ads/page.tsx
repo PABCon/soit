@@ -35,11 +35,6 @@ export default async function JobAdsPricingPage({ params, searchParams }: Props)
         <p className="mt-4 rounded-lg bg-paper px-4 py-3 text-sm text-muted">{t("subscriptionCanceled")}</p>
       )}
 
-      <section className="mt-8 rounded-xl border border-line bg-paper/60 p-5">
-        <p className="text-xs font-semibold tracking-wide text-muted uppercase">{t("freeTierLabel")}</p>
-        <p className="mt-1 text-sm text-ink">{t("freeTierDescription")}</p>
-      </section>
-
       <section className="mt-8">
         <h2 className="text-lg font-semibold text-ink">{t("jobAdsHeading")}</h2>
         <p className="mt-1 text-sm text-muted">

@@ -43,21 +43,24 @@ export function AdCreditPacks() {
 
   return (
     <div>
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
+        <div className="flex flex-col items-center justify-center rounded-xl border border-line bg-paper/60 p-5 text-center">
+          <p className="text-sm text-muted">{t("freeTierLabel")}</p>
+          <p className="mt-2 font-display text-2xl font-bold text-ink">{t("freeTierPrice")}</p>
+          <p className="mt-1 text-xs text-muted">{t("freeTierCaption")}</p>
+        </div>
         {PACKS.map((pack) => (
-          <div key={pack.quantity} className="relative flex flex-col rounded-xl border border-line bg-white p-5">
+          <div key={pack.quantity} className="relative flex flex-col items-center rounded-xl border border-line bg-white p-5 text-center">
             {pack.discountPct > 0 && (
               <span className="absolute top-3 right-3 rounded bg-mint/25 px-1.5 py-0.5 text-[10px] font-semibold tracking-wide text-pine uppercase">
                 −{pack.discountPct}%
               </span>
             )}
-            <div className="text-center">
-              <p className="text-sm text-muted">{t("adPackLabel", { count: pack.quantity })}</p>
-              <p className="mt-2 font-display text-2xl font-bold text-ink">€{pack.totalEur}</p>
-              <p className="mt-1 text-xs text-muted">
-                €{(pack.totalEur / pack.quantity).toFixed(0)} {t("perAd")}
-              </p>
-            </div>
+            <p className="text-sm text-muted">{t("adPackLabel", { count: pack.quantity })}</p>
+            <p className="mt-2 font-display text-2xl font-bold text-ink">€{pack.totalEur}</p>
+            <p className="mt-1 text-xs text-muted">
+              €{(pack.totalEur / pack.quantity).toFixed(0)} {t("perAd")}
+            </p>
             <button
               type="button"
               disabled={pending !== null}
@@ -66,31 +69,24 @@ export function AdCreditPacks() {
             >
               {pending === pack.quantity ? t("redirecting") : t("buyPack")}
             </button>
-            <ul className="mt-4 space-y-1.5 border-t border-line pt-4 text-xs text-muted">
-              <li className="flex items-start gap-1.5">
-                <span aria-hidden className="text-pine">
-                  ✓
-                </span>
-                {t("adPackPerkBump")}
-              </li>
-              <li className="flex items-start gap-1.5">
-                <span aria-hidden className="text-pine">
-                  ✓
-                </span>
-                {t("adPackPerkSalary")}
-              </li>
-              <li className="flex items-start gap-1.5">
-                <span aria-hidden className="text-pine">
-                  ✓
-                </span>
-                {t("adPackPerkDuration")}
-              </li>
-            </ul>
           </div>
         ))}
       </div>
       {error && <p className="mt-3 text-sm text-red-700">{error}</p>}
-      <p className="mt-4 text-sm text-muted">
+
+      {/* One shared explanation, not repeated per card — every pack
+       *  includes the exact same three things, so saying it four times
+       *  was noise, not information. */}
+      <details className="mt-4 text-sm text-muted">
+        <summary className="cursor-pointer font-medium text-pine">{t("adPackWhatsIncluded")}</summary>
+        <ul className="mt-2 space-y-1 pl-1">
+          <li>{t("adPackPerkBump")}</li>
+          <li>{t("adPackPerkSalary")}</li>
+          <li>{t("adPackPerkDuration")}</li>
+        </ul>
+      </details>
+
+      <p className="mt-3 text-sm text-muted">
         {t("talkToSales")} <Link href="/recruit/contact" className="font-medium text-pine hover:underline">{t("contactUs")}</Link>
       </p>
     </div>
