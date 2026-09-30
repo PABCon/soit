@@ -43,24 +43,21 @@ export function AdCreditPacks() {
 
   return (
     <div>
-      <ul className="mb-4 space-y-1 text-sm text-muted">
-        <li>{t("adPackPerkBump")}</li>
-        <li>{t("adPackPerkSalary")}</li>
-        <li>{t("adPackPerkDuration")}</li>
-      </ul>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {PACKS.map((pack) => (
-          <div key={pack.quantity} className="relative rounded-xl border border-line bg-white p-5 text-center">
+          <div key={pack.quantity} className="relative flex flex-col rounded-xl border border-line bg-white p-5">
             {pack.discountPct > 0 && (
               <span className="absolute top-3 right-3 rounded bg-mint/25 px-1.5 py-0.5 text-[10px] font-semibold tracking-wide text-pine uppercase">
                 −{pack.discountPct}%
               </span>
             )}
-            <p className="text-sm text-muted">{t("adPackLabel", { count: pack.quantity })}</p>
-            <p className="mt-2 font-display text-2xl font-bold text-ink">€{pack.totalEur}</p>
-            <p className="mt-1 text-xs text-muted">
-              €{(pack.totalEur / pack.quantity).toFixed(0)} {t("perAd")}
-            </p>
+            <div className="text-center">
+              <p className="text-sm text-muted">{t("adPackLabel", { count: pack.quantity })}</p>
+              <p className="mt-2 font-display text-2xl font-bold text-ink">€{pack.totalEur}</p>
+              <p className="mt-1 text-xs text-muted">
+                €{(pack.totalEur / pack.quantity).toFixed(0)} {t("perAd")}
+              </p>
+            </div>
             <button
               type="button"
               disabled={pending !== null}
@@ -69,6 +66,26 @@ export function AdCreditPacks() {
             >
               {pending === pack.quantity ? t("redirecting") : t("buyPack")}
             </button>
+            <ul className="mt-4 space-y-1.5 border-t border-line pt-4 text-xs text-muted">
+              <li className="flex items-start gap-1.5">
+                <span aria-hidden className="text-pine">
+                  ✓
+                </span>
+                {t("adPackPerkBump")}
+              </li>
+              <li className="flex items-start gap-1.5">
+                <span aria-hidden className="text-pine">
+                  ✓
+                </span>
+                {t("adPackPerkSalary")}
+              </li>
+              <li className="flex items-start gap-1.5">
+                <span aria-hidden className="text-pine">
+                  ✓
+                </span>
+                {t("adPackPerkDuration")}
+              </li>
+            </ul>
           </div>
         ))}
       </div>
