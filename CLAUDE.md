@@ -2682,3 +2682,25 @@ Phases 2-4 (Top Employer's own subscription checkout/webhook lifecycle,
 its badge/site-wide placement, the rich company profile, API access) are
 scoped in the plan but not built yet — Phase 1 alone is a complete,
 correct, shippable unit on its own.
+
+**Two real bugs, both caught only by production verification, neither
+reproducible locally**: (1) the Checkout success/cancel URLs were built
+without a locale prefix (`${SITE}/recruit/jobs/ads`, missing `/pt` or
+`/en`) — harmless for creating the session, but wrong once a real
+customer got redirected back. Fixed by threading the locale through from
+the client (`useLocale()`) into the server action. (2) The real, actually
+interesting one: clicking "Comprar" 500'd in production but worked fine
+locally. Turned out `NEXT_PUBLIC_SITE_URL` was marked **Sensitive** in
+Vercel — the exact footgun this file already warned about ("never mark a
+`NEXT_PUBLIC_*` var Sensitive") had recurred on this specific variable.
+A hidden/sensitive value doesn't fail quietly — Stripe rejected the
+resulting `success_url` outright (`StripeInvalidRequestError`, `code:
+url_invalid`), which only showed up once real `vercel logs --follow`
+output was captured (the first attempt's `vercel logs <url>` without
+`--follow` returned nothing — timing-sensitive, don't trust an empty
+result as "no error"). Fixed by re-adding the variable with `--type
+config` for Production and Preview, then redeploying. Re-verified after
+both fixes: real Stripe Checkout redirect worked, and the webhook,
+tested against the *production* signing secret (a separate registered
+endpoint + secret from local dev's `stripe listen` one), correctly
+granted a credit. Fixtures cleaned up on both environments.
