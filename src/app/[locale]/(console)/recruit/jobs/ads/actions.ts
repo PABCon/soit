@@ -62,3 +62,46 @@ export async function createAdCreditCheckoutAction(
     return { ok: false, reason: "stripe_error" };
   }
 }
+
+const TOP_EMPLOYER_LOOKUP_KEYS = {
+  month: "top_employer_monthly",
+  year: "top_employer_annual",
+} as const;
+
+export type BillingInterval = keyof typeof TOP_EMPLOYER_LOOKUP_KEYS;
+
+/** Top Employer subscription (§pricing phase 2) — recurring Stripe
+ *  Checkout, `mode: "subscription"`. Fulfillment (setting
+ *  `companies.top_employer_active`) happens in the webhook, same
+ *  reasoning as the ad-credit flow: a customer can pay and never see the
+ *  success page. */
+export async function createTopEmployerCheckoutAction(
+  interval: BillingInterval,
+  locale: string,
+): Promise<CreateCheckoutResult> {
+  const ctx = await getMyEmployerContext();
+  if (!ctx) return { ok: false, reason: "not_an_employer" };
+
+  try {
+    const lookupKey = TOP_EMPLOYER_LOOKUP_KEYS[interval];
+    const prices = await stripe.prices.list({ lookup_keys: [lookupKey], limit: 1 });
+    const price = prices.data[0];
+    if (!price) return { ok: false, reason: "price_not_found" };
+
+    const session = await stripe.checkout.sessions.create({
+      mode: "subscription",
+      line_items: [{ price: price.id, quantity: 1 }],
+      client_reference_id: ctx.company.id,
+      subscription_data: { metadata: { company_id: ctx.company.id, billing_interval: interval } },
+      integration_identifier: newIntegrationIdentifier("top_employer"),
+      success_url: `${SITE}/${locale}/recruit/jobs/ads?subscription=success`,
+      cancel_url: `${SITE}/${locale}/recruit/jobs/ads?subscription=canceled`,
+    });
+
+    if (!session.url) return { ok: false, reason: "stripe_error" };
+    return { ok: true, url: session.url };
+  } catch (err) {
+    console.error("createTopEmployerCheckoutAction failed:", err);
+    return { ok: false, reason: "stripe_error" };
+  }
+}

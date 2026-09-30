@@ -2,17 +2,20 @@
 
 import { useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
+import { Link } from "@/i18n/navigation";
 import { createAdCreditCheckoutAction, type AdCreditPackSize } from "@/app/[locale]/(console)/recruit/jobs/ads/actions";
 
 // §pricing — the reverse-engineered volume curve (anchored on €59 at n=1
 // and the real ITDS rate of ~€20/ad at n≈108), rounded to clean checkout
-// prices for the four self-serve packs. 6+ is deliberately not offered
-// here — that's the "talk to sales" path, not a self-serve amount.
-const PACKS: { quantity: AdCreditPackSize; totalEur: number }[] = [
-  { quantity: 1, totalEur: 59 },
-  { quantity: 2, totalEur: 90 },
-  { quantity: 3, totalEur: 117 },
-  { quantity: 5, totalEur: 170 },
+// prices for the four self-serve packs, with the discount vs. buying
+// singles clearly labeled — this is the actual incentive to buy more at
+// once, and it needs to be visible, not just implied by the math. 6+ is
+// deliberately not offered here — that's the "talk to sales" path.
+const PACKS: { quantity: AdCreditPackSize; totalEur: number; discountPct: number }[] = [
+  { quantity: 1, totalEur: 59, discountPct: 0 },
+  { quantity: 2, totalEur: 90, discountPct: 24 },
+  { quantity: 3, totalEur: 117, discountPct: 34 },
+  { quantity: 5, totalEur: 170, discountPct: 42 },
 ];
 
 export function AdCreditPacks() {
@@ -40,9 +43,19 @@ export function AdCreditPacks() {
 
   return (
     <div>
+      <ul className="mb-4 space-y-1 text-sm text-muted">
+        <li>{t("adPackPerkBump")}</li>
+        <li>{t("adPackPerkSalary")}</li>
+        <li>{t("adPackPerkDuration")}</li>
+      </ul>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {PACKS.map((pack) => (
-          <div key={pack.quantity} className="rounded-xl border border-line bg-white p-5 text-center">
+          <div key={pack.quantity} className="relative rounded-xl border border-line bg-white p-5 text-center">
+            {pack.discountPct > 0 && (
+              <span className="absolute top-3 right-3 rounded bg-mint/25 px-1.5 py-0.5 text-[10px] font-semibold tracking-wide text-pine uppercase">
+                −{pack.discountPct}%
+              </span>
+            )}
             <p className="text-sm text-muted">{t("adPackLabel", { count: pack.quantity })}</p>
             <p className="mt-2 font-display text-2xl font-bold text-ink">€{pack.totalEur}</p>
             <p className="mt-1 text-xs text-muted">
@@ -60,7 +73,9 @@ export function AdCreditPacks() {
         ))}
       </div>
       {error && <p className="mt-3 text-sm text-red-700">{error}</p>}
-      <p className="mt-4 text-sm text-muted">{t("talkToSales")}</p>
+      <p className="mt-4 text-sm text-muted">
+        {t("talkToSales")} <Link href="/recruit/contact" className="font-medium text-pine hover:underline">{t("contactUs")}</Link>
+      </p>
     </div>
   );
 }
