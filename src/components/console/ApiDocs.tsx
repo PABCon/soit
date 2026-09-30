@@ -1,4 +1,5 @@
 import { useTranslations } from "next-intl";
+import { Link } from "@/i18n/navigation";
 
 const ENDPOINTS: { method: string; path: string }[] = [
   { method: "GET", path: "/api/v1/reference" },
@@ -11,13 +12,18 @@ const ENDPOINTS: { method: string; path: string }[] = [
   { method: "POST", path: "/api/v1/jobs/:id/publish" },
 ];
 
-/** Plain, in-console docs for a single pilot integration — not a public
- *  developer portal. Code (curl, JSON) stays unlocalized on purpose. */
+/** Quick-start shown right where the key lives — the full field-by-field
+ *  reference is the public page at `/developers` (linked below), not
+ *  duplicated here. Code (curl, JSON) stays unlocalized on purpose. */
 export function ApiDocs({ baseUrl }: { baseUrl: string }) {
   const t = useTranslations("console");
 
   return (
     <div className="max-w-2xl space-y-6 text-sm">
+      <Link href="/developers" target="_blank" className="inline-block text-pine hover:underline">
+        {t("apiDocsFullReferenceLink")} ↗
+      </Link>
+
       <div>
         <h3 className="font-semibold text-ink">{t("apiDocsBaseUrl")}</h3>
         <code className="mt-1 block rounded bg-paper px-3 py-2 text-xs">{baseUrl}</code>

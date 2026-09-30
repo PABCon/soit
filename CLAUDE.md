@@ -3183,3 +3183,42 @@ surfaced a critical RCE advisory in the installed Next.js range
 `ImageResponse`. Bumped to 16.3.8 (the patched version `npm audit`
 itself pointed at), full verification suite re-run clean
 (`tsc`/`eslint`/`build`/`vitest`/`check:i18n`).
+
+## Public API documentation
+
+The API's own docs went from buried-and-gated to a real, linkable page.
+Asked before building, since both were real product decisions, not
+technical ones: public (no login) vs. staying behind employer login —
+public won, since a pilot company's developers shouldn't need a Just
+IT account just to read the reference, and there's nothing secret in
+it; and where the link lives — the pricing page, right on the "API
+access" perk line, not the footer.
+
+**New public page**: `/developers` (`(legal)` route group — reused
+verbatim for its role-agnostic minimal shell, same as
+`/privacy`/`/terms`, despite the folder name; Next's route groups are
+just file organization, adding a page here doesn't imply it's legal
+content). Full reference: auth, base URL, every error code the API can
+actually return (pulled from the real `apiError(...)` call sites, not
+recalled from memory), all six endpoints with real request/response
+examples, and a complete job-fields table mirroring the zod schema in
+`resolve-refs.ts` field-for-field. Indexable (unlike the gated console
+pages) — it's genuinely public content.
+
+**The in-console quick-start** (`/recruit/api`'s `ApiDocs.tsx`) now
+links out to the full reference instead of duplicating it — one source
+of truth for the field-level detail, the in-console version stays a
+short quick-start next to where the key itself lives.
+
+**A real, if minor, click-dead-zone bug caught by live verification**:
+the pricing page's new "(ver documentação)" link, inline inside the
+longer perk sentence, wrapped across two lines at the card's width —
+and the link text's own bounding box then had its *geometric center*
+fall in the gap between those two lines, which isn't part of either
+line's actual hit-region. A plain `page.click()` landed there and
+silently did nothing; only `force=True` (bypassing Playwright's
+actionability check) revealed the real destination worked. Real users
+would have hit the same dead zone. Fixed with `whitespace-nowrap` on
+just the link (not the whole perk sentence) so its own text never
+wraps internally — confirmed fixed with a normal, non-forced click
+afterward.

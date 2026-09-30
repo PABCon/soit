@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
+import { Link } from "@/i18n/navigation";
 import {
   createTopEmployerCheckoutAction,
   type BillingInterval,
@@ -58,7 +59,17 @@ export function TopEmployerCard({ active }: { active: boolean }) {
             <span aria-hidden className="text-pine">
               ✓
             </span>
-            {t(key)}
+            <span>
+              {t(key)}
+              {key === "topEmployerPerkApi" && (
+                <>
+                  {" "}
+                  <Link href="/developers" className="whitespace-nowrap text-pine hover:underline">
+                    {t("topEmployerPerkApiDocsLink")}
+                  </Link>
+                </>
+              )}
+            </span>
           </li>
         ))}
       </ul>

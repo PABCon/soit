@@ -540,5 +540,14 @@ API. One real gap surfaced and flagged, not silently assumed away:
 form's destination) can send but nothing can read it — needs a real
 mailbox provider next.
 
+**Real public API documentation shipped**: `/developers` — a full,
+public (no login needed) reference for the Top Employer job-posting
+API, linked from the pricing page's API perk. Every error code and
+job field documented matches the real code, not recollection. Caught
+and fixed one small real bug along the way: the pricing-page link's
+own text wrapped across two lines and had a dead click zone in the
+gap between them — a real user could have hit it too, not just a test
+artifact.
+
 Next up: a real mailbox for `@justit.pt`, then step 9 (SEO check,
 compliance, polish) (see `CLAUDE.md`).
