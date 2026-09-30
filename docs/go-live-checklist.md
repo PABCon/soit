@@ -6,8 +6,8 @@ this project's build (see `CLAUDE.md` for the full history, and
 were first called out), consolidated in one place so nothing gets
 launched-past silently. Grounded against the live project's actual
 current state (checked directly via the Supabase Management API and
-Vercel, not assumed) as of 2026-09-29 — update this file as items close,
-same as every other doc in this project.
+Vercel, not assumed) — last updated 2026-10-01 — update this file as
+items close, same as every other doc in this project.
 
 Not a step-by-step build plan — these are independent, tick off in
 whatever order makes sense.
@@ -194,10 +194,12 @@ whatever order makes sense.
       (`automatic_tax`) with an active tax registration, or handle VAT
       manually. Nothing here charges tax today; confirm this deliberately
       before real invoices go out, not by omission.
-- [ ] Top Employer's own subscription checkout/webhook lifecycle, its
+- [x] Top Employer's own subscription checkout/webhook lifecycle, its
       badge/site-wide placement, the rich company profile content, and
-      API access are scoped (see CLAUDE.md/the saved plan) but not built
-      — phases 2-4 of the same pricing work.
+      API access (phases 2–4 of the pricing work) are all built and
+      verified live on both environments — see CLAUDE.md. Public API
+      docs at `/developers`, linked from the pricing page, shipped
+      2026-10-01.
 - [ ] The "6+ ads" tier is deliberately not self-serve (a "talk to
       sales" contact link only) — when a real deal happens, the Stripe
       Checkout Session/invoice for it is created manually via the
@@ -216,9 +218,10 @@ whatever order makes sense.
 - [x] Contact/support channel, email half — `/recruit/contact` page
       shipped 2026-09-29 (employer-only by your own explicit call, not
       a general/candidate channel — genuinely gated via the console's
-      own auth guard, not just unlinked), sends through the same
-      not-yet-connected email pipeline as everything else (see Email
-      section above)
+      own auth guard, not just unlinked). Sends for real now (Resend,
+      confirmed `last_event: "sent"`) — but see the `hello@justit.pt`
+      mailbox gap in the Email section above: sent isn't the same as
+      readable yet.
 - [ ] Contact/support channel, chat half — deliberately skipped for
       now (2026-09-29); building real-time chat from scratch isn't
       worth it, a third-party widget (Crisp recommended) is the right
