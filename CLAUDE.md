@@ -2921,3 +2921,96 @@ fired (visible in the console-log email provider's output) in both
 directions; confirmed the employer's unread-count badge appeared after
 the candidate's reply and cleared after reading. Fixtures (companies,
 jobs, applications, candidates, threads) cleaned up.
+
+## Employer pricing & billing, phase 3: Top Employer's rich company profile
+
+The pricing page has sold "Full rich company profile — About us, How we
+work, Benefits, team, testimonials, photo & video galleries, one custom
+section" as a Top Employer perk since phase 2 shipped; it wasn't real
+until now — a genuine integrity gap (charging for something that didn't
+exist), closed here.
+
+**Data model**: five nullable scalar columns on `companies`
+(`about_us_text`, `how_we_work_text`, `benefits_text`,
+`custom_section_title`, `custom_section_body`) plus four child tables —
+`company_team_members` (name, role), `company_testimonials` (name,
+role, quote), `company_gallery_photos` (url),
+`company_gallery_videos` (title, url) — all public-select, owner-only
+write, same delete-then-reinsert-on-save / `order by created_at asc`
+convention as `job_tech_tags`/`candidate_experience` (no explicit
+`position` column). Photo gallery is the one exception: rows are
+inserted one at a time (upload-then-insert), not saved as a whole array,
+since each add is an immediate upload through the `branding` bucket's
+existing RLS (new path convention `${companyId}/gallery/<uuid>.<ext>`,
+same policies as today's fixed `logo`/`cover` paths — they key on the
+folder segment, which generalizes for free).
+
+**Gating is NOT RLS or a column grant trick.** These fields are public
+profile content like every other company field, columns grant-readable
+the same way once a company has them (same "GRANT is column-additive"
+gotcha this project keeps hitting — `20260930200000_company_rich_profile.sql`
+adds the grant in the same migration as the columns). Gating happens
+entirely in `getCompanyBySlug()`: it fetches `top_employer_active`
+alongside everything else, and only includes the rich-profile fields in
+its returned object when that flag is true — a non-subscriber's fields
+are fetched internally (cheap, no extra query since it's the same row)
+but deliberately discarded, so `CompanyProfileBody.tsx`'s existing
+"omit when empty" rendering convention (`{company.aboutUsText && ...}`)
+does the right thing with zero new conditional logic on the public
+side.
+
+**The new mechanic, your direction**: a non-Top-Employer owner's own
+console editor shows these same sections for real — not hidden — just
+visually blurred (`TopEmployerBlurGate.tsx`: `pointer-events-none
+blur-sm opacity-60` on the real inputs, `aria-hidden`, an absolute
+centered overlay with a one-line teaser and a CTA to `/recruit/jobs/ads`).
+This is deliberately a console-only sales tactic, never shown to
+candidates — the public page's gating is a plain omission, no blur
+trick on that side. First pass wrapped each of the five new blocks (the
+scalar-field fieldset, then each of the four list sections) in its own
+gate individually, matching the plan literally — but that produced five
+near-identical "become a Top Employer" prompts stacked down the page,
+confirmed genuinely redundant via screenshot, not just in theory. Fixed
+by consolidating the four list sections under one shared gate (a single
+`<div className="space-y-6">` wrapping all four, one gate around that),
+so a blurred visit shows exactly two prompts — one for the text
+fields, one for the lists — not five.
+
+**UI**: four new section components
+(`TeamMembersSection`/`TestimonialsSection`/`PhotoGallerySection`/
+`VideoGallerySection`, `src/components/console/`), each with its own
+manual Save button — this page has never used the candidate-profile
+pages' autosave convention, and these don't either, for consistency
+with itself, not because autosave would be wrong in the abstract.
+`CompanyProfileForm.tsx`'s existing single form gained the five scalar
+fields (same submit, same `updateProfileAction`); the four list
+components render below it, each backed by its own server action
+(`saveTeamMembersAction`/`saveTestimonialsAction`/
+`saveGalleryVideosAction` delete-then-reinsert the whole array;
+`uploadGalleryPhotoAction`/`removeGalleryPhotoAction` touch one row —
+and one storage object — at a time). `CompanyProfileBody.tsx` gained a
+"Top Employer" badge by the `<h1>` (same amber pill treatment as
+`JobRow.tsx`'s existing badge) and eight new "omit when empty" sections,
+placed after the office section and before "Open jobs" (jobs stays
+last, the primary conversion action).
+
+**Deliberate v1 scope cuts**: team members and testimonials are
+name/role(/quote) text only, no per-person photo upload. Video gallery
+stores plain external links (title + URL) rendered with a play icon,
+not an embedded iframe player — avoids new CSP/URL-parsing surface for
+a first pass.
+
+**Verified live on both localhost and production**: two fresh fixture
+companies each (one `top_employer_active`, one not). Top Employer
+fixture: filled and saved all eight pieces (about us, how we work,
+benefits, custom section, one team member, one testimonial, one
+uploaded photo, one video link) through the real console UI, confirmed
+every field round-tripped after reload, then confirmed the public
+profile page rendered all eight in order with the Top Employer badge
+and jobs last. Non-Top-Employer fixture: confirmed the console shows
+the blurred/teased sections (screenshot, both environments) and the
+public profile page shows the badge nowhere and none of the eight
+sections — confirmed via raw HTML inspection, not just visual absence.
+Confirmed the photo upload actually wrote to the `branding` bucket and
+cleanup actually removed it. Fixtures (companies, auth users, storage
+objects) removed on both environments afterward.

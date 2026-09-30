@@ -499,8 +499,19 @@ fully anonymous until the candidate's own reply flipped it, an applicant
 thread was unlocked from the first message, checked directly against
 the raw HTML response for any identity leak.
 
-Next up: Top Employer's badge/site-wide placement and rich company
-profile (phases 3-4), then connecting a real domain + email provider
-(unblocks both the application-email flow and real saved-search
-notifications) and step 9 (SEO check, compliance, polish) (see
-`CLAUDE.md`).
+**Phase 3 shipped**: Top Employer's rich company profile — About us,
+How we work, Benefits, team, testimonials, photo & video galleries, a
+custom section — the perk phase 2's pricing copy had been selling
+without it actually existing. A non-Top-Employer owner sees the same
+editor blurred with a "become a Top Employer" teaser in their own
+console, not hidden outright; the public profile page omits the
+fields entirely for non-subscribers — no blur trick shown to
+candidates. Verified live on both environments: a Top Employer fixture
+filled and saved all eight pieces and confirmed they render publicly
+in order with a Top Employer badge, jobs staying last; a non-subscriber
+fixture confirmed the console blur/teaser and confirmed the public
+page shows none of it.
+
+Next up: connecting a real domain + email provider (unblocks both the
+application-email flow and real saved-search notifications) and step 9
+(SEO check, compliance, polish) (see `CLAUDE.md`).
