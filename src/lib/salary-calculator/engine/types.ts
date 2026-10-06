@@ -42,6 +42,15 @@ export type EmploymentInput = {
   twelfths: "none" | "half" | "full";
   meal: MealInput;
   otherTaxableMonthly?: number;
+  /** Ajudas de custo / travel allowance — a free-entry amount the user
+   *  declares as fully exempt from both IRS and Social Security. Added
+   *  straight to net pay; never enters either tax base. */
+  expenseAllowanceMonthly?: number;
+  /** Other benefits that are IRS-taxable but exempt from Social Security
+   *  (e.g. flexible-benefits platforms like Coverflex) — increases the
+   *  IRS withholding base but is explicitly excluded from the SS base,
+   *  on both the employee and employer side. */
+  fringeBenefitsMonthly?: number;
 };
 
 export type MonthlyWithholdingResult = {
@@ -67,6 +76,10 @@ export type EmploymentMonthly = {
   duodecimoGross: number;
   taxableMeal: number;
   exemptMeal: number;
+  /** Ajudas de custo — exempt from both IRS and SS (see `EmploymentInput`). */
+  expenseAllowance: number;
+  /** IRS-taxable, SS-exempt benefits — e.g. Coverflex-style platforms. */
+  fringeBenefits: number;
   ss: number;
   irs: number;
   net: number;

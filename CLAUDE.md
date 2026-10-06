@@ -3483,3 +3483,52 @@ IRS-but-not-SS (or vice versa) case described — asked the user to
 name the specific mechanism they mean rather than keep guessing
 candidates, since guessing wrong here risks silently building the
 wrong thing.
+
+## Salary Calculator — two asymmetric-exemption fields, net display reorder, settlement box removed
+
+The user clarified the third point above with a concrete example: "what
+Coverflex offers" — flexible-benefits platforms whose whole pitch is
+real IRS-taxable income that's carved out of the Social Security
+contribution base on *both* sides (confirmed via Coverflex's own public
+material: TSU-exempt for the employer, SS-exempt for the employee, IRS
+treatment varies by benefit category). Added as a genuinely separate
+field from the existing `otherTaxableMonthly` (which stays symmetric —
+taxable for both IRS and SS), since the whole point is the asymmetry:
+
+- `expenseAllowanceMonthly` (ajudas de custo) — free-entry amount,
+  fully exempt from **both** IRS and SS, added straight to net. No
+  ceiling enforced in the UI by design ("the person adds whatever
+  amount they want") — the real €65.89/day ceiling exists but isn't
+  validated against here.
+- `fringeBenefitsMonthly` (Coverflex-style) — free-entry amount that
+  widens the **IRS** base only; explicitly excluded from the SS base,
+  employer and employee side alike.
+
+This required splitting `mode-a.ts`'s single `taxableRemuneration` into
+two distinct bases — `irsBase` (feeds `calculateMonthlyWithholding`)
+and `ssBase` (feeds both employee and employer
+`calculateEmployeeSocialSecurity`/`calculateEmployerSocialSecurity`
+calls) — since they now genuinely diverge whenever a fringe benefit is
+present. Two new regression tests in `mode-a.test.ts` lock in the
+asymmetry directly: ajudas de custo must leave both `ss` and `irs`
+unchanged and add its full value to `net`; fringe benefits must leave
+`ss` unchanged, raise `irs`, and add to `net` net of that IRS increase.
+
+Two more changes from the same message, both UI-only:
+
+**Reversed which net figure is the headline.** The user: *"the
+estimated net should include the meal card. below you can show the
+amount without the meal card."* `SalaryCalculatorForm.tsx`'s results
+card now shows `netIncludingMeal` as the large headline and `net`
+(without meal) as the smaller line underneath — the opposite of Phase
+2's original order.
+
+**Removed the annual-IRS-settlement-estimate box entirely**, per an
+explicit product/liability boundary: *"we are not doing tax advisory
+here."* The engine's `calculateAnnualIrs` call and
+`annualSettlementEstimate` field in `mode-a.ts`/`types.ts` are
+untouched (still computed, still available on `EmploymentResult`) —
+only the UI block rendering it (and its Madeira/Açores companion note)
+was deleted from the results card. If a future surface wants this
+figure again, the data's still there; it's just not shown by default
+anymore.

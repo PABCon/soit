@@ -31,6 +31,8 @@ const DEFAULT_INPUT: EmploymentInput = {
   paymentsPerYear: 14,
   twelfths: "none",
   meal: { type: "card", dailyValue: 10.46, daysPerMonth: 22 },
+  expenseAllowanceMonthly: 0,
+  fringeBenefitsMonthly: 0,
 };
 
 const REGIONS: Region[] = ["continente", "madeira", "acores"];
@@ -307,6 +309,40 @@ export function SalaryCalculatorForm() {
             )}
           </div>
         </fieldset>
+
+        <fieldset className="space-y-4 rounded-xl border border-line bg-white p-4">
+          <legend className="px-1 text-sm font-semibold">{t("extraBenefitsHeading")}</legend>
+
+          <label className={labelClass}>
+            <span>{t("expenseAllowance")}</span>
+            <input
+              type="number"
+              min={0}
+              step={1}
+              value={input.expenseAllowanceMonthly ?? 0}
+              onChange={(e) =>
+                setInput((i) => ({ ...i, expenseAllowanceMonthly: Math.max(0, Number(e.target.value)) }))
+              }
+              className={inputClass}
+            />
+            <span className="text-xs text-muted">{t("expenseAllowanceHint")}</span>
+          </label>
+
+          <label className={labelClass}>
+            <span>{t("fringeBenefits")}</span>
+            <input
+              type="number"
+              min={0}
+              step={1}
+              value={input.fringeBenefitsMonthly ?? 0}
+              onChange={(e) =>
+                setInput((i) => ({ ...i, fringeBenefitsMonthly: Math.max(0, Number(e.target.value)) }))
+              }
+              className={inputClass}
+            />
+            <span className="text-xs text-muted">{t("fringeBenefitsHint")}</span>
+          </label>
+        </fieldset>
       </div>
 
       <div className="space-y-4">
@@ -314,9 +350,9 @@ export function SalaryCalculatorForm() {
           <p className="text-xs font-semibold tracking-wide text-muted uppercase">{t("monthlyNetHeading")}</p>
           {result ? (
             <>
-              <p className="font-display mt-1 text-4xl font-bold text-pine">{money(result.monthly.net)}</p>
+              <p className="font-display mt-1 text-4xl font-bold text-pine">{money(result.monthly.netIncludingMeal)}</p>
               <p className="mt-1 text-xs text-muted">
-                {t("monthlyNetIncludingMeal", { amount: money(result.monthly.netIncludingMeal) })}
+                {t("monthlyNetExcludingMeal", { amount: money(result.monthly.net) })}
               </p>
 
               <dl className="mt-5 space-y-2 border-t border-line pt-4 text-sm">
@@ -344,6 +380,18 @@ export function SalaryCalculatorForm() {
                     <dd>+{money(result.monthly.exemptMeal + result.monthly.taxableMeal)}</dd>
                   </div>
                 )}
+                {result.monthly.expenseAllowance > 0 && (
+                  <div className="flex justify-between">
+                    <dt className="text-muted">{t("resultExpenseAllowance")}</dt>
+                    <dd>+{money(result.monthly.expenseAllowance)}</dd>
+                  </div>
+                )}
+                {result.monthly.fringeBenefits > 0 && (
+                  <div className="flex justify-between">
+                    <dt className="text-muted">{t("resultFringeBenefits")}</dt>
+                    <dd>+{money(result.monthly.fringeBenefits)}</dd>
+                  </div>
+                )}
               </dl>
 
               <div className="mt-4 border-t border-line pt-4 text-sm">
@@ -356,21 +404,6 @@ export function SalaryCalculatorForm() {
                   <dd>{money(result.employerCost.monthlyEquivalent)}</dd>
                 </div>
               </div>
-
-              {result.annualSettlementEstimate && (
-                <p className="mt-4 rounded-lg bg-paper p-3 text-xs text-muted">
-                  {t("annualSettlementNote", {
-                    amount: money(Math.abs(result.annualSettlementEstimate.settlement)),
-                    direction:
-                      result.annualSettlementEstimate.settlement >= 0
-                        ? t("settlementDirectionOwe")
-                        : t("settlementDirectionRefund"),
-                  })}
-                </p>
-              )}
-              {profile.region !== "continente" && (
-                <p className="mt-3 text-xs text-muted">{t("annualSettlementRegionNote")}</p>
-              )}
 
               <button
                 type="button"

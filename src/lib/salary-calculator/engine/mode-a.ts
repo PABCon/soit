@@ -31,12 +31,18 @@ export function calculateEmploymentNet(profile: Profile, input: EmploymentInput)
 
   const mealSplit = splitMealAllowance(input.meal, meta);
   const other = input.otherTaxableMonthly ?? 0;
+  const expenseAllowance = input.expenseAllowanceMonthly ?? 0;
+  const fringeBenefits = input.fringeBenefitsMonthly ?? 0;
 
   // §3.2: R = base + taxable part of meal allowance + other taxable.
-  const taxableRemuneration = round2(d(input.grossMonthly).plus(mealSplit.taxableMonthly).plus(other));
-  const withholding = calculateMonthlyWithholding(profile, taxableRemuneration);
+  // Fringe benefits (e.g. Coverflex-style) widen the IRS base only —
+  // they're explicitly carved out of the SS base, on both sides.
+  // Ajudas de custo never enter either base — fully exempt, pass-through.
+  const irsBase = round2(d(input.grossMonthly).plus(mealSplit.taxableMonthly).plus(other).plus(fringeBenefits));
+  const ssBase = round2(d(input.grossMonthly).plus(mealSplit.taxableMonthly).plus(other));
+  const withholding = calculateMonthlyWithholding(profile, irsBase);
 
-  const baseSs = calculateEmployeeSocialSecurity(taxableRemuneration, meta);
+  const baseSs = calculateEmployeeSocialSecurity(ssBase, meta);
   const baseIrs = withholding.retention;
 
   // Subsidies (férias/Natal) and duodécimos (spec §3.2, §3.1). Confirmed
@@ -83,10 +89,17 @@ export function calculateEmploymentNet(profile: Profile, input: EmploymentInput)
   const ss = round2(d(baseSs).plus(duodecimoSs));
   const irs = round2(d(baseIrs).plus(duodecimoIrs));
   const net = round2(
-    d(input.grossMonthly).plus(duodecimoGross).plus(mealSplit.taxableMonthly).plus(other).minus(ss).minus(irs),
+    d(input.grossMonthly)
+      .plus(duodecimoGross)
+      .plus(mealSplit.taxableMonthly)
+      .plus(other)
+      .plus(fringeBenefits)
+      .plus(expenseAllowance)
+      .minus(ss)
+      .minus(irs),
   );
   const netIncludingMeal = round2(d(net).plus(mealSplit.exemptMonthly));
-  // net already folds in taxableMonthly (it's part of taxableRemuneration
+  // net already folds in taxableMonthly (it's part of irsBase/ssBase
   // above); only the exempt portion still needs adding to reach the
   // employee's real total cash-in-hand including the full meal benefit.
 
@@ -95,6 +108,8 @@ export function calculateEmploymentNet(profile: Profile, input: EmploymentInput)
     duodecimoGross,
     taxableMeal: mealSplit.taxableMonthly,
     exemptMeal: mealSplit.exemptMonthly,
+    expenseAllowance,
+    fringeBenefits,
     ss,
     irs,
     net,
@@ -116,14 +131,26 @@ export function calculateEmploymentNet(profile: Profile, input: EmploymentInput)
   // portions alike — only the employee's own tax treatment differs by
   // portion, the employer's real cash cost doesn't.
   const annualMealTotal = d(mealSplit.exemptMonthly).plus(mealSplit.taxableMonthly).times(12);
-  const annualNet = annualGross.minus(annualSs).minus(annualIrsWithheld);
+  const annualExpenseAllowance = d(expenseAllowance).times(12);
+  const annualFringeBenefits = d(fringeBenefits).times(12);
+  const annualNet = annualGross
+    .minus(annualSs)
+    .minus(annualIrsWithheld)
+    .plus(annualFringeBenefits)
+    .plus(annualExpenseAllowance);
   const annualNetIncludingMeal = annualNet.plus(annualMealExempt);
 
   // Employer SS (23.75%) applies to the same base as the employee's own
   // 11% — the regular month (incl. any duodécimo share) and each subsidy
-  // month — not just the regular month alone.
-  const employerSsMonthly = calculateEmployerSocialSecurity(round2(d(taxableRemuneration).plus(duodecimoGross)), meta);
-  let employerCostAnnual = d(input.grossMonthly).plus(duodecimoGross).plus(employerSsMonthly).times(12);
+  // month — not just the regular month alone. Fringe benefits stay out of
+  // this base on the employer side too, same carve-out as the employee's.
+  const employerSsMonthly = calculateEmployerSocialSecurity(round2(d(ssBase).plus(duodecimoGross)), meta);
+  let employerCostAnnual = d(input.grossMonthly)
+    .plus(duodecimoGross)
+    .plus(employerSsMonthly)
+    .plus(fringeBenefits)
+    .plus(expenseAllowance)
+    .times(12);
   if (subsidyMonths) {
     const holidayEmployerSs = calculateEmployerSocialSecurity(subsidyMonths.holiday.gross, meta);
     const christmasEmployerSs = calculateEmployerSocialSecurity(subsidyMonths.christmas.gross, meta);
