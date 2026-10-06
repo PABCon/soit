@@ -1,0 +1,39 @@
+import { describe, expect, it } from "vitest";
+import { encodeState, decodeState } from "./url-state";
+import type { SalaryCalculatorState } from "./url-state";
+
+const state: SalaryCalculatorState = {
+  profile: {
+    year: 2026,
+    month: 1,
+    region: "continente",
+    maritalStatus: "married_two_earners",
+    dependents: 2,
+    dependentsUnder3: 1,
+    dependentsWithDisability: 0,
+    disabilityAbove60: false,
+    spouseHasDisability: false,
+    age: 29,
+    irsJovem: { enabled: true, benefitYear: 2 },
+    flatRate20: false,
+  },
+  input: {
+    grossMonthly: 2500,
+    paymentsPerYear: 14,
+    twelfths: "none",
+    meal: { type: "card", dailyValue: 7.63, daysPerMonth: 22 },
+  },
+};
+
+describe("url-state round-trip (spec §10 — no email/personal data in it)", () => {
+  it("decodes back to the exact same state", () => {
+    const encoded = encodeState(state);
+    expect(encoded).not.toMatch(/[+/=]/); // url-safe
+    const decoded = decodeState(encoded);
+    expect(decoded).toEqual(state);
+  });
+
+  it("returns null for garbage input rather than throwing", () => {
+    expect(decodeState("not valid base64 json at all!!")).toBeNull();
+  });
+});

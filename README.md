@@ -565,6 +565,21 @@ and caught two real transcription mistakes before they shipped. See
 yet (IRS Jovem's exact monthly mechanic, duodécimos, a couple of
 deduction edge cases the spec itself doesn't fully specify).
 
+**Salary Calculator Phase 2 shipped**: a real, public, indexable page
+at `/salario-liquido` — no login needed, linked from the candidate
+Rail nav. The engine runs entirely client-side (no server round trip
+per keystroke); IRS Jovem and the IFICI flat-20% regime, both already
+built in Phase 1, are now real toggles in the UI; a shareable URL
+encodes the whole scenario in the link, verified with a real
+copy-paste-reload round trip. One real UI gap kept honest rather than
+guessed: Madeira/Açores show no annual-settlement estimate yet (their
+own IRS bracket data wasn't confidently sourced), with an explicit
+note saying so — their monthly net is still fully accurate. Caught and
+fixed a real `next-intl` bug along the way (a dynamic translation
+lookup colliding with a plain-string key of the same name).
+
 Next up: a real mailbox for `@justit.pt` (in progress — you're
 mid-testing this), then step 9 (SEO check, compliance, polish), and
-continuing the Salary Calculator's remaining phases (see `CLAUDE.md`).
+continuing the Salary Calculator's remaining phases (Mode B — recibos
+verdes, Mode C — Lda, the comparator, the lead-gen gate) (see
+`CLAUDE.md`).

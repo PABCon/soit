@@ -3360,3 +3360,79 @@ primary legal sources, not just the spec's own paraphrase) on each one:
 Two new tests lock in the corrected disability/mínimo-de-existência
 behavior; 34 tests passing, `tsc`/`eslint`/`build`/`check:i18n` all
 clean.
+
+## Salary Calculator — Phase 2: a real, public UI
+
+The first real UI for the calculator — public, indexable, no login,
+under the `(candidate)` route group so it automatically picks up the
+Rail's floating nav (confirmed this was already anticipated: an item 4
+backlog note from months earlier explicitly named "a salary calculator"
+as a planned future `highlight: true` Rail entry, the same visual
+treatment as "Jobs matched to you"). Placement and scope were both
+real decisions checked with the user first, not assumed: public route
+vs. staying unlinked, and "all of Phase 2 now" vs. UI-first-then-follow-up
+— the user picked public + all of Phase 2 in one pass.
+
+**Route**: `/salario-liquido` (`(candidate)/salario-liquido/page.tsx` +
+`SalaryCalculatorForm.tsx`). The engine is pure client-side — no server
+action, no network round trip per keystroke — since `calculateEmploymentNet`
+has zero I/O by design (spec rule #5) and its rule-data JSON is bundled
+at build time via static imports, so it runs instantly in the browser
+exactly like the spec's "pure engine, separate UI" intent describes.
+
+**Shareable URL** (spec §10): `src/lib/salary-calculator/url-state.ts`,
+base64url-encoded JSON of `{profile, input}` in a `?s=` param — nothing
+identifying, by construction (no email/name field exists anywhere in
+either type). Verified round-trip with a real test, and live: shared a
+real link, loaded it fresh, confirmed every field (including the
+nested `irsJovem` state) came back exactly as set.
+
+**IRS Jovem + IFICI**: both were already fully built in the Phase 1
+engine — "wiring into the UI" here meant exposing the existing toggles
+(age-gated: IRS Jovem only shows for age ≤ 35, per spec UI notes;
+mutually exclusive with IFICI's flat-20% toggle, also per spec UI
+notes), not new engine work. Verified live: IFICI shows exactly 20% of
+gross as the IRS line with no bracket/dependent logic touching it;
+IRS Jovem year 1 (100% exemption) brought IRS withholding to €0 on the
+test salary.
+
+**Madeira/Açores — a boundary kept honest, not silently wrong**: went
+looking for their ANNUAL IRS bracket parcela-a-abater values (needed
+for the optional annual-settlement panel) and hit a real dead end — a
+search result claiming Açores' annual rates were identical to
+Madeira's turned out almost certainly to be a mixed-up source (it
+directly contradicts the already-confirmed fact that Açores and
+Madeira use *different* solidarity-surcharge rates, so they're clearly
+not just clones of each other). Didn't guess a number here either:
+`calculateAnnualIrs` was already gated to `profile.region ===
+"continente"` only from Phase 1, so Madeira/Açores correctly show no
+annual-settlement panel (with an explicit UI note saying why) rather
+than a wrong one — monthly net, which *is* fully confirmed for all
+three regions, stays accurate regardless.
+
+**A real bug caught by live verification, not by any automated
+check**: used a dynamic `t(\`maritalStatus.${value}\`)`-style lookup
+for the region/marital-status `<select>` options, reusing the same key
+prefix (`region`, `maritalStatus`) as the field's own plain-string
+label — `next-intl` can't resolve a key as both a string and a nested
+object at once, so every option silently rendered as missing-message
+fallback text. The fix itself needed two passes: the first attempt
+just renamed the flat string keys to `"regionOption.continente": "..."`
+style, which *looks* like nesting but isn't — a literal dot in a JSON
+key name is still one flat key, not an actual nested object. Had to
+restructure them into real `"regionOption": { "continente": "...",
+... }` objects before `next-intl` could resolve the dynamic lookup.
+Caught both times by actually loading the page and reading the
+rendered output and server logs, not by `tsc`/`eslint`/`build`, none
+of which flag a missing translation key.
+
+Verified end-to-end: hand-checked the headline numbers against the
+real withholding formula for a €1,500 salary (€168.17 IRS, €165.00 SS,
+€1,166.83 net — all exact), confirmed region switching, the IFICI and
+IRS Jovem toggles, and the full shareable-URL round-trip, all via a
+live browser, not just unit tests. 36 tests passing,
+`tsc`/`eslint`/`build`/`check:i18n` all clean.
+
+Not started: Phase 3 (Mode B — recibos verdes), Phase 4 (Mode C — Lda,
+comparator, reverse solver), Phase 5 (lead-gen gate — everything on
+this page is currently ungated, by design, since Phase 5 isn't built).
