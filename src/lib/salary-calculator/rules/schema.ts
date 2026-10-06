@@ -66,7 +66,7 @@ export const irsBracketsRuleSetSchema = z.object({
     dependentFirst: z.number(),
     dependentFirstAged3OrUnder: z.number().nullable(),
     dependentSecondPlusAged6OrUnder: z.number(),
-    disabilityNonMarriedTaxpayer: z.number(),
+    disabilityTaxpayer: z.number(),
     disabilityDependent: z.number(),
     despesasGeraisFamiliaresMax: z.number(),
     note: z.string(),

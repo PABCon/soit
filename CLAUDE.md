@@ -3309,3 +3309,54 @@ IFICI integration, UI, shareable URL), Phase 3 (Mode B — recibos
 verdes), Phase 4 (Mode C — Lda, comparator, reverse solver), Phase 5
 (lead-gen gate). See `SALARY_CALCULATOR_SPEC.md` (provided by the user,
 not in the repo) for the full 8-phase plan.
+
+### Follow-up: actually researching the flagged gaps, not just flagging them
+
+Asked directly whether the VERIFY-flagged items above were really
+unresearchable or just left unresearched — fair challenge, and worth
+distinguishing. Went back with live web research (search + fetching
+primary legal sources, not just the spec's own paraphrase) on each one:
+
+- **IRS Jovem's monthly withholding mechanic**: CONFIRMED correct as
+  already built. The spec cited a nonexistent article ("2.º-B CIRS");
+  the real basis is art. 12.º-B CIRS (the exemption) and n.º 4 of art.
+  99.º-F CIRS (how it hits withholding): "apply the rate that results
+  from the tables for the TOTAL remuneration, including the exempt
+  part, only to the part that isn't exempt" — exactly the full-R
+  bracket lookup + non-exempt-portion application already implemented.
+- **Disability deduction — a real correction, not just a confirmation**:
+  re-fetching art. 87.º CIRS directly from Portal das Finanças showed
+  the taxpayer's own 4×IAS (€2,148.52) disability deduction applies
+  regardless of marital status — the spec's "per non-married taxpayer"
+  phrasing was imprecise, not the law. Was wrongly gating this on
+  `maritalStatus === "single"`; fixed (`annual-irs.ts`,
+  `calculateDeducoesAColeta`), and the rules JSON field renamed from
+  `disabilityNonMarriedTaxpayer` to `disabilityTaxpayer` to stop
+  encoding the wrong premise.
+- **mínimo de existência**: confirmed the reference value (art. 70.º
+  CIRS: max(€12,880, 1.5×14×IAS)) and that gross income at or below it
+  is fully IRS-exempt — now implemented as `minimoExistenciaThreshold()`
+  and wired into `calculateAnnualIrs` via an optional
+  `grossAnnualIncome`/`ias` pair. The sliding-taper abatement above that
+  threshold (art. 70.º §2 b/c) is real but has a genuinely complex
+  multi-term formula with no known-good test case found to verify a
+  transcription against — left unimplemented rather than guessed from
+  an imperfectly-extracted secondary source.
+- **Duodécimos**: confirmed the withholding rate is looked up from the
+  subsidy's own full value (not the regular month's) — in the common
+  case (subsidy = one month's gross) this is the same bracket as what
+  was already built, so no code change, just a corrected comment.
+- **Açores solidarity surcharge (1.75%/3.5%)**: confirmed matches the
+  spec exactly, live against a direct source — ready for Phase 2's
+  Açores irs-brackets file.
+- **One claim deliberately rejected**: a search result claimed
+  withholding truncates to the nearest whole euro (art. 99.º-E CIRS).
+  Didn't take it — it directly contradicts the spec's own T1 test
+  value (€125.31, precise to the cent), which is stronger ground truth
+  than an AI-summarized search result. Worth remembering generally:
+  a web search result that contradicts an already-verified known-good
+  value loses, every time.
+
+Two new tests lock in the corrected disability/mínimo-de-existência
+behavior; 34 tests passing, `tsc`/`eslint`/`build`/`check:i18n` all
+clean.

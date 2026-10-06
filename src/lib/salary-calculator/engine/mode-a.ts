@@ -128,6 +128,8 @@ export function calculateEmploymentNet(profile: Profile, input: EmploymentInput)
     const catANet = Math.max(0, round2(annualGross.minus(Decimal.max(4587.09, annualSs))));
     result.annualSettlementEstimate = calculateAnnualIrs({
       rendimentoColetavel: catANet,
+      grossAnnualIncome: round2(annualGross),
+      ias: meta.ias,
       withheld: round2(annualIrsWithheld),
       irsBrackets,
       deductionInput: {

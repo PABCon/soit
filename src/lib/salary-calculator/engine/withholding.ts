@@ -92,14 +92,21 @@ export function calculateMonthlyWithholding(
 
   let effectiveR = d(taxableRemuneration);
 
-  // IRS Jovem (spec §3.2 + §6): the employer determines the marginal rate
-  // on the FULL remuneration, but only withholds on the non-exempt
-  // portion. VERIFY the exact mechanic in art. 2.º-B CIRS — this is a
-  // reasonable, literal reading of the spec text, not independently
-  // confirmed against the despacho, and (unlike the base/IFICI paths
-  // above) isn't covered by a Phase-1 test case. A real year-to-date
-  // cumulative cap tracker is Phase 2+ scope; this prorates the annual
-  // cap evenly across 12 months as a simplification.
+  // IRS Jovem withholding mechanic — CONFIRMED against the actual law,
+  // not the spec's guess (the spec cited "art. 2.º-B CIRS", which
+  // doesn't exist; the real articles are 12.º-B CIRS for the exemption
+  // itself and n.º 4 of 99.º-F CIRS for how it's applied to withholding:
+  // "as entidades devem aplicar a taxa de retenção que resultar das
+  // tabelas... para a totalidade dos rendimentos, incluindo os isentos,
+  // apenas à parte dos rendimentos que não esteja isenta" — i.e. look up
+  // the rate from the bracket using the FULL remuneration, then apply
+  // *only the rate* to the non-exempt remainder. parcela/dependent
+  // deductions aren't "the rate" the law is talking about, so they stay
+  // applied in full below, against the same full-R bracket — which is
+  // exactly what this function already did. The one still-open piece:
+  // a real year-to-date cumulative cap tracker (spread unevenly across
+  // the year as actual pay varies) is Phase 2+ scope; this prorates the
+  // annual cap evenly across 12 months as a simplification until then.
   if (profile.irsJovem.enabled) {
     const meta = getMeta(profile.year);
     const exemptionPct = IRS_JOVEM_EXEMPTION_PCT[profile.irsJovem.benefitYear];

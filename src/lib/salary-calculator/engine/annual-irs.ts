@@ -57,15 +57,21 @@ export type AnnualIrsDeductionInput = {
   assumeFullDespesasGerais?: boolean;
 };
 
-/** Deduções à coleta (spec §6, v1 subset). Two real, stated gaps kept as
- *  code comments rather than invented numbers: (1) the Profile type has
+/** Deduções à coleta (spec §6, v1 subset). One real, stated gap kept as
+ *  a code comment rather than an invented number: the Profile type has
  *  no "dependent aged ≤6" field distinct from "aged ≤3", so the "900 for
  *  2nd+ dependent aged ≤6" tier can't be resolved — every dependent past
- *  a single aged-≤3 case falls back to the flat 600 figure; (2) the spec
- *  gives the taxpayer's own disability deduction only for a non-married
- *  taxpayer — a married taxpayer's own disability deduction is left at 0,
- *  not guessed. mínimo de existência is VERIFY-flagged in the spec and
- *  not implemented at all yet. */
+ *  a single aged-≤3 case falls back to the flat 600 figure.
+ *
+ *  The taxpayer's own disability deduction (4× IAS) applies regardless
+ *  of marital status — confirmed directly against art. 87.º CIRS, which
+ *  corrected an initial misreading of the spec's "per non-married
+ *  taxpayer" phrasing (the article itself makes no such distinction).
+ *
+ *  mínimo de existência is implemented only for the simple case (see
+ *  `applyMinimoExistencia` below); the sliding-taper formula above that
+ *  threshold is real but too complex to confidently implement without a
+ *  known-good test case to check it against. */
 export function calculateDeducoesAColeta(
   input: AnnualIrsDeductionInput,
   deductions: IrsBracketsRuleSet["deductions"],
@@ -78,8 +84,8 @@ export function calculateDeducoesAColeta(
     total = total.plus(d(deductions.dependentFirst).times(input.dependents));
   }
 
-  if (input.disabilityAbove60 && input.maritalStatus === "single") {
-    total = total.plus(deductions.disabilityNonMarriedTaxpayer);
+  if (input.disabilityAbove60) {
+    total = total.plus(deductions.disabilityTaxpayer);
   }
 
   if (input.dependentsWithDisability > 0) {
@@ -93,8 +99,25 @@ export function calculateDeducoesAColeta(
   return total;
 }
 
+/** mínimo de existência (art. 70.º CIRS) — confirmed live against the
+ *  primary source: the reference value is max(€12,880, 1.5 × 14 × IAS),
+ *  and gross income at or below it is fully exempt from IRS. Only that
+ *  simple floor is implemented: the sliding-taper abatement the article
+ *  also defines for gross income between the reference value and
+ *  roughly €14,641 (art. 70.º §2 b/c) is real but has a genuinely
+ *  complex multi-term formula this session couldn't confidently source
+ *  a verified version of — not implemented rather than guessed. */
+export function minimoExistenciaThreshold(ias: number): number {
+  return Math.max(12880, 1.5 * 14 * ias);
+}
+
 export function calculateAnnualIrs(params: {
   rendimentoColetavel: number;
+  /** Gross annual income (before category deductions) — only used for
+   *  the mínimo de existência floor, which the law checks against gross
+   *  income, not rendimento coletável. Omit to skip that check. */
+  grossAnnualIncome?: number;
+  ias?: number;
   withheld: number;
   irsBrackets: IrsBracketsRuleSet;
   deductionInput: AnnualIrsDeductionInput;
@@ -109,7 +132,14 @@ export function calculateAnnualIrs(params: {
     ? calculateDeducoesAColeta(params.deductionInput, params.irsBrackets.deductions)
     : d(0);
 
-  const irsLiquidado = Decimal.max(d(0), coleta.plus(solidarityExtra).minus(deducoes));
+  const belowMinimoExistencia =
+    params.grossAnnualIncome !== undefined &&
+    params.ias !== undefined &&
+    params.grossAnnualIncome <= minimoExistenciaThreshold(params.ias);
+
+  const irsLiquidado = belowMinimoExistencia
+    ? d(0)
+    : Decimal.max(d(0), coleta.plus(solidarityExtra).minus(deducoes));
   const settlement = irsLiquidado.minus(params.withheld);
 
   return {

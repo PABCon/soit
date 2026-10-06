@@ -15,7 +15,7 @@
     { "upTo": null, "rate": 0.48, "parcela": 11387.17 }
   ],
   "solidarityRate": {
-    "note": "taxa adicional de solidariedade on rendimento coletável above 80,000 (2.5%) and above 250,000 (an additional 2.5%, i.e. 5% total) — Continente/Madeira. VERIFY exact Açores rates (spec cites 1.75%/3.5% for Açores) against the official text before this ships.",
+    "note": "taxa adicional de solidariedade on rendimento coletável above 80,000 (2.5%) and above 250,000 (an additional 2.5%, i.e. 5% total) — Continente/Madeira. CONFIRMED (not just the spec's own figure) via a live lookup of art. 68.º-A CIRS commentary: Açores uses 1.75%/3.5% on the same thresholds — matches the spec exactly. Açores' own irs-brackets rule file (Phase 2) should use those rates.",
     "thresholds": [
       { "above": 80000, "rate": 0.025 },
       { "above": 250000, "rate": 0.05 }
@@ -25,9 +25,9 @@
     "dependentFirst": 600,
     "dependentFirstAged3OrUnder": 726,
     "dependentSecondPlusAged6OrUnder": 900,
-    "disabilityNonMarriedTaxpayer": 2148.52,
+    "disabilityTaxpayer": 2148.52,
     "disabilityDependent": 1342.83,
     "despesasGeraisFamiliaresMax": 250,
-    "note": "Taken from SALARY_CALCULATOR_SPEC.md §6 deduções à coleta (v1 subset). The spec gives the taxpayer's own disability deduction ONLY for a non-married taxpayer (2,148.52) and a separate figure for a dependent who has a disability (1,342.83) — it does NOT give a figure for a MARRIED taxpayer's own disability; that case is deliberately not implemented in the engine rather than guessed, flagged there as a real gap. mínimo de existência (2026 reference €12,880/year) is flagged VERIFY in the spec and not yet implemented either. VERIFY every value here against CIRS before this ships to real users."
+    "note": "Dependent figures taken from SALARY_CALCULATOR_SPEC.md §6 deduções à coleta (v1 subset). The two disability figures are CONFIRMED directly against the primary legal text (art. 87.º CIRS, fetched live from Portal das Finanças), which corrects a misreading of the spec: disabilityTaxpayer (4× IAS = 2,148.52) applies to ANY taxpayer with a qualifying disability regardless of marital status — the spec's own phrasing ('per non-married taxpayer') was imprecise, not the article itself; disabilityDependent (2.5× IAS = 1,342.83) applies per dependent OR ascendant with disability (this engine has no ascendants field, so only the dependent case is implemented). mínimo de existência (2026 reference €12,880/year, confirmed = max(12,880, 1.5×14×IAS) per art. 70.º CIRS) is implemented only for the simple case (full exemption at/below that gross-income threshold) — the sliding-taper formula between ~€12,880 and ~€14,641 is real but genuinely complex (art. 70.º §2 b/c) and not confidently enough sourced here to implement without a known-good test case to verify against; left unimplemented rather than guessed. VERIFY every value here against CIRS before this ships to real users."
   }
 }

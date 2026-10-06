@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { calculateMonthlyWithholding, selectWithholdingTableKey } from "./withholding";
 import { splitMealAllowance } from "./meal-allowance";
 import { calculateEmployeeSocialSecurity } from "./social-security";
-import { calculateColeta } from "./annual-irs";
+import { calculateColeta, calculateDeducoesAColeta, calculateAnnualIrs, minimoExistenciaThreshold } from "./annual-irs";
 import { getMeta, getIrsBracketsRuleSet } from "../rules/loader";
 import { calculateEmploymentNet } from "./mode-a";
 import type { Profile } from "./types";
@@ -83,6 +83,64 @@ describe("known-good check (spec §3.2) — Table I 2026 Continente, bracket up 
     const profile = baseProfile();
     const result = calculateMonthlyWithholding(profile, 1819);
     expect(result.rate).toBeCloseTo(0.241, 4);
+  });
+});
+
+describe("disability deduction (art. 87.º CIRS, confirmed live against the primary source)", () => {
+  it("applies the taxpayer's 4×IAS deduction regardless of marital status", () => {
+    const irsBrackets = getIrsBracketsRuleSet("continente", 2026, 1);
+    const single = calculateDeducoesAColeta(
+      {
+        dependents: 0,
+        dependentsUnder3: 0,
+        dependentsWithDisability: 0,
+        disabilityAbove60: true,
+        maritalStatus: "single",
+        assumeFullDespesasGerais: false,
+      },
+      irsBrackets.deductions,
+    );
+    const married = calculateDeducoesAColeta(
+      {
+        dependents: 0,
+        dependentsUnder3: 0,
+        dependentsWithDisability: 0,
+        disabilityAbove60: true,
+        maritalStatus: "married_single_earner",
+        assumeFullDespesasGerais: false,
+      },
+      irsBrackets.deductions,
+    );
+    expect(single.toNumber()).toBeCloseTo(2148.52, 2);
+    expect(married.toNumber()).toBeCloseTo(2148.52, 2);
+  });
+});
+
+describe("mínimo de existência (art. 70.º CIRS, confirmed live against the primary source)", () => {
+  it("threshold is max(€12,880, 1.5 × 14 × IAS) — €12,880 wins for 2026", () => {
+    const meta = getMeta(2026);
+    expect(minimoExistenciaThreshold(meta.ias)).toBeCloseTo(12880, 2);
+  });
+
+  it("fully exempts IRS when gross annual income is at or below the threshold", () => {
+    const irsBrackets = getIrsBracketsRuleSet("continente", 2026, 1);
+    const result = calculateAnnualIrs({
+      rendimentoColetavel: 10000,
+      grossAnnualIncome: 12000,
+      ias: 537.13,
+      withheld: 500,
+      irsBrackets,
+      deductionInput: {
+        dependents: 0,
+        dependentsUnder3: 0,
+        dependentsWithDisability: 0,
+        disabilityAbove60: false,
+        maritalStatus: "single",
+      },
+      includeDeductions: false,
+    });
+    expect(result.irsLiquidado).toBe(0);
+    expect(result.settlement).toBe(-500); // full refund of whatever was withheld
   });
 });
 
