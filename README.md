@@ -549,5 +549,22 @@ own text wrapped across two lines and had a dead click zone in the
 gap between them — a real user could have hit it too, not just a test
 artifact.
 
-Next up: a real mailbox for `@justit.pt`, then step 9 (SEO check,
-compliance, polish) (see `CLAUDE.md`).
+**Salary Calculator (Portugal), Phase 1 of 8 shipped**: a new lead-gen
+feature against its own separate spec, scoped to the calculator only
+(the spec's editorial content system and labour-law hub are explicitly
+not MVP). Phase 1 is the pure engine — rules data + schema for 2026
+Continente, the employment-contract (Mode A) calculation engine, no UI
+yet. Built from the real AT-published withholding spreadsheets the
+user provided (parsed programmatically, not retyped by hand) and
+cross-checked against the spec's own stated known-good values before
+trusting the result. Resolved one real ambiguity the spec had flagged
+as unverified (which disability withholding table applies to a
+two-earner household with dependents) directly from the official data,
+and caught two real transcription mistakes before they shipped. See
+`CLAUDE.md` for the honest list of what's deliberately not implemented
+yet (IRS Jovem's exact monthly mechanic, duodécimos, a couple of
+deduction edge cases the spec itself doesn't fully specify).
+
+Next up: a real mailbox for `@justit.pt` (in progress — you're
+mid-testing this), then step 9 (SEO check, compliance, polish), and
+continuing the Salary Calculator's remaining phases (see `CLAUDE.md`).

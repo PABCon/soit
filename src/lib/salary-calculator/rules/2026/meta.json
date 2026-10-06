@@ -1,0 +1,17 @@
+{
+  "year": 2026,
+  "effective_from": "2026-01-01",
+  "effective_to": null,
+  "ias": 537.13,
+  "irsJovemExemptionCap": { "multipleOfIas": 55, "value": 29542.15 },
+  "mealAllowance": {
+    "cashExemptDaily": 6.15,
+    "cardExemptDaily": 10.455,
+    "cardExemptDailyDisplay": 10.46
+  },
+  "socialSecurity": {
+    "employeeRate": 0.11,
+    "employerRate": 0.2375
+  },
+  "source": "IAS 2026 and the IRS Jovem exemption cap (55 × IAS) are taken directly from SALARY_CALCULATOR_SPEC.md §6. Meal allowance exempt limits and SS rates are taken directly from SALARY_CALCULATOR_SPEC.md §3.3/§3.4. VERIFY each against Lei n.º 73-A/2025 (OE 2026) and the Segurança Social / AT published values before this ships to real users — these are transcribed from the build spec, not independently re-verified against the primary legal text."
+}

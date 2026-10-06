@@ -1,0 +1,616 @@
+{
+  "region": "acores",
+  "effective_from": "2026-01-01",
+  "effective_to": null,
+  "source": "Tabelas de retenção na fonte para a Região Autónoma dos Açores, a partir de 1 jan. 2026 (Despacho regional, Diário da República 2.ª série, fev. 2026). Transcribed programmatically from the official spreadsheet (Tabelas_RF_RA_Acores_2026.xlsx).",
+  "tables": {
+    "I": {
+      "label": "Não casado sem dependentes ou casado dois titulares",
+      "disability": false,
+      "brackets": [
+        {
+          "upTo": 966,
+          "rate": 0,
+          "parcela": {
+            "type": "fixed",
+            "value": 0
+          },
+          "perDependent": 0
+        },
+        {
+          "upTo": 1042,
+          "rate": 0.0875,
+          "parcela": {
+            "type": "formula",
+            "rate": 0.0875,
+            "k": 2.6,
+            "c": 1337.54
+          },
+          "perDependent": 21.43
+        },
+        {
+          "upTo": 1108,
+          "rate": 0.1099,
+          "parcela": {
+            "type": "formula",
+            "rate": 0.1099,
+            "k": 1.35,
+            "c": 1652.49
+          },
+          "perDependent": 21.43
+        },
+        {
+          "upTo": 1154,
+          "rate": 0.1099,
+          "parcela": {
+            "type": "fixed",
+            "value": 80.79
+          },
+          "perDependent": 21.43
+        },
+        {
+          "upTo": 1212,
+          "rate": 0.1484,
+          "parcela": {
+            "type": "fixed",
+            "value": 125.22
+          },
+          "perDependent": 21.43
+        },
+        {
+          "upTo": 1819,
+          "rate": 0.1687,
+          "parcela": {
+            "type": "fixed",
+            "value": 149.83
+          },
+          "perDependent": 21.43
+        },
+        {
+          "upTo": 2119,
+          "rate": 0.2177,
+          "parcela": {
+            "type": "fixed",
+            "value": 238.97
+          },
+          "perDependent": 21.43
+        },
+        {
+          "upTo": 2499,
+          "rate": 0.2443,
+          "parcela": {
+            "type": "fixed",
+            "value": 295.34
+          },
+          "perDependent": 21.43
+        },
+        {
+          "upTo": 3305,
+          "rate": 0.2685,
+          "parcela": {
+            "type": "fixed",
+            "value": 355.82
+          },
+          "perDependent": 21.43
+        },
+        {
+          "upTo": 5547,
+          "rate": 0.2779,
+          "parcela": {
+            "type": "fixed",
+            "value": 386.89
+          },
+          "perDependent": 21.43
+        },
+        {
+          "upTo": 20221,
+          "rate": 0.3146,
+          "parcela": {
+            "type": "fixed",
+            "value": 590.47
+          },
+          "perDependent": 21.43
+        },
+        {
+          "upTo": null,
+          "rate": 0.3302,
+          "parcela": {
+            "type": "fixed",
+            "value": 905.92
+          },
+          "perDependent": 21.43
+        }
+      ]
+    },
+    "II": {
+      "label": "Não casado com um ou mais dependentes",
+      "disability": false,
+      "brackets": [
+        {
+          "upTo": 966,
+          "rate": 0,
+          "parcela": {
+            "type": "fixed",
+            "value": 0
+          },
+          "perDependent": 0
+        },
+        {
+          "upTo": 1042,
+          "rate": 0.0875,
+          "parcela": {
+            "type": "formula",
+            "rate": 0.0875,
+            "k": 2.6,
+            "c": 1337.54
+          },
+          "perDependent": 34.29
+        },
+        {
+          "upTo": 1108,
+          "rate": 0.1099,
+          "parcela": {
+            "type": "formula",
+            "rate": 0.1099,
+            "k": 1.35,
+            "c": 1652.49
+          },
+          "perDependent": 34.29
+        },
+        {
+          "upTo": 1154,
+          "rate": 0.1099,
+          "parcela": {
+            "type": "fixed",
+            "value": 80.79
+          },
+          "perDependent": 34.29
+        },
+        {
+          "upTo": 1212,
+          "rate": 0.1484,
+          "parcela": {
+            "type": "fixed",
+            "value": 125.22
+          },
+          "perDependent": 34.29
+        },
+        {
+          "upTo": 1819,
+          "rate": 0.1687,
+          "parcela": {
+            "type": "fixed",
+            "value": 149.83
+          },
+          "perDependent": 34.29
+        },
+        {
+          "upTo": 2119,
+          "rate": 0.2177,
+          "parcela": {
+            "type": "fixed",
+            "value": 238.97
+          },
+          "perDependent": 34.29
+        },
+        {
+          "upTo": 2499,
+          "rate": 0.2443,
+          "parcela": {
+            "type": "fixed",
+            "value": 295.34
+          },
+          "perDependent": 34.29
+        },
+        {
+          "upTo": 3305,
+          "rate": 0.2685,
+          "parcela": {
+            "type": "fixed",
+            "value": 355.82
+          },
+          "perDependent": 34.29
+        },
+        {
+          "upTo": 5547,
+          "rate": 0.2779,
+          "parcela": {
+            "type": "fixed",
+            "value": 386.89
+          },
+          "perDependent": 34.29
+        },
+        {
+          "upTo": 20221,
+          "rate": 0.3146,
+          "parcela": {
+            "type": "fixed",
+            "value": 590.47
+          },
+          "perDependent": 34.29
+        },
+        {
+          "upTo": null,
+          "rate": 0.3302,
+          "parcela": {
+            "type": "fixed",
+            "value": 905.92
+          },
+          "perDependent": 34.29
+        }
+      ]
+    },
+    "III": {
+      "label": "Casado, único titular",
+      "disability": false,
+      "brackets": [
+        {
+          "upTo": 1226,
+          "rate": 0,
+          "parcela": {
+            "type": "fixed",
+            "value": 0
+          },
+          "perDependent": 0
+        },
+        {
+          "upTo": 1267,
+          "rate": 0.0728,
+          "parcela": {
+            "type": "fixed",
+            "value": 89.26
+          },
+          "perDependent": 42.86
+        },
+        {
+          "upTo": 1602,
+          "rate": 0.0964,
+          "parcela": {
+            "type": "fixed",
+            "value": 119.17
+          },
+          "perDependent": 42.86
+        },
+        {
+          "upTo": 1962,
+          "rate": 0.1099,
+          "parcela": {
+            "type": "fixed",
+            "value": 140.8
+          },
+          "perDependent": 42.86
+        },
+        {
+          "upTo": 2240,
+          "rate": 0.1357,
+          "parcela": {
+            "type": "fixed",
+            "value": 191.42
+          },
+          "perDependent": 42.86
+        },
+        {
+          "upTo": 2900,
+          "rate": 0.1594,
+          "parcela": {
+            "type": "fixed",
+            "value": 244.51
+          },
+          "perDependent": 42.86
+        },
+        {
+          "upTo": 3389,
+          "rate": 0.1799,
+          "parcela": {
+            "type": "fixed",
+            "value": 303.96
+          },
+          "perDependent": 42.86
+        },
+        {
+          "upTo": 5965,
+          "rate": 0.2017,
+          "parcela": {
+            "type": "fixed",
+            "value": 377.85
+          },
+          "perDependent": 42.86
+        },
+        {
+          "upTo": 20265,
+          "rate": 0.271,
+          "parcela": {
+            "type": "fixed",
+            "value": 791.23
+          },
+          "perDependent": 42.86
+        },
+        {
+          "upTo": null,
+          "rate": 0.3302,
+          "parcela": {
+            "type": "fixed",
+            "value": 1990.92
+          },
+          "perDependent": 42.86
+        }
+      ]
+    },
+    "IV": {
+      "label": "Não casado ou casado dois titulares sem dependentes - Pessoa com deficiência",
+      "disability": true,
+      "brackets": [
+        {
+          "upTo": 2119,
+          "rate": 0,
+          "parcela": {
+            "type": "fixed",
+            "value": 0
+          },
+          "perDependent": 0
+        },
+        {
+          "upTo": 2492,
+          "rate": 0.2177,
+          "parcela": {
+            "type": "fixed",
+            "value": 464.51
+          },
+          "perDependent": 0
+        },
+        {
+          "upTo": 2748,
+          "rate": 0.2443,
+          "parcela": {
+            "type": "fixed",
+            "value": 530.8
+          },
+          "perDependent": 0
+        },
+        {
+          "upTo": 3012,
+          "rate": 0.2685,
+          "parcela": {
+            "type": "fixed",
+            "value": 597.31
+          },
+          "perDependent": 0
+        },
+        {
+          "upTo": 4883,
+          "rate": 0.2779,
+          "parcela": {
+            "type": "fixed",
+            "value": 625.63
+          },
+          "perDependent": 0
+        },
+        {
+          "upTo": 20468,
+          "rate": 0.3102,
+          "parcela": {
+            "type": "fixed",
+            "value": 783.36
+          },
+          "perDependent": 0
+        },
+        {
+          "upTo": null,
+          "rate": 0.3255,
+          "parcela": {
+            "type": "fixed",
+            "value": 1096.53
+          },
+          "perDependent": 0
+        }
+      ]
+    },
+    "V": {
+      "label": "Não casado com um ou mais dependentes - Pessoa com deficiência",
+      "disability": true,
+      "brackets": [
+        {
+          "upTo": 2339,
+          "rate": 0,
+          "parcela": {
+            "type": "fixed",
+            "value": 0
+          },
+          "perDependent": 0
+        },
+        {
+          "upTo": 2488,
+          "rate": 0.2177,
+          "parcela": {
+            "type": "fixed",
+            "value": 511.64
+          },
+          "perDependent": 42.86
+        },
+        {
+          "upTo": 3479,
+          "rate": 0.2443,
+          "parcela": {
+            "type": "fixed",
+            "value": 577.83
+          },
+          "perDependent": 42.86
+        },
+        {
+          "upTo": 3728,
+          "rate": 0.2685,
+          "parcela": {
+            "type": "fixed",
+            "value": 662.03
+          },
+          "perDependent": 42.86
+        },
+        {
+          "upTo": 6687,
+          "rate": 0.2779,
+          "parcela": {
+            "type": "fixed",
+            "value": 697.08
+          },
+          "perDependent": 42.86
+        },
+        {
+          "upTo": 20468,
+          "rate": 0.3102,
+          "parcela": {
+            "type": "fixed",
+            "value": 913.08
+          },
+          "perDependent": 42.86
+        },
+        {
+          "upTo": null,
+          "rate": 0.3255,
+          "parcela": {
+            "type": "fixed",
+            "value": 1226.25
+          },
+          "perDependent": 42.86
+        }
+      ]
+    },
+    "VI": {
+      "label": "Casado dois titulares com um ou mais dependentes - Pessoa com deficiência",
+      "disability": true,
+      "brackets": [
+        {
+          "upTo": 2143,
+          "rate": 0,
+          "parcela": {
+            "type": "fixed",
+            "value": 0
+          },
+          "perDependent": 0
+        },
+        {
+          "upTo": 2790,
+          "rate": 0.1687,
+          "parcela": {
+            "type": "fixed",
+            "value": 363.67
+          },
+          "perDependent": 21.43
+        },
+        {
+          "upTo": 3215,
+          "rate": 0.2177,
+          "parcela": {
+            "type": "fixed",
+            "value": 500.38
+          },
+          "perDependent": 21.43
+        },
+        {
+          "upTo": 3479,
+          "rate": 0.2443,
+          "parcela": {
+            "type": "fixed",
+            "value": 585.9
+          },
+          "perDependent": 21.43
+        },
+        {
+          "upTo": 5915,
+          "rate": 0.2685,
+          "parcela": {
+            "type": "fixed",
+            "value": 670.1
+          },
+          "perDependent": 21.43
+        },
+        {
+          "upTo": 6687,
+          "rate": 0.2779,
+          "parcela": {
+            "type": "fixed",
+            "value": 725.71
+          },
+          "perDependent": 21.43
+        },
+        {
+          "upTo": 20468,
+          "rate": 0.3102,
+          "parcela": {
+            "type": "fixed",
+            "value": 941.71
+          },
+          "perDependent": 21.43
+        },
+        {
+          "upTo": null,
+          "rate": 0.3255,
+          "parcela": {
+            "type": "fixed",
+            "value": 1254.88
+          },
+          "perDependent": 21.43
+        }
+      ]
+    },
+    "VII": {
+      "label": "Casado, único titular - Pessoa com deficiência",
+      "disability": true,
+      "brackets": [
+        {
+          "upTo": 2897,
+          "rate": 0,
+          "parcela": {
+            "type": "fixed",
+            "value": 0
+          },
+          "perDependent": 0
+        },
+        {
+          "upTo": 4503,
+          "rate": 0.1594,
+          "parcela": {
+            "type": "fixed",
+            "value": 461.79
+          },
+          "perDependent": 42.86
+        },
+        {
+          "upTo": 6818,
+          "rate": 0.1799,
+          "parcela": {
+            "type": "fixed",
+            "value": 554.11
+          },
+          "perDependent": 42.86
+        },
+        {
+          "upTo": 6916,
+          "rate": 0.2017,
+          "parcela": {
+            "type": "fixed",
+            "value": 702.75
+          },
+          "perDependent": 42.86
+        },
+        {
+          "upTo": 20468,
+          "rate": 0.2926,
+          "parcela": {
+            "type": "fixed",
+            "value": 1331.42
+          },
+          "perDependent": 42.86
+        },
+        {
+          "upTo": null,
+          "rate": 0.3255,
+          "parcela": {
+            "type": "fixed",
+            "value": 2004.82
+          },
+          "perDependent": 42.86
+        }
+      ]
+    }
+  }
+}

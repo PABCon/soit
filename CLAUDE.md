@@ -3222,3 +3222,90 @@ would have hit the same dead zone. Fixed with `whitespace-nowrap` on
 just the link (not the whole perk sentence) so its own text never
 wraps internally — confirmed fixed with a normal, non-forced click
 afterward.
+
+## Salary Calculator (Portugal) — Phase 1
+
+A new, mostly-standalone lead-gen feature, built against a separate
+14-page spec (`SALARY_CALCULATOR_SPEC.md`, owner: Paulo Brás) the user
+supplied directly, not part of the original MVP build spec. Scoped
+deliberately: calculator only (Modes A/B/C, comparator, reverse solver,
+lead-gen gate) — the spec's own sections 13-14 (an editorial content
+system + a 20-article labour-law hub) are explicitly **not** MVP and
+not started. Within the calculator itself, this phase is **Phase 1 of
+the spec's own 8-phase build plan** (§11): rules JSON + schema for 2026
+Continente, the Mode A (contrato de trabalho) engine, and tests T1-T5 +
+T8. No UI yet — pure engine, per the spec's own rule #5 ("pure engine,
+separate UI... zero UI or network dependencies, fully unit-tested").
+
+**Lives at** `src/lib/salary-calculator/` — `rules/` (versioned JSON +
+a zod schema that validates every file at load time) and `engine/`
+(framework-agnostic TS, no Next.js/React/Supabase imports anywhere in
+it). Uses `decimal.js` for every money calculation (spec rule #4: "no
+floats for money") — caught a real, textbook floating-point bug while
+building the meal-allowance split (`11 - 10.455` in plain JS gives
+`0.5449999999999999`, not `0.545`) before it ever reached a test.
+
+**Real official data, not transcribed by hand**: the user provided the
+actual AT-published withholding-table spreadsheets for all three
+regions (`Tabelas_RF_Continente_2026.xlsx`, `..._RA_Acores_2026.xlsx`,
+`..._2026_RAM.xlsx`) and asked for them to be cross-checked against the
+spec's own official sources (§9). Rather than retype ~35 brackets by
+hand across 3 regions × 7 tables — exactly the kind of manual
+transcription the spec's rule #2 exists to prevent — wrote a one-off
+Python/openpyxl parser that reads the real spreadsheet structure
+(bracket rows, the `fixed` vs `rate × k × (c − R)` formula encoding a
+few transitional brackets use) directly into the exact rule-file JSON
+shape. Verified the output against the spec's own stated known-good
+checks before trusting it (Table I bracket up to €1,819: rate 24.10%,
+parcela €193.33, parcela por dependente €21.43 — matched exactly) and
+against T1 (€125.31) — both passed before a single rule file was
+written by hand.
+
+**A real spec ambiguity resolved, not left unresolved**: the spec
+flagged "VERIFY exact mapping IV-VII" for which disability withholding
+table applies to which household situation. Resolved directly from the
+real table labels in the spreadsheets rather than guessing: Table I
+covers a two-earner married household regardless of dependents (its
+own `perDependent` figure still applies), which is why the disability
+set needs a 4th table (VI) specifically for a two-earner household
+*with* dependents — a distinction the non-disability set never needed
+since it only has 3 tables total. Documented in `withholding.ts`'s
+`selectWithholdingTableKey`, now a resolved, tested fact rather than an
+open question.
+
+**Two real transcription corrections caught before they shipped**:
+re-reading the spec page image more carefully (not trusting an earlier
+paraphrase of it) found that the deduction figure "1,342.83" is **per
+dependent with a disability**, not "per married taxpayer with a
+disability" as first assumed — a married taxpayer's own disability
+deduction isn't actually given anywhere in the spec, which the rules
+JSON and `annual-irs.ts` now say explicitly rather than silently
+reusing the wrong number. Separately, the "€726 for a single dependent
+aged ≤3" figure was initially written as `null` in the rules JSON (an
+oversight) and corrected to the real value before shipping.
+
+**Real, stated gaps kept as honest code comments, never invented
+numbers**: the "900 for 2nd+ dependent aged ≤6" deduction tier can't be
+resolved because the spec's own `Profile` type has no "aged ≤6" field
+distinct from "aged ≤3"; IRS Jovem's monthly withholding mechanic is
+implemented as a literal reading of the spec text (rate on full R,
+applied only to the non-exempt portion, cap prorated evenly across 12
+months) but is explicitly flagged VERIFY in the spec itself and isn't
+covered by any Phase-1 test; duodécimos spreading ('half'/'full')
+folds the spread portion into annual totals directly rather than
+modeling a separate monthly withholding rate, also VERIFY-flagged in
+the spec; mínimo de existência isn't implemented at all. None of these
+block Phase 1's actual test suite.
+
+**Verified**: `tsc`/`eslint` clean, all of T1, T2, T3, T4, T5, T8, the
+§3.2 known-good check, a "net never exceeds gross" property test, and
+two orchestration smoke tests (a realistic 14-payment salary with cash
+meal allowance, and an IFICI flat-20% override bypassing table logic
+entirely) — 10 new tests, 31 passing project-wide. `npm run build`
+still succeeds (no new routes yet, by design — Phase 1 has no UI).
+
+Not started: Phase 2 (Madeira/Açores annual IRS brackets, IRS Jovem/
+IFICI integration, UI, shareable URL), Phase 3 (Mode B — recibos
+verdes), Phase 4 (Mode C — Lda, comparator, reverse solver), Phase 5
+(lead-gen gate). See `SALARY_CALCULATOR_SPEC.md` (provided by the user,
+not in the repo) for the full 8-phase plan.
