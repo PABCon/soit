@@ -3532,3 +3532,77 @@ only the UI block rendering it (and its Madeira/Açores companion note)
 was deleted from the results card. If a future surface wants this
 figure again, the data's still there; it's just not shown by default
 anymore.
+
+## Salary Calculator — second round of real-usage feedback
+
+Six more issues from actually using the live calculator. None were
+guessed at — each was verified against the engine or the official
+table data before deciding whether it was a real bug or correct-but-
+confusing behavior.
+
+**Naming**: "ajudas de custo" and "Coverflex-style" were too jargon-y
+and brand-specific. Renamed throughout (types, i18n, UI) to generic
+terms: `exemptAllowanceMonthly` ("Exempt amount" — not subject to IRS
+or SS) and `irsApplicableAllowanceMonthly` ("IRS-applicable amount" —
+subject to IRS, exempt from SS).
+
+**Marital status "single" vs "married, two earners" looked like a
+bug but isn't.** At 0 dependents they produce an *identical* monthly
+net, by design — confirmed straight from the official table data:
+Table I's own label literally reads "Não casado sem dependentes **ou**
+casado 2 titulares" (`continente.2026-01.json`). Portuguese monthly
+withholding treats each earner in a two-earner household as if single;
+the joint-taxation benefit only shows up in the annual return, which
+this calculator deliberately doesn't compute anymore. They diverge
+correctly as soon as dependents > 0 (two-earner households stay on
+Table I regardless of dependents; a single filer with dependents moves
+to Table II). Added a hint under the selector citing this directly
+instead of leaving it unexplained.
+
+**`dependentsUnder3`/`dependentsWithDisability` had zero visible
+effect — because they genuinely have none anymore.** Grepped the
+engine: both fields only ever fed `calculateAnnualIrs`'s deduction
+calculation, which is exactly the annual-settlement computation whose
+UI box was just removed (previous entry) for liability reasons.
+Reintroducing their only consumer would walk that back. Removed both
+inputs from the UI (kept on `Profile` defaulting to 0, since
+`annualSettlementEstimate` is still computed internally) rather than
+leave fields that visibly do nothing. `disabilityAbove60` (the
+taxpayer's *own* disability) stayed — confirmed it genuinely does
+change monthly net, since it selects an entirely different withholding
+table (IV-VII) with its own, more generous brackets.
+
+**"Payments per year: 12 vs 14 does nothing" — also correct but
+unexplained.** The regular month's withholding table doesn't care how
+many payments you get a year (confirmed by computing both: monthly net
+identical, annual net genuinely different — 14 payments produces
+~€2,316 more annual net than 12 on a €2,000/month test case). The
+*only* visible place this showed up was the annual net line, easy to
+miss. Fixed by: adding a hint under the selector, and — now that
+`subsidyMonths`/duodécimos exist from the earlier bug fix — actually
+rendering the holiday/Christmas subsidy net amounts in the results
+card so the 12-vs-14 choice has a concrete, visible effect beyond one
+annual number.
+
+**Controlled number-input leading-zero bug** — every numeric field
+(`value={0}` displayed as "0") made it impossible to type a fresh
+value without going through "01", "011", etc., since the browser
+inserts rather than replaces. Fixed with a shared `NumberField`
+component: renders an empty string whenever the underlying value is 0,
+giving the field a genuinely blank spot to type into. Applied to every
+numeric input in the form (age, dependents, gross, meal fields, both
+allowance fields).
+
+**Added, per direct request**: annual employer cost (the monthly
+figure already existed; `employerCost.annual` was already computed,
+just never surfaced), the IRS withholding rate in the main results
+summary, and a new "How this was calculated" section at the bottom of
+the page — the IRS/SS taxable bases, the withholding table's own label/
+rate/abatement/per-dependent deduction, SS employee/employer rates, and
+the *full* official bracket table for whichever table applies to the
+current inputs (with the active bracket highlighted). Deliberately
+scoped to the **monthly** withholding mechanism only — no annual
+coleta/liquidado numbers are shown here, to avoid walking back the
+"we're not doing tax advisory" removal two entries up. `withholding.ts`
+now returns `parcela`/`dependentDeduction` (previously computed but
+discarded) so the UI has real numbers to show, not re-derived ones.

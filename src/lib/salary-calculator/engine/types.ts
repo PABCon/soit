@@ -42,15 +42,15 @@ export type EmploymentInput = {
   twelfths: "none" | "half" | "full";
   meal: MealInput;
   otherTaxableMonthly?: number;
-  /** Ajudas de custo / travel allowance — a free-entry amount the user
-   *  declares as fully exempt from both IRS and Social Security. Added
+  /** A free-entry amount the user declares as fully exempt from both IRS
+   *  and Social Security (e.g. ajudas de custo / travel allowance). Added
    *  straight to net pay; never enters either tax base. */
-  expenseAllowanceMonthly?: number;
-  /** Other benefits that are IRS-taxable but exempt from Social Security
-   *  (e.g. flexible-benefits platforms like Coverflex) — increases the
-   *  IRS withholding base but is explicitly excluded from the SS base,
-   *  on both the employee and employer side. */
-  fringeBenefitsMonthly?: number;
+  exemptAllowanceMonthly?: number;
+  /** A free-entry amount that's subject to IRS but exempt from Social
+   *  Security (e.g. flexible-benefits platforms) — widens the IRS
+   *  withholding base but is explicitly excluded from the SS base, on
+   *  both the employee and employer side. */
+  irsApplicableAllowanceMonthly?: number;
 };
 
 export type MonthlyWithholdingResult = {
@@ -58,6 +58,11 @@ export type MonthlyWithholdingResult = {
   tableUsed: string;
   rate: number;
   taxableRemuneration: number;
+  /** The table's flat (or transitional-formula) abatement for this
+   *  bracket, before the per-dependent deduction — exposed so the UI can
+   *  show its own calculation breakdown, not just the final number. */
+  parcela: number;
+  dependentDeduction: number;
 };
 
 export type MealAllowanceSplit = {
@@ -76,14 +81,23 @@ export type EmploymentMonthly = {
   duodecimoGross: number;
   taxableMeal: number;
   exemptMeal: number;
-  /** Ajudas de custo — exempt from both IRS and SS (see `EmploymentInput`). */
-  expenseAllowance: number;
-  /** IRS-taxable, SS-exempt benefits — e.g. Coverflex-style platforms. */
-  fringeBenefits: number;
+  /** Exempt from both IRS and SS (see `EmploymentInput`). */
+  exemptAllowance: number;
+  /** IRS-applicable, SS-exempt (see `EmploymentInput`). */
+  irsApplicableAllowance: number;
   ss: number;
   irs: number;
   net: number;
   netIncludingMeal: number;
+  /** The IRS base, SS base, and the withholding table's own mechanics —
+   *  exposed so the UI can show a transparent calculation breakdown
+   *  instead of just the final withheld amount. */
+  irsBase: number;
+  ssBase: number;
+  irsRate: number;
+  irsTableUsed: string;
+  irsParcela: number;
+  irsDependentDeduction: number;
 };
 
 export type SubsidyMonth = {

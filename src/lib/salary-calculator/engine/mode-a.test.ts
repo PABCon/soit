@@ -208,7 +208,7 @@ describe("calculateEmploymentNet — full orchestration smoke test", () => {
     expect(result.monthly.irs).toBeCloseTo(1000, 2);
   });
 
-  it("treats ajudas de custo as fully exempt from both IRS and SS — passes straight to net", () => {
+  it("treats the exempt allowance as fully exempt from both IRS and SS — passes straight to net", () => {
     const profile = baseProfile();
     const input = {
       grossMonthly: 2000,
@@ -217,14 +217,14 @@ describe("calculateEmploymentNet — full orchestration smoke test", () => {
       meal: { type: "none" as const, dailyValue: 0, daysPerMonth: 0 },
     };
     const without = calculateEmploymentNet(profile, input);
-    const withAllowance = calculateEmploymentNet(profile, { ...input, expenseAllowanceMonthly: 100 });
+    const withAllowance = calculateEmploymentNet(profile, { ...input, exemptAllowanceMonthly: 100 });
 
     expect(withAllowance.monthly.ss).toBeCloseTo(without.monthly.ss, 2);
     expect(withAllowance.monthly.irs).toBeCloseTo(without.monthly.irs, 2);
     expect(withAllowance.monthly.net).toBeCloseTo(without.monthly.net + 100, 2);
   });
 
-  it("treats fringe benefits (e.g. Coverflex-style) as IRS-taxable but SS-exempt", () => {
+  it("treats the IRS-applicable allowance as IRS-taxable but SS-exempt", () => {
     const profile = baseProfile();
     const input = {
       grossMonthly: 2000,
@@ -233,15 +233,15 @@ describe("calculateEmploymentNet — full orchestration smoke test", () => {
       meal: { type: "none" as const, dailyValue: 0, daysPerMonth: 0 },
     };
     const without = calculateEmploymentNet(profile, input);
-    const withFringe = calculateEmploymentNet(profile, { ...input, fringeBenefitsMonthly: 100 });
+    const withAllowance = calculateEmploymentNet(profile, { ...input, irsApplicableAllowanceMonthly: 100 });
 
-    // SS base is untouched by the fringe benefit.
-    expect(withFringe.monthly.ss).toBeCloseTo(without.monthly.ss, 2);
-    // IRS withholding goes up because the benefit widens the IRS base.
-    expect(withFringe.monthly.irs).toBeGreaterThan(without.monthly.irs);
+    // SS base is untouched by this allowance.
+    expect(withAllowance.monthly.ss).toBeCloseTo(without.monthly.ss, 2);
+    // IRS withholding goes up because the allowance widens the IRS base.
+    expect(withAllowance.monthly.irs).toBeGreaterThan(without.monthly.irs);
     // Net reflects the full €100 minus whatever extra IRS it triggered.
-    const extraIrs = withFringe.monthly.irs - without.monthly.irs;
-    expect(withFringe.monthly.net).toBeCloseTo(without.monthly.net + 100 - extraIrs, 2);
+    const extraIrs = withAllowance.monthly.irs - without.monthly.irs;
+    expect(withAllowance.monthly.net).toBeCloseTo(without.monthly.net + 100 - extraIrs, 2);
   });
 });
 

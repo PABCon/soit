@@ -78,6 +78,8 @@ export function calculateMonthlyWithholding(
       tableUsed: "IFICI_FLAT_20",
       rate: 0.2,
       taxableRemuneration,
+      parcela: 0,
+      dependentDeduction: 0,
     };
   }
 
@@ -125,5 +127,7 @@ export function calculateMonthlyWithholding(
     tableUsed: tableKey,
     rate: bracket.rate,
     taxableRemuneration,
+    parcela: round2(parcela),
+    dependentDeduction: round2(dependentDeduction),
   };
 }
