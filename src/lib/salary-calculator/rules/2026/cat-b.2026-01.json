@@ -1,0 +1,11 @@
+{
+  "effective_from": "2026-01-01",
+  "effective_to": null,
+  "coefficients": { "art151": 0.75, "otherServices": 0.35 },
+  "newActivityReduction": { "year1": 0.5, "year2": 0.25 },
+  "withholdingRates": { "art151": 0.23, "otherServices": 0.115 },
+  "dispensaThresholdAnnual": 15000,
+  "ificiRate": 0.2,
+  "justificationRule": { "requiredPct": 0.15, "fixedDeduction": 4587.09, "ssExcessThresholdPct": 0.1 },
+  "source": "Coefficients, withholding rates, dispensa threshold, and the justification-rule structure are taken directly from SALARY_CALCULATOR_SPEC.md §4.3/§4.5, cross-checked against the PwC check case (€40,000 gross art151, €1,412.91 expenses -> taxable €30,000, shortfall 0): justified = max(fixedDeduction, max(0, ssPaid - ssExcessThresholdPct*gross)) + declaredExpenses must reach requiredPct*gross (€6,000) — confirmed exactly, since 4587.09 + 1412.91 = 6000.00. The SS-excess mechanic (only the portion of SS contributions exceeding 10% of gross counts toward justification, art. 31º-A CIRS) was confirmed via search summary, not a raw CIRS text fetch — moderate confidence. New-activity reduction's extra real-world condition (doesn't apply if the activity was closed < 5 years before reopening) is not modeled — no input field captures a 'restarted activity' case in v1."
+}

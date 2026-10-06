@@ -1,0 +1,8 @@
+{
+  "effective_from": "2026-01-01",
+  "effective_to": null,
+  "rates": { "continente": 0.23, "madeira": 0.22, "acores": 0.16 },
+  "exemptionThresholdAnnual": 15000,
+  "exemptionLossThresholdAnnual": 18750,
+  "source": "Continente (23%) and Madeira (22%) rates are well-established and taken directly from SALARY_CALCULATOR_SPEC.md §4.4. The Açores rate (16%) was flagged VERIFY in the spec and confirmed current for 2026 via invoicexpress.com/blog/taxa-normal-iva-acores-16. Art. 53º exemption thresholds (€15,000 prior-year / €18,750 in-year loss) taken directly from the spec."
+}

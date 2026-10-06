@@ -3,6 +3,7 @@ import { encodeState, decodeState } from "./url-state";
 import type { SalaryCalculatorState } from "./url-state";
 
 const state: SalaryCalculatorState = {
+  mode: "employment",
   profile: {
     year: 2026,
     month: 1,
@@ -17,11 +18,33 @@ const state: SalaryCalculatorState = {
     irsJovem: { enabled: true, benefitYear: 2 },
     flatRate20: false,
   },
-  input: {
+  employmentInput: {
     grossMonthly: 2500,
     paymentsPerYear: 14,
     twelfths: "none",
     meal: { type: "card", dailyValue: 7.63, daysPerMonth: 22 },
+  },
+  freelanceInput: {
+    billing: { mode: "monthly", amount: 2000 },
+    activityType: "other_services",
+    clientLocation: "pt",
+    monthsSinceStart: 24,
+    yearOfActivity: 3,
+    alsoEmployed: false,
+    declaredExpenses: 0,
+    vatRegime: "normal",
+    withholdingWaiver: false,
+  },
+  companyInput: {
+    revenueAnnual: 80000,
+    clientLocation: "pt",
+    gerenteGrossMonthly: 2000,
+    gerentePaymentsPerYear: 14,
+    operatingExpensesAnnual: 5000,
+    accountantMonthly: 100,
+    municipalSurchargeRate: 0.015,
+    isSME: true,
+    distributeAllProfit: true,
   },
 };
 

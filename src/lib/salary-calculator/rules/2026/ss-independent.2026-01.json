@@ -1,0 +1,15 @@
+{
+  "effective_from": "2026-01-01",
+  "effective_to": null,
+  "rate": 0.214,
+  "relevantIncomePct": { "services": 0.7, "goods": 0.2 },
+  "exemptFirstMonths": 12,
+  "minimumMonthlyContribution": 20,
+  "maximumMonthlyBase": { "multipleOfIas": 12 },
+  "acumulacaoExemption": {
+    "thresholdMultipleOfIas": 4,
+    "note": "Exempt when average quarterly relevant income < 4×IAS AND the worker is also covered as an employee elsewhere with equivalent social protection and average monthly salary >= 1×IAS. The calculator only models the income-threshold half of this test (self-declared via the 'alsoEmployed' input) — the other-employer/equivalent-coverage conditions are not separately captured."
+  },
+  "baseAdjustment": { "minPct": -0.25, "maxPct": 0.25, "stepPct": 0.05 },
+  "source": "Rate, relevant-income percentages, 12-month exemption, and the ±25%/5%-step 'fixação do valor-base' mechanism are taken directly from SALARY_CALCULATOR_SPEC.md §4.2. Minimum monthly contribution (€20) confirmed via seg-social.pt-derived guidance (simuladorneto.pt/blog/contribuicao-minima-seguranca-social-trabalhadores-independentes-2026). Maximum base (12×IAS) and the acumulação exemption threshold (4×IAS, plus the other-employer/coverage conditions) confirmed against seg-social.pt (seg-social.pt/da/trabalhadores-independentes) and a Segurança Social guia prático PDF (sisscontent.seg-social.pt, '1009 Trabalhador independente - novo regime'). The entidade-contratante contribution (7%/10% at 50%/80% economic dependency, crncontabilidade.pt) is confirmed real but not modeled — it isn't borne by the worker and has no input in v1."
+}

@@ -94,3 +94,63 @@ export const metaSchema = z.object({
 });
 
 export type Meta = z.infer<typeof metaSchema>;
+
+// Mode B: recibos verdes (independent worker) — §4.
+
+export const ssIndependentRuleSetSchema = z.object({
+  effective_from: z.string(),
+  effective_to: z.string().nullable(),
+  source: z.string(),
+  rate: z.number(),
+  relevantIncomePct: z.object({ services: z.number(), goods: z.number() }),
+  exemptFirstMonths: z.number(),
+  minimumMonthlyContribution: z.number(),
+  maximumMonthlyBase: z.object({ multipleOfIas: z.number() }),
+  acumulacaoExemption: z.object({
+    thresholdMultipleOfIas: z.number(),
+    note: z.string(),
+  }),
+  baseAdjustment: z.object({ minPct: z.number(), maxPct: z.number(), stepPct: z.number() }),
+});
+export type SsIndependentRuleSet = z.infer<typeof ssIndependentRuleSetSchema>;
+
+export const catBRuleSetSchema = z.object({
+  effective_from: z.string(),
+  effective_to: z.string().nullable(),
+  source: z.string(),
+  coefficients: z.object({ art151: z.number(), otherServices: z.number() }),
+  newActivityReduction: z.object({ year1: z.number(), year2: z.number() }),
+  withholdingRates: z.object({ art151: z.number(), otherServices: z.number() }),
+  dispensaThresholdAnnual: z.number(),
+  ificiRate: z.number(),
+  justificationRule: z.object({
+    requiredPct: z.number(),
+    fixedDeduction: z.number(),
+    ssExcessThresholdPct: z.number(),
+  }),
+});
+export type CatBRuleSet = z.infer<typeof catBRuleSetSchema>;
+
+export const vatRuleSetSchema = z.object({
+  effective_from: z.string(),
+  effective_to: z.string().nullable(),
+  source: z.string(),
+  rates: z.object({ continente: z.number(), madeira: z.number(), acores: z.number() }),
+  exemptionThresholdAnnual: z.number(),
+  exemptionLossThresholdAnnual: z.number(),
+});
+export type VatRuleSet = z.infer<typeof vatRuleSetSchema>;
+
+// Mode C: empresa própria (Sociedade Unipessoal Lda) — §5.
+
+export const ircRuleSetSchema = z.object({
+  effective_from: z.string(),
+  effective_to: z.string().nullable(),
+  source: z.string(),
+  sme: z.object({ lowRate: z.number(), lowRateCeiling: z.number(), highRate: z.number() }),
+  nonSme: z.object({ rate: z.number() }),
+  dividendTaxRate: z.number(),
+  gerenteSs: z.object({ companyRate: z.number(), memberRate: z.number() }),
+  municipalSurcharge: z.object({ minPct: z.number(), maxPct: z.number(), defaultPct: z.number() }),
+});
+export type IrcRuleSet = z.infer<typeof ircRuleSetSchema>;

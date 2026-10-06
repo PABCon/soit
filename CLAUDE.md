@@ -3606,3 +3606,97 @@ coleta/liquidado numbers are shown here, to avoid walking back the
 "we're not doing tax advisory" removal two entries up. `withholding.ts`
 now returns `parcela`/`dependentDeduction` (previously computed but
 discarded) so the UI has real numbers to show, not re-derived ones.
+
+## Salary Calculator — Mode B (recibos verdes) and Mode C (Lda), Phases 3-4
+
+Built per the user's explicit sequencing call: finish the real B2B/recibos
+verdes calculators before the editorial content section (§13), so the
+eventual employment-vs-recibos-verdes-vs-Lda comparison table can use
+real computed numbers instead of placeholders.
+
+**Research discipline, same as Phase 1**: before writing any rule JSON,
+ran two parallel research forks against primary/official sources
+(seg-social.pt, OCC, Portal das Finanças, Lei n.º 73-A/2025) for every
+spec `VERIFY` item in §4/§5, rather than guessing. Confirmed: the €20/
+month SS floor and 12×IAS ceiling for independent workers; the full
+acumulação-exemption conditions (not just the 4×IAS income threshold the
+spec stated — also requires equivalent coverage elsewhere and that
+employer's average salary ≥ 1×IAS, though only the income threshold is
+actually modeled); Açores' 2026 IVA rate (16%, confirmed current, not a
+stale cached figure); 2026 IRC brackets (15%/19% SME, 19% non-SME) and
+28% liberatory dividend tax: both confirmed unchanged via Lei n.º 73-A/
+2025; the 34.75% combined gerente SS rate and its one real exception
+(an unpaid gerente already covered by another mandatory SS regime
+elsewhere); the legal reserve mechanism (art. 218º CSC) and derrama
+estadual's real tiered rates (3%/5%/9% above €1.5M/€7.5M/€35M) — both
+confirmed real but deliberately left unmodeled, exactly as the spec's
+own "ignore in v1" note allows, rather than half-implementing them.
+
+**A subtle formula ambiguity resolved by reconciling against the spec's
+own worked example, not by picking an interpretation and hoping.** The
+spec's 15%-justification rule read ambiguously: "justified = €4,587.09
+(fixed) OR, if higher, SS contributions paid (...) + declaredExpenses" —
+does "+declaredExpenses" apply only to the SS branch, or to both? Tried
+both readings against the spec's own PwC check case (€40,000 gross
+art151, €1,412.91 expenses → taxable €30,000, shortfall 0): only
+`justified = max(4587.09, ssExcess) + declaredExpenses` reconciles
+exactly (4587.09 + 1412.91 = 6000.00 = required), confirming "+expenses"
+applies to the whole max(), not just the SS branch. Extracted this into
+its own testable module (`regime-simplificado.ts`) specifically so this
+reconciliation has a standing regression test, not just a one-time
+manual check.
+
+**Mode B** (`engine/freelance.ts`, `FreelanceInput`/`FreelanceResult` in
+`types.ts`): SS (21.4% on 70% of invoiced, 12-month exemption,
+acumulação exemption, €20 floor, 12×IAS ceiling, ±25%/5%-step
+"fixação do valor-base"), Cat B IRS withholding (23%/11.5% by activity
+type, dispensa under €15k, zero withholding for foreign clients), IVA as
+pure pass-through (23%/22%/16% by region, art. 53º exemption, EU
+reverse-charge, non-EU out-of-scope), and the regime simplificado annual
+liability feeding the shared annual IRS engine. Surfaces `trueNet`
+(invoiced − SS − annual-liability/12) as the headline per spec §4.6,
+with `cashInHand` (what withholding actually leaves this month) as the
+secondary line, plus a `recommendedMonthlyTaxReserve` — explicitly
+framed as a savings target, not a liability prediction, to stay on the
+right side of the earlier "not tax advisory" boundary. Documented
+assumption flagged in code and UI copy: day-rate billing's annual day
+count has no official default (spec's own §12 open item) — 220 days/
+year is a placeholder, not a verified figure.
+
+**Mode C** (`engine/company.ts`, `CompanyInput`/`CompanyResult`):
+company P&L (IRC at 15%/19% SME brackets or flat 19%, derrama
+municipal), gerente SS on a `max(gerenteAnnualGross, 12×IAS)` base
+(floor applies even at zero salary, with a self-declared exemption
+checkbox for the one real exception), the gerente's own salary run
+straight through Mode A's `calculateEmploymentNet` exactly as the spec
+specifies (not re-implemented), then 28% liberatory dividend tax on
+whatever's distributed. `clientLocation` stayed in the type (spec
+defines it) but was deliberately left out of the v1 UI — the spec's own
+§5.2 calculation never uses it, and shipping a control with no visible
+effect is exactly the mistake the dependents-under-3 UI fields were
+fixed for a few entries up.
+
+**UI**: `SalaryCalculatorForm.tsx` gained a 3-way mode switcher
+(Contrato de trabalho / Recibos verdes / Empresa própria) sharing the
+same "About you" profile fieldset across all three — dependents,
+marital status, disability, and IRS Jovem/IFICI all genuinely affect
+Mode B/C too (Mode C's gerente salary runs through Mode A; Mode B feeds
+the same annual IRS engine). Each mode gets its own fieldset(s) and
+result card; the detailed bracket-table breakdown stays Mode-A-specific
+for now (Mode B/C would need their own equivalent, not built this
+round). The shareable-URL state (`url-state.ts`) was restructured from
+a single `{profile, input}` pair to `{mode, profile, employmentInput,
+freelanceInput, companyInput}` — all three modes' inputs always travel
+together so switching tabs after opening a shared link doesn't silently
+reset the other two back to defaults.
+
+**A real mislabeling bug caught during live verification, not by any
+test**: the freelance result card's Social Security line initially
+reused Mode A's `resultSs` i18n key, which hardcodes "(11%)" in its
+copy — correct for an employee, wrong for an independent worker (21.4%).
+Caught by actually reading the rendered Portuguese page during
+verification rather than just checking the numbers lined up. Fixed
+with a separate `freelanceResultSs` key. Lesson generalized: a shared
+i18n key with a rate baked into its copy is a trap the moment a second,
+differently-rated context reuses it — worth grepping for before reusing
+any existing result-line label in a new mode.

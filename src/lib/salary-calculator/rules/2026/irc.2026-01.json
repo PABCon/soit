@@ -1,0 +1,10 @@
+{
+  "effective_from": "2026-01-01",
+  "effective_to": null,
+  "sme": { "lowRate": 0.15, "lowRateCeiling": 50000, "highRate": 0.19 },
+  "nonSme": { "rate": 0.19 },
+  "dividendTaxRate": 0.28,
+  "gerenteSs": { "companyRate": 0.2375, "memberRate": 0.11 },
+  "municipalSurcharge": { "minPct": 0, "maxPct": 0.015, "defaultPct": 0.015 },
+  "source": "IRC rates (15% on first €50,000 taxable profit for SME, 19% above and flat for non-SME) confirmed for 2026 via Lei n.º 73-A/2025 (OE2026) per contribuinte.pt/posts/irc-2026-taxa-calculo and ey.com's OE2026 analysis; scheduled to fall to 18% (2027) / 17% (2028+) per the spec, not yet relevant. 28% liberatory dividend tax confirmed current via rankia.pt. 34.75% combined gerente SS rate (23.75% company + 11% member) and the IAS-based minimum base confirmed via OCC (occ.pt/pt-pt/noticias/tsu-de-socio-gerente, .../seguranca-social-socio-gerente-nao-remunerado) — including the one real exception: an unpaid gerente already covered by another mandatory SS regime earning > 1×IAS elsewhere is exempt from this obligation (self-declared in v1, not independently cross-checked). Municipal derrama (0-1.5%, município-set) confirmed via crncontabilidade.pt; derrama estadual (tiered 3%/5%/9% above €1.5M/€7.5M/€35M) is real but deliberately not modeled, per the spec's explicit 'ignore in v1' note for typical candidate income levels. Legal reserve (5% of profit until 20% of capital social, floor never below €2,500 — art. 218º CSC) confirmed via ecija.com but not modeled — v1 has no 'capital social' input, per the spec's explicit allowance to skip it with a note."
+}

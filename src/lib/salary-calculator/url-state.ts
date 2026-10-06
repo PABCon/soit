@@ -1,12 +1,20 @@
-import type { Profile, EmploymentInput } from "./engine/types";
+import type { Profile, EmploymentInput, FreelanceInput, CompanyInput } from "./engine/types";
+
+export type CalculatorMode = "employment" | "freelance" | "company";
 
 /** Shareable state (spec §10) — "shareable URL with state encoded (base64
  *  JSON of the inputs, same idea as Doutor Finanças). Good for SEO and
- *  sharing; never put email or personal data in it." Profile + Mode A
- *  input only — nothing identifying, matches that rule by construction. */
+ *  sharing; never put email or personal data in it." Profile + all three
+ *  modes' inputs — nothing identifying, matches that rule by construction.
+ *  All three input shapes travel together (not just the active mode's) so
+ *  switching tabs after loading a shared link doesn't silently reset the
+ *  other two modes back to their defaults. */
 export type SalaryCalculatorState = {
+  mode: CalculatorMode;
   profile: Profile;
-  input: EmploymentInput;
+  employmentInput: EmploymentInput;
+  freelanceInput: FreelanceInput;
+  companyInput: CompanyInput;
 };
 
 export function encodeState(state: SalaryCalculatorState): string {
@@ -27,7 +35,9 @@ export function decodeState(encoded: string): SalaryCalculatorState | null {
         ? Buffer.from(base64, "base64").toString("utf-8")
         : decodeURIComponent(escape(atob(base64)));
     const parsed = JSON.parse(json);
-    if (!parsed?.profile || !parsed?.input) return null;
+    if (!parsed?.profile || !parsed?.mode || !parsed?.employmentInput || !parsed?.freelanceInput || !parsed?.companyInput) {
+      return null;
+    }
     return parsed as SalaryCalculatorState;
   } catch {
     return null;

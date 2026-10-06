@@ -3,13 +3,25 @@ import madeira202601 from "./2026/withholding/madeira.2026-01.json";
 import acores202601 from "./2026/withholding/acores.2026-01.json";
 import irsContinente2026 from "./2026/irs-brackets/continente.json";
 import meta2026 from "./2026/meta.json";
+import ssIndependent202601 from "./2026/ss-independent.2026-01.json";
+import catB202601 from "./2026/cat-b.2026-01.json";
+import vat202601 from "./2026/vat.2026-01.json";
+import irc202601 from "./2026/irc.2026-01.json";
 import {
   withholdingRuleSetSchema,
   irsBracketsRuleSetSchema,
   metaSchema,
+  ssIndependentRuleSetSchema,
+  catBRuleSetSchema,
+  vatRuleSetSchema,
+  ircRuleSetSchema,
   type WithholdingRuleSet,
   type IrsBracketsRuleSet,
   type Meta,
+  type SsIndependentRuleSet,
+  type CatBRuleSet,
+  type VatRuleSet,
+  type IrcRuleSet,
 } from "./schema";
 
 export type Region = "continente" | "madeira" | "acores";
@@ -34,6 +46,11 @@ const IRS_BRACKET_RULE_SETS: Record<Region, IrsBracketsRuleSet[]> = {
 };
 
 const META_RULE_SETS: Meta[] = [metaSchema.parse(meta2026)];
+
+const SS_INDEPENDENT_RULE_SETS: SsIndependentRuleSet[] = [ssIndependentRuleSetSchema.parse(ssIndependent202601)];
+const CAT_B_RULE_SETS: CatBRuleSet[] = [catBRuleSetSchema.parse(catB202601)];
+const VAT_RULE_SETS: VatRuleSet[] = [vatRuleSetSchema.parse(vat202601)];
+const IRC_RULE_SETS: IrcRuleSet[] = [ircRuleSetSchema.parse(irc202601)];
 
 function isEffective(effectiveFrom: string, effectiveTo: string | null, year: number, month: number): boolean {
   const asOf = Date.UTC(year, month - 1, 1);
@@ -71,4 +88,28 @@ export function getMeta(year: number): Meta {
   const found = META_RULE_SETS.find((m) => m.year === year);
   if (!found) throw new Error(`No meta rule set for year=${year}`);
   return found;
+}
+
+export function getSsIndependentRuleSet(year: number, month: number): SsIndependentRuleSet {
+  const chosen = pickEffective(SS_INDEPENDENT_RULE_SETS, year, month);
+  if (!chosen) throw new Error(`No independent-worker SS rule set for ${year}-${month}`);
+  return chosen;
+}
+
+export function getCatBRuleSet(year: number, month: number): CatBRuleSet {
+  const chosen = pickEffective(CAT_B_RULE_SETS, year, month);
+  if (!chosen) throw new Error(`No Cat B rule set for ${year}-${month}`);
+  return chosen;
+}
+
+export function getVatRuleSet(year: number, month: number): VatRuleSet {
+  const chosen = pickEffective(VAT_RULE_SETS, year, month);
+  if (!chosen) throw new Error(`No VAT rule set for ${year}-${month}`);
+  return chosen;
+}
+
+export function getIrcRuleSet(year: number, month: number): IrcRuleSet {
+  const chosen = pickEffective(IRC_RULE_SETS, year, month);
+  if (!chosen) throw new Error(`No IRC rule set for ${year}-${month}`);
+  return chosen;
 }

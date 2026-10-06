@@ -130,3 +130,109 @@ export type AnnualIrsResult = {
   withheld: number;
   settlement: number; // +pay / -refund
 };
+
+// Mode B: recibos verdes (independent worker) — spec §4.
+
+export type ActivityType = "art151" | "other_services";
+export type ClientLocation = "pt" | "eu" | "non_eu";
+export type VatRegime = "art53_exempt" | "normal";
+
+export type FreelanceInput = {
+  billing: { mode: "monthly" | "annual" | "dayRate"; amount: number; daysPerYear?: number };
+  activityType: ActivityType;
+  clientLocation: ClientLocation;
+  /** Drives the SS 12-month exemption — months of activity so far. */
+  monthsSinceStart: number;
+  /** Drives the Cat B new-activity coefficient reduction (50% year 1, 25%
+   *  year 2); 3 = third year or later, no reduction. */
+  yearOfActivity: 1 | 2 | 3;
+  alsoEmployed: boolean;
+  employmentGrossMonthly?: number;
+  /** Annual — feeds the 15% justification rule (spec §4.5). */
+  declaredExpenses: number;
+  vatRegime: VatRegime;
+  /** Dispensa art. 101.º-B CIRS — only valid while annual Cat B income is
+   *  expected under the Cat B rule set's dispensa threshold. */
+  withholdingWaiver: boolean;
+  /** "Fixação do valor-base" — adjusts the SS contribution base by this
+   *  fraction (±25% in 5% steps), a real self-service SS mechanism. */
+  baseAdjustmentPct?: number;
+};
+
+export type FreelanceMonthly = {
+  invoiced: number;
+  vatOnInvoice: number;
+  irsWithheld: number;
+  ss: number;
+  /** invoiced − ss − this month's actual IRS withholding. What really
+   *  lands in the account this month. */
+  cashInHand: number;
+  /** invoiced − ss − (annual IRS liability ÷ 12). The more accurate
+   *  "real" monthly take-home once the annual settlement is accounted
+   *  for, independent of how withholding happens to fall month to month
+   *  (spec §4.6: shown as the headline, with cashInHand as secondary). */
+  trueNet: number;
+};
+
+export type FreelanceResult = {
+  monthly: FreelanceMonthly;
+  annual: {
+    invoiced: number;
+    ss: number;
+    irsWithheld: number;
+    irsLiability: number;
+    trueNet: number;
+  };
+  /** Estimated annual IRS ÷ 12 — "the single most useful output for IT
+   *  freelancers working for foreign clients" (spec §4.3): how much to
+   *  set aside each month since foreign clients don't withhold PT tax. */
+  recommendedMonthlyTaxReserve: number;
+  flags: string[];
+};
+
+// Mode C: empresa própria (Sociedade Unipessoal Lda) — spec §5.
+
+export type CompanyInput = {
+  revenueAnnual: number;
+  clientLocation: ClientLocation;
+  gerenteGrossMonthly: number;
+  gerentePaymentsPerYear: 12 | 14;
+  operatingExpensesAnnual: number;
+  accountantMonthly: number;
+  municipalSurchargeRate: number;
+  isSME: boolean;
+  distributeAllProfit: boolean;
+  /** Self-declared: an unpaid gerente who is already covered by another
+   *  mandatory SS regime (e.g. employed elsewhere) earning > 1×IAS there
+   *  is exempt from the gerente SS obligation (confirmed via OCC
+   *  guidance) — not modeled beyond this single self-declared flag. */
+  gerenteExemptViaOtherActivity?: boolean;
+};
+
+export type CompanyResult = {
+  company: {
+    revenue: number;
+    expenses: number;
+    gerenteCost: number;
+    companySs: number;
+    /** The member's own 11% share, on the same SS base as `companySs` —
+     *  shown for transparency (23.75% + 11% = 34.75% combined), not
+     *  separately subtracted here: it's already reflected inside
+     *  `person.gerenteNetSalary` via the Mode A withholding run. */
+    gerenteMemberSs: number;
+    profitBeforeTax: number;
+    irc: number;
+    derrama: number;
+    netProfit: number;
+  };
+  person: {
+    gerenteNetSalary: number;
+    dividendsGross: number;
+    dividendTax: number;
+    dividendsNet: number;
+    takeHomeAnnual: number;
+    takeHomeMonthlyEquivalent: number;
+  };
+  /** (revenue − takeHome − expenses) / (revenue − expenses) — spec §5.4. */
+  effectiveTaxRate: number;
+};
