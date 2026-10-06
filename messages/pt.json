@@ -753,6 +753,7 @@
     "resultSs": "Segurança Social (11%)",
     "resultIrs": "Retenção de IRS",
     "resultMeal": "Subsídio de alimentação",
+    "resultDuodecimo": "Subsídio (prestação mensal)",
     "resultAnnualNet": "Líquido anual estimado (incl. subsídio de alimentação)",
     "resultEmployerCost": "Custo para a empresa (mensal)",
     "annualSettlementNote": "No final do ano, a nossa estimativa é que vai {direction} cerca de {amount} ao entregar a sua declaração de IRS.",

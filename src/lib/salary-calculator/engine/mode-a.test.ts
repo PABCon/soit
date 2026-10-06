@@ -164,6 +164,39 @@ describe("calculateEmploymentNet — full orchestration smoke test", () => {
     expect(result.annualSettlementEstimate).toBeDefined();
   });
 
+  it("duodécimos actually change the monthly net, and never change the annual total (real bug found by the user, not by any test)", () => {
+    const profile = baseProfile();
+    const input = {
+      grossMonthly: 2000,
+      paymentsPerYear: 14 as const,
+      meal: { type: "none" as const, dailyValue: 0, daysPerMonth: 0 },
+    };
+
+    const none = calculateEmploymentNet(profile, { ...input, twelfths: "none" });
+    const half = calculateEmploymentNet(profile, { ...input, twelfths: "half" });
+    const full = calculateEmploymentNet(profile, { ...input, twelfths: "full" });
+
+    // The whole point of duodécimos: money that would otherwise arrive
+    // in June/December arrives monthly instead — so the regular month's
+    // own net must actually go up as more gets spread.
+    expect(half.monthly.duodecimoGross).toBeGreaterThan(none.monthly.duodecimoGross);
+    expect(full.monthly.duodecimoGross).toBeGreaterThan(half.monthly.duodecimoGross);
+    expect(half.monthly.net).toBeGreaterThan(none.monthly.net);
+    expect(full.monthly.net).toBeGreaterThan(half.monthly.net);
+
+    // 'full' spreads everything monthly, so there's no separate subsidy
+    // month left to pay out.
+    expect(none.subsidyMonths).not.toBeNull();
+    expect(half.subsidyMonths).not.toBeNull();
+    expect(full.subsidyMonths).toBeNull();
+
+    // Duodécimos only change *when* the same total annual pay arrives,
+    // never *how much* — the annual net should match across all three
+    // (small tolerance for per-bracket rounding differences).
+    expect(half.annual.net).toBeCloseTo(none.annual.net, 0);
+    expect(full.annual.net).toBeCloseTo(none.annual.net, 0);
+  });
+
   it("applies a flat 20% withholding under IFICI, bypassing tables entirely", () => {
     const profile = baseProfile({ flatRate20: true });
     const result = calculateEmploymentNet(profile, {

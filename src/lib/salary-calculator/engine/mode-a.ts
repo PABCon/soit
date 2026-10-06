@@ -36,9 +36,55 @@ export function calculateEmploymentNet(profile: Profile, input: EmploymentInput)
   const taxableRemuneration = round2(d(input.grossMonthly).plus(mealSplit.taxableMonthly).plus(other));
   const withholding = calculateMonthlyWithholding(profile, taxableRemuneration);
 
-  const ss = calculateEmployeeSocialSecurity(taxableRemuneration, meta);
-  const irs = withholding.retention;
-  const net = round2(d(input.grossMonthly).plus(mealSplit.taxableMonthly).plus(other).minus(ss).minus(irs));
+  const baseSs = calculateEmployeeSocialSecurity(taxableRemuneration, meta);
+  const baseIrs = withholding.retention;
+
+  // Subsidies (férias/Natal) and duodécimos (spec §3.2, §3.1). Confirmed
+  // live against the real mechanism (OCC guidance on IRS retenção na
+  // fonte for subsídios): a spread duodécimo fraction is withheld
+  // "autonomously" at the rate corresponding to the *subsidy's own full
+  // value* (same bracket the regular month's R already falls into, since
+  // a subsidy equals one month's gross by definition) — not merged into
+  // R, no parcela/dependent abatement — same convention as a full
+  // subsidy month, just paid out as a smaller amount every month instead
+  // of a lump sum in June/December. This actually changes the money the
+  // employee receives *every month* when duodécimos are on, not just the
+  // annual total — a real bug (caught by the user, not by any of this
+  // session's tests) in an earlier version of this function left it only
+  // affecting the annual totals.
+  let subsidyMonths: EmploymentResult["subsidyMonths"] = null;
+  let duodecimoGross = 0;
+  let duodecimoSs = 0;
+  let duodecimoIrs = 0;
+
+  if (input.paymentsPerYear === 14) {
+    if (input.twelfths === "none") {
+      const holiday = calculateSubsidyMonth(input.grossMonthly, withholding.rate, meta);
+      const christmas = calculateSubsidyMonth(input.grossMonthly, withholding.rate, meta);
+      subsidyMonths = { holiday, christmas };
+    } else {
+      // 'half': 50% of each subsidy spread monthly, the other 50% still
+      // paid as its own subsidy month. 'full': both subsidies spread
+      // entirely, no separate subsidy month at all.
+      const spreadFraction = input.twelfths === "full" ? 1 : 0.5;
+      duodecimoGross = round2(d(input.grossMonthly).times(2).times(spreadFraction).dividedBy(12));
+      duodecimoSs = calculateEmployeeSocialSecurity(duodecimoGross, meta);
+      duodecimoIrs = round2(d(duodecimoGross).times(withholding.rate));
+
+      if (spreadFraction < 1) {
+        const remainderPerSubsidy = round2(d(input.grossMonthly).times(1 - spreadFraction));
+        const holiday = calculateSubsidyMonth(remainderPerSubsidy, withholding.rate, meta);
+        const christmas = calculateSubsidyMonth(remainderPerSubsidy, withholding.rate, meta);
+        subsidyMonths = { holiday, christmas };
+      }
+    }
+  }
+
+  const ss = round2(d(baseSs).plus(duodecimoSs));
+  const irs = round2(d(baseIrs).plus(duodecimoIrs));
+  const net = round2(
+    d(input.grossMonthly).plus(duodecimoGross).plus(mealSplit.taxableMonthly).plus(other).minus(ss).minus(irs),
+  );
   const netIncludingMeal = round2(d(net).plus(mealSplit.exemptMonthly));
   // net already folds in taxableMonthly (it's part of taxableRemuneration
   // above); only the exempt portion still needs adding to reach the
@@ -46,6 +92,7 @@ export function calculateEmploymentNet(profile: Profile, input: EmploymentInput)
 
   const monthly = {
     gross: input.grossMonthly,
+    duodecimoGross,
     taxableMeal: mealSplit.taxableMonthly,
     exemptMeal: mealSplit.exemptMonthly,
     ss,
@@ -54,58 +101,39 @@ export function calculateEmploymentNet(profile: Profile, input: EmploymentInput)
     netIncludingMeal,
   };
 
-  // Subsidies (férias/Natal) and duodécimos (spec §3.2, §3.1). Only the
-  // common, unambiguous case — 14 payments, no duodécimos — is modeled
-  // precisely; partial/full duodécimos spreading is a real spec VERIFY
-  // item ("VERIFY exact rule in the despacho text") and isn't exercised
-  // by any Phase-1 test, so it's handled as a documented simplification:
-  // the spread portion is folded into the regular month's gross instead
-  // of modeling a separate monthly-fraction withholding rate.
-  let subsidyMonths: EmploymentResult["subsidyMonths"] = null;
-  let annualGross = d(input.grossMonthly).times(12);
+  let annualGross = d(input.grossMonthly).plus(duodecimoGross).times(12);
   let annualSs = d(ss).times(12);
   let annualIrsWithheld = d(irs).times(12);
 
-  if (input.paymentsPerYear === 14) {
-    if (input.twelfths === "none") {
-      const holiday = calculateSubsidyMonth(input.grossMonthly, withholding.rate, meta);
-      const christmas = calculateSubsidyMonth(input.grossMonthly, withholding.rate, meta);
-      subsidyMonths = { holiday, christmas };
-      annualGross = annualGross.plus(holiday.gross).plus(christmas.gross);
-      annualSs = annualSs.plus(holiday.ss).plus(christmas.ss);
-      annualIrsWithheld = annualIrsWithheld.plus(holiday.irs).plus(christmas.irs);
-    } else {
-      // 'half' spreads 50% of each subsidy monthly, the other 50% still
-      // paid in its own month; 'full' spreads both entirely. Simplified
-      // here to: the spread share is added to the annual totals directly
-      // (as if evenly withheld across the year at the regular rate),
-      // without re-deriving a separate monthly R — see comment above.
-      const spreadFraction = input.twelfths === "full" ? 1 : 0.5;
-      const spreadAnnual = d(input.grossMonthly).times(2).times(spreadFraction);
-      const remainderPerSubsidy = d(input.grossMonthly).times(1 - spreadFraction);
-
-      annualGross = annualGross.plus(spreadAnnual).plus(remainderPerSubsidy.times(2));
-      const spreadSs = calculateEmployeeSocialSecurity(spreadAnnual.toNumber(), meta);
-      const spreadIrs = round2(spreadAnnual.times(withholding.rate));
-      annualSs = annualSs.plus(spreadSs);
-      annualIrsWithheld = annualIrsWithheld.plus(spreadIrs);
-
-      if (remainderPerSubsidy.greaterThan(0)) {
-        const holiday = calculateSubsidyMonth(remainderPerSubsidy.toNumber(), withholding.rate, meta);
-        const christmas = calculateSubsidyMonth(remainderPerSubsidy.toNumber(), withholding.rate, meta);
-        subsidyMonths = { holiday, christmas };
-        annualSs = annualSs.plus(holiday.ss).plus(christmas.ss);
-        annualIrsWithheld = annualIrsWithheld.plus(holiday.irs).plus(christmas.irs);
-      }
-    }
+  if (subsidyMonths) {
+    annualGross = annualGross.plus(subsidyMonths.holiday.gross).plus(subsidyMonths.christmas.gross);
+    annualSs = annualSs.plus(subsidyMonths.holiday.ss).plus(subsidyMonths.christmas.ss);
+    annualIrsWithheld = annualIrsWithheld.plus(subsidyMonths.holiday.irs).plus(subsidyMonths.christmas.irs);
   }
 
   const annualMealExempt = d(mealSplit.exemptMonthly).times(12);
+  // The employer pays the *full* meal allowance, exempt and taxable
+  // portions alike — only the employee's own tax treatment differs by
+  // portion, the employer's real cash cost doesn't.
+  const annualMealTotal = d(mealSplit.exemptMonthly).plus(mealSplit.taxableMonthly).times(12);
   const annualNet = annualGross.minus(annualSs).minus(annualIrsWithheld);
   const annualNetIncludingMeal = annualNet.plus(annualMealExempt);
 
-  const employerSsMonthly = calculateEmployerSocialSecurity(taxableRemuneration, meta);
-  const employerCostAnnual = annualGross.plus(d(employerSsMonthly).times(12)).plus(annualMealExempt);
+  // Employer SS (23.75%) applies to the same base as the employee's own
+  // 11% — the regular month (incl. any duodécimo share) and each subsidy
+  // month — not just the regular month alone.
+  const employerSsMonthly = calculateEmployerSocialSecurity(round2(d(taxableRemuneration).plus(duodecimoGross)), meta);
+  let employerCostAnnual = d(input.grossMonthly).plus(duodecimoGross).plus(employerSsMonthly).times(12);
+  if (subsidyMonths) {
+    const holidayEmployerSs = calculateEmployerSocialSecurity(subsidyMonths.holiday.gross, meta);
+    const christmasEmployerSs = calculateEmployerSocialSecurity(subsidyMonths.christmas.gross, meta);
+    employerCostAnnual = employerCostAnnual
+      .plus(subsidyMonths.holiday.gross)
+      .plus(holidayEmployerSs)
+      .plus(subsidyMonths.christmas.gross)
+      .plus(christmasEmployerSs);
+  }
+  employerCostAnnual = employerCostAnnual.plus(annualMealTotal);
 
   const result: EmploymentResult = {
     monthly,

@@ -3436,3 +3436,50 @@ live browser, not just unit tests. 36 tests passing,
 Not started: Phase 3 (Mode B — recibos verdes), Phase 4 (Mode C — Lda,
 comparator, reverse solver), Phase 5 (lead-gen gate — everything on
 this page is currently ungated, by design, since Phase 5 isn't built).
+
+## Salary Calculator — real user-caught bugs, fixed
+
+Two real issues reported directly after using the live calculator, not
+found by any test — a reminder that live usage still catches things
+the test suite's own fixed scenarios don't exercise.
+
+**Duodécimos silently did nothing to the monthly figure.** The
+`monthly` result object was fully computed *before* the duodécimos
+branch even ran — switching the toggle only ever touched
+`annual.*`/`subsidyMonths`, never the number anyone's actually looking
+at. Root-caused and rebuilt properly: `EmploymentMonthly` gained a new
+`duodecimoGross` field, and the regular month's own `ss`/`irs`/`net`
+now genuinely include that month's spread-subsidy share, withheld
+"autonomously" at the rate the subsidy's own full value falls into
+(same convention as a full subsidy month — confirmed against real OCC
+guidance during Phase 1's research, not re-guessed here). Caught two
+related, previously-silent gaps while in this code anyway: employer
+SS never applied to the duodécimo share or to either subsidy month,
+and the full (not just exempt) meal allowance value was missing from
+employer cost entirely — both now included. A new test locks in both
+the fix and the right invariant: duodécimos change *when* the same
+annual total arrives, never *how much* — verified the annual net
+matches within rounding across `none`/`half`/`full`.
+
+**Meal allowance's default daily value was an arbitrary placeholder
+(€7.63).** Confirmed live (not from memory) that €10.46/day is
+genuinely the real, current 2026 exempt ceiling for a meal card — the
+same figure already correctly encoded in `meta.json` since Phase 1,
+just never reflected in the UI's own default. Fixed by defaulting to
+it, matching standard real-world practice (employers who max out the
+card commonly set it at exactly this published figure).
+
+**A third point raised — "there are amounts IRS-eligible but not
+Social-Security-applicable, and amounts fully exempt from both" —
+researched live, not yet resolved.** Checked the most likely
+candidates directly against primary/authoritative sources: meal
+allowance turns out to share the *same* exempt threshold for IRS and
+SS (not asymmetric); ajudas de custo (per-diem/travel allowances,
+€65.89/day national ceiling for 2026) are exempt from *both* up to the
+ceiling, not asymmetric either; prémios de produtividade (performance
+bonuses, exempt up to 6% of annual base salary) are also exempt from
+*both*, not asymmetric. None of these match the specific
+IRS-but-not-SS (or vice versa) case described — asked the user to
+name the specific mechanism they mean rather than keep guessing
+candidates, since guessing wrong here risks silently building the
+wrong thing.

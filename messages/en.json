@@ -753,6 +753,7 @@
     "resultSs": "Social Security (11%)",
     "resultIrs": "IRS withholding",
     "resultMeal": "Meal allowance",
+    "resultDuodecimo": "Subsidy (monthly installment)",
     "resultAnnualNet": "Estimated annual net (incl. meal allowance)",
     "resultEmployerCost": "Cost to the employer (monthly)",
     "annualSettlementNote": "At the end of the year, our estimate is that you'll {direction} around {amount} when you file your IRS return.",

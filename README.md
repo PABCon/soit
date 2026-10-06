@@ -578,6 +578,18 @@ note saying so — their monthly net is still fully accurate. Caught and
 fixed a real `next-intl` bug along the way (a dynamic translation
 lookup colliding with a plain-string key of the same name).
 
+**Two real bugs fixed from live usage, not from any test**: duodécimos
+(spread subsidy payments) silently didn't change the monthly net at
+all — only the annual total — now fixed, with a test confirming the
+right invariant (duodécimos change *when* the same annual pay arrives,
+never *how much*). The meal allowance's default daily value was an
+arbitrary placeholder; now defaults to the real, confirmed 2026 exempt
+ceiling (€10.46/day). A third question — about amounts exempt from
+IRS but not Social Security, or vice versa — was researched against
+several real candidates (meal allowance, per-diem allowances,
+performance bonuses) but none matched; still open, waiting on which
+specific mechanism is meant.
+
 Next up: a real mailbox for `@justit.pt` (in progress — you're
 mid-testing this), then step 9 (SEO check, compliance, polish), and
 continuing the Salary Calculator's remaining phases (Mode B — recibos

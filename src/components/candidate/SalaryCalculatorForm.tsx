@@ -30,7 +30,7 @@ const DEFAULT_INPUT: EmploymentInput = {
   grossMonthly: 1500,
   paymentsPerYear: 14,
   twelfths: "none",
-  meal: { type: "card", dailyValue: 7.63, daysPerMonth: 22 },
+  meal: { type: "card", dailyValue: 10.46, daysPerMonth: 22 },
 };
 
 const REGIONS: Region[] = ["continente", "madeira", "acores"];
@@ -324,6 +324,12 @@ export function SalaryCalculatorForm() {
                   <dt className="text-muted">{t("resultGross")}</dt>
                   <dd>{money(result.monthly.gross)}</dd>
                 </div>
+                {result.monthly.duodecimoGross > 0 && (
+                  <div className="flex justify-between">
+                    <dt className="text-muted">{t("resultDuodecimo")}</dt>
+                    <dd>+{money(result.monthly.duodecimoGross)}</dd>
+                  </div>
+                )}
                 <div className="flex justify-between">
                   <dt className="text-muted">{t("resultSs")}</dt>
                   <dd>-{money(result.monthly.ss)}</dd>

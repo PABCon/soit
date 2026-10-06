@@ -60,6 +60,11 @@ export type MealAllowanceSplit = {
 
 export type EmploymentMonthly = {
   gross: number;
+  /** This month's share of a spread subsidy (duodécimos) — 0 unless
+   *  `twelfths` is "half" or "full". Already folded into `ss`/`irs`/`net`
+   *  below; broken out here so the UI can show it as its own line
+   *  instead of silently inflating "gross". */
+  duodecimoGross: number;
   taxableMeal: number;
   exemptMeal: number;
   ss: number;
