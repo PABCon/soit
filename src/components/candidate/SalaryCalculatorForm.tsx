@@ -51,12 +51,10 @@ const DEFAULT_EMPLOYMENT_INPUT: EmploymentInput = {
 
 const DEFAULT_FREELANCE_INPUT: FreelanceInput = {
   billing: { mode: "monthly", amount: 2000 },
-  activityType: "other_services",
+  activityType: "art151",
   clientLocation: "pt",
   monthsSinceStart: 24,
-  yearOfActivity: 3,
   alsoEmployed: false,
-  employmentGrossMonthly: 0,
   declaredExpenses: 0,
   vatRegime: "normal",
   withholdingWaiver: false,
@@ -64,7 +62,7 @@ const DEFAULT_FREELANCE_INPUT: FreelanceInput = {
 };
 
 const DEFAULT_COMPANY_INPUT: CompanyInput = {
-  revenueAnnual: 80000,
+  revenue: { mode: "annual", amount: 80000 },
   clientLocation: "pt",
   gerenteGrossMonthly: 2000,
   gerentePaymentsPerYear: 14,
@@ -497,6 +495,7 @@ export function SalaryCalculatorForm() {
                       </option>
                     ))}
                   </select>
+                  <span className="text-xs text-muted">{t("freelanceActivityTypeHint")}</span>
                 </label>
                 <label className={labelClass}>
                   <span>{t("freelanceClientLocation")}</span>
@@ -516,112 +515,146 @@ export function SalaryCalculatorForm() {
                 </label>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <NumberField
-                  label={t("freelanceMonthsSinceStart")}
-                  hint={t("freelanceMonthsSinceStartHint")}
-                  value={freelanceInput.monthsSinceStart}
-                  onChange={(v) => setFreelanceInput((i) => ({ ...i, monthsSinceStart: v }))}
-                />
-                <label className={labelClass}>
-                  <span>{t("freelanceYearOfActivity")}</span>
-                  <select
-                    value={freelanceInput.yearOfActivity}
-                    onChange={(e) =>
-                      setFreelanceInput((i) => ({
-                        ...i,
-                        yearOfActivity: Number(e.target.value) as 1 | 2 | 3,
-                      }))
-                    }
-                    className={inputClass}
-                  >
-                    <option value={1}>{t("freelanceYearOfActivityOption1")}</option>
-                    <option value={2}>{t("freelanceYearOfActivityOption2")}</option>
-                    <option value={3}>{t("freelanceYearOfActivityOption3")}</option>
-                  </select>
-                </label>
-              </div>
-
-              <div>
-                <label className={checkboxLabelClass}>
-                  <input
-                    type="checkbox"
-                    checked={freelanceInput.alsoEmployed}
-                    onChange={(e) => setFreelanceInput((i) => ({ ...i, alsoEmployed: e.target.checked }))}
-                  />
-                  {t("freelanceAlsoEmployed")}
-                </label>
-                {freelanceInput.alsoEmployed && (
-                  <div className="mt-2">
-                    <NumberField
-                      label={t("freelanceEmploymentGrossMonthly")}
-                      value={freelanceInput.employmentGrossMonthly ?? 0}
-                      onChange={(v) => setFreelanceInput((i) => ({ ...i, employmentGrossMonthly: v }))}
-                    />
-                  </div>
-                )}
-              </div>
-
               <NumberField
-                label={t("freelanceDeclaredExpenses")}
-                hint={t("freelanceDeclaredExpensesHint")}
-                value={freelanceInput.declaredExpenses}
-                onChange={(v) => setFreelanceInput((i) => ({ ...i, declaredExpenses: v }))}
+                label={t("freelanceMonthsSinceStart")}
+                hint={t("freelanceMonthsSinceStartHint")}
+                value={freelanceInput.monthsSinceStart}
+                onChange={(v) => setFreelanceInput((i) => ({ ...i, monthsSinceStart: v }))}
               />
 
-              <div className="grid grid-cols-2 gap-4">
-                <label className={labelClass}>
-                  <span>{t("freelanceVatRegime")}</span>
-                  <select
-                    value={freelanceInput.vatRegime}
-                    onChange={(e) => setFreelanceInput((i) => ({ ...i, vatRegime: e.target.value as VatRegime }))}
-                    className={inputClass}
-                  >
-                    {VAT_REGIMES.map((v) => (
-                      <option key={v} value={v}>
-                        {t(`vatRegimeOption.${v}`)}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label className={labelClass}>
-                  <span>{t("freelanceBaseAdjustment")}</span>
-                  <select
-                    value={freelanceInput.baseAdjustmentPct ?? 0}
-                    onChange={(e) => setFreelanceInput((i) => ({ ...i, baseAdjustmentPct: Number(e.target.value) }))}
-                    className={inputClass}
-                  >
-                    {BASE_ADJUSTMENT_OPTIONS.map((pctOption) => (
-                      <option key={pctOption} value={pctOption}>
-                        {pct(pctOption)}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              </div>
+              <details className="group rounded-lg border border-line">
+                <summary className="cursor-pointer px-3 py-2 text-sm font-medium text-muted marker:content-none group-open:text-pine">
+                  {t("freelanceAdvancedToggle")}
+                </summary>
+                <div className="space-y-4 border-t border-line p-3">
+                  <div>
+                    <label className={checkboxLabelClass}>
+                      <input
+                        type="checkbox"
+                        checked={freelanceInput.alsoEmployed}
+                        onChange={(e) => setFreelanceInput((i) => ({ ...i, alsoEmployed: e.target.checked }))}
+                      />
+                      {t("freelanceAlsoEmployed")}
+                    </label>
+                    <p className="mt-1 text-xs text-muted">{t("freelanceAlsoEmployedHint")}</p>
+                  </div>
 
-              <label className={checkboxLabelClass}>
-                <input
-                  type="checkbox"
-                  checked={freelanceInput.withholdingWaiver}
-                  onChange={(e) => setFreelanceInput((i) => ({ ...i, withholdingWaiver: e.target.checked }))}
-                />
-                {t("freelanceWithholdingWaiver")}
-              </label>
-              <p className="text-xs text-muted">{t("freelanceWithholdingWaiverHint")}</p>
+                  <NumberField
+                    label={t("freelanceDeclaredExpenses")}
+                    hint={t("freelanceDeclaredExpensesHint")}
+                    value={freelanceInput.declaredExpenses}
+                    onChange={(v) => setFreelanceInput((i) => ({ ...i, declaredExpenses: v }))}
+                  />
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <label className={labelClass}>
+                      <span>{t("freelanceVatRegime")}</span>
+                      <select
+                        value={freelanceInput.vatRegime}
+                        onChange={(e) => setFreelanceInput((i) => ({ ...i, vatRegime: e.target.value as VatRegime }))}
+                        className={inputClass}
+                      >
+                        {VAT_REGIMES.map((v) => (
+                          <option key={v} value={v}>
+                            {t(`vatRegimeOption.${v}`)}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label className={labelClass}>
+                      <span>{t("freelanceBaseAdjustment")}</span>
+                      <select
+                        value={freelanceInput.baseAdjustmentPct ?? 0}
+                        onChange={(e) =>
+                          setFreelanceInput((i) => ({ ...i, baseAdjustmentPct: Number(e.target.value) }))
+                        }
+                        className={inputClass}
+                      >
+                        {BASE_ADJUSTMENT_OPTIONS.map((pctOption) => (
+                          <option key={pctOption} value={pctOption}>
+                            {pct(pctOption)}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  </div>
+
+                  <label className={checkboxLabelClass}>
+                    <input
+                      type="checkbox"
+                      checked={freelanceInput.withholdingWaiver}
+                      onChange={(e) => setFreelanceInput((i) => ({ ...i, withholdingWaiver: e.target.checked }))}
+                    />
+                    {t("freelanceWithholdingWaiver")}
+                  </label>
+                  <p className="text-xs text-muted">{t("freelanceWithholdingWaiverHint")}</p>
+                </div>
+              </details>
             </fieldset>
+          )}
+
+          {mode === "freelance" && (
+            <div className="rounded-xl border border-line bg-paper p-4 text-sm">
+              <h2 className="font-semibold">{t("freelanceGlossaryHeading")}</h2>
+              <dl className="mt-3 space-y-3">
+                <div>
+                  <dt className="font-medium">{t("freelanceGlossarySsTerm")}</dt>
+                  <dd className="text-muted">{t("freelanceGlossarySsDefinition")}</dd>
+                </div>
+                <div>
+                  <dt className="font-medium">{t("freelanceGlossaryCatBTerm")}</dt>
+                  <dd className="text-muted">{t("freelanceGlossaryCatBDefinition")}</dd>
+                </div>
+                <div>
+                  <dt className="font-medium">{t("freelanceGlossaryVatTerm")}</dt>
+                  <dd className="text-muted">{t("freelanceGlossaryVatDefinition")}</dd>
+                </div>
+                <div>
+                  <dt className="font-medium">{t("freelanceGlossaryWithholdingTerm")}</dt>
+                  <dd className="text-muted">{t("freelanceGlossaryWithholdingDefinition")}</dd>
+                </div>
+              </dl>
+            </div>
           )}
 
           {mode === "company" && (
             <fieldset className="space-y-4 rounded-xl border border-line bg-white p-4">
               <legend className="px-1 text-sm font-semibold">{t("companyHeading")}</legend>
 
-              <NumberField
-                label={t("companyRevenueAnnual")}
-                step={100}
-                value={companyInput.revenueAnnual}
-                onChange={(v) => setCompanyInput((i) => ({ ...i, revenueAnnual: v }))}
-              />
+              <div className="grid grid-cols-2 gap-4">
+                <label className={labelClass}>
+                  <span>{t("freelanceBillingMode")}</span>
+                  <select
+                    value={companyInput.revenue.mode}
+                    onChange={(e) =>
+                      setCompanyInput((i) => ({
+                        ...i,
+                        revenue: { ...i.revenue, mode: e.target.value as CompanyInput["revenue"]["mode"] },
+                      }))
+                    }
+                    className={inputClass}
+                  >
+                    <option value="monthly">{t("billingModeOption.monthly")}</option>
+                    <option value="annual">{t("billingModeOption.annual")}</option>
+                    <option value="dayRate">{t("billingModeOption.dayRate")}</option>
+                  </select>
+                </label>
+                <NumberField
+                  label={t(`companyRevenueAmount.${companyInput.revenue.mode}`)}
+                  step={100}
+                  value={companyInput.revenue.amount}
+                  onChange={(v) => setCompanyInput((i) => ({ ...i, revenue: { ...i.revenue, amount: v } }))}
+                />
+              </div>
+
+              {companyInput.revenue.mode === "dayRate" && (
+                <NumberField
+                  label={t("freelanceDaysPerYear")}
+                  hint={t("freelanceDaysPerYearHint")}
+                  value={companyInput.revenue.daysPerYear ?? 220}
+                  onChange={(v) => setCompanyInput((i) => ({ ...i, revenue: { ...i.revenue, daysPerYear: v } }))}
+                />
+              )}
 
               <div className="grid grid-cols-2 gap-4">
                 <NumberField

@@ -3700,3 +3700,69 @@ with a separate `freelanceResultSs` key. Lesson generalized: a shared
 i18n key with a rate baked into its copy is a trap the moment a second,
 differently-rated context reuses it — worth grepping for before reusing
 any existing result-line label in a new mode.
+
+## Salary Calculator — Mode B simplification, one real bug fixed
+
+Real usage feedback on Mode B (recibos verdes): too much raw legal
+jargon in the primary form ("art. 151º", "Categoria B", "art. 53º",
+"dispensa de retenção", "fixação do valor-base"), two fields that
+turned out to be the same fact asked twice, and one field — "also
+employed elsewhere" + that job's gross salary — that produced a
+genuinely wrong number, not just a confusing one.
+
+**Real bug, confirmed and fixed**: `alsoEmployed` + `employmentGrossMonthly`
+merged an estimated net from the *other* job into this freelance
+income's own `rendimentoColetavel`, pushing the combined figure into a
+higher IRS bracket and making `trueNet`/`recommendedMonthlyTaxReserve`
+reflect tax attributable to income this calculator otherwise never
+models. The user's own test (two different monthly amounts on "two
+jobs") reproduced it directly — a distorted, too-low net, not merely
+confusing UI. Fixed by removing `employmentGrossMonthly` and the
+annual-liability merge entirely: `alsoEmployed` is now a simple
+self-declared checkbox that only affects (a) the SS acumulação
+exemption test — which depends on *this* income alone, not the other
+job's salary — and (b) disqualifying the new-activity coefficient
+reduction. A correct combined-household annual estimate would need the
+full annual IRS engine tracking two incomes and two withholding
+streams properly; that's a different, bigger feature, not a quick
+fix. Locked in with a regression test holding gross income fixed above
+the acumulação threshold so SS itself can't confound the comparison —
+`trueNet` with vs. without `alsoEmployed` now matches exactly.
+
+**"Months since start" and "year of activity" were the same fact
+stated twice** — merged into one `monthsSinceStart` field; `yearOfActivity`
+is now derived internally (`billing.ts`'s `deriveYearOfActivity`:
+<12 months → year 1, <24 → year 2, else year 3+), with its own test.
+
+**Jargon moved out of primary labels, not deleted** — citations like
+"art. 151º"/"art. 53º"/"art. 101º-B CIRS" read as unexplained noise to
+someone who isn't a Portuguese accountant. Primary labels now ask the
+plain-language question ("What kind of work do you do?", "I charge VAT
+normally" vs. "I'm VAT-exempt (invoicing under €15,000/year)", "Ask
+clients not to withhold IRS from my invoices"); the legal citations
+still live in rule-file `source` fields and code comments for anyone
+who needs to verify the rule, just not in the UI's primary copy.
+
+**Primary vs. advanced split**: `declaredExpenses`, `alsoEmployed`,
+`vatRegime`, `baseAdjustmentPct`, and `withholdingWaiver` moved into a
+collapsed `<details>` "More options (optional)" section — most
+freelancers never need them (the standard €4,587.09 deduction already
+covers most cases; VAT/withholding defaults are fine for most PT-client
+invoicing). The primary form is now just: how you bill, what kind of
+work, client location, how long you've been active.
+
+**A plain-language glossary block**, per the user's explicit
+direction ("adjust the content information section below for each
+type of contract" instead of cramming explanations into the form
+itself) — four terms (Segurança Social, Categoria B, IVA, retenção na
+fonte) in one short paragraph each, shown below the Mode B fieldset.
+Deliberately simple static JSX + i18n strings, not the spec's full
+MDX/frontmatter content pipeline (§13.1) — consistent with the earlier
+decision to keep content lightweight until there's a reason to invest
+in that infrastructure.
+
+**Mode C's revenue field** gained the same monthly/annual/day-rate
+billing choice Mode B already had, per direct request — extracted into
+a shared `billing.ts` (`billingToMonthly`/`billingToAnnual`,
+`BillingInput` type) so both modes' day-rate conversion (and its
+documented 220-days/year placeholder assumption) can't drift apart.

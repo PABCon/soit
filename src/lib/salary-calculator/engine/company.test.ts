@@ -25,7 +25,7 @@ function baseProfile(overrides: Partial<Profile> = {}): Profile {
 
 function baseCompanyInput(overrides: Partial<CompanyInput> = {}): CompanyInput {
   return {
-    revenueAnnual: 80000,
+    revenue: { mode: "annual", amount: 80000 },
     clientLocation: "pt",
     gerenteGrossMonthly: 2000,
     gerentePaymentsPerYear: 14,
@@ -59,7 +59,7 @@ describe("T10: Mode C, gerente salary 0", () => {
 
 describe("Mode C: IRC brackets and dividend tax", () => {
   it("applies 15%/19% SME brackets, 28% liberatory dividend tax", () => {
-    const result = calculateCompanyNet(baseProfile(), baseCompanyInput({ revenueAnnual: 150000 }));
+    const result = calculateCompanyNet(baseProfile(), baseCompanyInput({ revenue: { mode: "annual", amount: 150000 } }));
     expect(result.company.profitBeforeTax).toBeGreaterThan(50000);
     // IRC = 15% × 50,000 + 19% × (profit - 50,000).
     const expectedIrc = 50000 * 0.15 + (result.company.profitBeforeTax - 50000) * 0.19;

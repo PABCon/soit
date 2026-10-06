@@ -30,7 +30,6 @@ function baseFreelanceInput(overrides: Partial<FreelanceInput> = {}): FreelanceI
     activityType: "other_services",
     clientLocation: "pt",
     monthsSinceStart: 24,
-    yearOfActivity: 3,
     alsoEmployed: false,
     declaredExpenses: 0,
     vatRegime: "normal",
@@ -107,6 +106,22 @@ describe("recibos verdes: acumulação exemption when also employed", () => {
     // relevant income = 1000 × 0.70 = 700, well under 4×537.13 = 2,148.52.
     expect(result.monthly.ss).toBe(0);
     expect(result.flags).toContain("SS_EXEMPT_ACUMULACAO");
+  });
+
+  it("does not distort this income's own trueNet with tax from the other job (real bug found by the user)", () => {
+    // Previously, "also employed" merged an estimated net from the other
+    // job into this freelance income's own annual IRS liability, which
+    // pushed the combined figure into a much higher bracket and made
+    // trueNet collapse — even though the headline is meant to describe
+    // only this recibos verdes income.
+    // €4,000/month keeps relevant income (70%) above the acumulação
+    // exemption threshold either way, so SS itself doesn't change — only
+    // the bug under test (tax merged in from "also employed") would.
+    const input = baseFreelanceInput({ billing: { mode: "monthly", amount: 4000 } });
+    const withoutOtherJob = calculateFreelanceNet(baseProfile(), input);
+    const withOtherJob = calculateFreelanceNet(baseProfile(), { ...input, alsoEmployed: true });
+    expect(withOtherJob.monthly.ss).toBeCloseTo(withoutOtherJob.monthly.ss, 2);
+    expect(withOtherJob.monthly.trueNet).toBeCloseTo(withoutOtherJob.monthly.trueNet, 2);
   });
 });
 

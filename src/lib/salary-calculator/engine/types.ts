@@ -137,17 +137,36 @@ export type ActivityType = "art151" | "other_services";
 export type ClientLocation = "pt" | "eu" | "non_eu";
 export type VatRegime = "art53_exempt" | "normal";
 
+/** Shared "how is this billed" shape — a flat monthly/annual amount, or a
+ *  day rate (converted via a documented placeholder day-count, see
+ *  `billing.ts`). Used by Mode B's own invoicing and Mode C's company
+ *  revenue, so both can be entered the way the person actually thinks
+ *  about their income. */
+export type BillingInput = { mode: "monthly" | "annual" | "dayRate"; amount: number; daysPerYear?: number };
+
 export type FreelanceInput = {
-  billing: { mode: "monthly" | "annual" | "dayRate"; amount: number; daysPerYear?: number };
+  billing: BillingInput;
   activityType: ActivityType;
   clientLocation: ClientLocation;
-  /** Drives the SS 12-month exemption — months of activity so far. */
+  /** Months of activity so far — drives both the SS 12-month exemption
+   *  and the Cat B new-activity coefficient reduction (50% in months
+   *  1-12, 25% in months 13-24, none from month 25 on). One field, not
+   *  two: "months since start" and "year of activity" are the same fact
+   *  stated twice, which was confusing rather than meaningfully
+   *  different inputs. */
   monthsSinceStart: number;
-  /** Drives the Cat B new-activity coefficient reduction (50% year 1, 25%
-   *  year 2); 3 = third year or later, no reduction. */
-  yearOfActivity: 1 | 2 | 3;
+  /** Self-declared, no amount needed: only affects (a) whether the SS
+   *  acumulação exemption can apply — which depends on this freelance
+   *  income alone, not on the other job's salary — and (b) whether the
+   *  new-activity coefficient reduction is disqualified by other Cat A
+   *  income. Earlier versions also asked for the other job's gross and
+   *  merged its estimated tax into this freelance income's own annual
+   *  IRS liability — which distorted the headline trueNet figure with
+   *  tax attributable to income this calculator never otherwise sees.
+   *  Removed rather than fixed: a correct combined-household estimate
+   *  needs the full annual IRS engine tracking both incomes and their
+   *  separate withholding properly, which is a different feature. */
   alsoEmployed: boolean;
-  employmentGrossMonthly?: number;
   /** Annual — feeds the 15% justification rule (spec §4.5). */
   declaredExpenses: number;
   vatRegime: VatRegime;
@@ -193,7 +212,7 @@ export type FreelanceResult = {
 // Mode C: empresa própria (Sociedade Unipessoal Lda) — spec §5.
 
 export type CompanyInput = {
-  revenueAnnual: number;
+  revenue: BillingInput;
   clientLocation: ClientLocation;
   gerenteGrossMonthly: number;
   gerentePaymentsPerYear: 12 | 14;

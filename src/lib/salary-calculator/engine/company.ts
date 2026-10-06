@@ -2,6 +2,7 @@ import Decimal from "decimal.js";
 import { getMeta, getIrcRuleSet } from "../rules/loader";
 import type { Profile, CompanyInput, CompanyResult, EmploymentInput } from "./types";
 import { calculateEmploymentNet } from "./mode-a";
+import { billingToAnnual } from "./billing";
 import { d, round2 } from "./money";
 
 /** Mode C: B2B via empresa própria (Sociedade Unipessoal Lda, spec §5).
@@ -11,6 +12,7 @@ import { d, round2 } from "./money";
 export function calculateCompanyNet(profile: Profile, input: CompanyInput): CompanyResult {
   const meta = getMeta(profile.year);
   const irc = getIrcRuleSet(profile.year, profile.month);
+  const revenueAnnual = round2(d(billingToAnnual(input.revenue)));
 
   const gerenteAnnualGross = d(input.gerenteGrossMonthly).times(input.gerentePaymentsPerYear);
 
@@ -25,7 +27,7 @@ export function calculateCompanyNet(profile: Profile, input: CompanyInput): Comp
   const gerenteSs = round2(ssBase.times(irc.gerenteSs.memberRate));
 
   const accountantAnnual = d(input.accountantMonthly).times(12);
-  const profitBeforeTax = d(input.revenueAnnual)
+  const profitBeforeTax = d(revenueAnnual)
     .minus(input.operatingExpensesAnnual)
     .minus(accountantAnnual)
     .minus(gerenteAnnualGross)
@@ -61,14 +63,14 @@ export function calculateCompanyNet(profile: Profile, input: CompanyInput): Comp
   const gerenteNetSalary = gerenteSalary.annual.net;
 
   const takeHomeAnnual = round2(d(gerenteNetSalary).plus(dividendsNet));
-  const denominator = d(input.revenueAnnual).minus(input.operatingExpensesAnnual);
+  const denominator = d(revenueAnnual).minus(input.operatingExpensesAnnual);
   const effectiveTaxRate = denominator.greaterThan(0)
-    ? round2(d(input.revenueAnnual).minus(takeHomeAnnual).minus(input.operatingExpensesAnnual).dividedBy(denominator))
+    ? round2(d(revenueAnnual).minus(takeHomeAnnual).minus(input.operatingExpensesAnnual).dividedBy(denominator))
     : 0;
 
   return {
     company: {
-      revenue: input.revenueAnnual,
+      revenue: revenueAnnual,
       expenses: round2(d(input.operatingExpensesAnnual).plus(accountantAnnual)),
       gerenteCost: round2(gerenteAnnualGross.plus(companySs)),
       companySs,

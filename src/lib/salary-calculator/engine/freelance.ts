@@ -2,20 +2,8 @@ import { getMeta, getIrsBracketsRuleSet, getSsIndependentRuleSet, getCatBRuleSet
 import type { Profile, FreelanceInput, FreelanceResult } from "./types";
 import { calculateAnnualIrs } from "./annual-irs";
 import { calculateTaxableB } from "./regime-simplificado";
+import { billingToMonthly, deriveYearOfActivity } from "./billing";
 import { d, round2 } from "./money";
-
-/** Converts whatever billing shape the user entered into a flat monthly
- *  invoiced average (spec §4.1). Day-rate's annual day count has no
- *  confirmed default yet (spec §12 flags this as still open for Paulo) —
- *  220 working days/year is used as a documented placeholder assumption
- *  (roughly 11 months worked, holidays/bench time already netted out),
- *  not a verified figure. */
-function monthlyInvoiced(billing: FreelanceInput["billing"]): number {
-  if (billing.mode === "monthly") return billing.amount;
-  if (billing.mode === "annual") return billing.amount / 12;
-  const daysPerYear = billing.daysPerYear ?? 220;
-  return (billing.amount * daysPerYear) / 12;
-}
 
 /** Mode B: recibos verdes (spec §4). Pure function, same architecture as
  *  Mode A — no I/O, everything from `/rules` via the loader. */
@@ -26,7 +14,7 @@ export function calculateFreelanceNet(profile: Profile, input: FreelanceInput): 
   const vat = getVatRuleSet(profile.year, profile.month);
   const flags: string[] = [];
 
-  const invoiced = round2(d(monthlyInvoiced(input.billing)));
+  const invoiced = round2(d(billingToMonthly(input.billing)));
 
   // 3.3/4.2: Social Security.
   let ss = 0;
@@ -80,44 +68,33 @@ export function calculateFreelanceNet(profile: Profile, input: FreelanceInput): 
     flags.push("OUTSIDE_SCOPE_NON_EU_VAT");
   }
 
-  // 4.5: Annual IRS, regime simplificado.
+  // 4.5: Annual IRS, regime simplificado — this freelance income only.
+  // An earlier version also merged in an estimated net from "also being
+  // employed elsewhere", which distorted this income's own trueNet with
+  // tax attributable to income this calculator never otherwise models
+  // (see the `alsoEmployed` doc comment in types.ts).
   const invoicedAnnual = expectedAnnualInvoiced;
-  const taxableBValue = calculateTaxableB(
+  const rendimentoColetavel = calculateTaxableB(
     {
       invoicedAnnual,
       activityType: input.activityType,
-      yearOfActivity: input.yearOfActivity,
+      yearOfActivity: deriveYearOfActivity(input.monthsSinceStart),
       alsoEmployed: input.alsoEmployed,
       declaredExpenses: input.declaredExpenses,
       ssPaidAnnual: round2(d(ss).times(12)),
     },
     catB,
   );
-  const taxableB = d(taxableBValue);
-
-  let catANet = d(0);
-  if (input.alsoEmployed && input.employmentGrossMonthly) {
-    // Assumes 14 payments/year — the simplest standard case; Mode B's
-    // input has no paymentsPerYear field of its own for the "also
-    // employed" side-job.
-    const catAGross = d(input.employmentGrossMonthly).times(14);
-    const catAEmployeeSs = catAGross.times(0.11);
-    const floor = catAEmployeeSs.greaterThan(4587.09) ? catAEmployeeSs : d(4587.09);
-    const net = catAGross.minus(floor);
-    catANet = net.greaterThan(0) ? net : d(0);
-  }
-
-  const rendimentoColetavel = round2(taxableB.plus(catANet));
   const annualIrsWithheld = round2(d(irsWithheld).times(12));
 
   let irsLiability: number;
   if (profile.flatRate20) {
-    irsLiability = round2(taxableB.times(catB.ificiRate));
+    irsLiability = round2(d(rendimentoColetavel).times(catB.ificiRate));
   } else if (profile.region === "continente") {
     const irsBrackets = getIrsBracketsRuleSet("continente", profile.year, profile.month);
     const annualResult = calculateAnnualIrs({
       rendimentoColetavel,
-      grossAnnualIncome: round2(d(invoicedAnnual).plus(catANet.greaterThan(0) ? d(input.employmentGrossMonthly ?? 0).times(14) : 0)),
+      grossAnnualIncome: invoicedAnnual,
       ias: meta.ias,
       withheld: annualIrsWithheld,
       irsBrackets,
