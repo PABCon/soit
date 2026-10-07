@@ -3804,3 +3804,78 @@ MDX/frontmatter content pipeline — same call as before, revisited and
 confirmed still right at this scale (12 short term/definition pairs
 across three modes, no need yet for separately-reviewable content
 files with their own sources/`last_reviewed` metadata).
+
+## nif.pt registry lookup (§5.7.6 layer 3) + website-to-profile autofill
+
+Two unrelated asks in one message: a real `nif.pt` API key to wire into
+employer verification, and an automation that reads a company's own
+website to suggest profile fields and a logo. Both slotted into existing,
+deliberately-designed extension points instead of needing new
+architecture — `src/lib/verification/types.ts`'s own doc comment already
+named this exact layer ("a commercial registry provider ... added only
+if VIES misses prove more than a trickle"), and `src/lib/ai/extract-job.ts`
+was a complete working template for "fetch a URL, strip to text, ask an
+LLM to fill a nullable-everything schema, never invent."
+
+**`NifPtProvider`** (`src/lib/verification/nifpt.ts`) implements the
+existing `NifRegistryProvider` interface — a second implementation
+alongside `ViesProvider`, used only as a fallback in `verify-company.ts`
+when VIES itself doesn't resolve to `found` (VIES structurally misses
+domestic-only PT companies; nif.pt queries the real PT registry, so it's
+the right fallback for exactly that gap). Maps to the existing
+`verification_source: "provider"` enum value — no schema change needed.
+
+**A real classification bug, caught only by calling the live API before
+shipping, not by reading the docs.** nif.pt's docs show one example
+response (`result:"success"` with a record). Live testing against the
+real endpoint turned up two more shapes the docs don't show: a NIF with
+no matching business comes back `{"result":"error","message":"No
+records found","is_nif":true}` — a genuine, decisive not_found: and a
+rate-limit hit comes back `{"result":"error","message":"Limit per
+minute reached...","is_nif":false}` — not evidence about the NIF at
+all. The first implementation treated any `result !== "success"` as
+`undetermined`, which would have silently swallowed the single most
+common real case (a NIF that just doesn't exist) into permanent
+"pending, keep retrying" purgatory instead of ever reaching `failed`.
+Fixed by keying off the `message` text rather than `result`/`is_nif`
+alone — `is_nif` turned out to be `true` in the genuine not_found case
+and `false` in the rate-limit case, exactly backwards from what its name
+would suggest, so it can't disambiguate these on its own. Both real
+response shapes are now locked into `nifpt.test.ts` with the actual
+observed JSON in comments, not synthesized examples.
+
+**Website autofill** (`src/lib/ai/extract-company-profile.ts` +
+`CompanyAutofillPanel.tsx` in `/recruit/company`): extracted
+`extract-job.ts`'s `stripHtml()` into a shared `strip-html.ts` so the two
+extraction features can't drift apart. Text fields (tagline, about-us
+narrative, industry, size, social links) go through the same
+nullable-everything/never-invent LLM pattern; the logo is found
+separately via plain regex over `og:image`/`apple-touch-icon`/`icon`
+meta tags — deterministic, not a model call, since logos are reliably
+declared in standard tags and a vision call would be pure cost for no
+real benefit here. Suggestions only prefill *empty* fields in the
+existing form state (never overwrite something the employer already
+typed) and nothing saves until the employer clicks the real Save
+button — same review-before-save posture as job-URL extraction — except
+the logo, which gets its own one-click "use this" confirmation since it
+uploads immediately, consistent with every other image change in this
+form requiring an explicit user action.
+
+**Verified against live services before shipping, not just unit tests**:
+called the real `nif.pt` endpoint directly (found a real company,
+confirmed the not_found/rate-limit distinction above), and ran
+`extractCompanyProfileFromUrl` against a real company homepage
+(vercel.com) — got back a real tagline, industry, and a working
+`og:image` logo URL, confirmed fetchable with a correct `image/png`
+content-type under the 2MB limit. The authenticated console page itself
+(`/recruit/company`) wasn't click-through-tested — no browser-automation
+tool is available in this environment and curl can't drive a real
+session — so the UI wiring is verified by code review plus `tsc`/
+`eslint` against the exact same patterns as the already-proven
+job-extraction and manual-image-upload flows, not by an end-to-end
+click-through.
+
+**Secrets**: `NIF_PT_API_KEY` added to `.env.local` and to Vercel
+(production/preview/development, `--type secret`) — redeploy required
+for it to take effect, per the existing documented gotcha about env var
+changes not applying without one.

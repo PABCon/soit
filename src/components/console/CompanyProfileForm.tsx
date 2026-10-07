@@ -12,6 +12,7 @@ import { TeamMembersSection } from "@/components/console/TeamMembersSection";
 import { TestimonialsSection } from "@/components/console/TestimonialsSection";
 import { PhotoGallerySection } from "@/components/console/PhotoGallerySection";
 import { VideoGallerySection } from "@/components/console/VideoGallerySection";
+import { CompanyAutofillPanel, type AutofillApplyFields } from "@/components/console/CompanyAutofillPanel";
 
 const inputClass = "h-9 rounded-lg border border-line bg-white px-3 text-sm";
 const labelClass = "flex flex-col gap-1 text-sm";
@@ -93,6 +94,25 @@ export function CompanyProfileForm({
     setSaved(true);
   }
 
+  function handleAutofillApply(fields: AutofillApplyFields) {
+    // Only prefills fields that are currently empty — never silently
+    // overwrites something the employer already entered.
+    if (fields.tagline && !description) setDescription(fields.tagline);
+    if (fields.aboutUs && !aboutUs) setAboutUs(fields.aboutUs);
+    if (fields.industry && !industry) setIndustry(fields.industry);
+    if (fields.companySize && !size) setSize(fields.companySize);
+    if (fields.socials) {
+      setSocials((prev) => {
+        const next = { ...prev };
+        for (const field of SOCIAL_FIELDS) {
+          const suggested = fields.socials?.[field];
+          if (suggested && !prev[field]) next[field] = suggested;
+        }
+        return next;
+      });
+    }
+  }
+
   async function handleImage(field: "logo" | "cover", file: File) {
     setImageError(null);
     const formData = new FormData();
@@ -141,6 +161,8 @@ export function CompanyProfileForm({
           onChange={(e) => e.target.files?.[0] && handleImage("cover", e.target.files[0])}
         />
       </label>
+
+      <CompanyAutofillPanel defaultUrl={website} onApply={handleAutofillApply} />
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         <label className={labelClass}>

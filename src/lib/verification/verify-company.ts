@@ -1,8 +1,10 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { logEvent } from "@/lib/events";
 import { ViesProvider } from "./vies";
+import { NifPtProvider } from "./nifpt";
 
-const provider = new ViesProvider();
+const viesProvider = new ViesProvider();
+const nifPtProvider = new NifPtProvider();
 
 // 5m, 15m, 1h, 6h, then capped at 24h — a provider outage degrades the
 // funnel instead of blocking it (§5.7.4); this just spaces out retries.
@@ -21,7 +23,17 @@ function nextRetryAt(attempts: number): string {
  */
 export async function verifyCompany(companyId: string, nif: string) {
   const admin = createAdminClient();
-  const result = await provider.lookup(nif);
+  let result = await viesProvider.lookup(nif);
+
+  // VIES structurally misses domestic-only Portuguese companies (it only
+  // covers intra-EU VAT enrollment) — nif.pt queries the real PT registry,
+  // so it's a decisive fallback whenever VIES itself didn't resolve.
+  if (result.outcome !== "found") {
+    const fallback = await nifPtProvider.lookup(nif);
+    if (fallback.outcome === "found" || fallback.outcome === "not_found") {
+      result = fallback;
+    }
+  }
 
   if (result.outcome === "found") {
     await admin

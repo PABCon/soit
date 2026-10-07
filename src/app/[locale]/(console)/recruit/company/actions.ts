@@ -10,6 +10,7 @@ import {
   addCompanyGalleryPhoto,
   removeCompanyGalleryPhoto,
 } from "@/lib/db/companies";
+import { extractCompanyProfileFromUrl, type ExtractCompanyProfileResult } from "@/lib/ai/extract-company-profile";
 import { revalidatePath } from "next/cache";
 
 function trimmedOrNull(formData: FormData, key: string): string | null {
@@ -154,4 +155,61 @@ export async function removeGalleryPhotoAction(photoId: string) {
     }
   }
   revalidatePath("/recruit/company");
+}
+
+/** "Autofill from website" — pure suggestion, no DB write. The console
+ *  form prefills from the result and the employer still reviews/edits/
+ *  saves normally, same UX as the existing job-URL extraction feature. */
+export async function autofillCompanyProfileAction(url: string): Promise<ExtractCompanyProfileResult> {
+  return extractCompanyProfileFromUrl(url);
+}
+
+export async function applySuggestedLogoAction(logoUrl: string): Promise<UploadImageResult> {
+  let parsed: URL;
+  try {
+    parsed = new URL(logoUrl);
+  } catch {
+    return { ok: false, reason: "bad_file" };
+  }
+  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return { ok: false, reason: "bad_file" };
+
+  let bytes: ArrayBuffer;
+  let contentType: string;
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 10_000);
+    const res = await fetch(parsed.toString(), { signal: controller.signal });
+    clearTimeout(timeout);
+    if (!res.ok) return { ok: false, reason: "upload_failed" };
+
+    contentType = res.headers.get("content-type")?.split(";")[0]?.trim() ?? "";
+    if (!ALLOWED_IMAGE_TYPES.includes(contentType)) return { ok: false, reason: "bad_file" };
+
+    bytes = await res.arrayBuffer();
+    if (bytes.byteLength > MAX_IMAGE_BYTES) return { ok: false, reason: "file_too_large" };
+  } catch {
+    return { ok: false, reason: "upload_failed" };
+  }
+
+  const supabase = await createClient();
+  const { data: companyId } = await supabase.rpc("my_company_id");
+  if (!companyId) return { ok: false, reason: "not_employer" };
+
+  const ext = contentType.split("/")[1]?.replace("svg+xml", "svg") || "png";
+  const path = `${companyId}/logo.${ext}`;
+
+  const { error: uploadError } = await supabase.storage
+    .from("branding")
+    .upload(path, bytes, { upsert: true, contentType });
+  if (uploadError) return { ok: false, reason: "upload_failed" };
+
+  const { data: publicUrl } = supabase.storage.from("branding").getPublicUrl(path);
+
+  try {
+    await updateCompanyImage("company_logo_url", `${publicUrl.publicUrl}?v=${Date.now()}`);
+  } catch {
+    return { ok: false, reason: "upload_failed" };
+  }
+  revalidatePath("/recruit/company");
+  return { ok: true };
 }
