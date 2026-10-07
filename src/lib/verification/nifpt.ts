@@ -18,6 +18,8 @@ const TIMEOUT_MS = 10_000;
 type NifPtRecord = {
   nif: number | string;
   title?: string;
+  address?: string;
+  city?: string;
 };
 
 type NifPtResponse = {
@@ -54,6 +56,8 @@ export class NifPtProvider implements NifRegistryProvider {
             legalName: record.title || undefined,
             reference: String(record.nif),
             source: "provider",
+            address: record.address || undefined,
+            city: record.city || undefined,
           };
         }
         // Shouldn't happen alongside result:"success" per observed

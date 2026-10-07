@@ -7,6 +7,20 @@ import { slugify } from "@/lib/slug";
 
 type Role = "employer" | "candidate";
 
+/** Thrown when `companies.nif`'s unique constraint rejects a registration —
+ *  a real gap found in production: this used to surface as a raw "company
+ *  creation failed: duplicate key value..." error with no graceful handling
+ *  anywhere upstream, which could leave a real auth.users row created with
+ *  no employer_users/company row behind it. Callers (the two
+ *  completeRegistration entry points) catch this specifically and turn it
+ *  into a translated, actionable message instead. */
+export class DuplicateNifError extends Error {
+  constructor(public readonly nif: string) {
+    super(`A company with NIF ${nif} is already registered`);
+    this.name = "DuplicateNifError";
+  }
+}
+
 /**
  * Creates the employer profile for `user` if it doesn't already have one
  * (§6.4) — idempotent, safe to call more than once. Checks a pending team
@@ -73,7 +87,13 @@ export async function ensureEmployerProfile(
     .select("id")
     .single();
 
-  if (companyError) throw new Error(`company creation failed: ${companyError.message}`);
+  if (companyError) {
+    // 23505 = Postgres unique_violation — matched on the error code, not
+    // the message text, since Postgres/PostgREST's wording isn't a stable
+    // contract to parse against.
+    if (companyError.code === "23505") throw new DuplicateNifError(opts.nif);
+    throw new Error(`company creation failed: ${companyError.message}`);
+  }
 
   await admin
     .from("employer_users")

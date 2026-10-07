@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { completeRegistration } from "@/lib/auth/complete-registration";
+import { completeRegistration, DuplicateNifError } from "@/lib/auth/complete-registration";
 
 /**
  * Covers the case where signUp already returns an active session (email
@@ -21,6 +21,13 @@ export async function POST() {
   // signUp() already set user_metadata.last_role moments ago on this exact
   // call — always present on this path (§6.4a).
   const intendedRole = (user.user_metadata?.last_role ?? "candidate") as "employer" | "candidate";
-  const { landingPath } = await completeRegistration(user, intendedRole);
-  return NextResponse.json({ landingPath });
+  try {
+    const { landingPath } = await completeRegistration(user, intendedRole);
+    return NextResponse.json({ landingPath });
+  } catch (err) {
+    if (err instanceof DuplicateNifError) {
+      return NextResponse.json({ error: "duplicate_nif" }, { status: 409 });
+    }
+    throw err;
+  }
 }

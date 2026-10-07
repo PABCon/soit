@@ -477,7 +477,8 @@
     "nifError": {
       "format": "Enter a 9-digit NIF.",
       "checksum": "That NIF isn't valid — check the digits.",
-      "not_business": "That NIF belongs to an individual, not a registered business. Just IT verifies companies and public entities only."
+      "not_business": "That NIF belongs to an individual, not a registered business. Just IT verifies companies and public entities only.",
+      "duplicate": "A company with this NIF is already registered on Just IT. If this is your company, ask an existing owner to invite you instead of registering again."
     },
     "provider": {
       "google": "Google",

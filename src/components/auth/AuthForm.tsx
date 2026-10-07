@@ -40,7 +40,12 @@ export function AuthForm({ role, mode }: { role: Role; mode: Mode }) {
   const [password, setPassword] = useState("");
   const [companyName, setCompanyName] = useState("");
   const [nif, setNif] = useState("");
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(() => {
+    const errorParam = searchParams.get("error");
+    if (errorParam === "duplicate_nif") return t("nifError.duplicate");
+    if (errorParam === "auth") return t("errorGeneric");
+    return null;
+  });
   const [checkEmail, setCheckEmail] = useState(false);
   const [pending, setPending] = useState(false);
   // §6.4a — same-email dual-role: set once signInWithPassword confirms this
@@ -130,6 +135,11 @@ export function AuthForm({ role, mode }: { role: Role; mode: Mode }) {
       if (data.session) {
         const res = await fetch("/api/auth/finish", { method: "POST" });
         const json = await res.json();
+        if (!res.ok) {
+          setError(json.error === "duplicate_nif" ? t("nifError.duplicate") : t("errorGeneric"));
+          setPending(false);
+          return;
+        }
         router.push(next ?? json.landingPath ?? landingPath);
         // no setPending(false) — navigating away
       } else {

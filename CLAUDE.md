@@ -3903,3 +3903,66 @@ companies or public entities in the sense this product means, and
 there's no concrete evidence (unlike 98) that excluding them is
 actually wrong. Scoped the fix to the proven case, not a speculative
 broadening of the whole allowlist.
+
+## Three follow-ups from the user actually reading what the new features do
+
+Explaining exactly what nif.pt returns and what the website-autofill
+pulls (not asked to change anything, just asked to understand) surfaced
+three real gaps the user then asked to close.
+
+**1. Duplicate NIF registration had no graceful handling at all.**
+`companies.nif` already has a DB-level unique constraint, but
+`ensureEmployerProfile` (`src/lib/auth/complete-registration.ts`) just
+threw the raw Postgres error on a violation — and neither call site
+(`/api/auth/finish`, `/auth/callback`) caught anything, so a second
+registration with an already-used NIF would create a real Supabase auth
+user with no company/employer_users row behind it, then crash into a
+generic error page or an unhandled 500. Added `DuplicateNifError`
+(matched on Postgres code `23505`, not message text), caught at both
+call sites and turned into a specific signal — a JSON `409` for the
+same-session path, a `?error=duplicate_nif` redirect for the
+email-confirmation-link path — and `AuthForm.tsx` now actually reads
+both (previously: `/api/auth/finish`'s response wasn't checked for
+`!res.ok` at all before navigating, and the callback route's own
+`?error=auth` redirect was being set but never read by anything — fixed
+both as the same small mechanism, not separately).
+
+**2. nif.pt's address/city were fetched but discarded.** The lookup
+already receives a full registered address and city; only the legal
+name and NIF were being kept. Added `address`/`city` to
+`NifLookupResult`, and `verify-company.ts` now prefills
+`companies.address` and tries to match `city` against the `locations`
+table to set `location_id` — but **only into an empty field**, since
+this same function also runs lazily on a later retry for a `pending`
+company, by which point the employer may have already typed their own
+address in.
+
+**3. Website autofill's social-link extraction was structurally broken,
+not just weak.** `stripHtml()` deletes every tag — hence every `href`
+attribute — before the model ever sees the text, so the LLM could only
+ever find a social URL if it happened to appear as *visible text* on
+the page, which real sites almost never do (they link icons, not URLs).
+That's exactly why earlier test runs (vercel.com, stripe.com) came back
+with all six social fields null — there was nothing there for the model
+to see, regardless of prompt quality. Fixed by moving social-link
+detection out of the LLM step entirely: `findSocialLinks()` scans the
+raw HTML's own `href` attributes with one pattern per platform,
+deliberately excluding each platform's share/intent/sharer paths (the
+most common false positive on a real homepage — a "share this page on
+Facebook" button is not the company's Facebook page). Caught and fixed
+one real gap in the same work: the YouTube pattern originally required
+a `/channel/`, `/c/`, `/user/`, or `/@` prefix, which missed the common
+bare-custom-slug form (`youtube.com/vodafonept`) — found by testing
+against a real site (vodafone.pt), not assumed correct from the pattern
+alone.
+
+Also added a second, best-effort fetch: `findAboutPageUrl()` looks for
+a same-origin About/Team-style link on the homepage and, if found,
+fetches it too, concatenating its text into the same prompt — a
+marketing homepage rarely states headcount or a real company
+narrative, but a dedicated About page often does. Confirmed live
+against a real site (buffer.com): the homepage alone would have
+returned `aboutUs: null, companySize: null`; with the About page
+included, both came back correctly populated ("73 teammates across 15
+countries"), alongside four correctly-detected social links with zero
+false positives.

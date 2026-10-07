@@ -9,6 +9,12 @@ export type NifLookupResult = {
   legalName?: string;
   reference?: string;
   source: "vies" | "provider" | "manual";
+  /** Registered street address and city, when the provider has them (VIES
+   *  never does — it only confirms VAT-enrollment + name; nif.pt's own
+   *  registry record does). Used to prefill the company's address/location
+   *  on first verification, never to overwrite something already set. */
+  address?: string;
+  city?: string;
 };
 
 export interface NifRegistryProvider {

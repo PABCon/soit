@@ -477,7 +477,8 @@
     "nifError": {
       "format": "Indique um NIF com 9 dígitos.",
       "checksum": "Esse NIF não é válido — verifique os dígitos.",
-      "not_business": "Esse NIF pertence a uma pessoa singular, não a uma empresa registada. A Just IT verifica apenas empresas e entidades públicas."
+      "not_business": "Esse NIF pertence a uma pessoa singular, não a uma empresa registada. A Just IT verifica apenas empresas e entidades públicas.",
+      "duplicate": "Já existe uma empresa registada na Just IT com este NIF. Se esta é a sua empresa, peça a um proprietário existente para o convidar em vez de se registar novamente."
     },
     "provider": {
       "google": "Google",

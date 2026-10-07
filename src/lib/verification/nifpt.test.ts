@@ -37,6 +37,30 @@ describe("NifPtProvider — found", () => {
       source: "provider",
     });
   });
+
+  it("passes through address/city when the registry record has them", async () => {
+    process.env.NIF_PT_API_KEY = "test-key";
+    mockFetchOnce({
+      ok: true,
+      json: () =>
+        Promise.resolve({
+          result: "success",
+          is_nif: true,
+          records: {
+            "980722330": {
+              nif: 980722330,
+              title: "Itds Polska Sp. Z.o.o",
+              address: "Largo do Duque de Cadaval, 17",
+              city: "Lisboa",
+            },
+          },
+        }),
+    });
+
+    const result = await new NifPtProvider().lookup("980722330");
+    expect(result.address).toBe("Largo do Duque de Cadaval, 17");
+    expect(result.city).toBe("Lisboa");
+  });
 });
 
 describe("NifPtProvider — not_found", () => {

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { completeRegistration } from "@/lib/auth/complete-registration";
+import { completeRegistration, DuplicateNifError } from "@/lib/auth/complete-registration";
 
 /**
  * Single redirect target for email-link confirmation and OAuth (§9.1, §9.2).
@@ -37,7 +37,14 @@ export async function GET(request: NextRequest) {
   const intendedRole = (searchParams.get("role") ?? data.user.user_metadata?.last_role ?? "candidate") as
     | "employer"
     | "candidate";
-  const { landingPath } = await completeRegistration(data.user, intendedRole);
   const locale = next.split("/")[1] || "pt";
-  return NextResponse.redirect(`${origin}/${locale}${landingPath}`);
+  try {
+    const { landingPath } = await completeRegistration(data.user, intendedRole);
+    return NextResponse.redirect(`${origin}/${locale}${landingPath}`);
+  } catch (err) {
+    if (err instanceof DuplicateNifError) {
+      return NextResponse.redirect(`${origin}/${locale}/employer/register?error=duplicate_nif`);
+    }
+    throw err;
+  }
 }
