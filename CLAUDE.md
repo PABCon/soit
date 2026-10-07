@@ -3879,3 +3879,27 @@ click-through.
 (production/preview/development, `--type secret`) — redeploy required
 for it to take effect, per the existing documented gotcha about env var
 changes not applying without one.
+
+## Real bug: NIF prefix allowlist was missing 98, rejecting a real company
+
+A real user registration with NIF `980722330` was rejected client-side
+with "belongs to an individual, not a registered business" — but it's a
+real, active, registered entity ("Itds Polska Sp. Z.o.o", a non-resident
+company's Portuguese representation), confirmed live via the new
+`nif.pt` lookup (`structure.nature: "REP"`). `src/lib/nif.ts`'s
+`ACCEPTED_PREFIXES` only listed `5/6/71/72` — prefix `98`
+("Pessoas Coletivas Não Residentes com ou sem estabelecimento estável",
+confirmed against two independent sources before fixing, not assumed
+from the one example) is the exact same real category 71/72 already
+covered, just a different official prefix the original list missed.
+Added `98` to the allowlist, with a regression test using the real NIF
+that surfaced the bug (not just a synthetic fixture).
+
+Deliberately did NOT add every other "pessoa coletiva" prefix that
+exists for tax purposes — heranças indivisas (70/74/75), condomínios/
+sociedades irregulares (90/91), sociedades civis sem personalidade
+jurídica (99) are real collective-entity categories too, but not real
+companies or public entities in the sense this product means, and
+there's no concrete evidence (unlike 98) that excluding them is
+actually wrong. Scoped the fix to the proven case, not a speculative
+broadening of the whole allowlist.

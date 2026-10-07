@@ -11,6 +11,7 @@ describe("validateNif — accepted prefixes (checksum valid, entity type ok)", (
     ["600000001", "6 — public entity / administration"],
     ["710000006", "71 — non-resident collective entity"],
     ["720000009", "72 — investment fund"],
+    ["980000009", "98 — non-resident legal entity, with or without permanent establishment"],
   ])("accepts %s (%s)", (nif) => {
     expect(validateNif(nif)).toEqual({ valid: true, nif });
   });
@@ -18,6 +19,10 @@ describe("validateNif — accepted prefixes (checksum valid, entity type ok)", (
   it("tolerates formatting characters (spaces, dashes)", () => {
     expect(validateNif("500 000 000")).toEqual({ valid: true, nif: "500000000" });
     expect(validateNif("500-000-000")).toEqual({ valid: true, nif: "500000000" });
+  });
+
+  it("accepts the real NIF that surfaced this as a live bug report, not a synthetic fixture: 980722330 ('Itds Polska Sp. Z.o.o', a real active non-resident company's PT representation, confirmed via nif.pt) was wrongly rejected as 'belongs to an individual' before 98 was added to the allowlist", () => {
+    expect(validateNif("980722330")).toEqual({ valid: true, nif: "980722330" });
   });
 });
 
