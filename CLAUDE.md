@@ -3766,3 +3766,41 @@ billing choice Mode B already had, per direct request — extracted into
 a shared `billing.ts` (`billingToMonthly`/`billingToAnnual`,
 `BillingInput` type) so both modes' day-rate conversion (and its
 documented 220-days/year placeholder assumption) can't drift apart.
+
+## Salary Calculator — "what you should know" per mode
+
+Direct follow-up request: "add the information below each calculator
+that is important for the user to know and be informed." Moved Mode B's
+existing glossary block out of the left column (it sat between the
+freelance fieldset and the company fieldset, an accident of how it was
+first added) into one shared, full-width `infoHeading` card right after
+the two-column grid — same position for all three modes, so switching
+tabs always shows mode-relevant content in the same place, with Mode
+A's detailed bracket breakdown still below it as the most technical
+layer.
+
+Each mode gets its own content, kept short (one term + one short
+paragraph each), deliberately NOT exhaustive — this is "what's
+important to know," not the spec's full §13 editorial system:
+
+- **Employment**: withholding vs. final tax (why the annual-settlement
+  box was removed two entries up still matters here — this is the
+  honest, non-advisory way to say the same thing), what a contract
+  gives you beyond the net figure (paid holidays, sick pay, unemployment
+  eligibility, parental leave, notice, severance), and the basic
+  contrato sem termo vs. a termo distinction.
+- **Freelance**: kept the existing 4-term glossary (Segurança Social,
+  Categoria B, IVA, retenção na fonte), added a "Common pitfalls"
+  section — foreign clients not withholding, the €15,000 threshold
+  doing double duty for two separate elections, quarterly (not monthly)
+  SS declarations, and the lack of employee protections.
+- **Company**: the mandatory accountant cost, the legal-reserve gap
+  already noted in the form itself (now explained, not just flagged),
+  the real salary-vs-dividends trade-off (SS record vs. flat 28% with
+  no SS), and the scheduled IRC rate drop (18% in 2027, 17% from 2028).
+
+Still the lightweight static-JSX-plus-i18n approach, not the spec's
+MDX/frontmatter content pipeline — same call as before, revisited and
+confirmed still right at this scale (12 short term/definition pairs
+across three modes, no need yet for separately-reviewable content
+files with their own sources/`last_reviewed` metadata).

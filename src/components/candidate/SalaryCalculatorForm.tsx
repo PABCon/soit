@@ -593,30 +593,6 @@ export function SalaryCalculatorForm() {
             </fieldset>
           )}
 
-          {mode === "freelance" && (
-            <div className="rounded-xl border border-line bg-paper p-4 text-sm">
-              <h2 className="font-semibold">{t("freelanceGlossaryHeading")}</h2>
-              <dl className="mt-3 space-y-3">
-                <div>
-                  <dt className="font-medium">{t("freelanceGlossarySsTerm")}</dt>
-                  <dd className="text-muted">{t("freelanceGlossarySsDefinition")}</dd>
-                </div>
-                <div>
-                  <dt className="font-medium">{t("freelanceGlossaryCatBTerm")}</dt>
-                  <dd className="text-muted">{t("freelanceGlossaryCatBDefinition")}</dd>
-                </div>
-                <div>
-                  <dt className="font-medium">{t("freelanceGlossaryVatTerm")}</dt>
-                  <dd className="text-muted">{t("freelanceGlossaryVatDefinition")}</dd>
-                </div>
-                <div>
-                  <dt className="font-medium">{t("freelanceGlossaryWithholdingTerm")}</dt>
-                  <dd className="text-muted">{t("freelanceGlossaryWithholdingDefinition")}</dd>
-                </div>
-              </dl>
-            </div>
-          )}
-
           {mode === "company" && (
             <fieldset className="space-y-4 rounded-xl border border-line bg-white p-4">
               <legend className="px-1 text-sm font-semibold">{t("companyHeading")}</legend>
@@ -977,6 +953,91 @@ export function SalaryCalculatorForm() {
 
           <p className="text-xs text-muted">{t("disclaimer")}</p>
         </div>
+      </div>
+
+      <div className="rounded-xl border border-line bg-paper p-4 text-sm">
+        <h2 className="font-semibold">{t("infoHeading")}</h2>
+
+        {mode === "employment" && (
+          <dl className="mt-3 space-y-3">
+            <div>
+              <dt className="font-medium">{t("employmentInfoWithholdingTerm")}</dt>
+              <dd className="text-muted">{t("employmentInfoWithholdingDefinition")}</dd>
+            </div>
+            <div>
+              <dt className="font-medium">{t("employmentInfoRightsTerm")}</dt>
+              <dd className="text-muted">{t("employmentInfoRightsDefinition")}</dd>
+            </div>
+            <div>
+              <dt className="font-medium">{t("employmentInfoContractTypesTerm")}</dt>
+              <dd className="text-muted">{t("employmentInfoContractTypesDefinition")}</dd>
+            </div>
+          </dl>
+        )}
+
+        {mode === "freelance" && (
+          <>
+            <dl className="mt-3 space-y-3">
+              <div>
+                <dt className="font-medium">{t("freelanceGlossarySsTerm")}</dt>
+                <dd className="text-muted">{t("freelanceGlossarySsDefinition")}</dd>
+              </div>
+              <div>
+                <dt className="font-medium">{t("freelanceGlossaryCatBTerm")}</dt>
+                <dd className="text-muted">{t("freelanceGlossaryCatBDefinition")}</dd>
+              </div>
+              <div>
+                <dt className="font-medium">{t("freelanceGlossaryVatTerm")}</dt>
+                <dd className="text-muted">{t("freelanceGlossaryVatDefinition")}</dd>
+              </div>
+              <div>
+                <dt className="font-medium">{t("freelanceGlossaryWithholdingTerm")}</dt>
+                <dd className="text-muted">{t("freelanceGlossaryWithholdingDefinition")}</dd>
+              </div>
+            </dl>
+
+            <h3 className="mt-5 font-semibold">{t("freelancePitfallsHeading")}</h3>
+            <dl className="mt-3 space-y-3">
+              <div>
+                <dt className="font-medium">{t("freelancePitfallForeignClientsTerm")}</dt>
+                <dd className="text-muted">{t("freelancePitfallForeignClientsDefinition")}</dd>
+              </div>
+              <div>
+                <dt className="font-medium">{t("freelancePitfallThresholdTerm")}</dt>
+                <dd className="text-muted">{t("freelancePitfallThresholdDefinition")}</dd>
+              </div>
+              <div>
+                <dt className="font-medium">{t("freelancePitfallQuarterlyTerm")}</dt>
+                <dd className="text-muted">{t("freelancePitfallQuarterlyDefinition")}</dd>
+              </div>
+              <div>
+                <dt className="font-medium">{t("freelancePitfallNoRightsTerm")}</dt>
+                <dd className="text-muted">{t("freelancePitfallNoRightsDefinition")}</dd>
+              </div>
+            </dl>
+          </>
+        )}
+
+        {mode === "company" && (
+          <dl className="mt-3 space-y-3">
+            <div>
+              <dt className="font-medium">{t("companyInfoAccountantTerm")}</dt>
+              <dd className="text-muted">{t("companyInfoAccountantDefinition")}</dd>
+            </div>
+            <div>
+              <dt className="font-medium">{t("companyInfoLegalReserveTerm")}</dt>
+              <dd className="text-muted">{t("companyInfoLegalReserveDefinition")}</dd>
+            </div>
+            <div>
+              <dt className="font-medium">{t("companyInfoSalaryVsDividendsTerm")}</dt>
+              <dd className="text-muted">{t("companyInfoSalaryVsDividendsDefinition")}</dd>
+            </div>
+            <div>
+              <dt className="font-medium">{t("companyInfoIrcScheduleTerm")}</dt>
+              <dd className="text-muted">{t("companyInfoIrcScheduleDefinition")}</dd>
+            </div>
+          </dl>
+        )}
       </div>
 
       {mode === "employment" && employmentResult && (
