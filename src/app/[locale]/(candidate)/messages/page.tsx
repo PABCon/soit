@@ -3,6 +3,7 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import { redirect, Link } from "@/i18n/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getMyThreadsAsCandidate } from "@/lib/db/messaging";
+import { InboxRealtimeRefresh } from "@/components/messaging/InboxRealtimeRefresh";
 
 type Props = { params: Promise<{ locale: string }> };
 
@@ -23,10 +24,12 @@ export default async function CandidateMessagesPage({ params }: Props) {
   } = await supabase.auth.getUser();
   if (!user) redirect({ href: "/candidate/login", locale });
 
+  const { data: candidateId } = await supabase.rpc("my_candidate_id");
   const threads = await getMyThreadsAsCandidate();
 
   return (
     <>
+      {candidateId && <InboxRealtimeRefresh filter={`candidate_id=eq.${candidateId}`} />}
       <h1 className="text-2xl font-bold">{t("inboxTitle")}</h1>
 
       {threads.length === 0 ? (

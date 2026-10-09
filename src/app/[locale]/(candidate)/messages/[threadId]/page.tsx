@@ -4,6 +4,7 @@ import { redirect, Link } from "@/i18n/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getThreadDetail } from "@/lib/db/messaging";
 import { ThreadReplyBox } from "@/components/ThreadReplyBox";
+import { ThreadRealtimeRefresh } from "@/components/messaging/ThreadRealtimeRefresh";
 import { sendCandidateMessageAction } from "./actions";
 
 type Props = { params: Promise<{ locale: string; threadId: string }> };
@@ -26,6 +27,7 @@ export default async function CandidateThreadPage({ params }: Props) {
 
   return (
     <>
+      <ThreadRealtimeRefresh threadId={threadId} />
       <Link href="/messages" className="text-sm text-pine hover:underline">
         ← {t("inboxTitle")}
       </Link>

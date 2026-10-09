@@ -3,6 +3,7 @@ import { getTranslations, getFormatter, setRequestLocale } from "next-intl/serve
 import { Link } from "@/i18n/navigation";
 import { getThreadDetail } from "@/lib/db/messaging";
 import { ThreadReplyBox } from "@/components/ThreadReplyBox";
+import { ThreadRealtimeRefresh } from "@/components/messaging/ThreadRealtimeRefresh";
 import { sendEmployerMessageAction } from "./actions";
 
 type Props = { params: Promise<{ locale: string; threadId: string }> };
@@ -19,6 +20,7 @@ export default async function EmployerThreadPage({ params }: Props) {
 
   return (
     <>
+      <ThreadRealtimeRefresh threadId={threadId} />
       <Link href="/recruit/messages" className="text-sm text-pine hover:underline">
         ← {t("inboxTitle")}
       </Link>

@@ -2,6 +2,7 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
 import { getMyEmployerContext } from "@/lib/db/companies";
 import { getMyThreadsAsEmployer } from "@/lib/db/messaging";
+import { InboxRealtimeRefresh } from "@/components/messaging/InboxRealtimeRefresh";
 
 type Props = { params: Promise<{ locale: string }> };
 
@@ -17,6 +18,7 @@ export default async function EmployerMessagesPage({ params }: Props) {
 
   return (
     <>
+      <InboxRealtimeRefresh filter={`company_id=eq.${ctx.company.id}`} />
       <h1 className="text-2xl font-bold">{t("inboxTitle")}</h1>
 
       {threads.length === 0 ? (

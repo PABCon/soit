@@ -1,0 +1,11 @@
+-- Real-usage QA item: messaging had "a noticeable delay, not instant" —
+-- confirmed there was no live-update mechanism at all; a thread only
+-- ever refreshed on a manual reload or after sending your own reply
+-- (ThreadReplyBox's own router.refresh()). Supabase ships Realtime on
+-- every project already (no new infra, unlike the saved-search cron) —
+-- it was just never turned on for any table here. Realtime's own
+-- Postgres Changes feature re-checks each change against the
+-- subscriber's RLS policies before delivering it (same `messages`
+-- policies this table already has), so no new RLS is needed — only
+-- adding the table to the publication Realtime actually watches.
+alter publication supabase_realtime add table messages;

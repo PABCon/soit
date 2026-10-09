@@ -4489,3 +4489,49 @@ Verified: `tsc --noEmit`, `eslint` on every changed file, the full test
 suite (now 105, +6 new for `password.ts`'s pure logic — cross-checked
 against the live project's own 422 responses, not just internal
 consistency), and `npm run build`.
+
+## Medium-features QA batch 6: live messaging via Supabase Realtime
+
+Real-usage QA item: messaging had "a noticeable delay, not instant" —
+confirmed there was no live-update mechanism anywhere; a thread only
+ever refreshed on a manual reload, or after sending your own reply
+(`ThreadReplyBox`'s existing `router.refresh()`). Unlike the saved-
+search digest, this needed no new infrastructure — Supabase ships
+Realtime on every project already, it was just never turned on for any
+table here (confirmed: no `supabase_realtime` publication statement
+anywhere in this project's migration history before this).
+
+Two new migrations add `messages` and `message_threads` to the
+`supabase_realtime` publication (`20261009160000_messages_realtime.sql`,
+`20261009161000_message_threads_realtime.sql` — two files, not one,
+because the first was already applied via `supabase db push` before
+the second table's need became clear, and an applied migration never
+gets edited in place in this project). No RLS changes needed — Realtime
+re-checks each change against the subscriber's existing RLS policies
+before delivering it, exactly like a plain `select` would.
+
+Two tiny client components, no new state duplicated from the
+server-rendered pages:
+- `ThreadRealtimeRefresh` — open-thread view, subscribes to `INSERT` on
+  `messages` filtered to `thread_id`, calls `router.refresh()`.
+- `InboxRealtimeRefresh` — inbox-list view, watches `UPDATE` on
+  `message_threads` (every new message bumps its thread's own
+  `last_message_at`, so this is one filtered subscription instead of
+  one per thread_id) filtered to the viewer's own `candidate_id` or
+  `company_id`, same `router.refresh()`.
+
+**Verified end-to-end against the live project**, not just `tsc`/
+build: a script created a disposable candidate account, employer
+context, and a real `message_threads` row, opened a Realtime
+subscription using a genuine signed-in session (not the admin client —
+Realtime authorization has to see the same RLS a real browser session
+would), inserted a message via the admin client (simulating the other
+party), and confirmed the subscribed client actually received the
+`INSERT` event with the right body within a few seconds. Passed, then
+all test data (auth user, candidate, thread) was deleted. (One
+intermediate run left two throwaway accounts behind after an unrelated
+script bug — caught by re-listing `auth.users` for stray `rt-test-`
+emails afterward and deleting them, not left for later.)
+
+Verified: `tsc --noEmit`, `eslint` on every changed file, the full test
+suite (105 passing), and `npm run build`.
