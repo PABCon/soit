@@ -5,6 +5,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import {
   createTopEmployerCheckoutAction,
+  createBillingPortalSessionAction,
   type BillingInterval,
 } from "@/app/[locale]/(console)/recruit/jobs/ads/actions";
 
@@ -17,7 +18,7 @@ const PERK_KEYS = [
   "topEmployerPerkSlots",
 ] as const;
 
-export function TopEmployerCard({ active }: { active: boolean }) {
+export function TopEmployerCard({ active, periodEnd }: { active: boolean; periodEnd: string | null }) {
   const t = useTranslations("console");
   const locale = useLocale();
   const [interval, setInterval] = useState<BillingInterval>("year");
@@ -29,6 +30,23 @@ export function TopEmployerCard({ active }: { active: boolean }) {
     setPending(true);
     try {
       const result = await createTopEmployerCheckoutAction(interval, locale);
+      if (result.ok) {
+        window.location.assign(result.url);
+        return;
+      }
+      setError(t("errorGeneric"));
+    } catch {
+      setError(t("errorGeneric"));
+    } finally {
+      setPending(false);
+    }
+  }
+
+  async function manageBilling() {
+    setError(null);
+    setPending(true);
+    try {
+      const result = await createBillingPortalSessionAction(locale);
       if (result.ok) {
         window.location.assign(result.url);
         return;
@@ -53,6 +71,12 @@ export function TopEmployerCard({ active }: { active: boolean }) {
         )}
       </div>
 
+      {active && periodEnd && (
+        <p className="mt-2 text-sm text-muted">
+          {t("topEmployerRenewsOn", { date: new Date(periodEnd).toLocaleDateString(locale === "pt" ? "pt-PT" : "en-GB") })}
+        </p>
+      )}
+
       <ul className="mt-4 space-y-1.5 text-sm text-ink">
         {PERK_KEYS.map((key) => (
           <li key={key} className="flex items-start gap-2">
@@ -73,6 +97,20 @@ export function TopEmployerCard({ active }: { active: boolean }) {
           </li>
         ))}
       </ul>
+
+      {active && (
+        <>
+          <button
+            type="button"
+            disabled={pending}
+            onClick={manageBilling}
+            className="mt-4 h-10 w-full rounded-lg border border-line bg-white text-sm font-semibold text-ink hover:bg-paper disabled:opacity-50"
+          >
+            {pending ? t("redirecting") : t("manageBilling")}
+          </button>
+          {error && <p className="mt-2 text-sm text-red-700">{error}</p>}
+        </>
+      )}
 
       {!active && (
         <>

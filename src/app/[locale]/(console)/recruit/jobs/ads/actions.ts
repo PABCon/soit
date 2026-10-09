@@ -2,6 +2,7 @@
 
 import { stripe, newIntegrationIdentifier } from "@/lib/stripe";
 import { getMyEmployerContext } from "@/lib/db/companies";
+import { createClient } from "@/lib/supabase/server";
 
 const SITE = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
 
@@ -102,6 +103,44 @@ export async function createTopEmployerCheckoutAction(
     return { ok: true, url: session.url };
   } catch (err) {
     console.error("createTopEmployerCheckoutAction failed:", err);
+    return { ok: false, reason: "stripe_error" };
+  }
+}
+
+export type CreatePortalResult = { ok: true; url: string } | { ok: false; reason: "no_subscription" | "stripe_error" };
+
+/** Billing dashboard — "manage subscription" (cancel, switch plan, view/
+ *  download invoices). Routes to Stripe's own hosted Customer Portal
+ *  rather than reimplementing any of that: `company_subscriptions` is
+ *  only ever written for Top Employer subscribers (ad-credit purchases
+ *  are one-time Checkout, no Stripe Customer object created), so a
+ *  company with no subscription row has no portal to open — its billing
+ *  history is the purchases list on this same page, not the portal.
+ *  Requires a Customer Portal configuration to exist (Stripe Dashboard →
+ *  Settings → Billing → Customer portal → Save, a one-time setup step —
+ *  see CLAUDE.md), otherwise Stripe itself returns a clear error. */
+export async function createBillingPortalSessionAction(locale: string): Promise<CreatePortalResult> {
+  const ctx = await getMyEmployerContext();
+  if (!ctx) return { ok: false, reason: "no_subscription" };
+
+  const supabase = await createClient();
+  const { data: subscription } = await supabase
+    .from("company_subscriptions")
+    .select("stripe_customer_id")
+    .eq("company_id", ctx.company.id)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (!subscription?.stripe_customer_id) return { ok: false, reason: "no_subscription" };
+
+  try {
+    const session = await stripe.billingPortal.sessions.create({
+      customer: subscription.stripe_customer_id,
+      return_url: `${SITE}/${locale}/recruit/jobs/ads`,
+    });
+    return { ok: true, url: session.url };
+  } catch (err) {
+    console.error("createBillingPortalSessionAction failed:", err);
     return { ok: false, reason: "stripe_error" };
   }
 }

@@ -4181,3 +4181,66 @@ credit — first `decrement_ad_credit` call returned `true`, a second
 immediate call on the same row returned `false` — confirmed correct,
 then deleted the test row. `tsc --noEmit`, `eslint`, the full test
 suite (99 passing), and `npm run build` all pass after the change.
+
+## Full-site QA — critical bugs batch 6: payment confirmation emails + a billing dashboard
+
+Two more items off the critical-bugs QA list.
+
+**Payment confirmation emails** — neither Stripe webhook path
+(`fulfillAdCreditPurchase`, `activateTopEmployerFromSession` in
+`src/app/api/stripe/webhook/route.ts`) sent anything, despite the
+`sendEmail`/Resend infra already being live for applications and
+messaging. Added two templates
+(`src/lib/email/templates/ad-credits-purchased.ts`,
+`top-employer-subscribed.ts`, matching the existing plain
+HTML+text-string style, no i18n — same as every other transactional
+email in this codebase) and wired both into the webhook, right after
+each path's existing DB write. Recipient resolution
+(`resolveBillingRecipient`) prefers `session.customer_details.email` —
+the address Checkout always collects, even for a guest one-time
+payment, so it's the one the person who just paid is actually
+watching — falling back to the first team member's account email
+(same `employer_users` → `auth.admin.getUserById` lookup
+`applications.ts` already uses for new-applicant notifications) only
+if Stripe didn't capture one.
+
+**Billing dashboard** — `/recruit/jobs/ads` (the existing pricing
+page) showed ad-credits-remaining and a bare "subscribe" card, with no
+purchase history, no renewal date, and — once already subscribed — no
+way to cancel, switch billing interval, or see an invoice; the Top
+Employer card just... stopped having anything to click.
+- **Purchase history**: new `BillingHistory` server component reads
+  `job_ad_purchases` directly (RLS already scopes it to the caller's
+  own company) — that ledger *is* the invoice history for one-time ad-
+  credit purchases, nothing to fetch from Stripe for it.
+- **Renewal date**: `TopEmployerCard` now takes `periodEnd` (already on
+  `MyCompany` as `top_employer_period_end`, just never passed through)
+  and shows it when active.
+- **Manage billing** (cancel, switch monthly/annual, real Stripe-
+  generated invoice PDFs): routed to Stripe's own hosted Customer
+  Portal rather than reimplementing any of it —
+  `createBillingPortalSessionAction` looks up the company's
+  `stripe_customer_id` from `company_subscriptions` (only ever
+  populated for Top Employer subscribers; ad-credit purchases are
+  guest one-time Checkout, no Customer object exists to open a portal
+  for) and opens a portal session. **Requires a one-time Stripe
+  Dashboard step before this works in any environment**: Settings →
+  Billing → Customer portal → Save a configuration — Stripe returns a
+  clear error from `billingPortal.sessions.create` otherwise, not a
+  silent failure, but the button won't do anything until that's done.
+
+Verified: `tsc --noEmit`, `eslint` on every changed file, the full test
+suite (99 passing), and `npm run build` all pass. Live Stripe-webhook/
+portal behavior not re-tested end-to-end in this pass — reuses this
+project's already-verified webhook plumbing and Stripe's own hosted
+portal rather than new untested surface.
+
+**Explicitly left as-is**: the third item from this same QA batch
+("sessions not expiring after a day") was already diagnosed in an
+earlier session (`d281433`) — Supabase's native `inactivity_timeout`/
+`timebox` controls are a confirmed Pro-plan-only feature (402 from the
+Management API on Free), deliberately deferred to
+`docs/go-live-checklist.md` rather than built around. Asked the user
+whether to build app-level enforcement instead, upgrade to Pro, or
+leave it deferred — chose to leave it deferred, so no change made
+here.

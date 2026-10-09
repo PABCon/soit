@@ -2,6 +2,10 @@ import type Stripe from "stripe";
 import { stripe } from "@/lib/stripe";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { logEvent } from "@/lib/events";
+import { sendEmail } from "@/lib/email/send";
+import { adCreditsPurchasedEmail } from "@/lib/email/templates/ad-credits-purchased";
+import { topEmployerSubscribedEmail } from "@/lib/email/templates/top-employer-subscribed";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 // First signature-verifying route in this codebase. Reads the raw text
 // body (App Router route handlers give this directly, no special config
@@ -47,6 +51,29 @@ export async function POST(request: Request) {
   return new Response("ok", { status: 200 });
 }
 
+/** Checkout always collects a payer email even for guest/one-time
+ *  payments, so that's the first choice — it's the address the person
+ *  who just paid is actually watching. Falls back to the first team
+ *  member's account email (same lookup applications.ts already uses for
+ *  new-applicant notifications) only if Stripe didn't capture one. */
+async function resolveBillingRecipient(
+  admin: SupabaseClient,
+  companyId: string,
+  session: Stripe.Checkout.Session,
+): Promise<string | null> {
+  if (session.customer_details?.email) return session.customer_details.email;
+
+  const { data: members } = await admin
+    .from("employer_users")
+    .select("auth_user_id")
+    .eq("company_id", companyId)
+    .limit(1);
+  const authUserId = members?.[0]?.auth_user_id;
+  if (!authUserId) return null;
+  const { data } = await admin.auth.admin.getUserById(authUserId);
+  return data.user?.email ?? null;
+}
+
 /** Statuses under which Top Employer perks stay active — `past_due` gets
  *  a grace period (Stripe's own default retry/dunning is still in
  *  progress), matching common SaaS practice rather than revoking on the
@@ -61,6 +88,18 @@ async function activateTopEmployerFromSession(session: Stripe.Checkout.Session) 
   const subscription = await stripe.subscriptions.retrieve(subscriptionId);
   await upsertCompanySubscription(companyId, subscription);
   await logEvent("company.subscribed", { companyId, subscriptionId, plan: "top_employer" }, undefined);
+
+  const admin = createAdminClient();
+  const [{ data: company }, recipient] = await Promise.all([
+    admin.from("companies").select("company_name").eq("id", companyId).single(),
+    resolveBillingRecipient(admin, companyId, session),
+  ]);
+  if (recipient) {
+    const billingInterval = subscription.metadata?.billing_interval === "year" ? "year" : "month";
+    await sendEmail(
+      topEmployerSubscribedEmail({ to: recipient, companyName: company?.company_name ?? "there", billingInterval }),
+    );
+  }
 }
 
 async function syncTopEmployerSubscription(subscription: Stripe.Subscription) {
@@ -124,7 +163,7 @@ async function fulfillAdCreditPurchase(session: Stripe.Checkout.Session) {
 
   const { data: company } = await admin
     .from("companies")
-    .select("ad_credits_available")
+    .select("company_name, ad_credits_available")
     .eq("id", companyId)
     .single();
   await admin
@@ -133,4 +172,17 @@ async function fulfillAdCreditPurchase(session: Stripe.Checkout.Session) {
     .eq("id", companyId);
 
   await logEvent("job_ad.purchased", { companyId, quantity, totalCents: session.amount_total }, undefined);
+
+  const recipient = await resolveBillingRecipient(admin, companyId, session);
+  if (recipient) {
+    await sendEmail(
+      adCreditsPurchasedEmail({
+        to: recipient,
+        companyName: company?.company_name ?? "there",
+        quantity,
+        totalCents: session.amount_total ?? 0,
+        currency: session.currency ?? "eur",
+      }),
+    );
+  }
 }
