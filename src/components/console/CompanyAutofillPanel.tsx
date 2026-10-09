@@ -6,6 +6,7 @@ import { autofillCompanyProfileAction, applySuggestedLogoAction } from "@/app/[l
 import type { ExtractedCompanyProfile } from "@/lib/ai/extract-company-profile";
 
 export type AutofillApplyFields = {
+  website?: string;
   tagline?: string;
   aboutUs?: string;
   industry?: string;
@@ -23,9 +24,17 @@ export type AutofillApplyFields = {
 export function CompanyAutofillPanel({
   defaultUrl,
   onApply,
+  onLogoApplied,
 }: {
   defaultUrl: string;
   onApply: (fields: AutofillApplyFields) => void;
+  /** Called with the (external) logo URL once it's been successfully
+   *  re-uploaded to our own storage — lets the parent update its preview
+   *  without a full page reload, same as every other image-upload path
+   *  on this form. The bytes are identical to what's now actually stored,
+   *  just still served from the source site rather than Supabase Storage,
+   *  which is visually indistinguishable for a one-off preview. */
+  onLogoApplied?: (sourceUrl: string) => void;
 }) {
   const t = useTranslations("console");
   const [url, setUrl] = useState(defaultUrl);
@@ -61,7 +70,7 @@ export function CompanyAutofillPanel({
     setLogoPending(false);
     if (res.ok) {
       setLogoApplied(true);
-      window.location.reload();
+      onLogoApplied?.(logoUrl);
     } else {
       setError(t(`imageError.${res.reason}`));
     }
@@ -70,6 +79,7 @@ export function CompanyAutofillPanel({
   function handleApplyFields() {
     if (!result) return;
     onApply({
+      website: url || undefined,
       tagline: result.tagline ?? undefined,
       aboutUs: result.aboutUs ?? undefined,
       industry: result.industry ?? undefined,

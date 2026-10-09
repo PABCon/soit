@@ -35,15 +35,19 @@ export function ContactForm() {
       setError(t("errorGeneric"));
       return;
     }
+    // Reset the form instead of replacing it with a static confirmation —
+    // real-usage report: there was no way to send a second message without
+    // reloading the page, which also silently discarded the success
+    // message the moment you started typing again.
+    setName("");
+    setEmail("");
+    setMessage("");
     setSent(true);
-  }
-
-  if (sent) {
-    return <p className="rounded-lg bg-mint/20 px-3 py-2 text-sm text-pine">{t("sentConfirmation")}</p>;
   }
 
   return (
     <form onSubmit={handleSubmit} className="flex max-w-md flex-col gap-4">
+      {sent && <p className="rounded-lg bg-mint/20 px-3 py-2 text-sm text-pine">{t("sentConfirmation")}</p>}
       {error && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
       <label className={labelClass}>
         <span>{t("name")}</span>

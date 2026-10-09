@@ -5,6 +5,7 @@ import { getLiveJobs } from "@/lib/db/jobs";
 import { CompanyLogo } from "@/components/CompanyLogo";
 import { JobRow } from "@/components/JobRow";
 import { Link } from "@/i18n/navigation";
+import { normalizeWebsiteUrl } from "@/lib/url";
 // A direct import, not next/dynamic — `ssr: false` isn't allowed from a
 // Server Component's own module scope (this file has no "use client"), and
 // CompanyMap is already a client component with no SSR-unsafe top-level
@@ -62,9 +63,10 @@ export async function CompanyProfileBody({
   const jobs = (await getLiveJobs()).filter((j) => j.company.slug === slug);
   const officeLocations = [...new Set(jobs.map((j) => j.location).filter((l): l is string => !!l))].slice(0, 3);
 
-  const socialLinks = SOCIAL_ICONS.map(({ key, path }) => ({ path, url: company[key] })).filter(
+  const socialLinks = SOCIAL_ICONS.map(({ key, path }) => ({ path, url: normalizeWebsiteUrl(company[key]) })).filter(
     (s): s is { path: string; url: string } => !!s.url,
   );
+  const websiteUrl = normalizeWebsiteUrl(company.website);
 
   const statCards = [
     { label: t("officeLocations"), value: officeLocations.length ? officeLocations.join(", ") : null },
@@ -110,14 +112,14 @@ export async function CompanyProfileBody({
       </div>
 
       <div className="mt-14 flex flex-col items-center text-center">
-        {socialLinks.length > 0 && (
+        {(socialLinks.length > 0 || websiteUrl) && (
           <div className="mb-4 flex items-center gap-2">
-            {company.website && (
+            {websiteUrl && (
               <a
-                href={company.website}
+                href={websiteUrl}
                 target="_blank"
                 rel="noreferrer"
-                title={company.website}
+                title={websiteUrl}
                 className="flex h-9 w-9 items-center justify-center rounded-full bg-paper text-muted transition-colors hover:bg-pine hover:text-white"
               >
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" className="h-4 w-4">

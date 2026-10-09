@@ -100,6 +100,7 @@ export function CompanyProfileForm({
   function handleAutofillApply(fields: AutofillApplyFields) {
     // Only prefills fields that are currently empty — never silently
     // overwrites something the employer already entered.
+    if (fields.website && !website) setWebsite(fields.website);
     if (fields.tagline && !description) setDescription(fields.tagline);
     if (fields.aboutUs && !aboutUs) setAboutUs(fields.aboutUs);
     if (fields.industry && !industry) setIndustry(fields.industry);
@@ -205,7 +206,14 @@ export function CompanyProfileForm({
         </div>
       </div>
 
-      <CompanyAutofillPanel defaultUrl={website} onApply={handleAutofillApply} />
+      <CompanyAutofillPanel
+        defaultUrl={website}
+        onApply={handleAutofillApply}
+        onLogoApplied={(sourceUrl) => {
+          setLogoPreview(sourceUrl);
+          setImageSuccess("logo");
+        }}
+      />
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         <label className={labelClass}>

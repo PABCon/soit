@@ -11,26 +11,31 @@ import {
   removeCompanyGalleryPhoto,
 } from "@/lib/db/companies";
 import { extractCompanyProfileFromUrl, type ExtractCompanyProfileResult } from "@/lib/ai/extract-company-profile";
+import { normalizeWebsiteUrl } from "@/lib/url";
 import { revalidatePath } from "next/cache";
 
 function trimmedOrNull(formData: FormData, key: string): string | null {
   return (formData.get(key) as string)?.trim() || null;
 }
 
+function urlOrNull(formData: FormData, key: string): string | null {
+  return normalizeWebsiteUrl(formData.get(key) as string);
+}
+
 export async function updateProfileAction(formData: FormData) {
   await updateCompanyProfile({
     company_name: String(formData.get("company_name") ?? "").trim(),
     company_description: trimmedOrNull(formData, "company_description"),
-    website: trimmedOrNull(formData, "website"),
+    website: urlOrNull(formData, "website"),
     industry: trimmedOrNull(formData, "industry"),
     company_size: trimmedOrNull(formData, "company_size"),
     company_type: trimmedOrNull(formData, "company_type"),
-    facebook_url: trimmedOrNull(formData, "facebook_url"),
-    linkedin_url: trimmedOrNull(formData, "linkedin_url"),
-    instagram_url: trimmedOrNull(formData, "instagram_url"),
-    youtube_url: trimmedOrNull(formData, "youtube_url"),
-    tiktok_url: trimmedOrNull(formData, "tiktok_url"),
-    x_url: trimmedOrNull(formData, "x_url"),
+    facebook_url: urlOrNull(formData, "facebook_url"),
+    linkedin_url: urlOrNull(formData, "linkedin_url"),
+    instagram_url: urlOrNull(formData, "instagram_url"),
+    youtube_url: urlOrNull(formData, "youtube_url"),
+    tiktok_url: urlOrNull(formData, "tiktok_url"),
+    x_url: urlOrNull(formData, "x_url"),
     location_id: trimmedOrNull(formData, "location_id"),
     address: trimmedOrNull(formData, "address"),
     about_us_text: trimmedOrNull(formData, "about_us_text"),
