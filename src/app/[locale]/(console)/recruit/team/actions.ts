@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createInvite, removeMember, deleteInvite, resendInvite } from "@/lib/db/team";
+import { createInvite, removeMember, updateMemberRole, deleteInvite, resendInvite } from "@/lib/db/team";
 
 export async function createInviteAction(email: string, role: "owner" | "member") {
   const token = await createInvite(email, role);
@@ -11,6 +11,11 @@ export async function createInviteAction(email: string, role: "owner" | "member"
 
 export async function removeMemberAction(memberId: string) {
   await removeMember(memberId);
+  revalidatePath("/recruit/team");
+}
+
+export async function updateMemberRoleAction(memberId: string, newRole: "owner" | "member") {
+  await updateMemberRole(memberId, newRole);
   revalidatePath("/recruit/team");
 }
 

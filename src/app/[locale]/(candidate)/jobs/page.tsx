@@ -31,12 +31,15 @@ export default async function JobsPage({ params }: Props) {
     getMyFavoriteJobIds(),
   ]);
 
-  // Only locations/categories/languages/technologies that currently have a
-  // live job get a link — never advertise an empty browse page (§ SEO note
-  // in sitemap.ts). This "Browse by" section is separate from — and stays
+  // Only locations/categories/languages that currently have a live job get
+  // a link — never advertise an empty browse page (§ SEO note in
+  // sitemap.ts). This "Browse by" section is separate from — and stays
   // alongside — JobsExplorer's own curated quick-filter row: these are
   // real server-rendered links to dedicated, crawlable /jobs/in/... pages
   // (SEO), not a client-side refinement of the page you're already on.
+  // "Browse by technology" was removed per real-usage feedback — location/
+  // category/language cover the useful cases; the generic technology list
+  // read as redundant clutter next to JobsExplorer's own tech filter row.
   const locationCounts = new Map<string, { name: string; count: number }>();
   const categoryCounts = new Map<string, number>();
   for (const job of jobs) {
@@ -51,7 +54,6 @@ export default async function JobsPage({ params }: Props) {
   const topLocations = [...locationCounts.entries()].sort((a, b) => b[1].count - a[1].count).slice(0, 8);
   const topCategories = [...categoryCounts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8);
   const topLanguages = featuredTech.filter((t) => t.group === "language");
-  const topTechnologies = featuredTech.filter((t) => t.group === "technology");
 
   return (
     <>
@@ -71,8 +73,8 @@ export default async function JobsPage({ params }: Props) {
         />
       </div>
 
-      {(topLocations.length > 0 || topCategories.length > 0 || featuredTech.length > 0) && (
-        <div className="mt-10 grid grid-cols-1 gap-6 border-t border-line pt-6 sm:grid-cols-2 lg:grid-cols-4">
+      {(topLocations.length > 0 || topCategories.length > 0 || topLanguages.length > 0) && (
+        <div className="mt-10 grid grid-cols-1 gap-6 border-t border-line pt-6 sm:grid-cols-2 lg:grid-cols-3">
           {topLocations.length > 0 && (
             <div>
               <h2 className="text-sm font-semibold text-muted">{tf("browseByLocation")}</h2>
@@ -112,23 +114,6 @@ export default async function JobsPage({ params }: Props) {
               <h2 className="text-sm font-semibold text-muted">{tf("browseByLanguage")}</h2>
               <ul className="mt-2 flex flex-wrap gap-1.5">
                 {topLanguages.map(({ slug, label }) => (
-                  <li key={slug}>
-                    <Link
-                      href={`/jobs/in/all-locations/${slug}`}
-                      className="rounded-full border border-line bg-white px-3 py-1.5 text-xs text-muted hover:border-muted hover:text-ink"
-                    >
-                      {label}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-          {topTechnologies.length > 0 && (
-            <div>
-              <h2 className="text-sm font-semibold text-muted">{tf("browseByTechnology")}</h2>
-              <ul className="mt-2 flex flex-wrap gap-1.5">
-                {topTechnologies.map(({ slug, label }) => (
                   <li key={slug}>
                     <Link
                       href={`/jobs/in/all-locations/${slug}`}

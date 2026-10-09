@@ -4,6 +4,7 @@ import { getCompanyBySlug } from "@/lib/db/companies";
 import { getLiveJobs } from "@/lib/db/jobs";
 import { CompanyLogo } from "@/components/CompanyLogo";
 import { JobRow } from "@/components/JobRow";
+import { Link } from "@/i18n/navigation";
 // A direct import, not next/dynamic — `ssr: false` isn't allowed from a
 // Server Component's own module scope (this file has no "use client"), and
 // CompanyMap is already a client component with no SSR-unsafe top-level
@@ -40,7 +41,19 @@ const SOCIAL_ICONS: { key: "facebookUrl" | "linkedinUrl" | "instagramUrl" | "you
  *  the canonical indexable page (candidate)/companies/[slug] and the
  *  noindex preview route opened from the employer console, so both stay
  *  in sync without duplicating the markup. */
-export async function CompanyProfileBody({ locale, slug }: { locale: string; slug: string }) {
+export async function CompanyProfileBody({
+  locale,
+  slug,
+  showBackLink,
+}: {
+  locale: string;
+  slug: string;
+  /** Only the real public page offers this — the employer-console preview
+   *  is deliberately sandboxed so an employer previewing their own profile
+   *  can't wander off into the main site's nav (see the preview route's
+   *  own doc comment). */
+  showBackLink?: boolean;
+}) {
   const t = await getTranslations({ locale, namespace: "company" });
 
   const company = await getCompanyBySlug(slug);
@@ -62,6 +75,24 @@ export async function CompanyProfileBody({ locale, slug }: { locale: string; slu
 
   return (
     <>
+      {showBackLink && (
+        <Link
+          href="/companies"
+          className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-muted hover:text-pine"
+        >
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            className="h-4 w-4"
+            aria-hidden="true"
+          >
+            <path d="m15 18-6-6 6-6" />
+          </svg>
+          {t("backToCompanies")}
+        </Link>
+      )}
       <div className="relative">
         {company.coverImageUrl ? (
           // eslint-disable-next-line @next/next/no-img-element

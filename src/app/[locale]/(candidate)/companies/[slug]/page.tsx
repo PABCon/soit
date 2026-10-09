@@ -16,5 +16,5 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function CompanyPage({ params }: Props) {
   const { locale, slug } = await params;
   setRequestLocale(locale);
-  return <CompanyProfileBody locale={locale} slug={slug} />;
+  return <CompanyProfileBody locale={locale} slug={slug} showBackLink />;
 }

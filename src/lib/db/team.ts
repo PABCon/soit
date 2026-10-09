@@ -157,6 +157,32 @@ export async function removeMember(memberId: string) {
   if (error) throw new Error(error.message);
 }
 
+/** Owner-only — same "must keep at least one owner" guard as removeMember,
+ *  just checked against a demotion instead of a deletion. Real-usage
+ *  report: there was no way to change a member's role after inviting them
+ *  at the wrong one, or promoting/demoting someone later. */
+export async function updateMemberRole(memberId: string, newRole: "owner" | "member") {
+  const ctx = await getMyEmployerContext();
+  if (!ctx || ctx.role !== "owner") throw new Error("Owners only");
+
+  const supabase = await createClient();
+  const { data: members } = await supabase
+    .from("employer_users")
+    .select("id, role")
+    .eq("company_id", ctx.company.id);
+
+  const target = members?.find((m) => m.id === memberId);
+  if (!target) throw new Error("Not found");
+
+  const ownerCount = members!.filter((m) => m.role === "owner").length;
+  if (target.role === "owner" && newRole === "member" && ownerCount <= 1) {
+    throw new Error("A company must keep at least one owner");
+  }
+
+  const { error } = await supabase.from("employer_users").update({ role: newRole }).eq("id", memberId);
+  if (error) throw new Error(error.message);
+}
+
 /** Owner-only revoke — real-usage report: a pending invite could be created
  *  but never removed. `employer_invites`' RLS policy is already `for all`
  *  for owners on their own company's rows (covers delete too), so this is

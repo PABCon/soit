@@ -311,24 +311,31 @@ export function AuthForm({ role, mode }: { role: Role; mode: Mode }) {
         {t(pending ? (mode === "register" ? "creatingAccount" : "loggingIn") : mode === "register" ? "createAccount" : "logIn")}
       </button>
 
-      <div className="flex items-center gap-2 text-xs text-muted">
-        <span className="h-px flex-1 bg-line" aria-hidden />
-        {t("orContinueWith")}
-        <span className="h-px flex-1 bg-line" aria-hidden />
-      </div>
+      {/* Social login is candidate-only by product decision — a company
+       *  account is a business identity, not a personal one, so signing in
+       *  with a personal Google/GitHub/LinkedIn account doesn't fit. */}
+      {role === "candidate" && (
+        <>
+          <div className="flex items-center gap-2 text-xs text-muted">
+            <span className="h-px flex-1 bg-line" aria-hidden />
+            {t("orContinueWith")}
+            <span className="h-px flex-1 bg-line" aria-hidden />
+          </div>
 
-      <div className="flex gap-2">
-        {OAUTH_PROVIDERS.map((provider) => (
-          <button
-            key={provider}
-            type="button"
-            onClick={() => handleOAuth(provider)}
-            className="h-9 flex-1 rounded-lg border border-line bg-white text-sm hover:bg-paper"
-          >
-            {t(`provider.${provider}`)}
-          </button>
-        ))}
-      </div>
+          <div className="flex gap-2">
+            {OAUTH_PROVIDERS.map((provider) => (
+              <button
+                key={provider}
+                type="button"
+                onClick={() => handleOAuth(provider)}
+                className="h-9 flex-1 rounded-lg border border-line bg-white text-sm hover:bg-paper"
+              >
+                {t(`provider.${provider}`)}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
     </form>
   );
 }

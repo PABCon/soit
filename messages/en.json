@@ -85,6 +85,7 @@
     "ownerOnly": "Only a company owner can edit this. Ask an owner to make changes.",
     "uploadLogo": "Upload logo",
     "uploadCover": "Upload cover image",
+    "imageUploaded": "Uploaded.",
     "companyName": "Company name",
     "description": "Description",
     "website": "Website",
@@ -351,6 +352,7 @@
     "errorGeneric": "Something went wrong. Try again."
   },
   "company": {
+    "backToCompanies": "Back to companies",
     "openJobs": "{count, plural, =0 {No open jobs} one {# open job} other {# open jobs}}",
     "noOpenJobs": "This company has no open jobs right now.",
     "officeLocations": "Office locations",
@@ -444,8 +446,7 @@
     "allLocations": "all of Portugal",
     "browseByLocation": "Browse by location",
     "browseByCategory": "Browse by category",
-    "browseByLanguage": "Browse by language",
-    "browseByTechnology": "Browse by technology"
+    "browseByLanguage": "Browse by language"
   },
   "auth": {
     "candidateLoginTitle": "Log in as candidate",

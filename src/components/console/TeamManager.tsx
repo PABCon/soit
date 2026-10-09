@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import {
   createInviteAction,
   removeMemberAction,
+  updateMemberRoleAction,
   deleteInviteAction,
   resendInviteAction,
 } from "@/app/[locale]/(console)/recruit/team/actions";
@@ -58,6 +59,15 @@ export function TeamManager({
     setError(null);
     try {
       await removeMemberAction(memberId);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : t("errorGeneric"));
+    }
+  }
+
+  async function handleRoleChange(memberId: string, newRole: "owner" | "member") {
+    setError(null);
+    try {
+      await updateMemberRoleAction(memberId, newRole);
     } catch (e) {
       setError(e instanceof Error ? e.message : t("errorGeneric"));
     }
@@ -123,7 +133,18 @@ export function TeamManager({
                 )}
                 <div>
                   <p className="text-sm text-ink">{m.fullName || m.email}</p>
-                  <p className="text-xs text-muted">{t(`roleLabel.${m.role}`)}</p>
+                  {isOwner && m.id !== myEmployerId ? (
+                    <select
+                      value={m.role}
+                      onChange={(e) => handleRoleChange(m.id, e.target.value as "owner" | "member")}
+                      className="mt-0.5 h-6 rounded border border-line bg-white px-1 text-xs text-muted"
+                    >
+                      <option value="member">{t("roleLabel.member")}</option>
+                      <option value="owner">{t("roleLabel.owner")}</option>
+                    </select>
+                  ) : (
+                    <p className="text-xs text-muted">{t(`roleLabel.${m.role}`)}</p>
+                  )}
                 </div>
               </div>
               {isOwner && m.id !== myEmployerId && (

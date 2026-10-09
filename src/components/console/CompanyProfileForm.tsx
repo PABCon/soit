@@ -67,6 +67,9 @@ export function CompanyProfileForm({
   const [saved, setSaved] = useState(false);
   const [pending, setPending] = useState(false);
   const [imageError, setImageError] = useState<string | null>(null);
+  const [imageSuccess, setImageSuccess] = useState<"logo" | "cover" | null>(null);
+  const [logoPreview, setLogoPreview] = useState(company.company_logo_url);
+  const [coverPreview, setCoverPreview] = useState(company.cover_image_url);
 
   const isTopEmployer = company.top_employer_active;
 
@@ -115,14 +118,24 @@ export function CompanyProfileForm({
 
   async function handleImage(field: "logo" | "cover", file: File) {
     setImageError(null);
+    setImageSuccess(null);
+    const setPreview = field === "logo" ? setLogoPreview : setCoverPreview;
+    const previousPreview = field === "logo" ? logoPreview : coverPreview;
+    // Show the picked file immediately — no need to wait on the upload
+    // round trip to see it, and (unlike the full-page reload this used to
+    // do) nothing else on the form gets reset in the meantime.
+    const objectUrl = URL.createObjectURL(file);
+    setPreview(objectUrl);
+
     const formData = new FormData();
     formData.set("file", file);
     const result = await uploadImageAction(field, formData);
     if (!result.ok) {
+      setPreview(previousPreview);
       setImageError(t(`imageError.${result.reason}`));
       return;
     }
-    window.location.reload();
+    setImageSuccess(field);
   }
 
   if (!canEdit) {
@@ -134,33 +147,63 @@ export function CompanyProfileForm({
     );
   }
 
+  const saveControls = (
+    <div className="flex items-center gap-3">
+      <button
+        type="submit"
+        disabled={pending}
+        className="h-10 rounded-lg bg-pine px-4 text-sm font-medium text-white hover:bg-pine/90 disabled:opacity-50"
+      >
+        {t("save")}
+      </button>
+      {saved && <span className="text-sm text-pine">{t("saved")}</span>}
+      <Link href={`/companies/${company.slug}/preview`} target="_blank" className="text-sm text-pine hover:underline">
+        {t("viewPublicProfile")}
+      </Link>
+    </div>
+  );
+
   return (
     <div className="max-w-xl space-y-6">
       <VerificationBanner status={company.verification_status} />
       {imageError && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{imageError}</p>}
 
       <div className="flex items-center gap-4">
-        <CompanyLogo company={{ slug: "", name: company.company_name, logoUrl: company.company_logo_url }} size="lg" />
-        <label className="cursor-pointer text-sm font-medium text-pine hover:underline">
-          {t("uploadLogo")}
-          <input
-            type="file"
-            accept="image/png,image/jpeg,image/webp,image/svg+xml"
-            className="hidden"
-            onChange={(e) => e.target.files?.[0] && handleImage("logo", e.target.files[0])}
-          />
-        </label>
+        <CompanyLogo company={{ slug: "", name: company.company_name, logoUrl: logoPreview }} size="lg" />
+        <div>
+          <label className="cursor-pointer text-sm font-medium text-pine hover:underline">
+            {t("uploadLogo")}
+            <input
+              type="file"
+              accept="image/png,image/jpeg,image/webp,image/svg+xml"
+              className="hidden"
+              onChange={(e) => e.target.files?.[0] && handleImage("logo", e.target.files[0])}
+            />
+          </label>
+          {imageSuccess === "logo" && <p className="text-xs text-pine">{t("imageUploaded")}</p>}
+        </div>
       </div>
 
-      <label className="cursor-pointer text-sm font-medium text-pine hover:underline">
-        {t("uploadCover")}
-        <input
-          type="file"
-          accept="image/png,image/jpeg,image/webp,image/svg+xml"
-          className="hidden"
-          onChange={(e) => e.target.files?.[0] && handleImage("cover", e.target.files[0])}
-        />
-      </label>
+      <div className="flex items-center gap-4">
+        {coverPreview ? (
+          // eslint-disable-next-line @next/next/no-img-element -- Supabase Storage URL or a transient local object URL
+          <img src={coverPreview} alt="" className="h-16 w-28 rounded-lg border border-line object-cover" />
+        ) : (
+          <div className="h-16 w-28 rounded-lg bg-gradient-to-br from-pine to-mint" aria-hidden="true" />
+        )}
+        <div>
+          <label className="cursor-pointer text-sm font-medium text-pine hover:underline">
+            {t("uploadCover")}
+            <input
+              type="file"
+              accept="image/png,image/jpeg,image/webp,image/svg+xml"
+              className="hidden"
+              onChange={(e) => e.target.files?.[0] && handleImage("cover", e.target.files[0])}
+            />
+          </label>
+          {imageSuccess === "cover" && <p className="text-xs text-pine">{t("imageUploaded")}</p>}
+        </div>
+      </div>
 
       <CompanyAutofillPanel defaultUrl={website} onApply={handleAutofillApply} />
 
@@ -232,6 +275,14 @@ export function CompanyProfileForm({
           </div>
         </fieldset>
 
+        {/* Non-Top-Employer companies only ever see the rich-profile section
+         *  blurred behind an upsell gate below — placing Save after that
+         *  gate made it look like saving itself was gated too. Save now
+         *  sits right after the fields a non-Top-Employer company can
+         *  actually use; Top Employer companies keep it at the end, after
+         *  their own (now unblurred) rich-profile fields. */}
+        {!isTopEmployer && saveControls}
+
         {(() => {
           const fields = (
             <fieldset className="flex flex-col gap-4">
@@ -290,23 +341,7 @@ export function CompanyProfileForm({
           return isTopEmployer ? fields : <TopEmployerBlurGate>{fields}</TopEmployerBlurGate>;
         })()}
 
-        <div className="flex items-center gap-3">
-          <button
-            type="submit"
-            disabled={pending}
-            className="h-10 rounded-lg bg-pine px-4 text-sm font-medium text-white hover:bg-pine/90 disabled:opacity-50"
-          >
-            {t("save")}
-          </button>
-          {saved && <span className="text-sm text-pine">{t("saved")}</span>}
-          <Link
-            href={`/companies/${company.slug}/preview`}
-            target="_blank"
-            className="text-sm text-pine hover:underline"
-          >
-            {t("viewPublicProfile")}
-          </Link>
-        </div>
+        {isTopEmployer && saveControls}
       </form>
 
       {(() => {

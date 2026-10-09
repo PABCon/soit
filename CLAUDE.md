@@ -3966,3 +3966,62 @@ returned `aboutUs: null, companySize: null`; with the About page
 included, both came back correctly populated ("73 teammates across 15
 countries"), alongside four correctly-detected social links with zero
 false positives.
+
+## Full-site QA pass — "quick wins" batch (1 of several)
+
+A single message brought ~75 items from an actual full-site walkthrough,
+spanning real bugs, missing features, two big systems (billing dashboard,
+GDPR), and pure design polish. Triaged into tiers (critical bugs /
+security, quick low-risk fixes, medium features, big structural work,
+design-only) and presented back before touching anything — this is too
+large to just start coding somewhere. User picked "quick wins first."
+Seven shipped this round:
+
+- **Language switcher's bold/light contrast read as backwards.**
+  Replaced the ambiguous weight contrast with a checkmark on the active
+  locale and equal weight on both — removes the ambiguity entirely
+  instead of trying to pick the "right" direction for it.
+- **"Browse by technology" removed** from the jobs page per explicit
+  ask (location/category/language cover the useful cases) — also
+  dropped the now-orphaned `browseByTechnology` i18n key and
+  `topTechnologies` computation.
+- **Social login removed for the employer/company auth flow** — a
+  company account is a business identity, not a personal one; Google/
+  GitHub/LinkedIn only render for the candidate role now.
+- **Back-to-companies link added** on the public company page — but
+  NOT on its noindex preview twin (`CompanyProfileBody` takes an opt-in
+  `showBackLink` prop): that preview route is deliberately sandboxed so
+  an employer previewing their own profile can't wander into the main
+  site's nav, and a back-to-companies link would undo exactly that.
+- **Team member role is now editable** (`/recruit/team`) — previously
+  shown as plain text with no way to promote/demote someone after
+  inviting them at the wrong role. New `updateMemberRole` mirrors
+  `removeMember`'s existing "must keep at least one owner" guard,
+  checked against a demotion instead of a deletion.
+- **Save button position on the company profile form** — for a
+  non-Top-Employer company, Save used to sit *after* the blurred
+  Top-Employer upsell section, reading as if saving itself were gated.
+  Moved to right after the fields that company can actually use;
+  Top Employer companies keep it at the end, unchanged.
+- **Cover image had no preview and no feedback at all** — logo upload
+  had a preview but cover didn't; both just did a hard
+  `window.location.reload()` on success with zero positive/negative
+  message in between. Rebuilt with local preview state
+  (`URL.createObjectURL` for instant feedback, no round-trip wait) and
+  explicit success/error messages, **removing the reload entirely** —
+  which incidentally fixes a real side-bug: the reload was silently
+  discarding any unsaved edits elsewhere on the same form the moment
+  someone uploaded an image.
+
+**Caught again, same pattern as the salary-calculator work**: a quick
+`grep`/curl check for rendered text can false-positive on next-intl's
+embedded client message bundle (every string in a namespace ships to
+the client regardless of whether it's actually used in the rendered
+tree) — confirmed the back-link fix was correct by checking for the
+literal `>text<` anchor markup, not just text presence, after an
+initial check wrongly suggested it was showing on the gated preview
+route too.
+
+Remaining tiers (critical bugs, medium features, big structural work,
+design-only) are queued, not forgotten — next session continues from
+here per the user's own sequencing choice.
