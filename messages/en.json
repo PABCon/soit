@@ -612,6 +612,17 @@
       "responded": "Responded",
       "rejected": "Rejected",
       "closed": "Closed"
+    },
+    "aiSynopsisHeading": "AI summary",
+    "synopsisGenerateCta": "Generate AI summary",
+    "synopsisRegenerateCta": "Regenerate",
+    "synopsisGenerating": "Generating…",
+    "synopsisStrengths": "Strengths",
+    "synopsisGaps": "Possible gaps",
+    "synopsisError": {
+      "not_found": "Couldn't find this application. Try reloading the page.",
+      "empty_content": "There's not enough in the CV or cover note to summarize yet.",
+      "generation_failed": "Something went wrong generating the summary. Try again."
     }
   },
   "messaging": {

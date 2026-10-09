@@ -1,7 +1,12 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { updateApplicationStatus, type MyApplication } from "@/lib/db/applications";
+import {
+  updateApplicationStatus,
+  generateApplicantSynopsisForApplication,
+  type MyApplication,
+  type GenerateSynopsisResult,
+} from "@/lib/db/applications";
 import { getOrCreateThreadForApplicant, type StartThreadResult } from "@/lib/db/messaging";
 
 export async function updateStatusAction(jobId: string, applicationId: string, status: MyApplication["status"]) {
@@ -11,4 +16,10 @@ export async function updateStatusAction(jobId: string, applicationId: string, s
 
 export async function startApplicantThreadAction(applicationId: string, body: string): Promise<StartThreadResult> {
   return getOrCreateThreadForApplicant(applicationId, body);
+}
+
+export async function generateApplicantSynopsisAction(applicationId: string): Promise<GenerateSynopsisResult> {
+  const result = await generateApplicantSynopsisForApplication(applicationId);
+  revalidatePath(`/recruit/applicants/${applicationId}`);
+  return result;
 }

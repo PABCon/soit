@@ -3,6 +3,8 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { logEvent } from "@/lib/events";
 import { sniffFileType } from "@/lib/file-sniff";
+import { extractCvText } from "@/lib/cv-text";
+import { generateApplicantSynopsis, type ApplicantSynopsis } from "@/lib/ai/applicant-synopsis";
 import { sendEmail } from "@/lib/email/send";
 import { applicationConfirmationEmail } from "@/lib/email/templates/application-confirmation";
 import { newApplicantEmail } from "@/lib/email/templates/new-applicant";
@@ -435,6 +437,7 @@ export type ApplicantDetail = Applicant & {
   jobTitle: string;
   jobSlug: string;
   companyName: string;
+  aiSynopsis: ApplicantSynopsis | null;
 };
 
 /** The canonical candidate-detail route (`/recruit/applicants/[id]`),
@@ -448,7 +451,7 @@ export async function getApplicantDetail(applicationId: string): Promise<Applica
   const { data } = await supabase
     .from("applications")
     .select(
-      "id, status, created_at, cover_note, cv_url, candidate_id, jobs!inner ( id, title, slug, companies!inner ( company_name ) )",
+      "id, status, created_at, cover_note, cv_url, candidate_id, ai_synopsis, jobs!inner ( id, title, slug, companies!inner ( company_name ) )",
     )
     .eq("id", applicationId)
     .maybeSingle();
@@ -473,7 +476,49 @@ export async function getApplicantDetail(applicationId: string): Promise<Applica
     jobTitle: job.title,
     jobSlug: job.slug,
     companyName: job.companies.company_name,
+    aiSynopsis: (data.ai_synopsis as ApplicantSynopsis | null) ?? null,
   };
+}
+
+export type GenerateSynopsisResult =
+  | { ok: true; data: ApplicantSynopsis }
+  | { ok: false; reason: "not_found" | "empty_content" | "generation_failed" };
+
+/** Explicit, employer-triggered — see applicant-synopsis.ts's own doc
+ *  comment for why this isn't automatic. Relies on the same RLS-scoped
+ *  `applications` read `getApplicantDetail` already does for
+ *  authorization (a row for a job this employer's company doesn't own
+ *  simply doesn't come back) before ever touching the admin client. */
+export async function generateApplicantSynopsisForApplication(applicationId: string): Promise<GenerateSynopsisResult> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("applications")
+    .select("id, cover_note, cv_url, jobs!inner ( title, description )")
+    .eq("id", applicationId)
+    .maybeSingle();
+  if (!data) return { ok: false, reason: "not_found" };
+
+  const job = data.jobs as unknown as { title: string; description: string };
+  const admin = createAdminClient();
+
+  let cvText: string | null = null;
+  const { data: cvBlob } = await admin.storage.from("cvs").download(data.cv_url);
+  if (cvBlob) {
+    const bytes = new Uint8Array(await cvBlob.arrayBuffer());
+    const kind = sniffFileType(bytes);
+    if (kind) cvText = await extractCvText(bytes, kind);
+  }
+
+  const result = await generateApplicantSynopsis({
+    jobTitle: job.title,
+    jobDescription: job.description,
+    cvText,
+    coverNote: data.cover_note,
+  });
+  if (!result.ok) return result;
+
+  await admin.from("applications").update({ ai_synopsis: result.data }).eq("id", applicationId);
+  return result;
 }
 
 export async function updateApplicationStatus(applicationId: string, status: MyApplication["status"]) {

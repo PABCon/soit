@@ -4616,3 +4616,47 @@ matched the aggregate-query counts exactly. All 3 checks passed.
 
 Verified: `tsc --noEmit`, `eslint` on every changed file, the full test
 suite (105 passing), and `npm run build`.
+
+## Medium-features QA batch 9: an AI summary on the applicant detail view
+
+Real-usage QA item: the applicant detail page had no summary at all —
+just the raw cover note, skills chips, and a CV link. An employer
+reviewing a stack of applicants had to open and read every CV
+themselves to judge fit against the role.
+
+New `generateApplicantSynopsis()` (`src/lib/ai/applicant-synopsis.ts`)
+reuses this project's existing "never invent" LLM-extraction discipline
+(same `anthropic/claude-sonnet-5.5` model as `extract-cv.ts`/
+`extract-job.ts`): `summary` (2-3 sentences on fit for *this* role),
+`strengths` and `gaps`, each explicitly grounded in the actual CV text/
+cover note against the actual job description — the prompt tells the
+model directly to leave `gaps` empty rather than invent a concern, and
+never to pad either list with generic filler.
+
+**Deliberately not automatic** — generating this on every page view
+would be a real, ongoing LLM cost for something an employer only needs
+once per candidate. New `applications.ai_synopsis jsonb` column
+(migration `20261009180000_applicant_ai_synopsis.sql`) caches it after
+an explicit "Generate AI summary" click; "Regenerate" is available any
+time (e.g. the candidate replaced their CV). CV text comes from the
+same `extractCvText()` (PDF/DOCX → plain text) the candidate-side CV
+autofill pipeline already uses — no new extraction path, just a second
+consumer of an existing one.
+
+Authorization has no new logic: `generateApplicantSynopsisForApplication`
+re-reads the `applications` row through the regular RLS-scoped client
+first (same "a row for a job this employer doesn't own simply doesn't
+come back" pattern `getApplicantDetail` already relies on) before ever
+touching the admin client for the CV download and the write-back.
+
+**Verified against the real AI Gateway**, not just schema shape: ran
+the exact prompt against a constructed CV/job-description pair with a
+deliberately engineered gap (the CV never mentions AWS Lambda or
+Kubernetes, both named in the job description) and a deliberate match
+(5 years Node.js/TypeScript/PostgreSQL, exactly what the role asks
+for). The real model output correctly named the Lambda/Kubernetes gaps
+and correctly credited the matching experience — not a mocked or
+hand-asserted response.
+
+Verified: `tsc --noEmit`, `eslint` on every changed file, the full test
+suite (105 passing), and `npm run build`.

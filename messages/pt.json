@@ -612,6 +612,17 @@
       "responded": "Respondido",
       "rejected": "Rejeitado",
       "closed": "Fechado"
+    },
+    "aiSynopsisHeading": "Resumo com IA",
+    "synopsisGenerateCta": "Gerar resumo com IA",
+    "synopsisRegenerateCta": "Gerar novamente",
+    "synopsisGenerating": "A gerar…",
+    "synopsisStrengths": "Pontos fortes",
+    "synopsisGaps": "Possíveis lacunas",
+    "synopsisError": {
+      "not_found": "Não foi possível encontrar esta candidatura. Tente recarregar a página.",
+      "empty_content": "Ainda não há conteúdo suficiente no CV ou na nota de candidatura para resumir.",
+      "generation_failed": "Algo correu mal ao gerar o resumo. Tente novamente."
     }
   },
   "messaging": {

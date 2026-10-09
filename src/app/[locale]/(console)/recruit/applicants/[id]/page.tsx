@@ -3,6 +3,7 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
 import { getApplicantDetail, updateApplicationStatus } from "@/lib/db/applications";
 import { ApplicantStatusSelect } from "@/components/console/ApplicantStatusSelect";
+import { ApplicantSynopsisSection } from "@/components/console/ApplicantSynopsisSection";
 
 type Props = { params: Promise<{ locale: string; id: string }> };
 
@@ -61,6 +62,7 @@ export default async function ApplicantDetailPage({ params }: Props) {
 
       <div className="mt-8 grid gap-8 sm:grid-cols-[1fr_16rem]">
         <div className="min-w-0 space-y-6">
+          <ApplicantSynopsisSection applicationId={detail.id} initialSynopsis={detail.aiSynopsis} />
           {detail.coverNote && (
             <section>
               <h2 className="font-display text-sm font-semibold text-muted">{t("coverNote")}</h2>
