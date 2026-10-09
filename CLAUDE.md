@@ -4025,3 +4025,32 @@ route too.
 Remaining tiers (critical bugs, medium features, big structural work,
 design-only) are queued, not forgotten — next session continues from
 here per the user's own sequencing choice.
+
+## Full-site QA — critical bugs batch 2: two real z-index/state bugs
+
+- **Search bar forgot itself on navigation.** `SearchBar`'s `q`/`near`/
+  `radiusKm` are local draft state, lazily seeded from the URL once —
+  but the component lives in the persistent `TopNav` layout, so it
+  never remounts on navigation, and the lazy initializer only ever
+  runs once. Navigating away to an unrelated page and back left stale
+  text sitting in the box. Fixed via React's own recommended pattern
+  for this exact case (react.dev/learn/you-might-not-need-an-effect):
+  split into an outer component that reads `pathname` and a `key=
+  {pathname}`-forced-remount inner component holding the actual state
+  — not a `useEffect` + `setState`, which the project's own lint rule
+  (`react-hooks/set-state-in-effect`) correctly rejected on the first
+  attempt.
+- **A job card's favorite heart painted over the header's own user
+  dropdown**, and separately sat underneath the salary text on short
+  cards. Root cause of the first: `TopNav`/`ConsoleTopNav`'s sticky
+  header and `JobRow`'s absolutely-positioned favorite button were
+  *both* `z-10` — a tie at the root stacking level, broken by DOM
+  order in favor of the later (page-content) element, since a
+  dropdown's own higher z-index only wins contests *within* its
+  parent's stacking context, not against something outside it entirely.
+  Bumped both headers to `z-30` — a sticky header should always
+  outrank floating page content, not just tie with it. The salary
+  overlap was separate: `@2xl`'s side-by-side layout right-aligns the
+  salary into the same corner the heart occupies; added conditional
+  `@2xl:pr-10` (only when a favorite button is actually rendered on
+  that row) to reserve its footprint.

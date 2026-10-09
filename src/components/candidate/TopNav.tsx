@@ -19,7 +19,15 @@ export async function TopNav() {
   const locations = await getLocations();
 
   return (
-    <header className="sticky top-0 z-10 border-b border-line bg-paper/90 backdrop-blur">
+    // z-30, not z-10: real-usage report — a job card's favorite heart
+    // (absolute, z-10, deeper in the DOM) painted over this header's own
+    // open dropdown. Both were z-10, a tie at the root stacking level
+    // broken by DOM order in favor of the later (page-content) element —
+    // the dropdown's own higher z-index only wins contests *within* this
+    // header's stacking context, not against something outside it. A
+    // sticky header should always outrank floating page content, not just
+    // match it.
+    <header className="sticky top-0 z-30 border-b border-line bg-paper/90 backdrop-blur">
       <div className="mx-auto flex h-14 max-w-[1600px] items-center gap-4 px-4 sm:px-6">
         <Link href="/jobs" className="shrink-0 leading-tight">
           <span className="block font-display text-lg font-bold text-pine">{brand("name")}</span>

@@ -22,7 +22,11 @@ export async function ConsoleTopNav({
   const brand = await getTranslations("brand");
 
   return (
-    <header className="sticky top-0 z-10 border-b border-line bg-paper/90 backdrop-blur">
+    // z-30, matching the candidate TopNav fix: a sticky header should
+    // always outrank absolutely-positioned in-page content, not just tie
+    // with it (see TopNav.tsx's own comment for the full stacking-context
+    // explanation).
+    <header className="sticky top-0 z-30 border-b border-line bg-paper/90 backdrop-blur">
       <div className="mx-auto flex h-14 max-w-[1600px] items-center gap-4 px-4 sm:px-6">
         <Link href="/recruit" className="shrink-0 leading-tight">
           <span className="block font-display text-lg font-bold text-pine">{brand("name")}</span>

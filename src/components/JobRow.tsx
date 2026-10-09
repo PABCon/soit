@@ -92,7 +92,14 @@ export function JobRow({
           </div>
         </div>
 
-        <div className="shrink-0 pl-16 text-left @2xl:pl-0 @2xl:text-right">
+        {/* @2xl:pr-10 reserves room for the absolutely-positioned favorite
+         *  heart (top-3 right-3, h-8 w-8), only rendered when this row
+         *  actually has one — real-usage report: on a short card (one-line
+         *  title, no badges), the right-aligned salary at this breakpoint
+         *  rendered directly underneath it. */}
+        <div
+          className={`shrink-0 pl-16 text-left @2xl:pl-0 @2xl:text-right ${isFavorited !== undefined ? "@2xl:pr-10" : ""}`}
+        >
           <Salary
             min={job.salaryMin}
             max={job.salaryMax}

@@ -18,8 +18,20 @@ const RADIUS_OPTIONS = [10, 25, 50, 100];
  *  the same instant, no-round-trip mechanism JobsExplorer's own filters
  *  use, preserving whatever chip filters are already active there. */
 export function SearchBar({ locations }: { locations: LocationOption[] }) {
-  const t = useTranslations("nav");
   const pathname = usePathname();
+  // SearchBar lives in a persistent layout (TopNav), so it never remounts
+  // on navigation — a plain useState lazy initializer would only ever run
+  // once. Real-usage report: the typed search stayed in the box even
+  // after navigating away to an unrelated page and back. Forcing a real
+  // remount via `key` (React's own recommended pattern for "reset state
+  // when some outside signal changes", see react.dev/learn/you-might-not-
+  // need-an-effect) re-runs every lazy initializer below fresh on each
+  // navigation — no effect needed.
+  return <SearchBarFields key={pathname} pathname={pathname} locations={locations} />;
+}
+
+function SearchBarFields({ pathname, locations }: { pathname: string; locations: LocationOption[] }) {
+  const t = useTranslations("nav");
   const router = useRouter();
   const urlParams = useUrlSearchParams();
   const onJobsPage = pathname === "/jobs";
