@@ -172,9 +172,30 @@ export function ApplyModal({ jobSlug, companyName, isCandidate, alreadyApplied: 
               {!isCandidate && (
                 <label className="flex items-start gap-2 text-xs text-muted">
                   <input type="checkbox" required className="mt-0.5" />
-                  {t("consent")}
+                  <span>
+                    {t("consent")}{" "}
+                    <Link href="/privacy" target="_blank" className="underline hover:text-ink">
+                      {t("privacyPolicyLink")}
+                    </Link>
+                    .
+                  </span>
                 </label>
               )}
+
+              {/* Real-usage QA item: "legal disclaimer on job pages" — a
+               *  site-wide footer link to /privacy already exists on every
+               *  page, but the actual moment of sharing data with a
+               *  specific employer deserves its own, specific note right
+               *  here, for every applicant (not just the guest-apply path's
+               *  own consent checkbox above, which only a non-candidate
+               *  sees). */}
+              <p className="text-xs text-muted">
+                {t("disclaimer", { company: companyName })}{" "}
+                <Link href="/privacy" target="_blank" className="underline hover:text-ink">
+                  {t("privacyPolicyLink")}
+                </Link>
+                .
+              </p>
 
               <button type="submit" disabled={pending} className={buttonClass}>
                 {t("submit")}

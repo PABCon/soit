@@ -4862,3 +4862,59 @@ with it).
 Verified: `tsc --noEmit`, `eslint` on every changed file, the full
 test suite (114 passing), `npm run build`, and the live-database
 checks above.
+
+## Big structural item 2: GDPR data export + a job-page legal disclaimer
+
+Last item from the original QA list's "GDPR: data export, account
+deletion, legal disclaimer on job pages" note. Account deletion was
+already built earlier this session (candidate delete-account, batch
+3); this closes the other two.
+
+- **Data export (right to data portability)** — new `getMyDataExport()`
+  deliberately composes this project's own already-existing, already-
+  RLS-scoped per-section getters (`getMyCandidateProfile`,
+  `getMyCandidateSkillsAndEducation`, `getMyCandidateExperience`,
+  `getMyCandidateCertifications`, `getMyCandidateJobPreferences`,
+  `getMyApplications`, `getMyFavoriteJobs`, `getMySavedSearches`,
+  `getMyThreadsAsCandidate`/`getThreadDetail`) rather than writing a
+  second, parallel set of queries that could silently drift from what
+  those same functions already show elsewhere in the app. Messages are
+  included in full, both directions of every thread — a message a
+  candidate wrote is as much "their data" as a form field is, and
+  portability doesn't stop at content submitted through a form.
+  `DataExportButton` builds the downloadable file entirely client-side
+  from the action's JSON response (`Blob` + a programmatic `<a
+  download>` click) — nothing is ever written to a file server-side,
+  nothing to clean up.
+- **Legal disclaimer on job pages** — a site-wide footer link to
+  `/privacy` already existed on every page (checked before assuming it
+  didn't), and the guest-apply path already had its own GDPR consent
+  checkbox text, just never linked to the actual policy. Linked it, and
+  added a second, always-shown disclaimer line (for logged-in
+  candidates too, who never saw the guest-only checkbox at all) right
+  above the Apply button, naming the specific employer data is about to
+  be shared with — the moment data-handling info is actually useful is
+  right before the action that shares it, not only in a global footer.
+- **Explicitly out of scope**: an employer-side equivalent (export/
+  delete an employer's own account) was considered and deliberately
+  not built in this pass — an employer user acts on behalf of a shared
+  company record other team members also depend on, which is a
+  materially different (and already-handled-by-direct-support-contact-
+  in-most-B2B-SaaS) kind of request than an individual candidate's own
+  personal data, not a quick extension of the candidate-side work.
+
+**Verified end-to-end in a real browser**, not just `tsc`/build: a
+disposable candidate account was created and seeded with one real
+favorite, signed in for real (password login, not a service-role
+bypass), navigated to `/settings`, and the actual "Download my data"
+button was clicked — Playwright captured the real browser download
+event, and the downloaded file's JSON content was checked: the right
+filename pattern, every expected top-level section present, the
+account email matching the logged-in user, the profile name matching
+what was seeded, and the favorited job actually present in
+`favoriteJobs`. All 5 checks passed, then the test account and its
+data were deleted.
+
+Verified: `tsc --noEmit`, `eslint` on every changed file, the full
+test suite (114 passing), `npm run build`, and the live-browser check
+above.

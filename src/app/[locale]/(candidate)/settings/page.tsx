@@ -6,6 +6,7 @@ import { PasswordChangeForm } from "@/components/auth/PasswordChangeForm";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { MarketingOptInToggle } from "@/components/candidate/MarketingOptInToggle";
 import { DeleteAccountSection } from "@/components/candidate/DeleteAccountSection";
+import { DataExportButton } from "@/components/candidate/DataExportButton";
 import { getMyCandidateProfile } from "@/lib/db/candidate-profile";
 
 type Props = { params: Promise<{ locale: string }> };
@@ -57,6 +58,13 @@ export default async function CandidateSettingsPage({ params }: Props) {
           </div>
         </section>
       )}
+
+      <section className="mt-10">
+        <h2 className="font-display text-sm font-semibold text-muted">{ts("yourData")}</h2>
+        <div className="mt-2">
+          <DataExportButton />
+        </div>
+      </section>
 
       <section className="mt-10">
         <h2 className="font-display text-sm font-semibold text-muted">{ts("dangerZone")}</h2>
