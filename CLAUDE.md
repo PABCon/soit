@@ -4295,3 +4295,37 @@ the number meant before you opened the dropdown. Wrapped it in a
 `<label>` with a short "Within"/"Num raio de" text (also gets the
 free accessibility win of a proper label-to-control association,
 not just an `aria-label`).
+
+## Medium-features QA batch 2: guest-candidate emails drive registration
+
+Two QA items, same root cause: a guest/account-free candidate
+(`candidates.auth_user_id is null` — applied via the account-free apply
+flow, §6.7/v1.11) has nowhere to go. The application-confirmation email
+and the "you got a message" email both linked to pages that require a
+candidate session, which a guest doesn't have.
+
+Checked first whether "match by email later" (the user's own
+parenthetical) was actually still unbuilt — it isn't:
+`completeCandidateRegistration` in `complete-registration.ts` already
+claims an existing guest `candidates` row by matching email on signup
+(`.eq("email", email).is("auth_user_id", null)` → `update auth_user_id`
+rather than inserting a second row), so registering with the same
+address a guest applied/messaged with automatically reattaches every
+application and message thread under that same `candidate_id`. No
+backend matching work was needed — only the email copy/CTA.
+
+- `applicationConfirmationEmail` takes a new `registerUrl: string |
+  null` — set by `notifyApplicationCreated`'s caller only on the
+  account-free path (`applyAnonymously`), never the logged-in apply
+  path. When set, the email adds a line pointing at
+  `/candidate/register?email=<theirs>` (`AuthForm` already supports an
+  `?email=` prefill, used here for the first time outside its original
+  purpose).
+- `newMessageEmail` takes the same `registerUrl` pattern — `messaging.
+  ts`'s `notifyNewMessage` now also selects `candidates.auth_user_id`
+  and swaps the CTA from "read the message" (a login-walled `/messages`
+  link a guest can't use) to "create a free account to read and reply"
+  when there's no account yet.
+
+Verified: `tsc --noEmit`, `eslint` on every changed file, the full test
+suite (99 passing), and `npm run build` all pass.

@@ -40,12 +40,28 @@ async function notifyApplicationCreated(params: {
   companyName: string;
   candidateName: string;
   candidateEmail: string;
+  /** False only for the account-free apply path (§6.7) — drives the
+   *  confirmation email to mention creating an account, since otherwise
+   *  there's nowhere for this person to go back and track the
+   *  application or read a reply. complete-registration.ts already
+   *  claims any guest `candidates` row by matching email on signup, so
+   *  registering with the same address reattaches this exact
+   *  application automatically — no separate merge step needed. */
+  candidateHasAccount: boolean;
 }) {
-  const { jobId, jobTitle, companyId, companyName, candidateName, candidateEmail } = params;
+  const { jobId, jobTitle, companyId, companyName, candidateName, candidateEmail, candidateHasAccount } = params;
   const admin = createAdminClient();
 
   await sendEmail(
-    applicationConfirmationEmail({ to: candidateEmail, candidateName, jobTitle, companyName }),
+    applicationConfirmationEmail({
+      to: candidateEmail,
+      candidateName,
+      jobTitle,
+      companyName,
+      registerUrl: candidateHasAccount
+        ? null
+        : `${SITE}/pt/candidate/register?email=${encodeURIComponent(candidateEmail)}`,
+    }),
   );
 
   const { data: members } = await admin.from("employer_users").select("auth_user_id").eq("company_id", companyId);
@@ -159,6 +175,7 @@ export async function applyToJob(jobSlug: string, file: File, coverNote: string)
     companyName: companies.company_name,
     candidateName: candidate?.full_name ?? "",
     candidateEmail: candidate?.email ?? "",
+    candidateHasAccount: true,
   });
 
   return { ok: true };
@@ -252,6 +269,7 @@ export async function applyAnonymously(
     companyName: companies.company_name,
     candidateName: input.fullName.trim(),
     candidateEmail: email,
+    candidateHasAccount: false,
   });
 
   return { ok: true, companyName: companies.company_name };

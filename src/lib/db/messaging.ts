@@ -184,10 +184,17 @@ async function notifyNewMessage({ thread, senderType }: { thread: ThreadRow; sen
 
   if (senderType === "employer") {
     const [{ data: candidate }, { data: company }] = await Promise.all([
-      admin.from("candidates").select("email").eq("id", thread.candidate_id).single(),
+      admin.from("candidates").select("email, auth_user_id").eq("id", thread.candidate_id).single(),
       admin.from("companies").select("company_name").eq("id", thread.company_id).single(),
     ]);
     if (candidate?.email) {
+      // A guest candidate (identified via an application, never an
+      // account) can't open /messages — there's nothing to log into. Same
+      // register-and-reattach-by-email mechanism as the application
+      // confirmation email.
+      const registerUrl = candidate.auth_user_id
+        ? null
+        : `${SITE}/pt/candidate/register?email=${encodeURIComponent(candidate.email)}`;
       await sendEmail(
         newMessageEmail({
           to: candidate.email,
@@ -195,6 +202,7 @@ async function notifyNewMessage({ thread, senderType }: { thread: ThreadRow; sen
           otherPartyLabel: company?.company_name ?? "An employer",
           jobTitle,
           inboxUrl: `${SITE}/pt/messages`,
+          registerUrl,
         }),
       );
     }
@@ -211,6 +219,7 @@ async function notifyNewMessage({ thread, senderType }: { thread: ThreadRow; sen
             otherPartyLabel: "A candidate",
             jobTitle,
             inboxUrl: `${SITE}/pt/recruit/messages`,
+            registerUrl: null,
           }),
         );
       }),
