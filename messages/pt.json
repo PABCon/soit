@@ -316,6 +316,10 @@
     },
     "techTags": "Stack técnico",
     "techTagsFilter": "Pesquisar tecnologias…",
+    "techTagRequestCta": "Não encontra \"{query}\"? Peça para ser adicionada",
+    "techTagRequestPending": "A enviar…",
+    "techTagRequestSent": "Obrigado — vamos analisar e adicionar em breve.",
+    "techTagRequestExists": "Pode já estar disponível — tente outro termo de pesquisa.",
     "levelUnspecified": "Nível não definido",
     "levelOption": {
       "basic": "Básico",

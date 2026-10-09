@@ -316,6 +316,10 @@
     },
     "techTags": "Tech stack",
     "techTagsFilter": "Search technologies…",
+    "techTagRequestCta": "Can't find \"{query}\"? Request it be added",
+    "techTagRequestPending": "Sending…",
+    "techTagRequestSent": "Thanks — we'll review it and add it soon.",
+    "techTagRequestExists": "That might already be supported — try a different search term.",
     "levelUnspecified": "Level not set",
     "levelOption": {
       "basic": "Basic",

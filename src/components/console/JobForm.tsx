@@ -7,6 +7,7 @@ import {
   saveJobAction,
   extractJobFromUrlAction,
   polishJobDescriptionAction,
+  requestTechTagAction,
 } from "@/app/[locale]/(console)/recruit/jobs/actions";
 import type { JobFormInput } from "@/lib/db/jobs";
 import type { SkillLevel } from "@/lib/types";
@@ -125,6 +126,7 @@ export function JobForm({
   const [extractNotice, setExtractNotice] = useState<string | null>(null);
   const [polishing, setPolishing] = useState(false);
   const [polishError, setPolishError] = useState<string | null>(null);
+  const [techRequestState, setTechRequestState] = useState<"idle" | "pending" | "sent" | "exists">("idle");
 
   const filteredTags = useMemo(() => {
     const q = tagFilter.trim().toLowerCase();
@@ -146,6 +148,16 @@ export function JobForm({
 
   function updateTagRequired(id: string, required: boolean) {
     setSelectedTags((prev) => prev.map((t) => (t.id === id ? { ...t, required } : t)));
+  }
+
+  async function requestMissingTechTag() {
+    setTechRequestState("pending");
+    const result = await requestTechTagAction(tagFilter);
+    if (!result.ok) {
+      setTechRequestState(result.reason === "already_exists" ? "exists" : "idle");
+      return;
+    }
+    setTechRequestState("sent");
   }
 
   function toggleLanguage(id: string) {
@@ -560,7 +572,10 @@ export function JobForm({
         <span className="text-sm">{t("techTags")}</span>
         <input
           value={tagFilter}
-          onChange={(e) => setTagFilter(e.target.value)}
+          onChange={(e) => {
+            setTagFilter(e.target.value);
+            setTechRequestState("idle");
+          }}
           placeholder={t("techTagsFilter")}
           className={`${inputClass} mt-1 w-full`}
         />
@@ -611,6 +626,26 @@ export function JobForm({
             ))}
           </ul>
         </div>
+        {tagFilter.trim().length >= 2 && filteredTags.length === 0 && (
+          <div className="mt-2 text-xs text-muted">
+            {techRequestState === "sent" ? (
+              <p className="text-pine">{t("techTagRequestSent")}</p>
+            ) : techRequestState === "exists" ? (
+              <p>{t("techTagRequestExists")}</p>
+            ) : (
+              <button
+                type="button"
+                disabled={techRequestState === "pending"}
+                onClick={requestMissingTechTag}
+                className="text-pine hover:underline disabled:opacity-50"
+              >
+                {techRequestState === "pending"
+                  ? t("techTagRequestPending")
+                  : t("techTagRequestCta", { query: tagFilter.trim() })}
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       <div>

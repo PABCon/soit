@@ -13,6 +13,7 @@ import { extractJobFromUrl, type ExtractJobResult } from "@/lib/ai/extract-job";
 import { polishJobDescription, type PolishResult } from "@/lib/ai/polish-text";
 import { getJobCategories } from "@/lib/db/job-categories";
 import { getLocations } from "@/lib/db/locations";
+import { requestTechTag, type RequestTechTagResult } from "@/lib/db/tech-tags";
 
 export async function saveJobAction(jobId: string | null, input: JobFormInput): Promise<SaveResult> {
   return saveJob(jobId, input);
@@ -42,4 +43,8 @@ export async function setJobStatusAction(
 export async function deleteJobAction(jobId: string) {
   await deleteJob(jobId);
   revalidatePath("/recruit");
+}
+
+export async function requestTechTagAction(label: string): Promise<RequestTechTagResult> {
+  return requestTechTag(label);
 }

@@ -4535,3 +4535,52 @@ emails afterward and deleting them, not left for later.)
 
 Verified: `tsc --noEmit`, `eslint` on every changed file, the full test
 suite (105 passing), and `npm run build`.
+
+## Medium-features QA batch 7: "request a technology" flow
+
+`tech_tags` is a deliberately curated relation, not free text (§5.6's
+own comment: "React"/"ReactJS"/"react.js" shouldn't be three different
+filter values) — but an employer whose real stack isn't in the list
+had no path forward at all. The QA item's own phrasing was "dedupe →
+verify real → add," which maps to three real decisions rather than
+one auto-add button:
+
+- **Dedupe against the real vocabulary first** — case-insensitive
+  match against `tech_tags.label` *and* `aliases` (small table, fetched
+  and compared in memory, same pattern `getFeaturedTechCounts()`
+  already uses) — a match here means nothing to request at all.
+- **Dedupe against other employers' requests** — new table
+  `tech_tag_requests` (migration `20261009170000_tech_tag_requests.sql`)
+  keyed on a normalized (trimmed, lowercased) label, unique, so five
+  employers all typing "svelte" bump one row's `request_count` instead
+  of creating five near-duplicates to sift through later.
+- **"Verify real → add" is deliberately NOT automatic** — this project
+  has no admin panel at all, and building one just for this would be a
+  far bigger, unrelated lift. Instead, the first time a genuinely new
+  label is requested, a plain notification email goes to `CONTACT_EMAIL`
+  (the same inbox the contact form already reaches) — a human decides
+  whether it's a real, distinct technology and adds the `tech_tags` row
+  directly. Repeat requests for an already-pending label just bump the
+  counter silently, so the ops inbox isn't spammed every time someone
+  clicks the same request again.
+
+UI lives exactly where the gap was felt: `JobForm`'s tech-tag search
+box, under the existing filtered-chip list. Appears only when the
+filter text matches zero existing tags (`filteredTags.length === 0`)
+and is at least 2 characters — "Can't find '{query}'? Request it be
+added," with inline pending/sent/already-supported states, no page
+navigation. Request state resets whenever the filter text changes, so
+a stale "Thanks!" message doesn't linger after searching for something
+else.
+
+**Verified against the live database**, not just `tsc`/tests: a script
+exercised the exact dedupe/insert/increment logic against real
+`tech_tags` data — requesting an already-supported tag correctly
+short-circuits with no insert; a brand-new label inserts with
+`request_count = 1`; the same label requested again in different
+casing increments to `2` without creating a second row (confirmed
+exactly one row exists for that normalized label throughout). All 6
+checks passed, then the throwaway request row was deleted.
+
+Verified: `tsc --noEmit`, `eslint` on every changed file, the full test
+suite (105 passing), and `npm run build`.
