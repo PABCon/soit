@@ -47,6 +47,12 @@
     "team": "Equipa",
     "addJobAd": "Adicionar vaga",
     "editJobAd": "Editar vaga",
+    "dashboardStat": {
+      "activeJobs": "Vagas ativas",
+      "totalApplicants": "Total de candidaturas",
+      "newApplicantsLast7Days": "Novas candidaturas (7d)",
+      "unreadMessages": "Mensagens não lidas"
+    },
     "viewApplicants": "Ver candidaturas",
     "tabActive": "Ativas",
     "tabInactive": "Inativas",

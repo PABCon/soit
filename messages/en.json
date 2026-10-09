@@ -47,6 +47,12 @@
     "team": "Team",
     "addJobAd": "Add job advertisement",
     "editJobAd": "Edit job advertisement",
+    "dashboardStat": {
+      "activeJobs": "Active jobs",
+      "totalApplicants": "Total applicants",
+      "newApplicantsLast7Days": "New applicants (7d)",
+      "unreadMessages": "Unread messages"
+    },
     "viewApplicants": "View applicants",
     "tabActive": "Active",
     "tabInactive": "Inactive",

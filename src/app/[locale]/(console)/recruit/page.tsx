@@ -1,8 +1,9 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
 import { getMyEmployerContext } from "@/lib/db/companies";
-import { getCompanyJobs, type ConsoleTab } from "@/lib/db/jobs";
+import { getCompanyJobs, getEmployerDashboardStats, type ConsoleTab } from "@/lib/db/jobs";
 import { JobListRow } from "@/components/console/JobListRow";
+import { DashboardStats } from "@/components/console/DashboardStats";
 
 type Props = {
   params: Promise<{ locale: string }>;
@@ -30,7 +31,10 @@ export default async function MyJobAdsPage({ params, searchParams }: Props) {
   }
 
   const tab: ConsoleTab = rawTab === "inactive" || rawTab === "drafts" ? rawTab : "active";
-  const jobs = await getCompanyJobs(ctx.company.id, tab);
+  const [jobs, stats] = await Promise.all([
+    getCompanyJobs(ctx.company.id, tab),
+    getEmployerDashboardStats(ctx.company.id),
+  ]);
 
   return (
     <>
@@ -42,6 +46,10 @@ export default async function MyJobAdsPage({ params, searchParams }: Props) {
         >
           {t("addJobAd")}
         </Link>
+      </div>
+
+      <div className="mt-4">
+        <DashboardStats stats={stats} locale={locale} />
       </div>
 
       <div className="mt-6 flex gap-1 overflow-x-auto border-b border-line">

@@ -4584,3 +4584,35 @@ checks passed, then the throwaway request row was deleted.
 
 Verified: `tsc --noEmit`, `eslint` on every changed file, the full test
 suite (105 passing), and `npm run build`.
+
+## Medium-features QA batch 8: a real company dashboard home
+
+Real-usage QA item: `/recruit` — where every employer lands — was only
+ever the job list. No summary of how things are actually going: how
+many jobs are live, how many people have applied, whether anything
+needs a reply. Deliberately did NOT restructure routing to make room
+for a separate dashboard page (that would mean moving the job list off
+`/recruit`, breaking the Sidebar's own "myJobAds" link and every
+existing bookmark/deep-link into it) — instead added a stat strip
+above the existing tabs/list on the same page, the lowest-risk way to
+close the actual gap.
+
+New `getEmployerDashboardStats(companyId)` — four plain
+`count: "exact", head: true` aggregates (no rows fetched, just counts):
+active jobs, total applicants, new applicants in the last 7 days, and
+unread messages (reusing the already-existing
+`getMyEmployerUnreadThreadCount()` messaging.ts already had for the
+Sidebar badge). `DashboardStats` renders them as four linked cards —
+each one goes to where that number is actually explained (the job
+list itself, `/recruit/applicants`, `/recruit/messages`), not just a
+static tile.
+
+**Verified against the live database**: picked a real company with
+real applications, then independently re-derived all three
+applications-based counts a completely different way (fetch every job
+id for the company, fetch every application row for those job ids
+directly with no join, filter/count in plain JS) and confirmed they
+matched the aggregate-query counts exactly. All 3 checks passed.
+
+Verified: `tsc --noEmit`, `eslint` on every changed file, the full test
+suite (105 passing), and `npm run build`.

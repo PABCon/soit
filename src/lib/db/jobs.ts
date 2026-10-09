@@ -3,6 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { slugify } from "@/lib/slug";
 import type { Job, SkillLevel } from "@/lib/types";
 import { getMyEmployerContext, type MyCompany } from "./companies";
+import { getMyEmployerUnreadThreadCount } from "./messaging";
 
 /** An API-key-authenticated request has no cookie session at all — only
  *  the caller's already-verified `companyId` (from
@@ -297,6 +298,53 @@ export async function getCompanyJobs(companyId: string, tab: ConsoleTab): Promis
     status: row.status,
     applicantCount: row.applications?.[0]?.count ?? 0,
   }));
+}
+
+export type EmployerDashboardStats = {
+  activeJobs: number;
+  totalApplicants: number;
+  newApplicantsLast7Days: number;
+  unreadMessages: number;
+};
+
+/** Console dashboard home (real-usage QA item) — `/recruit` was only
+ *  ever the job list, with nothing summarizing how things are actually
+ *  going. Four counts, each a plain `count: "exact", head: true`
+ *  aggregate query (no rows fetched) rather than reusing
+ *  `getCompanyJobs()`'s own per-job `applications(count)` and summing
+ *  client-side — this only needs the totals, not every job's full
+ *  `Job` shape. */
+export async function getEmployerDashboardStats(companyId: string): Promise<EmployerDashboardStats> {
+  const supabase = await createClient();
+  const nowIso = new Date().toISOString();
+  const sevenDaysAgoIso = new Date(Date.now() - 7 * 86_400_000).toISOString();
+
+  const [{ count: activeJobs }, { count: totalApplicants }, { count: newApplicantsLast7Days }, unreadMessages] =
+    await Promise.all([
+      supabase
+        .from("jobs")
+        .select("id", { count: "exact", head: true })
+        .eq("company_id", companyId)
+        .eq("status", "published")
+        .gt("expires_at", nowIso),
+      supabase
+        .from("applications")
+        .select("id, jobs!inner(company_id)", { count: "exact", head: true })
+        .eq("jobs.company_id", companyId),
+      supabase
+        .from("applications")
+        .select("id, jobs!inner(company_id)", { count: "exact", head: true })
+        .eq("jobs.company_id", companyId)
+        .gt("created_at", sevenDaysAgoIso),
+      getMyEmployerUnreadThreadCount(),
+    ]);
+
+  return {
+    activeJobs: activeJobs ?? 0,
+    totalApplicants: totalApplicants ?? 0,
+    newApplicantsLast7Days: newApplicantsLast7Days ?? 0,
+    unreadMessages,
+  };
 }
 
 /** One required tech tag, with an optional proficiency level and whether
