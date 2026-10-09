@@ -4094,3 +4094,25 @@ here per the user's own sequencing choice.
   "Must-haves"/"Nice-to-haves" sections from a real posting, left every
   `level` null since the source text never tied a seniority bar to any
   individual technology — appropriately conservative, not a gap.
+
+## Full-site QA — critical bugs batch 4: oversized-image resizing
+
+Every upload path (company logo/cover/gallery, candidate avatar, team
+avatar, the website-autofill logo) stored and served whatever
+resolution the user happened to upload, relying entirely on CSS
+`object-fit` to make it look right. Added `sharp` as an explicit direct
+dependency (it was already present only as a *transitive* dependency
+of Next.js itself, for its own image optimizer — too fragile to import
+directly without pinning it, since an unrelated `next` upgrade could
+silently change or drop it) and a shared `resizeImageIfNeeded()` util:
+down-only (never upscales a smaller image), preserves aspect ratio,
+and deliberately **skips SVG** — it's already infinitely scalable, and
+rasterizing it would be a real regression for a vector logo. Wired
+into all six upload paths with context-appropriate caps (logo/avatar
+512×512, cover 1600×900, gallery 1920×1080).
+
+Checked the same pass for the "profile image should allow up to 2MB"
+ask — already true on both sides (app-level check *and* the `avatars`
+storage bucket's own `file_size_limit`, both exactly 2097152 bytes)
+before I touched anything. Verified rather than assumed, then moved on
+rather than "fixing" something that wasn't broken.

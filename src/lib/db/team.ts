@@ -1,5 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
+import { resizeImageIfNeeded } from "@/lib/image-resize";
 import { getMyEmployerContext } from "./companies";
 
 export type TeamMember = {
@@ -81,10 +82,9 @@ export async function uploadMemberAvatar(file: File): Promise<UploadResult> {
 
   const ext = file.type === "image/png" ? "png" : file.type === "image/webp" ? "webp" : "jpg";
   const path = `${user.id}/avatar.${ext}`;
+  const { bytes, contentType } = await resizeImageIfNeeded(await file.arrayBuffer(), file.type, 512, 512);
 
-  const { error: uploadError } = await supabase.storage
-    .from("avatars")
-    .upload(path, file, { upsert: true, contentType: file.type });
+  const { error: uploadError } = await supabase.storage.from("avatars").upload(path, bytes, { upsert: true, contentType });
   if (uploadError) return { ok: false, reason: "upload_failed" };
 
   const { data: publicUrl } = supabase.storage.from("avatars").getPublicUrl(path);

@@ -12,7 +12,17 @@ import {
 } from "@/lib/db/companies";
 import { extractCompanyProfileFromUrl, type ExtractCompanyProfileResult } from "@/lib/ai/extract-company-profile";
 import { normalizeWebsiteUrl } from "@/lib/url";
+import { resizeImageIfNeeded } from "@/lib/image-resize";
 import { revalidatePath } from "next/cache";
+
+// Real-usage report: an oversized upload was stored and displayed at
+// whatever resolution the user picked, relying entirely on CSS object-fit
+// to make it "fit" — wasteful at best, visibly wrong at worst. Logos are
+// small icons; covers are wide banners; gallery photos are general-purpose
+// but still capped well under the 2MB storage-bucket ceiling once resized.
+const LOGO_MAX = { width: 512, height: 512 };
+const COVER_MAX = { width: 1600, height: 900 };
+const GALLERY_MAX = { width: 1920, height: 1080 };
 
 function trimmedOrNull(formData: FormData, key: string): string | null {
   return (formData.get(key) as string)?.trim() || null;
@@ -80,10 +90,17 @@ export async function uploadImageAction(
 
   const ext = file.name.split(".").pop() || "png";
   const path = `${companyId}/${field}.${ext}`;
+  const maxSize = field === "logo" ? LOGO_MAX : COVER_MAX;
+  const { bytes, contentType } = await resizeImageIfNeeded(
+    await file.arrayBuffer(),
+    file.type,
+    maxSize.width,
+    maxSize.height,
+  );
 
   const { error: uploadError } = await supabase.storage
     .from("branding")
-    .upload(path, file, { upsert: true, contentType: file.type });
+    .upload(path, bytes, { upsert: true, contentType });
   if (uploadError) return { ok: false, reason: "upload_failed" };
 
   const { data: publicUrl } = supabase.storage.from("branding").getPublicUrl(path);
@@ -131,10 +148,14 @@ export async function uploadGalleryPhotoAction(formData: FormData): Promise<Uplo
 
   const ext = file.name.split(".").pop() || "png";
   const path = `${companyId}/gallery/${crypto.randomUUID()}.${ext}`;
+  const { bytes, contentType } = await resizeImageIfNeeded(
+    await file.arrayBuffer(),
+    file.type,
+    GALLERY_MAX.width,
+    GALLERY_MAX.height,
+  );
 
-  const { error: uploadError } = await supabase.storage
-    .from("branding")
-    .upload(path, file, { contentType: file.type });
+  const { error: uploadError } = await supabase.storage.from("branding").upload(path, bytes, { contentType });
   if (uploadError) return { ok: false, reason: "upload_failed" };
 
   const { data: publicUrl } = supabase.storage.from("branding").getPublicUrl(path);
@@ -202,10 +223,11 @@ export async function applySuggestedLogoAction(logoUrl: string): Promise<UploadI
 
   const ext = contentType.split("/")[1]?.replace("svg+xml", "svg") || "png";
   const path = `${companyId}/logo.${ext}`;
+  const resized = await resizeImageIfNeeded(bytes, contentType, LOGO_MAX.width, LOGO_MAX.height);
 
   const { error: uploadError } = await supabase.storage
     .from("branding")
-    .upload(path, bytes, { upsert: true, contentType });
+    .upload(path, resized.bytes, { upsert: true, contentType: resized.contentType });
   if (uploadError) return { ok: false, reason: "upload_failed" };
 
   const { data: publicUrl } = supabase.storage.from("branding").getPublicUrl(path);
