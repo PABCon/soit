@@ -26,6 +26,10 @@ export type Job = {
   seniority: Seniority;
   tech: string[];
   categorySlug: string | null;
+  /** Spoken/working languages the job requires (slugs) — filters-redesign
+   *  QA item. Distinct from `language` below, which is just the ad's own
+   *  PT/EN text language. */
+  requiredLanguageSlugs: string[];
   /** null when the employer has chosen to hide the salary from the public
    *  listing (a paid-tier-only choice, §pricing) — still collected/stored,
    *  just not sent to the client. Never null for a free-tier job. */

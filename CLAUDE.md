@@ -4693,3 +4693,48 @@ run.
 
 Verified: `tsc --noEmit`, `eslint` on every changed file, the full test
 suite (105 passing), `npm run build`, and the live-browser pass above.
+
+## Medium-features QA batch 11: filters redesign — titled sections + two new dimensions
+
+Real-usage QA item: `/jobs`'s "more filters" panel had no section
+titles at all — chip groups were separated only by a bare vertical
+divider bar, and two real filter dimensions were missing entirely:
+contract type and required spoken language.
+
+- **Section titles**: every group in the panel (work model, seniority,
+  contract type, required language, ad language, salary) now has a
+  small uppercase label above it, replacing the unlabeled divider bars.
+- **Contract type** — `EmploymentType` was already on every `Job` (used
+  for display, never filterable); added chips for all five values,
+  reusing the exact `jobForm.employmentTypeOption.*` labels the
+  console's own job-posting form already has, so the wording can't
+  drift between the two.
+- **Required language** — genuinely new data on the feed-facing `Job`
+  type: added `requiredLanguageSlugs: string[]`, populated in `toJob()`
+  from `job_languages` — already part of the shared `SELECT` (added
+  earlier this session for the job-detail page's own required-
+  languages section), so this was a free read, not a new query.
+  Distinct from the existing "ad language" filter (PT/EN, the job
+  posting's own text language) — confirmed via `spoken-languages.ts`'s
+  own doc comment that this distinction was already deliberately
+  designed in, just never wired into a filter.
+- **Deliberately left out of scope**: `JobFeed.tsx`, the simpler
+  filter widget on the separate SEO "browse by location/category"
+  pages (`/jobs/in/...`), was not extended to match — a different
+  component for a genuinely different, simpler page context; matching
+  it would be a second, separate feature, not part of this one.
+
+**Verified in a real browser** (Playwright, `--no-save`, fully
+uninstalled after): all five section titles render correctly in
+Portuguese; clicking a "Contract type" chip and a "Required language"
+chip both produced the correct URL params, combined with AND logic.
+Then verified against the live database directly — filtering by
+`empType=permanent` correctly dropped the result count from 6 to 4;
+`reqLang=english` showed all 6 (confirmed, by querying `job_languages`
+directly, that all 6 real live jobs genuinely do require English —
+not a filter bug); `reqLang=portuguese` correctly showed zero (no live
+job requires it).
+
+Verified: `tsc --noEmit`, `eslint` on every changed file, the full test
+suite (105 passing), `npm run build`, and the live-browser + live-
+database checks above.

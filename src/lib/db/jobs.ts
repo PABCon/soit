@@ -107,6 +107,7 @@ export function toJob(row: JobRow): Job {
     seniority: row.seniority,
     tech: row.job_tech_tags.map((t) => t.tech_tags.label),
     categorySlug: row.job_categories?.slug ?? null,
+    requiredLanguageSlugs: row.job_languages.map((jl) => jl.spoken_languages.slug),
     salaryMin: row.salary_min,
     salaryMax: row.salary_max,
     salaryPeriod: row.salary_period,

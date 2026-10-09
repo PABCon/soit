@@ -7,6 +7,7 @@ import { getLiveJobs } from "@/lib/db/jobs";
 import { getFeaturedTechCounts } from "@/lib/db/tech-tags";
 import { getJobCategories } from "@/lib/db/job-categories";
 import { getLocations } from "@/lib/db/locations";
+import { getSpokenLanguages } from "@/lib/db/spoken-languages";
 import { getMyFavoriteJobIds } from "@/lib/db/favorites";
 
 type Props = { params: Promise<{ locale: string }> };
@@ -23,11 +24,12 @@ export default async function JobsPage({ params }: Props) {
   const t = await getTranslations({ locale, namespace: "jobs" });
   const tf = await getTranslations({ locale, namespace: "feed" });
   const tjf = await getTranslations({ locale, namespace: "jobForm" });
-  const [jobs, featuredTech, categories, locations, favoriteJobIds] = await Promise.all([
+  const [jobs, featuredTech, categories, locations, spokenLanguages, favoriteJobIds] = await Promise.all([
     getLiveJobs(),
     getFeaturedTechCounts(),
     getJobCategories(),
     getLocations(),
+    getSpokenLanguages(),
     getMyFavoriteJobIds(),
   ]);
 
@@ -69,6 +71,7 @@ export default async function JobsPage({ params }: Props) {
           featuredTech={featuredTech}
           categories={categories}
           locations={locations}
+          spokenLanguages={spokenLanguages}
           favoriteJobIds={favoriteJobIds}
         />
       </div>

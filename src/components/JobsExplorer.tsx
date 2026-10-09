@@ -10,9 +10,11 @@ import { CategoryIcon } from "@/components/icons/category-icons";
 import { useUrlSearchParams, writeUrlSearchParams, parseListParam } from "@/hooks/useUrlSearchParams";
 import { haversineKm } from "@/lib/geo";
 import type { Job, Seniority, WorkModel } from "@/lib/types";
+import type { EmploymentType } from "@/components/Salary";
 import type { FeaturedTechCount } from "@/lib/db/tech-tags";
 import type { JobCategoryOption } from "@/lib/db/job-categories";
 import type { LocationOption } from "@/lib/db/locations";
+import type { SpokenLanguageOption } from "@/lib/db/spoken-languages";
 
 const JobMap = dynamic(() => import("@/components/JobMap").then((m) => m.JobMap), { ssr: false });
 
@@ -22,6 +24,10 @@ const AD_LANGUAGES: ("pt" | "en")[] = ["pt", "en"];
 // there's exactly one control that owns that dimension, not two that could
 // disagree with each other.
 const PANEL_WORK_MODELS: WorkModel[] = ["hybrid", "office"];
+// "Contract type" (real-usage QA, filters-redesign item) — every
+// EmploymentType value, this filter has no separate "quick toggle" the
+// way remote-only does.
+const EMPLOYMENT_TYPES: EmploymentType[] = ["permanent", "fixed_term", "contractor", "freelance", "internship"];
 type Sort = "recent" | "oldest" | "salary";
 
 /** Monthly-equivalent floor, so a day rate and a monthly salary sort
@@ -92,12 +98,14 @@ export function JobsExplorer({
   featuredTech,
   categories,
   locations,
+  spokenLanguages,
   favoriteJobIds,
 }: {
   jobs: Job[];
   featuredTech: FeaturedTechCount[];
   categories: JobCategoryOption[];
   locations: LocationOption[];
+  spokenLanguages: SpokenLanguageOption[];
   /** null when the viewer isn't a candidate — hides the heart entirely
    *  rather than showing one that would fail on click. */
   favoriteJobIds?: string[] | null;
@@ -115,6 +123,8 @@ export function JobsExplorer({
   const seniority = parseListParam(searchParams, "seniority");
   const adLanguage = parseListParam(searchParams, "lang");
   const workModel = parseListParam(searchParams, "workModel");
+  const employmentType = parseListParam(searchParams, "empType");
+  const reqLanguage = parseListParam(searchParams, "reqLang");
   const remoteOnly = searchParams.get("remote") === "1";
   const minSalary = Number(searchParams.get("minSalary") ?? 0);
   const sort = (searchParams.get("sort") as Sort | null) ?? "recent";
@@ -164,6 +174,8 @@ export function JobsExplorer({
         (seniority.length === 0 || seniority.includes(j.seniority)) &&
         (adLanguage.length === 0 || adLanguage.includes(j.language)) &&
         (workModel.length === 0 || workModel.includes(j.workModel)) &&
+        (employmentType.length === 0 || employmentType.includes(j.employmentType)) &&
+        (reqLanguage.length === 0 || reqLanguage.some((l) => j.requiredLanguageSlugs.includes(l))) &&
         (!remoteOnly || j.workModel === "remote") &&
         (monthlyFloor(j) === null || monthlyFloor(j)! >= minSalary) &&
         (!query || j.title.toLowerCase().includes(query)) &&
@@ -199,7 +211,8 @@ export function JobsExplorer({
 
   const pinned = useMemo(() => jobs.filter((j) => j.lat !== null && j.lng !== null), [jobs]);
 
-  const panelActiveCount = workModel.length + seniority.length + adLanguage.length + (minSalary ? 1 : 0);
+  const panelActiveCount =
+    workModel.length + seniority.length + adLanguage.length + employmentType.length + reqLanguage.length + (minSalary ? 1 : 0);
   const activeCount = tech.length + cat.length + panelActiveCount + (remoteOnly ? 1 : 0) + (q ? 1 : 0) + (near ? 1 : 0);
 
   const chip = (on: boolean) =>
@@ -294,43 +307,91 @@ export function JobsExplorer({
 
       <div className="mt-4 flex items-start gap-6">
         {showMoreFilters && (
-          <aside className="w-full shrink-0 rounded-xl border border-line bg-white p-4 sm:w-64">
-            <div className="flex flex-wrap gap-1.5">
-              {PANEL_WORK_MODELS.map((w) => (
-                <button
-                  key={w}
-                  type="button"
-                  onClick={() => toggleListParam("workModel", workModel, w)}
-                  className={chip(workModel.includes(w))}
-                >
-                  {t(`workModel.${w}`)}
-                </button>
-              ))}
-              <span className="mx-1 w-px shrink-0 bg-line" />
-              {SENIORITIES.map((s) => (
-                <button
-                  key={s}
-                  type="button"
-                  onClick={() => toggleListParam("seniority", seniority, s)}
-                  className={chip(seniority.includes(s))}
-                >
-                  {t(`seniority.${s}`)}
-                </button>
-              ))}
-              <span className="mx-1 w-px shrink-0 bg-line" />
-              {AD_LANGUAGES.map((lang) => (
-                <button
-                  key={lang}
-                  type="button"
-                  onClick={() => toggleListParam("lang", adLanguage, lang)}
-                  className={chip(adLanguage.includes(lang))}
-                >
-                  {ta(lang)}
-                </button>
-              ))}
+          <aside className="w-full shrink-0 space-y-4 rounded-xl border border-line bg-white p-4 sm:w-64">
+            <div>
+              <p className="text-xs font-semibold text-muted uppercase">{t("filterSectionWorkModel")}</p>
+              <div className="mt-1.5 flex flex-wrap gap-1.5">
+                {PANEL_WORK_MODELS.map((w) => (
+                  <button
+                    key={w}
+                    type="button"
+                    onClick={() => toggleListParam("workModel", workModel, w)}
+                    className={chip(workModel.includes(w))}
+                  >
+                    {t(`workModel.${w}`)}
+                  </button>
+                ))}
+              </div>
             </div>
-            <label className="mt-4 flex flex-col gap-2 text-xs text-muted">
-              {t("minSalary")}
+
+            <div>
+              <p className="text-xs font-semibold text-muted uppercase">{t("filterSectionSeniority")}</p>
+              <div className="mt-1.5 flex flex-wrap gap-1.5">
+                {SENIORITIES.map((s) => (
+                  <button
+                    key={s}
+                    type="button"
+                    onClick={() => toggleListParam("seniority", seniority, s)}
+                    className={chip(seniority.includes(s))}
+                  >
+                    {t(`seniority.${s}`)}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <p className="text-xs font-semibold text-muted uppercase">{t("filterSectionEmploymentType")}</p>
+              <div className="mt-1.5 flex flex-wrap gap-1.5">
+                {EMPLOYMENT_TYPES.map((et) => (
+                  <button
+                    key={et}
+                    type="button"
+                    onClick={() => toggleListParam("empType", employmentType, et)}
+                    className={chip(employmentType.includes(et))}
+                  >
+                    {tjf(`employmentTypeOption.${et}`)}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {spokenLanguages.length > 0 && (
+              <div>
+                <p className="text-xs font-semibold text-muted uppercase">{t("filterSectionRequiredLanguage")}</p>
+                <div className="mt-1.5 flex flex-wrap gap-1.5">
+                  {spokenLanguages.map((lang) => (
+                    <button
+                      key={lang.id}
+                      type="button"
+                      onClick={() => toggleListParam("reqLang", reqLanguage, lang.slug)}
+                      className={chip(reqLanguage.includes(lang.slug))}
+                    >
+                      {lang.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div>
+              <p className="text-xs font-semibold text-muted uppercase">{t("filterSectionAdLanguage")}</p>
+              <div className="mt-1.5 flex flex-wrap gap-1.5">
+                {AD_LANGUAGES.map((lang) => (
+                  <button
+                    key={lang}
+                    type="button"
+                    onClick={() => toggleListParam("lang", adLanguage, lang)}
+                    className={chip(adLanguage.includes(lang))}
+                  >
+                    {ta(lang)}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <label className="flex flex-col gap-2 text-xs text-muted">
+              <span className="font-semibold text-muted uppercase">{t("minSalary")}</span>
               <span className="flex items-center gap-2">
                 <input
                   type="range"
