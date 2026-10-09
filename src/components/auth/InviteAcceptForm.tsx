@@ -4,6 +4,8 @@ import { useState, type FormEvent } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { useRouter } from "@/i18n/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { passwordMeetsRequirements } from "@/lib/password";
+import { PasswordChecklist } from "@/components/auth/PasswordChecklist";
 
 const inputClass = "h-9 rounded-lg border border-line bg-white px-3 text-sm disabled:bg-paper disabled:text-muted";
 const labelClass = "flex flex-col gap-1 text-sm";
@@ -33,6 +35,12 @@ export function InviteAcceptForm({ email }: { email: string }) {
     // handleSubmit for why: once router.push() is about to swap the page
     // out, the loading state should stay visible through the handoff.
     if (mode === "register") {
+      if (!passwordMeetsRequirements(password)) {
+        setError(t("passwordRequirementsNotMet"));
+        setPending(false);
+        return;
+      }
+
       const { data, error: signUpError } = await supabase.auth.signUp({
         email,
         password,
@@ -95,13 +103,14 @@ export function InviteAcceptForm({ email }: { email: string }) {
         <input
           type="password"
           required
-          minLength={6}
+          minLength={mode === "register" ? 8 : undefined}
           autoComplete={mode === "register" ? "new-password" : "current-password"}
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           className={inputClass}
         />
       </label>
+      {mode === "register" && <PasswordChecklist password={password} />}
 
       <button
         type="submit"

@@ -3,6 +3,8 @@
 import { useState, type FormEvent } from "react";
 import { useTranslations } from "next-intl";
 import { createClient } from "@/lib/supabase/client";
+import { passwordMeetsRequirements } from "@/lib/password";
+import { PasswordChecklist } from "@/components/auth/PasswordChecklist";
 
 const inputClass = "h-9 rounded-lg border border-line bg-white px-3 text-sm";
 const labelClass = "flex flex-col gap-1 text-sm";
@@ -25,8 +27,8 @@ export function PasswordChangeForm({ onSuccess }: { onSuccess?: () => void }) {
     setError(null);
     setSaved(false);
 
-    if (password.length < 6) {
-      setError(t("passwordTooShort"));
+    if (!passwordMeetsRequirements(password)) {
+      setError(t("passwordRequirementsNotMet"));
       return;
     }
     if (password !== confirm) {
@@ -58,19 +60,20 @@ export function PasswordChangeForm({ onSuccess }: { onSuccess?: () => void }) {
         <input
           type="password"
           required
-          minLength={6}
+          minLength={8}
           autoComplete="new-password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           className={inputClass}
         />
       </label>
+      <PasswordChecklist password={password} />
       <label className={labelClass}>
         <span>{t("confirmPassword")}</span>
         <input
           type="password"
           required
-          minLength={6}
+          minLength={8}
           autoComplete="new-password"
           value={confirm}
           onChange={(e) => setConfirm(e.target.value)}

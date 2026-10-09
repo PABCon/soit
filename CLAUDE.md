@@ -4431,3 +4431,61 @@ with no radius, match within a large radius, and the radius boundary
 itself (a radius too small to include the job's own distance). All 6
 checks passed. Also `tsc --noEmit`, `eslint` on every changed file, the
 full test suite (99 passing), and `npm run build`.
+
+## Medium-features QA batch 5: stronger password requirements + a live checklist
+
+Real-usage QA item: registration only ever required 6 characters, no
+complexity rules, no indication of what "strong" even meant. Password
+policy is a Supabase Auth *project setting*, not application code or a
+DB migration — changed it the same way the session-timeout discovery
+earlier this session did: a direct, surgical
+`PATCH /v1/projects/{ref}/config/auth` (CLI access token read from the
+macOS keychain, same one `supabase` itself uses) rather than
+`supabase config push`, which would push this *entire* local
+`config.toml` — including its known-stale `auth.sms.twilio.enabled =
+false` — and silently disable live Twilio SMS.
+
+Discovered along the way that `password_required_characters` is a
+closed enum, not a freeform character-class string — the API's own
+422 error on a bad value listed the exact three accepted strings,
+colon-separated. Landed on `password_min_length: 8` +
+`password_required_characters` = lower+upper+digit (not symbols — one
+Supabase preset further than strictly needed, since requiring a symbol
+too is a common source of password-manager friction for marginal real
+security benefit). Also tried `password_hibp_enabled` (reject
+passwords found in real breach corpora, arguably a *better* "stronger
+password" signal than arbitrary complexity rules) — rejected by the
+API outright: "available on Pro Plans and up," the same free-tier
+ceiling as the session-timeout controls. Not applied; noted in
+`config.toml` alongside the already-established pattern for this kind
+of plan-gated miss.
+
+**Verified directly against the live Auth API**: a 7-character
+password and an all-lowercase 15-character password both come back
+with a real `422 weak_password` and a `reasons` array (`["length"]`/
+`["characters"]`); a password meeting all three character classes at
+8+ chars passes. Confirmed no stray test user was left behind
+(`listUsers()` after the attempts came back empty — GoTrue never
+persists a user whose password fails its own policy).
+
+Mirrored the same policy at every point in the app that sets a
+password — `AuthForm.tsx` (registration), `PasswordChangeForm.tsx`
+(settings, shared by both candidate and employer, and already reused
+by `/reset-password`), and `InviteAcceptForm.tsx` (a team invite's own
+registration path, previously missed as a separate signUp call site):
+same `minLength={8}` (only on `register`/new-password inputs — a
+pre-existing account's old 6-7 char password must still work for
+*logging in*, so `login` mode's input keeps no `minLength` at all),
+same client-side `passwordMeetsRequirements()` gate before ever
+calling `signUp`/`updateUser` (no network round-trip for a password
+that's obviously going to be rejected — the same principle this
+project already applies to NIF validation), and the same new
+`PasswordChecklist` component — four live-updating items (length,
+lowercase, uppercase, digit) — so a weak password is visibly wrong
+while typing, not only after a rejected submit. Removed the now-dead
+`passwordTooShort` i18n key once its one remaining caller was replaced.
+
+Verified: `tsc --noEmit`, `eslint` on every changed file, the full test
+suite (now 105, +6 new for `password.ts`'s pure logic — cross-checked
+against the live project's own 422 responses, not just internal
+consistency), and `npm run build`.

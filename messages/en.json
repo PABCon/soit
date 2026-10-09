@@ -509,7 +509,13 @@
     "newPassword": "New password",
     "confirmPassword": "Confirm new password",
     "passwordMismatch": "Passwords don't match.",
-    "passwordTooShort": "Password must be at least 6 characters.",
+    "passwordRequirementsNotMet": "Password doesn't meet the requirements below.",
+    "passwordRequirement": {
+      "length": "At least 8 characters",
+      "lowercase": "One lowercase letter",
+      "uppercase": "One uppercase letter",
+      "digit": "One number"
+    },
     "savePassword": "Save password",
     "passwordSaved": "Password updated."
   },

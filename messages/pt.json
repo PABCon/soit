@@ -509,7 +509,13 @@
     "newPassword": "Nova palavra-passe",
     "confirmPassword": "Confirmar nova palavra-passe",
     "passwordMismatch": "As palavras-passe não coincidem.",
-    "passwordTooShort": "A palavra-passe deve ter pelo menos 6 caracteres.",
+    "passwordRequirementsNotMet": "A palavra-passe não cumpre os requisitos abaixo.",
+    "passwordRequirement": {
+      "length": "Pelo menos 8 caracteres",
+      "lowercase": "Uma letra minúscula",
+      "uppercase": "Uma letra maiúscula",
+      "digit": "Um número"
+    },
     "savePassword": "Guardar palavra-passe",
     "passwordSaved": "Palavra-passe atualizada."
   },

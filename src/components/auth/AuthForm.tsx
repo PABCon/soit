@@ -6,6 +6,8 @@ import { useLocale, useTranslations } from "next-intl";
 import { Link, useRouter } from "@/i18n/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { validateNif } from "@/lib/nif";
+import { passwordMeetsRequirements } from "@/lib/password";
+import { PasswordChecklist } from "@/components/auth/PasswordChecklist";
 
 /** Only ever honour a same-origin relative path — never redirect based on
  *  an attacker-controlled `next` value (open-redirect). */
@@ -70,6 +72,12 @@ export function AuthForm({ role, mode }: { role: Role; mode: Mode }) {
     // actually changed yet. Every non-navigating exit path resets it
     // explicitly instead.
     if (mode === "register") {
+      if (!passwordMeetsRequirements(password)) {
+        setError(t("passwordRequirementsNotMet"));
+        setPending(false);
+        return;
+      }
+
       let pendingNif: string | undefined;
       if (role === "employer") {
         const validation = validateNif(nif);
@@ -268,13 +276,14 @@ export function AuthForm({ role, mode }: { role: Role; mode: Mode }) {
         <input
           type="password"
           required
-          minLength={6}
+          minLength={mode === "register" ? 8 : undefined}
           autoComplete={mode === "register" ? "new-password" : "current-password"}
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           className={inputClass}
         />
       </label>
+      {mode === "register" && <PasswordChecklist password={password} />}
 
       {mode === "login" && (
         <Link href="/forgot-password" className="-mt-2 self-start text-xs text-pine hover:underline">
