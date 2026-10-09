@@ -18,6 +18,7 @@
     "logOut": "Log out",
     "savedSearches": "Saved searches",
     "searchAnywhere": "Any location",
+    "searchRadiusLabel": "Within",
     "searchSubmit": "Search",
     "saveSearch": "Save search",
     "saveSearchHint": "Save this search to check later under \"Saved searches\" (no notifications yet)",
@@ -323,6 +324,7 @@
       "expert": "Expert"
     },
     "mustHave": "Must-have",
+    "niceToHave": "Nice-to-have",
     "requiredLanguages": "Required languages",
     "pasteJobLink": "Paste a link to an existing job posting to auto-fill",
     "fetchAndFill": "Fetch & fill",
@@ -522,7 +524,10 @@
     "publishedAgo": "Posted {ago}",
     "salaryHeading": "Salary",
     "placeholder": "Sample description — the real text is written by the employer in the posting form.",
-    "notFound": "Job not found."
+    "notFound": "Job not found.",
+    "similarRoles": "Similar roles",
+    "aboutEmployer": "About {company}",
+    "viewCompanyProfile": "View company profile"
   },
   "apply": {
     "apply": "Apply",

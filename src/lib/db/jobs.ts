@@ -34,8 +34,8 @@ export const SELECT = `
   latitude, longitude, salary_min, salary_max, salary_currency, salary_period,
   salary_months, employment_type, status, published_at, expires_at, created_at,
   external_apply_url, location_id, salary_public, boost_rank_at, boosted_until,
-  companies!inner ( slug, company_name, company_logo_url, top_employer_active ),
-  job_tech_tags ( tech_tags ( slug, label ) ),
+  companies!inner ( slug, company_name, company_logo_url, company_description, top_employer_active ),
+  job_tech_tags ( level, required, tech_tags ( slug, label ) ),
   job_categories ( slug ),
   locations ( slug ),
   job_languages ( level, spoken_languages ( slug, label ) )
@@ -71,9 +71,10 @@ export type JobRow = {
     slug: string;
     company_name: string;
     company_logo_url: string | null;
+    company_description: string | null;
     top_employer_active: boolean;
   };
-  job_tech_tags: { tech_tags: { slug: string; label: string } }[];
+  job_tech_tags: { level: SkillLevel | null; required: boolean; tech_tags: { slug: string; label: string } }[];
   job_categories: { slug: string } | null;
   locations: { slug: string } | null;
   job_languages: { level: SkillLevel | null; spoken_languages: { slug: string; label: string } }[];
@@ -147,6 +148,8 @@ function sortForFeed(rows: JobRow[]): JobRow[] {
 
 export type RequiredLanguage = { slug: string; label: string; level: SkillLevel | null };
 
+export type JobTechStackEntry = { slug: string; label: string; level: SkillLevel | null; required: boolean };
+
 export type JobDetail = Job & {
   id: string;
   description: string;
@@ -154,6 +157,15 @@ export type JobDetail = Job & {
   expiresAt: string;
   externalApplyUrl: string | null;
   requiredLanguages: RequiredLanguage[];
+  /** Short employer blurb for the sidebar — `companies.company_description`,
+   *  null when the employer never filled it in. */
+  companyBlurb: string | null;
+  /** The same tags as `tech` (plain labels, for the feed/filters), plus the
+   *  level/required the employer set for each — real-usage QA item asking
+   *  for "tech-stack proficiency shown as grade/icon" on the job page. The
+   *  data was already collected and saved by JobForm/saveJob; it just
+   *  never made it into anything public-facing before this. */
+  techStack: JobTechStackEntry[];
 };
 
 function toJobDetail(row: JobRow): JobDetail {
@@ -168,6 +180,13 @@ function toJobDetail(row: JobRow): JobDetail {
       slug: jl.spoken_languages.slug,
       label: jl.spoken_languages.label,
       level: jl.level,
+    })),
+    companyBlurb: row.companies.company_description,
+    techStack: row.job_tech_tags.map((t) => ({
+      slug: t.tech_tags.slug,
+      label: t.tech_tags.label,
+      level: t.level,
+      required: t.required,
     })),
   };
 }
@@ -200,6 +219,46 @@ export async function getLiveJobBySlug(slug: string): Promise<JobDetail | null> 
 
   if (error || !data) return null;
   return toJobDetail(data as unknown as JobRow);
+}
+
+/** Job detail page's "similar roles" rail (real-usage QA item) — same
+ *  category first (what a candidate actually means by "similar"); when the
+ *  job has no category at all, falls back to other live roles at the same
+ *  company rather than showing nothing. Either way, excludes the job
+ *  itself and only ever looks at live, unexpired postings. */
+export async function getSimilarJobs(job: JobDetail, limit = 4): Promise<Job[]> {
+  const supabase = await createClient();
+
+  let categoryId: string | undefined;
+  if (job.categorySlug) {
+    const { data: category } = await supabase
+      .from("job_categories")
+      .select("id")
+      .eq("slug", job.categorySlug)
+      .maybeSingle();
+    categoryId = category?.id;
+  }
+
+  let query = supabase
+    .from("jobs")
+    .select(SELECT)
+    .eq("status", "published")
+    .gt("expires_at", new Date().toISOString())
+    .neq("id", job.id)
+    .order("boost_rank_at", { ascending: false })
+    .limit(limit);
+
+  if (categoryId) {
+    query = query.eq("category_id", categoryId);
+  } else {
+    const { data: company } = await supabase.from("companies").select("id").eq("slug", job.company.slug).maybeSingle();
+    if (!company) return [];
+    query = query.eq("company_id", company.id);
+  }
+
+  const { data, error } = await query;
+  if (error || !data) return [];
+  return (data as unknown as JobRow[]).map((row) => hideSalaryIfPrivate(row, toJob(row)));
 }
 
 export type ConsoleTab = "active" | "inactive" | "drafts";

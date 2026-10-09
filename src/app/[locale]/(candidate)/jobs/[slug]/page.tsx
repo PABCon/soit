@@ -4,13 +4,15 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
 import { Salary } from "@/components/Salary";
 import { CompanyLogo } from "@/components/CompanyLogo";
-import { TechTags } from "@/components/TechTags";
+import { TechStackDetail } from "@/components/TechStackDetail";
 import { ApplyModal } from "@/components/ApplyModal";
 import { EngagementPopup } from "@/components/EngagementPopup";
 import { FavoriteButton } from "@/components/FavoriteButton";
 import { JobExpiryBar, expiryPercentLeft } from "@/components/JobExpiryBar";
 import { JobDescriptionBody } from "@/components/JobDescriptionBody";
-import { getLiveJobBySlug, type JobDetail } from "@/lib/db/jobs";
+import { JobRow } from "@/components/JobRow";
+import { CompanyMap } from "@/components/CompanyMap";
+import { getLiveJobBySlug, getSimilarJobs, type JobDetail } from "@/lib/db/jobs";
 import { getApplyStatus } from "@/lib/db/applications";
 import { getMyFavoriteJobIds } from "@/lib/db/favorites";
 import { routing } from "@/i18n/routing";
@@ -112,9 +114,10 @@ export default async function JobDetailPage({ params }: Props) {
   const t = await getTranslations({ locale, namespace: "job" });
   const tf = await getTranslations({ locale, namespace: "feed" });
   const tjf = await getTranslations({ locale, namespace: "jobForm" });
-  const [applyStatus, favoriteJobIds] = await Promise.all([
+  const [applyStatus, favoriteJobIds, similarJobs] = await Promise.all([
     getApplyStatus(job.id),
     getMyFavoriteJobIds(),
+    getSimilarJobs(job),
   ]);
 
   const expiryPercent = expiryPercentLeft(job.publishedAt, job.expiresAt);
@@ -147,6 +150,16 @@ export default async function JobDetailPage({ params }: Props) {
                 · {job.location ?? tf("remote")}
               </p>
               <div className="mt-3 flex flex-wrap gap-1.5">
+                {job.isTopEmployer && (
+                  <span className="rounded bg-amber-400/90 px-2 py-0.5 text-xs font-semibold tracking-wide text-ink uppercase">
+                    {tf("topEmployer")}
+                  </span>
+                )}
+                {job.isBoosted && (
+                  <span className="rounded bg-violet-100 px-2 py-0.5 text-xs font-semibold tracking-wide text-violet-800 uppercase">
+                    {tf("boosted")}
+                  </span>
+                )}
                 {[
                   tf(`workModel.${job.workModel}`),
                   tf(`seniority.${job.seniority}`),
@@ -180,7 +193,7 @@ export default async function JobDetailPage({ params }: Props) {
               {t("stack")}
             </h2>
             <div className="mt-2">
-              <TechTags tech={job.tech} />
+              <TechStackDetail techStack={job.techStack} />
             </div>
           </section>
 
@@ -211,6 +224,21 @@ export default async function JobDetailPage({ params }: Props) {
               <JobDescriptionBody description={job.description} />
             </div>
           </section>
+
+          {similarJobs.length > 0 && (
+            <section className="mt-10">
+              <h2 className="font-display text-lg font-semibold">{t("similarRoles")}</h2>
+              <ul className="mt-2 border-t border-line">
+                {similarJobs.map((similar) => (
+                  <JobRow
+                    key={similar.id}
+                    job={similar}
+                    isFavorited={favoriteJobIds ? favoriteJobIds.includes(similar.id) : undefined}
+                  />
+                ))}
+              </ul>
+            </section>
+          )}
         </div>
 
         <aside className="lg:sticky lg:top-20 lg:self-start">
@@ -249,6 +277,26 @@ export default async function JobDetailPage({ params }: Props) {
               {tf("postedAgo", { days: job.postedDaysAgo })}
             </p>
           </div>
+
+          {(job.companyBlurb || (job.lat !== null && job.lng !== null)) && (
+            <div className="mt-4 rounded-xl border border-line bg-white p-5">
+              <h2 className="font-display text-xs font-semibold tracking-wide text-muted uppercase">
+                {t("aboutEmployer", { company: job.company.name })}
+              </h2>
+              {job.companyBlurb && <p className="mt-2 text-sm text-ink">{job.companyBlurb}</p>}
+              {job.lat !== null && job.lng !== null && (
+                <div className="mt-3">
+                  <CompanyMap latitude={job.lat} longitude={job.lng} />
+                </div>
+              )}
+              <Link
+                href={`/companies/${job.company.slug}`}
+                className="mt-3 block text-center text-sm text-pine hover:underline"
+              >
+                {t("viewCompanyProfile")}
+              </Link>
+            </div>
+          )}
         </aside>
       </div>
     </>

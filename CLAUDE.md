@@ -4244,3 +4244,54 @@ Management API on Free), deliberately deferred to
 whether to build app-level enforcement instead, upgrade to Pro, or
 leave it deferred — chose to leave it deferred, so no change made
 here.
+
+## Medium-features QA batch 1: job-detail-page enhancements
+
+First batch off the "medium scope, not yet started" tier of the same QA
+list. Four items, all on the job detail page
+(`src/app/[locale]/(candidate)/jobs/[slug]/page.tsx`):
+
+- **Top Employer / Boosted badges** — the data (`job.isTopEmployer`,
+  `job.isBoosted`) was already on the `Job` type and already rendered
+  on every feed row (`JobRow.tsx`); the detail page itself just never
+  showed either. Added the identical badges to its own badge row.
+- **Tech-stack proficiency as a grade, not just a label** — turned out
+  to be a pure *display* gap, not a data gap: `job_tech_tags.level`/
+  `required` have existed since `20260928200000_job_requirements_and_
+  languages.sql` and `saveJob`/`JobForm` already persist real values —
+  the shared `SELECT` in `jobs.ts` just never selected them, so nothing
+  public-facing could ever show them. Added `level, required` to the
+  `job_tech_tags` join (cheap — same join, two more columns) and a new
+  `JobDetail.techStack` field (label+level+required per tag) alongside
+  the existing plain-label `tech: string[]` that feed/filter code
+  everywhere else still uses unchanged. New `TechStackDetail` component
+  renders each tag with a 4-dot level dial and a must-have/nice-to-have
+  tag, reusing the exact `jobForm.levelOption`/`mustHave` i18n keys the
+  console editor already has (added the one missing `niceToHave`
+  counterpart). `TechTags` (the compact chip list used everywhere space
+  is tight) is untouched.
+- **Employer blurb + map in the sidebar** — `job.companyBlurb` now
+  reads `companies.company_description` (added to the same join), and
+  the sidebar reuses the existing `CompanyMap` component (already built
+  for, and still used on, the company profile page) with the job's own
+  `lat`/`lng` — no new map component needed. Card only renders when
+  there's a blurb or coordinates to show.
+- **Similar roles list** — new `getSimilarJobs(job, limit=4)`: same
+  category first (an extra one-row lookup from `categorySlug` → id,
+  since `jobs.category_id` isn't on the already-wide shared `SELECT`
+  by design); falls back to the same company's other live roles when
+  the job has no category, rather than showing nothing. Renders with
+  the same `JobRow` every other job list in this app already uses.
+
+Verified: `tsc --noEmit`, `eslint` on every changed file, the full test
+suite (99 passing), and `npm run build` all pass.
+
+## Quick fix: unlabeled "km radius" search field
+
+Real-usage QA item: the radius `<select>` in the global search bar
+(`SearchBar.tsx`, only rendered once a location is chosen) had no
+label at all — each option read "25 km" etc., but nothing said what
+the number meant before you opened the dropdown. Wrapped it in a
+`<label>` with a short "Within"/"Num raio de" text (also gets the
+free accessibility win of a proper label-to-control association,
+not just an `aria-label`).

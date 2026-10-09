@@ -18,6 +18,7 @@
     "logOut": "Sair",
     "savedSearches": "Pesquisas guardadas",
     "searchAnywhere": "Qualquer localização",
+    "searchRadiusLabel": "Num raio de",
     "searchSubmit": "Pesquisar",
     "saveSearch": "Guardar pesquisa",
     "saveSearchHint": "Guardar esta pesquisa para consultar mais tarde em \"Pesquisas guardadas\" (sem notificações por agora)",
@@ -323,6 +324,7 @@
       "expert": "Especialista"
     },
     "mustHave": "Obrigatório",
+    "niceToHave": "Desejável",
     "requiredLanguages": "Idiomas necessários",
     "pasteJobLink": "Colar link de uma vaga existente para preencher automaticamente",
     "fetchAndFill": "Obter e preencher",
@@ -522,7 +524,10 @@
     "publishedAgo": "Publicada {ago}",
     "salaryHeading": "Salário",
     "placeholder": "Descrição de exemplo — o texto real é escrito pela empresa no formulário de publicação.",
-    "notFound": "Vaga não encontrada."
+    "notFound": "Vaga não encontrada.",
+    "similarRoles": "Vagas semelhantes",
+    "aboutEmployer": "Sobre a {company}",
+    "viewCompanyProfile": "Ver perfil da empresa"
   },
   "apply": {
     "apply": "Candidatar",

@@ -102,17 +102,20 @@ function SearchBarFields({ pathname, locations }: { pathname: string; locations:
         ))}
       </select>
       {near && (
-        <select
-          value={radiusKm}
-          onChange={(e) => setRadiusKm(e.target.value)}
-          className="h-9 shrink-0 rounded-lg border border-line bg-white px-2 text-xs text-ink"
-        >
-          {RADIUS_OPTIONS.map((r) => (
-            <option key={r} value={r}>
-              {r} km
-            </option>
-          ))}
-        </select>
+        <label className="flex shrink-0 items-center gap-1 text-xs whitespace-nowrap text-muted">
+          {t("searchRadiusLabel")}
+          <select
+            value={radiusKm}
+            onChange={(e) => setRadiusKm(e.target.value)}
+            className="h-9 shrink-0 rounded-lg border border-line bg-white px-2 text-xs text-ink"
+          >
+            {RADIUS_OPTIONS.map((r) => (
+              <option key={r} value={r}>
+                {r} km
+              </option>
+            ))}
+          </select>
+        </label>
       )}
       <button
         type="submit"
