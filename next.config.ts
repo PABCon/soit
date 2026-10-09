@@ -9,6 +9,23 @@ const nextConfig: NextConfig = {
   // Pin the workspace root: an unrelated lockfile higher up the tree would
   // otherwise be inferred as the root.
   turbopack: { root: dirname(fileURLToPath(import.meta.url)) },
+  async redirects() {
+    return [
+      // Real-usage report: visiting (or bookmarking) the raw Vercel alias
+      // never redirected to the real domain, so the address bar stayed on
+      // soit.vercel.app through login and everything else — Vercel
+      // doesn't canonicalize this on its own. Only the *stable* project
+      // alias, not per-deployment preview URLs (soit-<hash>-soit.vercel.app)
+      // — those intentionally stay reachable for inspecting one exact
+      // build.
+      {
+        source: "/:path*",
+        has: [{ type: "host", value: "soit.vercel.app" }],
+        destination: "https://justit.pt/:path*",
+        permanent: true,
+      },
+    ];
+  },
   experimental: {
     serverActions: {
       // Next's own default (1MB) is below the `branding` storage bucket's

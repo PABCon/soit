@@ -22,13 +22,36 @@ const ExtractedJobSchema = z.object({
   salaryMax: z.number().nullable(),
   salaryPeriod: z.enum(["hour", "day", "month", "year"]).nullable(),
   adLanguage: z.enum(["pt", "en"]).nullable(),
-  techTagLabels: z.array(z.string()),
+  // Real-usage report — "why isn't the expertise level estimated from the
+  // job description?" A flat label list had nowhere to carry that.
+  // `required` separates a posting's "must-have" stack from its "nice to
+  // have/bonus" one — both real, common sections in a job ad; `level`
+  // only when the text actually implies a seniority/years-of-experience
+  // bar for that specific technology, not a guess.
+  techStack: z.array(
+    z.object({
+      label: z.string(),
+      level: z.enum(["basic", "intermediate", "advanced", "expert"]).nullable(),
+      required: z.boolean(),
+    }),
+  ),
   requiredLanguages: z.array(
     z.object({
       label: z.string(),
       level: z.enum(["basic", "intermediate", "advanced", "expert"]).nullable(),
     }),
   ),
+  // Real-usage report pushed back on the original "never return these"
+  // design (an external posting's free-text location/category can't map
+  // cleanly onto a fixed vocab) — the fix isn't to keep refusing, it's to
+  // apply the exact same trusted pattern tech tags already use: the model
+  // picks the closest match from the *exact* list it's given in the
+  // prompt (see buildCategoryList/buildLocationList below), the caller
+  // matches the returned label verbatim against the real vocab, and a
+  // non-match is silently dropped rather than invented. Only populated
+  // when the caller actually passes a vocab to match against.
+  categoryLabel: z.string().nullable(),
+  locationLabel: z.string().nullable(),
 });
 
 export type ExtractedJob = z.infer<typeof ExtractedJobSchema>;
@@ -47,14 +70,15 @@ export type ExtractJobResult =
  * LLM prompt, unlike a human-facing reader view), and asks the model to
  * fill only the fields it's genuinely confident about — every field is
  * nullable/optional in the schema, and the prompt explicitly tells it not
- * to invent numbers or tags. Deliberately never returns location/category —
- * an external posting's location text won't map cleanly onto the 14
- * curated Portuguese cities, and category is a judgment call better left
- * to the employer (§ plan). Tech-tag/language *labels* come back as plain
- * strings — the caller (JobForm) fuzzy-matches them against the real
- * vocab, so this never invents a new tag/language that doesn't exist.
+ * to invent numbers or tags. Tech-tag/language/category/location *labels*
+ * come back as plain strings — the caller (JobForm) matches them against
+ * the real vocab, so this never invents a new tag/language/category/city
+ * that doesn't exist.
  */
-export async function extractJobFromUrl(url: string): Promise<ExtractJobResult> {
+export async function extractJobFromUrl(
+  url: string,
+  vocab?: { categoryLabels?: string[]; locationNames?: string[] },
+): Promise<ExtractJobResult> {
   let parsed: URL;
   try {
     parsed = new URL(url);
@@ -86,6 +110,17 @@ export async function extractJobFromUrl(url: string): Promise<ExtractJobResult> 
   const text = stripHtml(html).slice(0, MAX_PROMPT_CHARS);
   if (text.length < 100) return { ok: false, reason: "empty_content" };
 
+  const categoryInstruction = vocab?.categoryLabels?.length
+    ? `\n\n\`categoryLabel\`: if the posting's role clearly fits one of these categories, return that ` +
+      `category's exact text (copy it verbatim) — otherwise null. Do not guess at a close-enough fit; ` +
+      `only return one if it's a genuine match. Categories:\n${vocab.categoryLabels.map((c) => `- ${c}`).join("\n")}`
+    : "";
+  const locationInstruction = vocab?.locationNames?.length
+    ? `\n\n\`locationLabel\`: if the posting states an office/on-site location that is clearly one of ` +
+      `these cities, return that city's exact text (copy it verbatim) — otherwise null (including for ` +
+      `fully remote roles, or a location not in this list). Cities:\n${vocab.locationNames.map((c) => `- ${c}`).join("\n")}`
+    : "";
+
   try {
     const { output } = await generateText({
       model: MODEL,
@@ -103,6 +138,15 @@ export async function extractJobFromUrl(url: string): Promise<ExtractJobResult> 
         "their own lines (join with \\n), each list item starting with \"- \". " +
         "Do not merge multiple bullet points into one run-on sentence, and do " +
         "not drop items the posting lists.\n\n" +
+        "`techStack`: `required: true` for technologies listed under a " +
+        "\"requirements\"/\"must-have\"/\"you have\" style section, " +
+        "`required: false` for a \"nice to have\"/\"bonus\"/\"preferred\" " +
+        "section. Only set `level` when the text ties a specific seniority " +
+        "or years-of-experience bar to that specific technology (e.g. " +
+        "\"5+ years of React\" → advanced/expert; \"familiarity with " +
+        "Docker\" → basic) — leave it null rather than guess from the " +
+        "role's overall seniority.\n\n" +
+        `${categoryInstruction}${locationInstruction}\n\n` +
         `Page text:\n${text}`,
     });
     return { ok: true, data: output };

@@ -160,12 +160,13 @@ export function JobForm({
 
   /** Applies whatever the model actually returned, field by field — a field
    *  the model left null/empty is left completely untouched, never blanked
-   *  out. Tech/language labels are fuzzy-matched against the real vocab
-   *  here (not on the server) since this component already has both lists
-   *  as props; a label with no real match is silently dropped rather than
-   *  invented as a new tag. locationId/categoryId are never touched (§ plan
-   *  — an external posting's location text won't map onto our 14 curated
-   *  cities, and category is a judgment call for the employer). */
+   *  out. Tech/language/category/location labels are matched against the
+   *  real vocab here (not on the server) since this component already has
+   *  all four lists as props; a label with no real match is silently
+   *  dropped rather than invented. categoryLabel/locationLabel are exact-
+   *  matched against the same `label`/`name` text the server action gave
+   *  the model as its allowed vocabulary (extractJobFromUrlAction),
+   *  independent of whatever this UI's own translated option text shows. */
   function applyExtractedData(data: ExtractedJob) {
     if (data.title) setTitle(data.title);
     if (data.description) setDescription(data.description);
@@ -177,15 +178,15 @@ export function JobForm({
     if (data.salaryPeriod) setSalaryPeriod(data.salaryPeriod);
     if (data.adLanguage) setLanguage(data.adLanguage);
 
-    if (data.techTagLabels.length > 0) {
+    if (data.techStack.length > 0) {
       const matched: SelectedTag[] = [];
-      for (const label of data.techTagLabels) {
-        const norm = label.trim().toLowerCase();
+      for (const entry of data.techStack) {
+        const norm = entry.label.trim().toLowerCase();
         const tag = techTags.find(
           (tg) => tg.label.toLowerCase() === norm || tg.aliases.some((a) => a.toLowerCase() === norm),
         );
         if (tag && !matched.some((m) => m.id === tag.id)) {
-          matched.push({ id: tag.id, level: null, required: true });
+          matched.push({ id: tag.id, level: entry.level, required: entry.required });
         }
       }
       if (matched.length > 0) setSelectedTags(matched);
@@ -201,6 +202,18 @@ export function JobForm({
         }
       }
       if (matched.length > 0) setSelectedLanguages(matched);
+    }
+
+    if (data.categoryLabel) {
+      const norm = data.categoryLabel.trim().toLowerCase();
+      const category = jobCategories.find((c) => c.label.toLowerCase() === norm);
+      if (category) setCategoryId(category.id);
+    }
+
+    if (data.locationLabel) {
+      const norm = data.locationLabel.trim().toLowerCase();
+      const location = locations.find((l) => l.name.toLowerCase() === norm);
+      if (location) setLocationId(location.id);
     }
   }
 

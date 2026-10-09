@@ -4054,3 +4054,43 @@ here per the user's own sequencing choice.
   salary into the same corner the heart occupies; added conditional
   `@2xl:pr-10` (only when a favorite button is actually rendered on
   that row) to reserve its footprint.
+
+## Full-site QA — critical bugs batch 3: canonical domain + job-URL autofill
+
+- **`soit.vercel.app` never redirected to the real domain.** Not a
+  misconfigured env var (`NEXT_PUBLIC_SITE_URL` was already correctly
+  `https://justit.pt` in production) — Vercel just doesn't canonicalize
+  the stable project alias on its own, so anyone who ever bookmarked or
+  landed on the raw `.vercel.app` URL stayed there through login and
+  everything else. Added a `next.config.ts` host-matched redirect
+  (`has: [{type: "host", value: "soit.vercel.app"}]` → `justit.pt`) —
+  deliberately scoped to that one stable alias, not the per-deployment
+  preview hostnames (`soit-<hash>-soit.vercel.app`), which need to stay
+  reachable for inspecting one exact build.
+
+- **Job-posting-URL autofill extended to category/location/tech-stack
+  level** — reversing a deliberate Phase-1 decision (documented in
+  `extract-job.ts`'s own comment) to never attempt location/category
+  because free text "won't map cleanly" onto a fixed vocab. The fix:
+  apply the *exact same trusted pattern* tech tags already use, just
+  with the valid vocab actually given to the model up front (only 14
+  categories, 20 cities — short enough to include directly in the
+  prompt) instead of asking it to guess blind. The model returns exact
+  vocab text or null; the caller matches verbatim against the same
+  list and silently drops anything that doesn't match, never inventing
+  a new category/city. Verified live against a real posting
+  ("Web Development Project Manager"): correctly classified as
+  "Project/Program Management" rather than a lazy "Software
+  Development" guess, and correctly left location null for a fully
+  remote role.
+
+  Same real-usage question ("why isn't expertise level estimated from
+  the job description?") extended to tech stack too: `techTagLabels:
+  string[]` became `techStack: {label, level, required}[]` —
+  `required` distinguishes a posting's must-have stack from its nice-
+  to-have one (both real, common sections), `level` only set when the
+  text ties a specific bar to that specific technology, never guessed
+  from the role's overall seniority. Verified live: correctly split
+  "Must-haves"/"Nice-to-haves" sections from a real posting, left every
+  `level` null since the source text never tied a seniority bar to any
+  individual technology — appropriately conservative, not a gap.

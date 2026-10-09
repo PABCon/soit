@@ -97,7 +97,7 @@ export type ExtractCvResult =
  * Skill/language *labels* come back as plain strings — the caller fuzzy-
  * matches them against the real `tech_tags`/`spoken_languages` vocab, so
  * this never invents a new tag/language that doesn't exist (same contract
- * as `extractJobFromUrl`'s `techTagLabels`/`requiredLanguages`).
+ * as `extractJobFromUrl`'s `techStack`/`requiredLanguages`).
  */
 export async function extractCvProfile(text: string): Promise<ExtractCvResult> {
   const trimmed = text.trim();
