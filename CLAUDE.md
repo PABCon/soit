@@ -4116,3 +4116,68 @@ ask — already true on both sides (app-level check *and* the `avatars`
 storage bucket's own `file_size_limit`, both exactly 2097152 bytes)
 before I touched anything. Verified rather than assumed, then moved on
 rather than "fixing" something that wasn't broken.
+
+## Full-site QA — critical bugs batch 5: ad-credit decrement race condition
+
+Real bug, found via the user's own purchase: a 2-credit pack let **4**
+jobs go live before the 5th was blocked (expected 1 free + 2 credits =
+3 max). Root cause was a classic TOCTOU race in both `saveJob` and
+`setJobStatus` (`src/lib/db/jobs.ts`): each read
+`company.ad_credits_available` in application code, computed
+`old - 1` in JS, then wrote that *absolute* number back guarded by a
+`.gt("ad_credits_available", 0)` filter that was already stale by the
+time the write landed. Two near-simultaneous publishes (e.g. clicking
+publish on two drafts back-to-back) could both read the same starting
+value, both pass the guard, and both write the same decremented
+number — one extra job published per race, silently, until credits ran
+out one publish "too early" for what was actually paid for.
+
+Also checked the Stripe webhook's crediting side
+(`fulfillAdCreditPurchase` in `src/app/api/stripe/webhook/route.ts`)
+for the same symptom — it's **not** the bug: it's correctly
+idempotent via a unique constraint on `stripe_checkout_session_id`
+(a `23505` conflict is treated as already-fulfilled) and the quantity
+math is correct for a single purchase. (Noted but not fixed: the same
+additive read-then-write shape could in theory under-credit if two
+*different* real purchases for the same company were fulfilled
+concurrently — not the reported symptom, not touched.)
+
+Fix: a real atomic decrement, computed from the *live* column value
+inside a single `UPDATE` — a second concurrent caller re-reads the row
+inside that same statement, not a JS snapshot from moments earlier.
+New Postgres function via
+`supabase/migrations/20261009130000_atomic_ad_credit_decrement.sql`:
+
+```sql
+create or replace function public.decrement_ad_credit(target_company_id uuid)
+returns boolean
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  updated_rows int;
+begin
+  update companies
+  set ad_credits_available = ad_credits_available - 1
+  where id = target_company_id and ad_credits_available > 0;
+  get diagnostics updated_rows = row_count;
+  return updated_rows > 0;
+end;
+$$;
+```
+
+`saveJob` and `setJobStatus` both now call this RPC *before* the job
+write, and only proceed with publishing if it returns `true`; if a
+concurrent caller won the race and it returns `false`, the job falls
+back to draft / the action reports `noAdCredits` instead of silently
+publishing anyway. The old post-write `UPDATE ... SET
+ad_credits_available = <computed value> WHERE ... > 0` blocks were
+removed from both functions entirely.
+
+Verified: applied the migration via `supabase db push`, then manually
+exercised the RPC against a throwaway test company seeded with 1
+credit — first `decrement_ad_credit` call returned `true`, a second
+immediate call on the same row returned `false` — confirmed correct,
+then deleted the test row. `tsc --noEmit`, `eslint`, the full test
+suite (99 passing), and `npm run build` all pass after the change.

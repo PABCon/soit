@@ -344,8 +344,26 @@ export async function saveJob(
   const canPublishFree = liveCount < effectiveFreeCap;
   const canPublishWithCredit = company.ad_credits_available > 0;
   const canPublish = isVerified && (canPublishFree || canPublishWithCredit);
-  const willPublish = wantsPublish && canPublish;
-  const consumesCredit = willPublish && !canPublishFree;
+  let willPublish = wantsPublish && canPublish;
+  let consumesCredit = willPublish && !canPublishFree;
+
+  // Spend the credit atomically — and *before* ever writing status=
+  // "published" — not a JS-computed "old - 1" written back under a now-
+  // stale guard (a real bug found via a real purchase: two
+  // near-simultaneous publishes could both read the same starting credit
+  // count and both pass that stale guard, so both got marked published
+  // while the column only ever reflected a single decrement). If this
+  // genuinely races with another request and loses, this save must not
+  // publish at all — falling back to a draft, not a free, uncharged
+  // publish.
+  if (consumesCredit) {
+    const admin = createAdminClient();
+    const { data: decremented } = await admin.rpc("decrement_ad_credit", { target_company_id: company.id });
+    if (!decremented) {
+      willPublish = false;
+      consumesCredit = false;
+    }
+  }
 
   // Only a genuine draft/inactive → published transition spends a credit,
   // resets the 30-day window and the boost/bump state — re-saving an
@@ -412,17 +430,6 @@ export async function saveJob(
       .single();
     if (error) throw new Error(error.message);
     id = data.id;
-  }
-
-  if (consumesCredit) {
-    const admin = createAdminClient();
-    // `.gt` guards against a double-spend race under concurrent publishes —
-    // cheaper than a raw SQL decrement RPC, and sufficient at this volume.
-    await admin
-      .from("companies")
-      .update({ ad_credits_available: company.ad_credits_available - 1 })
-      .eq("id", company.id)
-      .gt("ad_credits_available", 0);
   }
 
   await supabase.from("job_tech_tags").delete().eq("job_id", id);
@@ -498,6 +505,15 @@ export async function setJobStatus(
   if (!(canPublishFree || canPublishWithCredit)) return { ok: false, message: "noAdCredits" };
   const consumesCredit = !canPublishFree;
 
+  // Same atomic-decrement-before-publish fix as saveJob (see its own
+  // comment) — reactivating a paused job spends a credit through this
+  // exact same path, so it needs the exact same race-safe guard.
+  if (consumesCredit) {
+    const admin = createAdminClient();
+    const { data: decremented } = await admin.rpc("decrement_ad_credit", { target_company_id: company.id });
+    if (!decremented) return { ok: false, message: "noAdCredits" };
+  }
+
   const { data: job } = await supabase.from("jobs").select("salary_public").eq("id", jobId).maybeSingle();
   const salaryPublic = isPayingCustomer ? (job?.salary_public ?? true) : true;
   const now = new Date();
@@ -517,15 +533,6 @@ export async function setJobStatus(
     .eq("id", jobId)
     .eq("company_id", company.id);
   if (error) throw new Error(error.message);
-
-  if (consumesCredit) {
-    const admin = createAdminClient();
-    await admin
-      .from("companies")
-      .update({ ad_credits_available: company.ad_credits_available - 1 })
-      .eq("id", company.id)
-      .gt("ad_credits_available", 0);
-  }
 
   return { ok: true };
 }
