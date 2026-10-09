@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useMemo, useState, type FormEvent, type KeyboardEvent } from "react";
 import { useTranslations } from "next-intl";
 import { Link, usePathname, useRouter } from "@/i18n/navigation";
 import { useUrlSearchParams, writeUrlSearchParams } from "@/hooks/useUrlSearchParams";
@@ -8,6 +8,9 @@ import { saveSearchAction } from "@/app/[locale]/(candidate)/saved-searches/acti
 import type { LocationOption } from "@/lib/db/locations";
 
 const RADIUS_OPTIONS = [10, 25, 50, 100];
+const MAX_SUGGESTIONS = 6;
+
+export type SearchSuggestion = { label: string; kind: "tech" | "category" };
 
 /** Global search (§7.1 phase 5) — title keyword + "near a curated city
  *  within N km" (Haversine over the already-fetched job list in
@@ -17,7 +20,13 @@ const RADIUS_OPTIONS = [10, 25, 50, 100];
  *  page); submitting while already on /jobs updates the URL in place via
  *  the same instant, no-round-trip mechanism JobsExplorer's own filters
  *  use, preserving whatever chip filters are already active there. */
-export function SearchBar({ locations }: { locations: LocationOption[] }) {
+export function SearchBar({
+  locations,
+  suggestions,
+}: {
+  locations: LocationOption[];
+  suggestions: SearchSuggestion[];
+}) {
   const pathname = usePathname();
   // SearchBar lives in a persistent layout (TopNav), so it never remounts
   // on navigation — a plain useState lazy initializer would only ever run
@@ -27,10 +36,18 @@ export function SearchBar({ locations }: { locations: LocationOption[] }) {
   // when some outside signal changes", see react.dev/learn/you-might-not-
   // need-an-effect) re-runs every lazy initializer below fresh on each
   // navigation — no effect needed.
-  return <SearchBarFields key={pathname} pathname={pathname} locations={locations} />;
+  return <SearchBarFields key={pathname} pathname={pathname} locations={locations} suggestions={suggestions} />;
 }
 
-function SearchBarFields({ pathname, locations }: { pathname: string; locations: LocationOption[] }) {
+function SearchBarFields({
+  pathname,
+  locations,
+  suggestions,
+}: {
+  pathname: string;
+  locations: LocationOption[];
+  suggestions: SearchSuggestion[];
+}) {
   const t = useTranslations("nav");
   const router = useRouter();
   const urlParams = useUrlSearchParams();
@@ -40,13 +57,25 @@ function SearchBarFields({ pathname, locations }: { pathname: string; locations:
   const [near, setNear] = useState(() => (onJobsPage ? (urlParams.get("near") ?? "") : ""));
   const [radiusKm, setRadiusKm] = useState(() => (onJobsPage ? (urlParams.get("radiusKm") ?? "25") : "25"));
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const [suggestionsOpen, setSuggestionsOpen] = useState(false);
+  const [highlighted, setHighlighted] = useState(0);
 
   const canSave = q.trim() !== "" || near !== "";
 
-  function handleSubmit(e: FormEvent) {
-    e.preventDefault();
+  // "Search-bar autocomplete/suggestions" (real-usage QA item) — matches
+  // against the two curated vocabularies this app already has (tech
+  // tags, job categories), not every job title ever posted: suggesting a
+  // term that's actually part of a controlled vocabulary means picking
+  // it is guaranteed to mean something, unlike a free-text guess.
+  const filteredSuggestions = useMemo(() => {
+    const query = q.trim().toLowerCase();
+    if (!query) return [];
+    return suggestions.filter((s) => s.label.toLowerCase().includes(query)).slice(0, MAX_SUGGESTIONS);
+  }, [suggestions, q]);
+
+  function runSearch(qValue: string) {
     const patch = new URLSearchParams();
-    if (q.trim()) patch.set("q", q.trim());
+    if (qValue.trim()) patch.set("q", qValue.trim());
     if (near) {
       patch.set("near", near);
       patch.set("radiusKm", radiusKm);
@@ -66,6 +95,33 @@ function SearchBarFields({ pathname, locations }: { pathname: string; locations:
       router.push(qs ? `/jobs?${qs}` : "/jobs");
     }
     setSaveState("idle");
+    setSuggestionsOpen(false);
+  }
+
+  function handleSubmit(e: FormEvent) {
+    e.preventDefault();
+    runSearch(q);
+  }
+
+  function selectSuggestion(label: string) {
+    setQ(label);
+    runSearch(label);
+  }
+
+  function handleKeyDown(e: KeyboardEvent<HTMLInputElement>) {
+    if (!suggestionsOpen || filteredSuggestions.length === 0) return;
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setHighlighted((i) => (i + 1) % filteredSuggestions.length);
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setHighlighted((i) => (i - 1 + filteredSuggestions.length) % filteredSuggestions.length);
+    } else if (e.key === "Enter") {
+      e.preventDefault();
+      selectSuggestion(filteredSuggestions[highlighted].label);
+    } else if (e.key === "Escape") {
+      setSuggestionsOpen(false);
+    }
   }
 
   async function handleSave() {
@@ -82,13 +138,59 @@ function SearchBarFields({ pathname, locations }: { pathname: string; locations:
 
   return (
     <form onSubmit={handleSubmit} className="hidden min-w-0 max-w-xl flex-1 items-center gap-1.5 sm:flex">
-      <input
-        type="search"
-        value={q}
-        onChange={(e) => setQ(e.target.value)}
-        placeholder={t("search")}
-        className="h-9 w-full min-w-0 rounded-lg border border-line bg-white px-3 text-sm placeholder:text-muted"
-      />
+      <div className="relative min-w-0 flex-1">
+        <input
+          type="search"
+          value={q}
+          onChange={(e) => {
+            setQ(e.target.value);
+            setSuggestionsOpen(true);
+            setHighlighted(0);
+          }}
+          onFocus={() => setSuggestionsOpen(true)}
+          onBlur={() => setSuggestionsOpen(false)}
+          onKeyDown={handleKeyDown}
+          placeholder={t("search")}
+          role="combobox"
+          aria-expanded={suggestionsOpen && filteredSuggestions.length > 0}
+          aria-autocomplete="list"
+          aria-controls="search-suggestions"
+          autoComplete="off"
+          className="h-9 w-full min-w-0 rounded-lg border border-line bg-white px-3 text-sm placeholder:text-muted"
+        />
+        {suggestionsOpen && filteredSuggestions.length > 0 && (
+          <ul
+            id="search-suggestions"
+            role="listbox"
+            className="absolute top-full left-0 z-20 mt-1 w-full min-w-48 overflow-hidden rounded-lg border border-line bg-white py-1 shadow-md"
+          >
+            {filteredSuggestions.map((s, i) => (
+              <li key={`${s.kind}-${s.label}`} role="option" aria-selected={i === highlighted}>
+                <button
+                  type="button"
+                  // onMouseDown, not onClick: fires before the input's own
+                  // onBlur, so the suggestion is still in the DOM (and
+                  // this handler runs) when the click lands — onClick
+                  // alone would lose the race to blur closing the list.
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    selectSuggestion(s.label);
+                  }}
+                  onMouseEnter={() => setHighlighted(i)}
+                  className={`flex w-full items-center justify-between gap-2 px-3 py-1.5 text-left text-sm ${
+                    i === highlighted ? "bg-paper text-ink" : "text-ink"
+                  }`}
+                >
+                  {s.label}
+                  <span className="text-[10px] text-muted uppercase">
+                    {s.kind === "tech" ? t("suggestionKindTech") : t("suggestionKindCategory")}
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
       <select
         value={near}
         onChange={(e) => setNear(e.target.value)}

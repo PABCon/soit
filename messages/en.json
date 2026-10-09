@@ -19,6 +19,8 @@
     "savedSearches": "Saved searches",
     "searchAnywhere": "Any location",
     "searchRadiusLabel": "Within",
+    "suggestionKindTech": "Tech",
+    "suggestionKindCategory": "Category",
     "searchSubmit": "Search",
     "saveSearch": "Save search",
     "saveSearchHint": "Save this search and get a daily email when new jobs match — manage it under \"Saved searches\"",

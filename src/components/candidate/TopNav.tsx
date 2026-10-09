@@ -2,8 +2,10 @@ import { getLocale, getTranslations } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { LoginMenu } from "@/components/nav/LoginMenu";
-import { SearchBar } from "@/components/nav/SearchBar";
+import { SearchBar, type SearchSuggestion } from "@/components/nav/SearchBar";
 import { getLocations } from "@/lib/db/locations";
+import { getTechTags } from "@/lib/db/tech-tags";
+import { getJobCategories } from "@/lib/db/job-categories";
 
 /**
  * Public top nav (§7.3): role-split Log in dropdown + a real, centered
@@ -16,7 +18,15 @@ import { getLocations } from "@/lib/db/locations";
 export async function TopNav() {
   const locale = await getLocale();
   const brand = await getTranslations({ locale, namespace: "brand" });
-  const locations = await getLocations();
+  const [locations, techTags, categories] = await Promise.all([
+    getLocations(),
+    getTechTags(),
+    getJobCategories(),
+  ]);
+  const suggestions: SearchSuggestion[] = [
+    ...techTags.map((t) => ({ label: t.label, kind: "tech" as const })),
+    ...categories.map((c) => ({ label: c.label, kind: "category" as const })),
+  ];
 
   return (
     // z-30, not z-10: real-usage report — a job card's favorite heart
@@ -34,7 +44,7 @@ export async function TopNav() {
           <span className="block text-[11px] text-muted">{brand("navTagline")}</span>
         </Link>
 
-        <SearchBar locations={locations} />
+        <SearchBar locations={locations} suggestions={suggestions} />
 
         <div className="ml-auto flex shrink-0 items-center gap-2">
           <LanguageSwitcher />

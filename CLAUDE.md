@@ -4660,3 +4660,36 @@ hand-asserted response.
 
 Verified: `tsc --noEmit`, `eslint` on every changed file, the full test
 suite (105 passing), and `npm run build`.
+
+## Medium-features QA batch 10: search-bar autocomplete
+
+Real-usage QA item: the nav search bar's keyword field was plain free
+text with no hints about what would actually match anything. Scoped
+suggestions to the two curated vocabularies this app already has —
+tech tags and job categories (`getTechTags()`/`getJobCategories()`,
+both fetched once in `TopNav` alongside the locations list the "near"
+picker already needed) — rather than every job title ever posted:
+picking a suggested term is guaranteed to mean something, not a guess
+that happens to match zero live jobs.
+
+Built directly into `SearchBarFields` rather than reaching for the
+existing `Dropdown` component — `Dropdown` is a click-to-open trigger/
+panel, and this needed type-ahead-opens-automatically plus real
+listbox keyboard handling (`ArrowUp`/`ArrowDown`/`Enter`/`Escape`,
+`role="combobox"`/`listbox`/`option`), a different interaction shape
+entirely. Selecting a suggestion (click or Enter) runs the search
+immediately, the same as pressing the Search button — one motion, not
+"fill the box, then still have to submit."
+
+**Verified in a real browser**, not just `tsc`/build — Playwright
+(installed with `--no-save`, fully uninstalled afterward, no
+`package.json`/lock change) drove the actual dev server: typing "java"
+correctly surfaced "Java"/"JavaScript" with the right localized "Tech"
+label, `ArrowDown` correctly highlighted the second item, `Enter`
+correctly navigated to `?q=JavaScript`; a second pass typing "rea" and
+mouse-clicking the first suggestion correctly set the input to
+"React" and navigated to `?q=React`. No console or page errors either
+run.
+
+Verified: `tsc --noEmit`, `eslint` on every changed file, the full test
+suite (105 passing), `npm run build`, and the live-browser pass above.
