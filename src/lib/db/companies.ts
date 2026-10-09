@@ -34,7 +34,7 @@ export type MyCompany = {
   custom_section_body: string | null;
 };
 
-export type CompanyTeamMember = { id: string; name: string; role: string | null };
+export type CompanyTeamMember = { id: string; name: string; role: string | null; photoUrl: string | null };
 export type CompanyTestimonial = { id: string; name: string; role: string | null; quote: string };
 export type CompanyGalleryPhoto = { id: string; url: string };
 export type CompanyGalleryVideo = { id: string; title: string; url: string };
@@ -57,7 +57,7 @@ async function fetchCompanyRichProfileLists(
   const [team, testimonials, photos, videos] = await Promise.all([
     supabase
       .from("company_team_members")
-      .select("id, name, role")
+      .select("id, name, role, photo_url")
       .eq("company_id", companyId)
       .order("created_at", { ascending: true }),
     supabase
@@ -78,7 +78,7 @@ async function fetchCompanyRichProfileLists(
   ]);
 
   return {
-    teamMembers: team.data ?? [],
+    teamMembers: (team.data ?? []).map((m) => ({ id: m.id, name: m.name, role: m.role, photoUrl: m.photo_url })),
     testimonials: testimonials.data ?? [],
     galleryPhotos: photos.data ?? [],
     galleryVideos: videos.data ?? [],
@@ -93,7 +93,9 @@ export async function getMyCompanyRichProfile(companyId: string): Promise<Compan
 /** Delete-then-reinsert — same convention as `job_tech_tags`/
  *  `candidate_experience`: no explicit `position` column, order is array
  *  order at save time + `order by created_at asc` on read. */
-export async function saveCompanyTeamMembers(members: { name: string; role: string | null }[]) {
+export async function saveCompanyTeamMembers(
+  members: { name: string; role: string | null; photoUrl: string | null }[],
+) {
   const supabase = await createClient();
   const { data: companyId } = await supabase.rpc("my_company_id");
   if (!companyId) throw new Error("not an employer");
@@ -103,6 +105,7 @@ export async function saveCompanyTeamMembers(members: { name: string; role: stri
     company_id: companyId,
     name: m.name.trim(),
     role: m.role?.trim() || null,
+    photo_url: m.photoUrl,
   }));
   if (rows.length > 0) {
     const { error } = await supabase.from("company_team_members").insert(rows);

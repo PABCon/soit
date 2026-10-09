@@ -167,6 +167,12 @@
       "bad_file": "That file isn't a PNG, JPEG, or WEBP image.",
       "upload_failed": "Couldn't upload that image. Try again."
     },
+    "teamPhotoError": {
+      "not_employer": "Something went wrong. Try again.",
+      "file_too_large": "That image is too large — 2MB maximum.",
+      "bad_file": "That file isn't a PNG, JPEG, or WEBP image.",
+      "upload_failed": "Couldn't upload that image. Try again."
+    },
     "errorNoAdCredits": "You're out of ad credits — buy more to publish another job.",
     "adCreditsRemaining": "{count, plural, =0 {No ad credits remaining} one {# ad credit remaining} other {# ad credits remaining}}",
     "adPackLabel": "{count, plural, one {# job ad} other {# job ads}}",
@@ -215,6 +221,10 @@
     "billingHistoryAdCredits": "{count, plural, one {# job ad credit} other {# job ad credits}}",
     "saving": "Saving…",
     "richProfileHeading": "Rich company profile",
+    "previewShow": "Show preview",
+    "previewHide": "Hide preview",
+    "previewUntitled": "Your company name",
+    "previewEmpty": "Fill in the fields above to see them here.",
     "richProfileTeaser": "Want to show more about your company? Become a Top Employer.",
     "richProfileTeaserCta": "Become a Top Employer",
     "richProfileAboutUs": "About us",

@@ -12,6 +12,7 @@ import { normalizeWebsiteUrl } from "@/lib/url";
 // code (leaflet is only touched inside a useEffect), so a plain import is
 // both simpler and sufficient.
 import { CompanyMap } from "@/components/CompanyMap";
+import { getVideoEmbedUrl } from "@/lib/video-embed";
 
 export async function getCompanyPageMetadata(slug: string) {
   const company = await getCompanyBySlug(slug);
@@ -216,7 +217,15 @@ export async function CompanyProfileBody({
           <ul className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-3">
             {company.teamMembers.map((m) => (
               <li key={m.id} className="rounded-xl border border-line bg-white px-4 py-3 text-center">
-                <p className="text-sm font-semibold text-ink">{m.name}</p>
+                {m.photoUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element -- Supabase Storage URL
+                  <img src={m.photoUrl} alt="" className="mx-auto h-14 w-14 rounded-full object-cover" />
+                ) : (
+                  <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-pine font-display text-lg font-bold text-white">
+                    {m.name.slice(0, 1).toUpperCase() || "?"}
+                  </span>
+                )}
+                <p className="mt-2 text-sm font-semibold text-ink">{m.name}</p>
                 {m.role && <p className="mt-0.5 text-xs text-muted">{m.role}</p>}
               </li>
             ))}
@@ -258,22 +267,40 @@ export async function CompanyProfileBody({
       {company.galleryVideos.length > 0 && (
         <section className="mt-10">
           <h2 className="font-display text-lg font-semibold">{t("videoGallery")}</h2>
-          <ul className="mt-4 flex flex-col gap-2">
-            {company.galleryVideos.map((v) => (
-              <li key={v.id}>
-                <a
-                  href={v.url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="flex items-center gap-2 rounded-lg border border-line bg-white px-3 py-2 text-sm text-pine hover:bg-paper"
-                >
-                  <svg viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4 shrink-0">
-                    <path d="M8 5.5v13l11-6.5-11-6.5Z" />
-                  </svg>
-                  {v.title}
-                </a>
-              </li>
-            ))}
+          <ul className="mt-4 grid gap-4 sm:grid-cols-2">
+            {company.galleryVideos.map((v) => {
+              const embedUrl = getVideoEmbedUrl(v.url);
+              return (
+                <li key={v.id}>
+                  {embedUrl ? (
+                    <div className="overflow-hidden rounded-lg border border-line bg-black">
+                      <div className="aspect-video">
+                        <iframe
+                          src={embedUrl}
+                          title={v.title}
+                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                          allowFullScreen
+                          className="h-full w-full"
+                        />
+                      </div>
+                      <p className="px-3 py-2 text-sm text-ink">{v.title}</p>
+                    </div>
+                  ) : (
+                    <a
+                      href={v.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="flex items-center gap-2 rounded-lg border border-line bg-white px-3 py-2 text-sm text-pine hover:bg-paper"
+                    >
+                      <svg viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4 shrink-0">
+                        <path d="M8 5.5v13l11-6.5-11-6.5Z" />
+                      </svg>
+                      {v.title}
+                    </a>
+                  )}
+                </li>
+              );
+            })}
           </ul>
         </section>
       )}

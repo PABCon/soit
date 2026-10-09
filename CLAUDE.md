@@ -4738,3 +4738,53 @@ job requires it).
 Verified: `tsc --noEmit`, `eslint` on every changed file, the full test
 suite (105 passing), `npm run build`, and the live-browser + live-
 database checks above.
+
+## Top Employer profile enhancements: team photos, playable video embeds, a live preview pane
+
+The last remaining medium item from the QA list, addressed in one
+batch since all three pieces touch the same console page.
+
+- **Team photos** — `company_team_members` had no photo column at all.
+  New `photo_url` column (migration
+  `20261009190000_team_member_photos.sql`); upload reuses the exact
+  `branding`-bucket path convention the gallery-photo upload already
+  uses (`<company_id>/<subfolder>/<uuid>.<ext>`, here `.../team/...`)
+  — confirmed by reading the bucket's own storage policy
+  (`(storage.foldername(name))[1] = my_company_id()`, only the first
+  path segment matters) that this needed no new policy, same proven
+  write path as gallery photos. Upload happens immediately on file
+  choice (an image has nothing meaningful to "preview before saving"),
+  but the URL only actually lands in the database on the row's next
+  explicit Save — `company_team_members` is saved delete-then-reinsert
+  with no stable per-row id across saves (see
+  `saveCompanyTeamMembers`'s own comment), so there was never a
+  specific DB row to attach a photo to independently; the upload
+  action just returns the URL for the client's own local row state to
+  carry forward, same as every other field in that form already works.
+  Public profile renders the photo as a circular avatar, falling back
+  to an initials circle (matching the pattern already used on the
+  applicant detail page) when none is set.
+- **Playable video embeds** — the gallery-video "link" just opened
+  YouTube/Vimeo in a new tab. New `src/lib/video-embed.ts` recognizes
+  the common YouTube (`watch?v=`, `youtu.be/`, `/shorts/`, `/embed/`)
+  and Vimeo URL shapes and returns their real embed-player URL;
+  anything unrecognized (a direct `.mp4`, an unsupported host) falls
+  back to the original plain-link treatment rather than rendering a
+  broken iframe. 9 new unit tests.
+- **Live preview pane** — scoped deliberately: `CompanyProfileForm`
+  already lifts `name`/`description`/`logoPreview`/`coverPreview`/
+  `aboutUs`/`howWeWork`/`benefits`/`customTitle`/`customBody` to its
+  own state (everything a Save click submits together), so a
+  `CompanyProfilePreview` reading those same state variables as props
+  updates live on every keystroke with zero new plumbing. Team
+  members/testimonials/galleries were deliberately left out of the
+  preview — each already manages its own separate local state behind
+  its own independent Save button (a real, larger refactor to lift),
+  and each already gets its own instant `revalidatePath` on save, so
+  "see it before you save" already has a reasonable answer there
+  (save that one section, reload the public page) even without this
+  panel covering it too.
+
+Verified: `tsc --noEmit`, `eslint` on every changed file, the full
+test suite (114 passing, +9 for `video-embed.ts`), and `npm run
+build`.

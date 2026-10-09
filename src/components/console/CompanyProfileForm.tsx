@@ -13,6 +13,7 @@ import { TestimonialsSection } from "@/components/console/TestimonialsSection";
 import { PhotoGallerySection } from "@/components/console/PhotoGallerySection";
 import { VideoGallerySection } from "@/components/console/VideoGallerySection";
 import { CompanyAutofillPanel, type AutofillApplyFields } from "@/components/console/CompanyAutofillPanel";
+import { CompanyProfilePreview } from "@/components/console/CompanyProfilePreview";
 
 const inputClass = "h-9 rounded-lg border border-line bg-white px-3 text-sm";
 const labelClass = "flex flex-col gap-1 text-sm";
@@ -70,6 +71,7 @@ export function CompanyProfileForm({
   const [imageSuccess, setImageSuccess] = useState<"logo" | "cover" | null>(null);
   const [logoPreview, setLogoPreview] = useState(company.company_logo_url);
   const [coverPreview, setCoverPreview] = useState(company.cover_image_url);
+  const [showPreview, setShowPreview] = useState(false);
 
   const isTopEmployer = company.top_employer_active;
 
@@ -282,6 +284,31 @@ export function CompanyProfileForm({
             ))}
           </div>
         </fieldset>
+
+        <div>
+          <button
+            type="button"
+            onClick={() => setShowPreview((v) => !v)}
+            className="text-sm font-medium text-pine hover:underline"
+          >
+            {showPreview ? t("previewHide") : t("previewShow")}
+          </button>
+          {showPreview && (
+            <div className="mt-3 max-w-md">
+              <CompanyProfilePreview
+                name={name}
+                description={description}
+                logoUrl={logoPreview}
+                coverUrl={coverPreview}
+                aboutUs={aboutUs}
+                howWeWork={howWeWork}
+                benefits={benefits}
+                customTitle={customTitle}
+                customBody={customBody}
+              />
+            </div>
+          )}
+        </div>
 
         {/* Non-Top-Employer companies only ever see the rich-profile section
          *  blurred behind an upsell gate below — placing Save after that

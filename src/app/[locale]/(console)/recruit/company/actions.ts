@@ -23,6 +23,7 @@ import { revalidatePath } from "next/cache";
 const LOGO_MAX = { width: 512, height: 512 };
 const COVER_MAX = { width: 1600, height: 900 };
 const GALLERY_MAX = { width: 1920, height: 1080 };
+const TEAM_PHOTO_MAX = { width: 256, height: 256 };
 
 function trimmedOrNull(formData: FormData, key: string): string | null {
   return (formData.get(key) as string)?.trim() || null;
@@ -118,9 +119,52 @@ export async function uploadImageAction(
   return { ok: true };
 }
 
-export async function saveTeamMembersAction(members: { name: string; role: string | null }[]) {
+export async function saveTeamMembersAction(
+  members: { name: string; role: string | null; photoUrl: string | null }[],
+) {
   await saveCompanyTeamMembers(members);
   revalidatePath("/recruit/company");
+
+  const supabase = await createClient();
+  const { data: company } = await supabase.rpc("my_company");
+  if (company?.slug) revalidatePath(`/companies/${company.slug}`);
+}
+
+export type UploadTeamPhotoResult = { ok: true; url: string } | { ok: false; reason: "not_employer" | "file_too_large" | "bad_file" | "upload_failed" };
+
+/** Top Employer profile enhancements (real-usage QA item): "team photos".
+ *  Returns the uploaded photo's URL rather than writing to a specific
+ *  `company_team_members` row — that table is saved delete-then-reinsert
+ *  (no stable per-member id across saves, see saveCompanyTeamMembers's
+ *  own comment), so the caller holds this URL in its own row of local
+ *  state and it's persisted together with name/role on the next
+ *  `saveTeamMembersAction` call, exactly like every other field in that
+ *  form already works. */
+export async function uploadTeamMemberPhotoAction(formData: FormData): Promise<UploadTeamPhotoResult> {
+  const file = formData.get("file") as File | null;
+  if (!file || file.size === 0) return { ok: false, reason: "bad_file" };
+
+  if (file.size > MAX_IMAGE_BYTES) return { ok: false, reason: "file_too_large" };
+  if (!ALLOWED_IMAGE_TYPES.includes(file.type)) return { ok: false, reason: "bad_file" };
+
+  const supabase = await createClient();
+  const { data: companyId } = await supabase.rpc("my_company_id");
+  if (!companyId) return { ok: false, reason: "not_employer" };
+
+  const ext = file.name.split(".").pop() || "png";
+  const path = `${companyId}/team/${crypto.randomUUID()}.${ext}`;
+  const { bytes, contentType } = await resizeImageIfNeeded(
+    await file.arrayBuffer(),
+    file.type,
+    TEAM_PHOTO_MAX.width,
+    TEAM_PHOTO_MAX.height,
+  );
+
+  const { error: uploadError } = await supabase.storage.from("branding").upload(path, bytes, { contentType });
+  if (uploadError) return { ok: false, reason: "upload_failed" };
+
+  const { data: publicUrl } = supabase.storage.from("branding").getPublicUrl(path);
+  return { ok: true, url: publicUrl.publicUrl };
 }
 
 export async function saveTestimonialsAction(

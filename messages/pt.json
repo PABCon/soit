@@ -167,6 +167,12 @@
       "bad_file": "Esse ficheiro não é uma imagem PNG, JPEG ou WEBP.",
       "upload_failed": "Não foi possível carregar essa imagem. Tente novamente."
     },
+    "teamPhotoError": {
+      "not_employer": "Algo correu mal. Tente novamente.",
+      "file_too_large": "Essa imagem é demasiado grande — máximo 2MB.",
+      "bad_file": "Esse ficheiro não é uma imagem PNG, JPEG ou WEBP.",
+      "upload_failed": "Não foi possível carregar essa imagem. Tente novamente."
+    },
     "errorNoAdCredits": "Não tem créditos de anúncio — compre mais para publicar outra vaga.",
     "adCreditsRemaining": "{count, plural, =0 {Sem créditos de anúncio} one {# crédito de anúncio restante} other {# créditos de anúncio restantes}}",
     "adPackLabel": "{count, plural, one {# vaga} other {# vagas}}",
@@ -215,6 +221,10 @@
     "billingHistoryAdCredits": "{count, plural, one {# crédito de anúncio} other {# créditos de anúncio}}",
     "saving": "A guardar…",
     "richProfileHeading": "Perfil de empresa completo",
+    "previewShow": "Mostrar pré-visualização",
+    "previewHide": "Ocultar pré-visualização",
+    "previewUntitled": "O nome da sua empresa",
+    "previewEmpty": "Preencha os campos acima para os ver aqui.",
     "richProfileTeaser": "Quer mostrar mais sobre a sua empresa? Torne-se Top Employer.",
     "richProfileTeaserCta": "Tornar-me Top Employer",
     "richProfileAboutUs": "Sobre nós",
