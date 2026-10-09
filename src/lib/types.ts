@@ -37,7 +37,15 @@ export type Job = {
   salaryMax: number | null;
   salaryPeriod: SalaryPeriod;
   salaryMonths?: number;
+  /** The "primary" type — the first one the employer picked, still a
+   *  single value for every consumer that only ever needs one (the
+   *  public API's existing field, JSON-LD's single-value fallback,
+   *  sort/default display). */
   employmentType: EmploymentType;
+  /** The full set this job accepts (real-usage QA item: "multiple
+   *  contract types on one job ad") — always includes `employmentType`
+   *  itself. Length 1 for the common case of a job with only one. */
+  employmentTypes: EmploymentType[];
   language: "pt" | "en";
   postedDaysAgo: number;
   /** null for a draft/never-published job — "days left" has no meaning yet. */

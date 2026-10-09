@@ -24,7 +24,8 @@ const RECS_SELECT = `
   job_tech_tags ( tech_tag_id, level, required, tech_tags ( slug, label ) ),
   job_categories ( slug ),
   locations ( slug ),
-  job_languages ( level, spoken_languages ( slug, label ) )
+  job_languages ( level, spoken_languages ( slug, label ) ),
+  job_employment_types ( employment_type )
 `;
 
 type RecsJobRow = Omit<JobRow, "job_tech_tags"> & {

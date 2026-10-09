@@ -309,6 +309,7 @@
     },
     "salaryMonths": "Meses por ano",
     "employmentType": "Tipo de contrato",
+    "employmentTypeHint": "Selecione todos os tipos de contrato aceitáveis para esta vaga — a maioria das vagas só precisa de um.",
     "employmentTypeOption": {
       "permanent": "Contrato sem termo",
       "fixed_term": "Contrato a termo",

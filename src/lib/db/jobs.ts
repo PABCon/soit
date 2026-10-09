@@ -39,7 +39,8 @@ export const SELECT = `
   job_tech_tags ( level, required, tech_tags ( slug, label ) ),
   job_categories ( slug ),
   locations ( slug ),
-  job_languages ( level, spoken_languages ( slug, label ) )
+  job_languages ( level, spoken_languages ( slug, label ) ),
+  job_employment_types ( employment_type )
 `;
 
 export type JobRow = {
@@ -79,6 +80,7 @@ export type JobRow = {
   job_categories: { slug: string } | null;
   locations: { slug: string } | null;
   job_languages: { level: SkillLevel | null; spoken_languages: { slug: string; label: string } }[];
+  job_employment_types: { employment_type: Job["employmentType"] }[];
 };
 
 /** Always includes the real salary — callers on the public path (getLiveJobs
@@ -113,6 +115,14 @@ export function toJob(row: JobRow): Job {
     salaryPeriod: row.salary_period,
     salaryMonths: row.salary_months ?? undefined,
     employmentType: row.employment_type,
+    // Defensive fallback to [employment_type] rather than an empty array —
+    // every real job gets a row here via saveJob or the migration's own
+    // backfill, but a stale/manually-edited row should never silently
+    // claim to accept zero contract types.
+    employmentTypes:
+      row.job_employment_types.length > 0
+        ? row.job_employment_types.map((et) => et.employment_type)
+        : [row.employment_type],
     language: row.language,
     postedDaysAgo: Math.max(0, Math.floor((Date.now() - new Date(posted).getTime()) / 86_400_000)),
     daysLeft,
@@ -366,7 +376,10 @@ export type JobFormInput = {
   salaryMax: number;
   salaryPeriod: Job["salaryPeriod"];
   salaryMonths: number | null;
-  employmentType: Job["employmentType"];
+  /** Non-empty — the first entry is persisted as `jobs.employment_type`
+   *  (the "primary" type), the full array as `job_employment_types`
+   *  (real-usage QA item: "multiple contract types on one job ad"). */
+  employmentTypes: Job["employmentType"][];
   techTags: JobTechTagInput[];
   languages: JobLanguageInput[];
   externalApplyUrl: string;
@@ -511,7 +524,7 @@ export async function saveJob(
     salary_max: input.salaryMax,
     salary_period: input.salaryPeriod,
     salary_months: input.salaryPeriod === "month" ? input.salaryMonths : null,
-    employment_type: input.employmentType,
+    employment_type: input.employmentTypes[0],
     external_apply_url: input.externalApplyUrl.trim() || null,
     salary_public: salaryPublic,
     status: willPublish ? "published" : "draft",
@@ -562,6 +575,14 @@ export async function saveJob(
       })),
     );
   }
+
+  // Dedupe: the UI shouldn't ever send the same type twice, but a direct
+  // API caller could, and the table's own primary key would reject a
+  // duplicate insert outright.
+  await supabase.from("job_employment_types").delete().eq("job_id", id);
+  await supabase.from("job_employment_types").insert(
+    [...new Set(input.employmentTypes)].map((employmentType) => ({ job_id: id, employment_type: employmentType })),
+  );
 
   const { data: saved } = await supabase.from("jobs").select("slug").eq("id", id).single();
 
@@ -684,6 +705,7 @@ export type JobForEdit = {
   salary_public: boolean;
   job_tech_tags: { tech_tag_id: string; level: SkillLevel | null; required: boolean }[];
   job_languages: { spoken_language_id: string; level: SkillLevel | null }[];
+  job_employment_types: { employment_type: Job["employmentType"] }[];
 };
 
 export async function getJobForEdit(jobId: string): Promise<JobForEdit | null> {
@@ -691,7 +713,7 @@ export async function getJobForEdit(jobId: string): Promise<JobForEdit | null> {
   const { data } = await supabase
     .from("jobs")
     .select(
-      "id, company_id, title, description, language, seniority, work_model, location, location_id, category_id, salary_min, salary_max, salary_period, salary_months, employment_type, external_apply_url, status, expires_at, salary_public, job_tech_tags(tech_tag_id, level, required), job_languages(spoken_language_id, level)",
+      "id, company_id, title, description, language, seniority, work_model, location, location_id, category_id, salary_min, salary_max, salary_period, salary_months, employment_type, external_apply_url, status, expires_at, salary_public, job_tech_tags(tech_tag_id, level, required), job_languages(spoken_language_id, level), job_employment_types(employment_type)",
     )
     .eq("id", jobId)
     .maybeSingle();
@@ -848,7 +870,12 @@ export type ApiJobDetail = {
   salaryMax: number;
   salaryPeriod: Job["salaryPeriod"];
   salaryMonths: number | null;
+  /** The "primary" type, kept for backward compatibility with existing
+   *  API integrations built before `employmentTypes` existed. */
   employmentType: Job["employmentType"];
+  /** The full set this job accepts (real-usage QA item: "multiple
+   *  contract types on one job ad") — always includes `employmentType`. */
+  employmentTypes: Job["employmentType"][];
   techTags: { slug: string; level: SkillLevel | null; required: boolean }[];
   languages: { slug: string; level: SkillLevel | null }[];
   externalApplyUrl: string | null;
@@ -879,6 +906,7 @@ type ApiJobDetailRow = {
   locations: { slug: string } | null;
   job_tech_tags: { level: SkillLevel | null; required: boolean; tech_tags: { slug: string } }[];
   job_languages: { level: SkillLevel | null; spoken_languages: { slug: string } }[];
+  job_employment_types: { employment_type: Job["employmentType"] }[];
 };
 
 export async function getCompanyJobById(companyId: string, jobId: string): Promise<ApiJobDetail | null> {
@@ -892,7 +920,8 @@ export async function getCompanyJobById(companyId: string, jobId: string): Promi
        salary_period, salary_months, employment_type, external_apply_url, salary_public, published_at,
        expires_at, job_categories ( slug ), locations ( slug ),
        job_tech_tags ( level, required, tech_tags ( slug ) ),
-       job_languages ( level, spoken_languages ( slug ) )`,
+       job_languages ( level, spoken_languages ( slug ) ),
+       job_employment_types ( employment_type )`,
     )
     .eq("id", jobId)
     .eq("company_id", companyId)
@@ -917,6 +946,10 @@ export async function getCompanyJobById(companyId: string, jobId: string): Promi
     salaryPeriod: row.salary_period,
     salaryMonths: row.salary_months,
     employmentType: row.employment_type,
+    employmentTypes:
+      row.job_employment_types.length > 0
+        ? row.job_employment_types.map((et) => et.employment_type)
+        : [row.employment_type],
     techTags: row.job_tech_tags.map((t) => ({ slug: t.tech_tags.slug, level: t.level, required: t.required })),
     languages: row.job_languages.map((l) => ({ slug: l.spoken_languages.slug, level: l.level })),
     externalApplyUrl: row.external_apply_url,

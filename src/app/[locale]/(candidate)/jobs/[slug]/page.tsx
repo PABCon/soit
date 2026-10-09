@@ -59,7 +59,16 @@ function jobPostingJsonLd(job: JobDetail, locale: string) {
     description: job.description,
     datePosted: job.publishedAt.slice(0, 10),
     validThrough: job.expiresAt.slice(0, 10),
-    employmentType: EMPLOYMENT[job.employmentType],
+    // schema.org's employmentType accepts an array — real-usage QA item
+    // "multiple contract types on one job ad" means this can genuinely map
+    // to more than one enum value now. Deduped (permanent and fixed_term
+    // both map to FULL_TIME) and kept as a single string, not a 1-element
+    // array, when there's only one — the common case, and the exact shape
+    // every existing consumer of this JSON-LD already expects.
+    employmentType: (() => {
+      const mapped = [...new Set(job.employmentTypes.map((et) => EMPLOYMENT[et]))];
+      return mapped.length === 1 ? mapped[0] : mapped;
+    })(),
     hiringOrganization: {
       "@type": "Organization",
       name: job.company.name,
@@ -164,6 +173,11 @@ export default async function JobDetailPage({ params }: Props) {
                   tf(`workModel.${job.workModel}`),
                   tf(`seniority.${job.seniority}`),
                   job.language.toUpperCase(),
+                  // Real-usage QA item: "multiple contract types on one job
+                  // ad" — the primary type already shows in the salary
+                  // card; any *additional* accepted types get their own
+                  // badge here too.
+                  ...job.employmentTypes.filter((et) => et !== job.employmentType).map((et) => tjf(`employmentTypeOption.${et}`)),
                 ].map((b) => (
                   <span
                     key={b}

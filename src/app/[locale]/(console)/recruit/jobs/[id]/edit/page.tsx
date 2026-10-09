@@ -58,7 +58,10 @@ export default async function EditJobPage({ params }: Props) {
             salaryMax: job.salary_max,
             salaryPeriod: job.salary_period,
             salaryMonths: job.salary_months,
-            employmentType: job.employment_type,
+            employmentTypes:
+              job.job_employment_types.length > 0
+                ? job.job_employment_types.map((et) => et.employment_type)
+                : [job.employment_type],
             selectedTechTags: job.job_tech_tags.map((t) => ({
               id: t.tech_tag_id,
               level: t.level,

@@ -34,7 +34,7 @@ type Initial = {
   salaryMax: number;
   salaryPeriod: JobFormInput["salaryPeriod"];
   salaryMonths: number | null;
-  employmentType: JobFormInput["employmentType"];
+  employmentTypes: JobFormInput["employmentTypes"];
   selectedTechTags: SelectedTag[];
   selectedLanguages: SelectedLanguage[];
   externalApplyUrl: string;
@@ -108,8 +108,8 @@ export function JobForm({
     initial?.salaryPeriod ?? "month",
   );
   const [salaryMonths, setSalaryMonths] = useState(initial?.salaryMonths?.toString() ?? "14");
-  const [employmentType, setEmploymentType] = useState<JobFormInput["employmentType"]>(
-    initial?.employmentType ?? "permanent",
+  const [employmentTypes, setEmploymentTypes] = useState<JobFormInput["employmentTypes"]>(
+    initial?.employmentTypes ?? ["permanent"],
   );
   const [selectedTags, setSelectedTags] = useState<SelectedTag[]>(initial?.selectedTechTags ?? []);
   const [selectedLanguages, setSelectedLanguages] = useState<SelectedLanguage[]>(initial?.selectedLanguages ?? []);
@@ -170,6 +170,16 @@ export function JobForm({
     setSelectedLanguages((prev) => prev.map((l) => (l.id === id ? { ...l, level } : l)));
   }
 
+  /** Real-usage QA item: "multiple contract types on one job ad" —
+   *  never lets the set empty out entirely, same reasoning a radio-style
+   *  single select always guaranteed one selection by construction. */
+  function toggleEmploymentType(et: JobFormInput["employmentTypes"][number]) {
+    setEmploymentTypes((prev) => {
+      if (prev.includes(et)) return prev.length > 1 ? prev.filter((x) => x !== et) : prev;
+      return [...prev, et];
+    });
+  }
+
   /** Applies whatever the model actually returned, field by field — a field
    *  the model left null/empty is left completely untouched, never blanked
    *  out. Tech/language/category/location labels are matched against the
@@ -184,7 +194,7 @@ export function JobForm({
     if (data.description) setDescription(data.description);
     if (data.seniority) setSeniority(data.seniority);
     if (data.workModel) setWorkModel(data.workModel);
-    if (data.employmentType) setEmploymentType(data.employmentType);
+    if (data.employmentType) setEmploymentTypes([data.employmentType]);
     if (data.salaryMin !== null) setSalaryMin(String(data.salaryMin));
     if (data.salaryMax !== null) setSalaryMax(String(data.salaryMax));
     if (data.salaryPeriod) setSalaryPeriod(data.salaryPeriod);
@@ -301,7 +311,7 @@ export function JobForm({
         salaryMax: Number(salaryMax),
         salaryPeriod,
         salaryMonths: salaryPeriod === "month" ? Number(salaryMonths) : null,
-        employmentType,
+        employmentTypes,
         techTags: selectedTags.map((t) => ({ techTagId: t.id, level: t.level, required: t.required })),
         languages: selectedLanguages.map((l) => ({ spokenLanguageId: l.id, level: l.level })),
         externalApplyUrl,
@@ -540,20 +550,26 @@ export function JobForm({
         ) : (
           <p className="mt-4 text-xs text-muted">{t("hideSalaryUpsell")}</p>
         )}
-        <label className={`${labelClass} mt-4`}>
-          <span>{t("employmentType")}</span>
-          <select
-            value={employmentType}
-            onChange={(e) => setEmploymentType(e.target.value as JobFormInput["employmentType"])}
-            className={inputClass}
-          >
+        <div className="mt-4">
+          <span className="text-sm">{t("employmentType")}</span>
+          <p className="text-xs text-muted">{t("employmentTypeHint")}</p>
+          <div className="mt-1.5 flex flex-wrap gap-1.5">
             {(["permanent", "fixed_term", "contractor", "freelance", "internship"] as const).map((et) => (
-              <option key={et} value={et}>
+              <button
+                key={et}
+                type="button"
+                onClick={() => toggleEmploymentType(et)}
+                className={
+                  employmentTypes.includes(et)
+                    ? "rounded-md border border-pine bg-pine px-2 py-0.5 text-xs text-white"
+                    : "rounded-md border border-line px-2 py-0.5 text-xs text-muted hover:border-muted"
+                }
+              >
                 {t(`employmentTypeOption.${et}`)}
-              </option>
+              </button>
             ))}
-          </select>
-        </label>
+          </div>
+        </div>
       </fieldset>
 
       <label className={labelClass}>

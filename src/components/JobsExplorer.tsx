@@ -174,7 +174,7 @@ export function JobsExplorer({
         (seniority.length === 0 || seniority.includes(j.seniority)) &&
         (adLanguage.length === 0 || adLanguage.includes(j.language)) &&
         (workModel.length === 0 || workModel.includes(j.workModel)) &&
-        (employmentType.length === 0 || employmentType.includes(j.employmentType)) &&
+        (employmentType.length === 0 || j.employmentTypes.some((et) => employmentType.includes(et))) &&
         (reqLanguage.length === 0 || reqLanguage.some((l) => j.requiredLanguageSlugs.includes(l))) &&
         (!remoteOnly || j.workModel === "remote") &&
         (monthlyFloor(j) === null || monthlyFloor(j)! >= minSalary) &&

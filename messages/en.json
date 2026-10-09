@@ -309,6 +309,7 @@
     },
     "salaryMonths": "Months per year",
     "employmentType": "Employment type",
+    "employmentTypeHint": "Select every contract type you're open to for this role — most jobs only need one.",
     "employmentTypeOption": {
       "permanent": "Permanent",
       "fixed_term": "Fixed term",

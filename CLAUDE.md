@@ -4788,3 +4788,77 @@ batch since all three pieces touch the same console page.
 Verified: `tsc --noEmit`, `eslint` on every changed file, the full
 test suite (114 passing, +9 for `video-embed.ts`), and `npm run
 build`.
+
+## Big structural item 1: multiple contract types on one job ad
+
+Real-usage QA item: `jobs.employment_type` was a single enum column —
+an employer offering a role as either permanent or B2B/contractor had
+to pick one (misleading) or post it twice (duplicate listings, split
+applicant pools). The real fix, scoped deliberately:
+
+- **New `job_employment_types` join table** (migration
+  `20261009200000_job_employment_types.sql`), same shape as
+  `job_tech_tags`/`job_languages` (including an identical RLS policy
+  set — public read, employer-owns-the-job write). `jobs.employment_type`
+  itself is kept, not removed — it's now the "primary" type (the
+  employer's first pick), since plenty of existing code only ever
+  needs one value: the public API's existing `employmentType` field
+  (kept for backward compatibility — new callers can send the plural
+  `employmentTypes` array instead, `resolve-refs.ts`'s schema requires
+  exactly one of the two), JSON-LD's single-value case, and `Salary`'s
+  own inline label (deliberately left singular — it already reads
+  naturally as "the" contract type next to a number, and touching its
+  prop contract was unnecessary extra risk for what this item asked
+  for). Backfilled every existing job with its own single type so the
+  new join never comes back empty for anything older than this change.
+- **One salary range for the whole ad**, not per-contract-type —
+  explicitly scoped out. Per-type salary (a B2B day-rate next to a
+  permanent monthly salary on the same ad) is a real, much bigger
+  redesign the QA note's own wording ("data model change") didn't
+  ask for; this is "one job, multiple accepted contract types," not
+  "one ad listing several differently-priced offers."
+- `JobForm`'s single `<select>` became a multi-select chip group
+  (can't empty out to zero, same guarantee a radio-style select always
+  had by construction); display picked up extra-type badges on
+  `JobRow` and the job detail page (only shown beyond the primary
+  type, so a single-type job's row looks exactly as it always did);
+  the filters-redesign batch's new "contract type" chips now match on
+  *any* of a job's accepted types, not just its primary one.
+- **Explicitly left out of scope**: candidate-preference matching
+  (`matching-scoring.ts`) still compares a candidate's stated
+  employment-type preference against a job's single primary type only,
+  not its full accepted set — upgrading that touches a carefully-tuned
+  scoring system (its own file header documents a real past false-
+  positive bug fixed through careful tuning) for a precision
+  improvement the QA note didn't ask for; a real but separate
+  enhancement for later, not bundled into this change.
+
+**A real bug was caught mid-change, not by `tsc`**: `recommendations.ts`
+has its own separate `RECS_SELECT`/`RecsJobRow` (a deliberate choice
+from an earlier phase, documented in its own comment, to avoid
+widening the heavily-reused shared `SELECT`) that `Omit<JobRow,
+"job_tech_tags">`s everything else from the base type — meaning it
+still *typed* `job_employment_types` as required without actually
+*selecting* it, which would have crashed every job recommendation
+with "Cannot read properties of undefined" the moment `toJob()` tried
+to read it. The `as unknown as RecsJobRow[]` cast silently defeated
+`tsc` here — caught only by deliberately grep'ing every `toJob()`/
+`hideSalaryIfPrivate()` call site in the codebase and checking each
+one's actual select string, not by compiling. Fixed by adding the
+same join to `RECS_SELECT`.
+
+**Verified against the live database**, not just `tsc`/tests: a
+disposable draft job was created, the exact `job_employment_types`
+delete-then-reinsert `saveJob` performs was replicated directly, and
+the result was read back through the same join shape `toJob()` uses —
+confirmed the primary type landed correctly on `jobs.employment_type`
+(the first selection), the full set came back as both types with no
+duplicates, and a plain anon-key client (no admin bypass) could
+publicly read the new table, proving the RLS policy actually works
+end to end, not just that it compiles. All 5 checks passed, then the
+throwaway job was deleted (cascading its `job_employment_types` rows
+with it).
+
+Verified: `tsc --noEmit`, `eslint` on every changed file, the full
+test suite (114 passing), `npm run build`, and the live-database
+checks above.

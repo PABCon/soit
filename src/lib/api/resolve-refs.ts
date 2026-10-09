@@ -35,7 +35,15 @@ const jobBodySchema = z
     salaryMax: z.number().positive(),
     salaryPeriod: z.enum(["hour", "day", "month", "year"]),
     salaryMonths: z.number().int().min(12).max(14).nullable().optional(),
-    employmentType: z.enum(["permanent", "fixed_term", "contractor", "freelance", "internship"]),
+    // `employmentType` (singular) kept for backward compatibility with
+    // existing integrations built before multiple contract types per job
+    // existed; `employmentTypes` (plural) is the new, preferred field.
+    // Exactly one of the two must be given — see the refine() below.
+    employmentType: z.enum(["permanent", "fixed_term", "contractor", "freelance", "internship"]).optional(),
+    employmentTypes: z
+      .array(z.enum(["permanent", "fixed_term", "contractor", "freelance", "internship"]))
+      .min(1)
+      .optional(),
     techTags: z.array(techTagSchema).optional().default([]),
     languages: z.array(languageSchema).optional().default([]),
     externalApplyUrl: z.string().trim().optional().default(""),
@@ -51,6 +59,10 @@ const jobBodySchema = z
   .refine((v) => v.salaryPeriod === "month" || v.salaryMonths == null, {
     message: "salaryMonths only applies when salaryPeriod is \"month\"",
     path: ["salaryMonths"],
+  })
+  .refine((v) => !!v.employmentType || !!v.employmentTypes, {
+    message: "Either employmentType or employmentTypes is required",
+    path: ["employmentTypes"],
   });
 
 export type ResolveJobRefsResult =
@@ -125,7 +137,7 @@ export async function resolveJobRefs(body: unknown): Promise<ResolveJobRefsResul
     salaryMax: v.salaryMax,
     salaryPeriod: v.salaryPeriod,
     salaryMonths: v.salaryPeriod === "month" ? (v.salaryMonths ?? null) : null,
-    employmentType: v.employmentType,
+    employmentTypes: v.employmentTypes ?? [v.employmentType!],
     techTags: resolvedTechTags,
     languages: resolvedLanguages,
     externalApplyUrl: v.externalApplyUrl,

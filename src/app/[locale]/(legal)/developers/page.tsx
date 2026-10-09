@@ -34,8 +34,14 @@ const JOB_FIELDS: { field: string; type: string; required: string; note: string 
   {
     field: "employmentType",
     type: '"permanent" | "fixed_term" | "contractor" | "freelance" | "internship"',
-    required: "required",
-    note: "",
+    required: "required unless employmentTypes is given",
+    note: "a job's single/primary contract type",
+  },
+  {
+    field: "employmentTypes",
+    type: '("permanent" | "fixed_term" | "contractor" | "freelance" | "internship")[]',
+    required: "required unless employmentType is given",
+    note: "a job open to more than one contract type (e.g. permanent + freelance); takes priority over employmentType if both are given",
   },
   { field: "techTags", type: "{ slug, level?, required? }[]", required: "optional", note: "level: basic|intermediate|advanced|expert" },
   { field: "languages", type: "{ slug, level? }[]", required: "optional", note: "spoken-language requirement, not the ad's own language" },

@@ -25,8 +25,15 @@ export function JobRow({
   matchScore?: number;
 }) {
   const t = useTranslations("feed");
+  const tjf = useTranslations("jobForm");
   const isNew = job.postedDaysAgo <= 2;
   const daysLeft = job.daysLeft;
+  // Real-usage QA item: "multiple contract types on one job ad" — the
+  // primary type already shows next to the salary via <Salary>; any
+  // *additional* accepted types get their own badge here so a job open
+  // to both permanent and freelance doesn't look like a permanent-only
+  // listing.
+  const extraEmploymentTypes = job.employmentTypes.filter((et) => et !== job.employmentType);
 
   return (
     <li className="group @container relative border-b border-line">
@@ -79,6 +86,14 @@ export function JobRow({
               <span className="rounded border border-line px-1.5 py-0.5 text-[10px] font-medium text-muted uppercase">
                 {job.language}
               </span>
+              {extraEmploymentTypes.map((et) => (
+                <span
+                  key={et}
+                  className="rounded border border-line px-1.5 py-0.5 text-[10px] font-medium text-muted uppercase"
+                >
+                  {tjf(`employmentTypeOption.${et}`)}
+                </span>
+              ))}
             </div>
 
             <p className="mt-0.5 truncate text-sm text-muted">
