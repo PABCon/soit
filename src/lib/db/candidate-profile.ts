@@ -12,6 +12,7 @@ export type CandidateProfile = {
   avatarUrl: string | null;
   hasCv: boolean;
   cvPromptDismissed: boolean;
+  marketingOptIn: boolean;
 };
 
 /** RLS already scopes this to the caller's own row (`auth_user_id =
@@ -24,7 +25,7 @@ export async function getMyCandidateProfile(): Promise<CandidateProfile | null> 
   const supabase = await createClient();
   const { data } = await supabase
     .from("candidates")
-    .select("full_name, email, phone, linkedin_url, avatar_url, cv_url, cv_prompt_dismissed")
+    .select("full_name, email, phone, linkedin_url, avatar_url, cv_url, cv_prompt_dismissed, marketing_opt_in")
     .maybeSingle();
 
   if (!data) return null;
@@ -36,7 +37,19 @@ export async function getMyCandidateProfile(): Promise<CandidateProfile | null> 
     avatarUrl: data.avatar_url,
     hasCv: !!data.cv_url,
     cvPromptDismissed: data.cv_prompt_dismissed,
+    marketingOptIn: data.marketing_opt_in,
   };
+}
+
+/** Candidate settings — marketing-preferences checkbox (real-usage QA
+ *  item). Opt-in only, never implied, matching the column's own
+ *  not-consented-by-default stance. */
+export async function updateMarketingOptIn(optIn: boolean): Promise<void> {
+  const supabase = await createClient();
+  const { data: candidateId } = await supabase.rpc("my_candidate_id");
+  if (!candidateId) throw new Error("Not a candidate");
+  const { error } = await supabase.from("candidates").update({ marketing_opt_in: optIn }).eq("id", candidateId);
+  if (error) throw new Error(error.message);
 }
 
 /** First-login CV prompt (§ AI Pieces backlog, phase 4): "seen it" is
@@ -524,4 +537,86 @@ export async function saveCandidateJobPreferences(input: CandidateJobPreferences
       input.locationIds.map((locationId) => ({ candidate_id: candidateId, location_id: locationId })),
     );
   }
+}
+
+export type DeleteAccountResult = { ok: true } | { ok: false; reason: "not_a_candidate" };
+
+/**
+ * Candidate settings — "delete account" (real-usage QA item, GDPR-
+ * adjacent). Anonymizes rather than hard-deletes the `candidates` row
+ * itself: `applications`/`message_threads` both reference it with
+ * `on delete cascade`, so actually deleting the row would silently wipe
+ * an employer's own hiring records and message history too — a real
+ * business record on the other side, not just this candidate's own data.
+ * Everything that's unambiguously this candidate's own personal content
+ * (skills, languages, education, experience, certifications, job
+ * preferences, favorites, saved searches, and the CV/avatar files
+ * themselves) is hard-deleted; the core row keeps existing with its PII
+ * replaced, so an employer's past application/message history still
+ * resolves to *a* candidate row, just an anonymized one.
+ *
+ * Requires the admin client throughout: deleting the `auth.users` row
+ * (so the account genuinely can't log in again) is only ever possible
+ * through the service role, and doing the anonymizing update with the
+ * same client keeps this one function atomic-in-spirit rather than
+ * split across two privilege levels.
+ */
+export async function deleteCandidateAccount(): Promise<DeleteAccountResult> {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, reason: "not_a_candidate" };
+
+  const { data: candidate } = await supabase.from("candidates").select("id").eq("auth_user_id", user.id).maybeSingle();
+  if (!candidate) return { ok: false, reason: "not_a_candidate" };
+
+  const admin = createAdminClient();
+  const candidateId = candidate.id;
+
+  await Promise.all([
+    admin.from("candidate_tech_tags").delete().eq("candidate_id", candidateId),
+    admin.from("candidate_languages").delete().eq("candidate_id", candidateId),
+    admin.from("candidate_education").delete().eq("candidate_id", candidateId),
+    admin.from("candidate_experience").delete().eq("candidate_id", candidateId),
+    admin.from("candidate_certifications").delete().eq("candidate_id", candidateId),
+    admin.from("candidate_preferred_categories").delete().eq("candidate_id", candidateId),
+    admin.from("candidate_preferred_locations").delete().eq("candidate_id", candidateId),
+    admin.from("favorites").delete().eq("candidate_id", candidateId),
+    admin.from("saved_searches").delete().eq("candidate_id", candidateId),
+  ]);
+
+  const [{ data: cvFiles }, { data: avatarFiles }] = await Promise.all([
+    admin.storage.from("cvs").list(candidateId),
+    admin.storage.from("avatars").list(user.id),
+  ]);
+  await Promise.all([
+    cvFiles && cvFiles.length > 0
+      ? admin.storage.from("cvs").remove(cvFiles.map((f) => `${candidateId}/${f.name}`))
+      : Promise.resolve(),
+    avatarFiles && avatarFiles.length > 0
+      ? admin.storage.from("avatars").remove(avatarFiles.map((f) => `${user.id}/${f.name}`))
+      : Promise.resolve(),
+  ]);
+
+  await admin
+    .from("candidates")
+    .update({
+      full_name: "Deleted user",
+      email: `deleted-${candidateId}@justit.invalid`,
+      phone: null,
+      cv_url: null,
+      linkedin_url: null,
+      avatar_url: null,
+      skills: [],
+      email_verified: false,
+      marketing_opt_in: false,
+      auth_user_id: null,
+    })
+    .eq("id", candidateId);
+
+  await admin.auth.admin.deleteUser(user.id);
+  await supabase.auth.signOut();
+
+  return { ok: true };
 }

@@ -1003,5 +1003,18 @@
     "sending": "A enviar…",
     "sentConfirmation": "Mensagem enviada. Entraremos em contacto brevemente.",
     "errorGeneric": "Algo correu mal. Tente novamente."
+  },
+  "settings": {
+    "language": "Idioma",
+    "preferences": "Preferências",
+    "marketingOptIn": "Enviar-me emails ocasionais sobre novas funcionalidades e dicas do mercado de trabalho",
+    "marketingOptInHint": "Continuará sempre a receber emails transacionais (candidaturas, mensagens), independentemente desta opção.",
+    "dangerZone": "Zona de perigo",
+    "deleteAccount": "Eliminar a minha conta",
+    "deleteAccountConfirm": "Isto elimina permanentemente o seu perfil, CV e preferências guardadas, e deixará de conseguir iniciar sessão. As candidaturas e mensagens que já enviou mantêm-se junto das empresas a quem as enviou.",
+    "deleteAccountConfirmButton": "Sim, eliminar a minha conta",
+    "deleteAccountPending": "A eliminar…",
+    "deleteAccountError": "Algo correu mal. Tente novamente.",
+    "cancel": "Cancelar"
   }
 }

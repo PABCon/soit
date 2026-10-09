@@ -4329,3 +4329,56 @@ backend matching work was needed — only the email copy/CTA.
 
 Verified: `tsc --noEmit`, `eslint` on every changed file, the full test
 suite (99 passing), and `npm run build` all pass.
+
+## Medium-features QA batch 3: candidate settings — marketing opt-in, language, delete account
+
+Candidate settings was just a password-change form. Added three real
+items from the QA list.
+
+- **Language** — no new persistence mechanism: embedded the existing
+  `LanguageSwitcher` (already used in `TopNav`, already persists via
+  next-intl's own locale cookie) directly on the settings page instead
+  of inventing a parallel `preferred_locale` column that nothing else
+  would read. Discoverability was the actual gap, not a missing
+  backend.
+- **Marketing opt-in** — new `candidates.marketing_opt_in boolean not
+  null default false` column (migration
+  `20261009140000_candidate_marketing_opt_in.sql`, applied via `supabase
+  db push`), opt-in by default since no consent has ever been collected
+  for existing rows. Self-service like every other candidate-editable
+  field: an additive `grant update (marketing_opt_in)` alongside
+  `20260921120100_rls.sql`'s existing column grant, rather than editing
+  that already-applied migration.
+- **Delete account** — asked the user how data should be handled
+  first, since it's a real GDPR-shaped decision: chose anonymize, not
+  hard-delete. `applications`/`message_threads` both reference
+  `candidates` with `on delete cascade`, so actually deleting the row
+  would silently destroy an employer's own hiring/message records too
+  (a real business record on the other side, not just this candidate's
+  data) — confirmed by reading the FK definitions, not assumed. New
+  `deleteCandidateAccount()`:
+  - Hard-deletes everything unambiguously this candidate's own content:
+    tech tags, languages, education, experience, certifications, job
+    preferences, favorites, saved searches, and the actual CV/avatar
+    files in storage (`cvs`/`avatars` buckets).
+  - Anonymizes the `candidates` row in place (name, email, phone, CV/
+    avatar/LinkedIn URLs, skills cache, marketing opt-in) rather than
+    deleting it, so existing applications/message threads still resolve
+    to *a* row — just one with no real PII left.
+  - Deletes the `auth.users` row via the admin API so the account
+    genuinely can't log in again (its FK to `candidates.auth_user_id` is
+    `on delete set null`, consistent with the anonymized row).
+  - Settings UI (`DeleteAccountSection`) requires a second explicit
+    confirmation click — no modal library in this app, same inline-
+    reveal pattern as other destructive actions here.
+
+**Verified against the live database**, not just `tsc`/tests: a
+disposable throwaway candidate (fresh `auth.users` row + `candidates`
+row + one seeded row in each auxiliary table + one real file in each
+storage bucket) was created, the exact deletion logic was run against
+it, and every expected end-state was asserted — auth user gone,
+candidate row anonymized in place (not deleted), every auxiliary table
+empty, every storage file gone — before the leftover anonymized test
+row itself was cleaned up. All 9 checks passed. Also `tsc --noEmit`,
+`eslint` on every changed file, the full test suite (99 passing), and
+`npm run build`.

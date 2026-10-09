@@ -1003,5 +1003,18 @@
     "sending": "Sending…",
     "sentConfirmation": "Message sent. We'll get back to you soon.",
     "errorGeneric": "Something went wrong. Try again."
+  },
+  "settings": {
+    "language": "Language",
+    "preferences": "Preferences",
+    "marketingOptIn": "Send me occasional emails about new features and job-market tips",
+    "marketingOptInHint": "You'll always get transactional emails (applications, messages) regardless of this setting.",
+    "dangerZone": "Danger zone",
+    "deleteAccount": "Delete my account",
+    "deleteAccountConfirm": "This permanently deletes your profile, CV, and saved preferences, and you won't be able to log in again. Applications and messages you've already sent stay with the employers you sent them to.",
+    "deleteAccountConfirmButton": "Yes, delete my account",
+    "deleteAccountPending": "Deleting…",
+    "deleteAccountError": "Something went wrong. Try again.",
+    "cancel": "Cancel"
   }
 }
