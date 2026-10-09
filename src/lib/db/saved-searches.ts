@@ -11,6 +11,7 @@ export type SavedSearch = {
   label: string;
   query: SearchQuery;
   createdAt: string;
+  notifyOptIn: boolean;
 };
 
 /** Builds the URL query string a saved search re-runs against — kept here,
@@ -30,10 +31,12 @@ export function savedSearchHref(query: SearchQuery): string {
 export type SaveSearchResult = { ok: true } | { ok: false; reason: "not_a_candidate" | "db_error" };
 
 /** Saves a candidate's own search — insert if new, no-op if this exact
- *  query is already saved (unique (candidate_id, query)). No email/
- *  notification delivery is wired up yet (§7.1 phase 5 scoping — no real
- *  sender or scheduled-job infra exists in this project); this only
- *  supports save/list/delete for now.
+ *  query is already saved (unique (candidate_id, query)). Saving IS
+ *  opting into notifications (`notify_opt_in` defaults true on the
+ *  column) — no separate checkbox in the already-cramped nav search bar;
+ *  a per-row toggle on /saved-searches lets anyone turn it back off
+ *  without deleting the search. The actual daily digest is
+ *  `src/lib/notifications/saved-search-digest.ts`, run by a Vercel Cron.
  *
  *  Returns a result instead of throwing: unlike favorites' toggle (only
  *  ever reachable by a session already confirmed to be a candidate), the
@@ -60,7 +63,7 @@ export async function getMySavedSearches(): Promise<SavedSearch[]> {
 
   const { data } = await supabase
     .from("saved_searches")
-    .select("id, label, query, created_at")
+    .select("id, label, query, created_at, notify_opt_in")
     .eq("candidate_id", candidateId)
     .order("created_at", { ascending: false });
 
@@ -69,7 +72,21 @@ export async function getMySavedSearches(): Promise<SavedSearch[]> {
     label: row.label,
     query: row.query as SearchQuery,
     createdAt: row.created_at,
+    notifyOptIn: row.notify_opt_in,
   }));
+}
+
+export async function setSavedSearchNotifyOptIn(id: string, optIn: boolean): Promise<void> {
+  const supabase = await createClient();
+  const { data: candidateId } = await supabase.rpc("my_candidate_id");
+  if (!candidateId) throw new Error("Not a candidate");
+
+  const { error } = await supabase
+    .from("saved_searches")
+    .update({ notify_opt_in: optIn })
+    .eq("id", id)
+    .eq("candidate_id", candidateId);
+  if (error) throw new Error(error.message);
 }
 
 export async function deleteSavedSearch(id: string): Promise<void> {

@@ -8,29 +8,13 @@ import { Switch } from "@/components/Switch";
 import { TechIcon } from "@/components/icons/tech-icons";
 import { CategoryIcon } from "@/components/icons/category-icons";
 import { useUrlSearchParams, writeUrlSearchParams, parseListParam } from "@/hooks/useUrlSearchParams";
+import { haversineKm } from "@/lib/geo";
 import type { Job, Seniority, WorkModel } from "@/lib/types";
 import type { FeaturedTechCount } from "@/lib/db/tech-tags";
 import type { JobCategoryOption } from "@/lib/db/job-categories";
 import type { LocationOption } from "@/lib/db/locations";
 
 const JobMap = dynamic(() => import("@/components/JobMap").then((m) => m.JobMap), { ssr: false });
-
-const EARTH_RADIUS_KM = 6371;
-
-/** Great-circle distance — the "near X within Y km" search (item 8) reuses
- *  the same 14 curated locations already seeded with fixed coordinates
- *  (`getLocations()`), computed here over the already-fetched job list.
- *  No geocoding provider, no new Postgres RPC: the dataset is small and
- *  every job's own lat/lng is already a prop, so this is just another pure
- *  client-side filter, same as monthlyFloor() below. */
-function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
-  const dLat = ((lat2 - lat1) * Math.PI) / 180;
-  const dLng = ((lng2 - lng1) * Math.PI) / 180;
-  const a =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) * Math.sin(dLng / 2) ** 2;
-  return EARTH_RADIUS_KM * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-}
 
 const SENIORITIES: Seniority[] = ["junior", "mid", "senior", "lead"];
 const AD_LANGUAGES: ("pt" | "en")[] = ["pt", "en"];

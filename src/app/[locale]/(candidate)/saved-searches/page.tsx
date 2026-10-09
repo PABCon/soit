@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getMySavedSearches, savedSearchHref } from "@/lib/db/saved-searches";
 import { Link } from "@/i18n/navigation";
 import { DeleteSavedSearchButton } from "@/components/DeleteSavedSearchButton";
+import { SavedSearchNotifyToggle } from "@/components/SavedSearchNotifyToggle";
 
 type Props = { params: Promise<{ locale: string }> };
 
@@ -49,6 +50,7 @@ export default async function SavedSearchesPage({ params }: Props) {
                   {s.label}
                 </Link>
               </div>
+              <SavedSearchNotifyToggle id={s.id} initialOptIn={s.notifyOptIn} />
               <DeleteSavedSearchButton id={s.id} label={t("delete")} />
             </li>
           ))}

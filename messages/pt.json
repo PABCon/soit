@@ -21,7 +21,7 @@
     "searchRadiusLabel": "Num raio de",
     "searchSubmit": "Pesquisar",
     "saveSearch": "Guardar pesquisa",
-    "saveSearchHint": "Guardar esta pesquisa para consultar mais tarde em \"Pesquisas guardadas\" (sem notificações por agora)",
+    "saveSearchHint": "Guarde esta pesquisa e receba um email diário quando houver novas vagas — faça a gestão em \"Pesquisas guardadas\"",
     "saveSearchSaved": "Guardada",
     "saveSearchError": "Inicie sessão como candidato para guardar pesquisas."
   },
@@ -576,7 +576,8 @@
   "savedSearches": {
     "title": "Pesquisas guardadas",
     "empty": "Ainda não guardou nenhuma pesquisa.",
-    "delete": "Remover"
+    "delete": "Remover",
+    "notifyMe": "Notificar-me"
   },
   "applicants": {
     "title": "Candidaturas para “{job}”",

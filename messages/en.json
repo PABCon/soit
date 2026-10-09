@@ -21,7 +21,7 @@
     "searchRadiusLabel": "Within",
     "searchSubmit": "Search",
     "saveSearch": "Save search",
-    "saveSearchHint": "Save this search to check later under \"Saved searches\" (no notifications yet)",
+    "saveSearchHint": "Save this search and get a daily email when new jobs match — manage it under \"Saved searches\"",
     "saveSearchSaved": "Saved",
     "saveSearchError": "Log in as a candidate to save searches."
   },
@@ -576,7 +576,8 @@
   "savedSearches": {
     "title": "Saved searches",
     "empty": "You haven't saved any searches yet.",
-    "delete": "Remove"
+    "delete": "Remove",
+    "notifyMe": "Notify me"
   },
   "applicants": {
     "title": "Applicants for “{job}”",

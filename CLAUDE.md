@@ -4382,3 +4382,52 @@ empty, every storage file gone — before the leftover anonymized test
 row itself was cleaned up. All 9 checks passed. Also `tsc --noEmit`,
 `eslint` on every changed file, the full test suite (99 passing), and
 `npm run build`.
+
+## Medium-features QA batch 4: real saved-search notifications
+
+Real-usage QA item: "save search" only ever meant "come back to this
+later" — `saved_searches`'s own setup migration explicitly scoped out
+notifications ("no real sender or scheduled-job infra exists in this
+project yet"). Both now exist (Resend email, and this is the project's
+first scheduled job), so this is the first pass to actually build it —
+checked in with the user first since it meant new infrastructure
+(a cron job) and a product-shape call (daily digest, matching
+semantics), not just a UI tweak.
+
+- **Saving now IS the opt-in** — new `saved_searches.notify_opt_in
+  boolean not null default true` (migration
+  `20261009150000_saved_search_notifications.sql`). No separate
+  checkbox crammed into the already-dense nav search bar; a per-row
+  `Switch` toggle on `/saved-searches` (reusing the existing `Switch`
+  component from the filters panel) lets anyone turn it back off
+  without deleting the search.
+- **Matching semantics deliberately mirror `JobsExplorer`'s own
+  client-side filter exactly** — same keyword-in-title substring match,
+  same near/radius Haversine math — so a digest email never claims a
+  "new match" that clicking into the saved search itself wouldn't also
+  show. Extracted `JobsExplorer.tsx`'s local `haversineKm` into a shared
+  `src/lib/geo.ts` (pure move) so both sides import the same function
+  rather than risk two formulas drifting apart.
+- **`last_notified_at`** (new column, same migration) is the low-water
+  mark for "new," falling back to the search's own `created_at` on its
+  first run, advanced to "now" after every run regardless of whether
+  anything matched — a quiet week doesn't make old jobs resurface the
+  next time one finally matches.
+- **New infrastructure**: `src/app/api/cron/saved-search-digest/route.ts`
+  (checks `Authorization: Bearer $CRON_SECRET`, the exact header Vercel
+  signs its own cron requests with, so the route can't be hit on demand
+  by anyone who finds the URL), `vercel.json`'s `crons` (once daily,
+  `0 8 * * *` — this project's Vercel team is on the Hobby plan, which
+  caps cron jobs at once/day, fine for a digest), and a new
+  `CRON_SECRET` added to all three Vercel environments plus
+  `.env.local`. This is the first cron job and the first `vercel.json`
+  in this project.
+
+**Verified against real live data**, not just `tsc`/tests: a script
+exercised the exact matching predicate against a real published job
+with real coordinates — keyword match before vs. after the job's
+publish date (new vs. not-new), keyword mismatch, same-location match
+with no radius, match within a large radius, and the radius boundary
+itself (a radius too small to include the job's own distance). All 6
+checks passed. Also `tsc --noEmit`, `eslint` on every changed file, the
+full test suite (99 passing), and `npm run build`.
