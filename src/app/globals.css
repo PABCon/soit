@@ -1,23 +1,67 @@
 @import "tailwindcss";
 
 /**
- * Just IT design tokens — spec §11.
- * Principle: spend the boldness in one place. The salary figure is the
- * memorable element; everything around it stays quiet.
+ * Just IT design tokens — visual brand redesign (energetic/sharp/tech-
+ * forward direction, replacing the earlier emerald identity).
+ *
+ * Token NAMES are kept as `pine`/`mint` deliberately — both are already
+ * referenced by their semantic Tailwind utility classes (`bg-pine`,
+ * `text-mint`, etc.) in ~80 component files. Renaming the CSS variable
+ * key would require a mechanical find/replace across every one of those
+ * files for zero visual benefit, since Tailwind generates the utility
+ * classes from whatever key is declared here — only the *value* needs
+ * to change for the new brand to cascade everywhere at once. Read
+ * `pine` as "primary brand/accent" and `mint` as "secondary accent"
+ * going forward.
  */
 @theme {
-  /* Cool near-white — deliberately NOT warm cream (§11 "Avoid"). */
-  --color-paper: #f7f8f7;
-  --color-ink: #14201c;
-  /* Deep emerald: brand + salary figure + primary CTA. ~6:1 on paper, AA. */
-  --color-pine: #0c6b58;
-  /* Bright accent, sparing. Fails AA as text — fills and indicators only. */
-  --color-mint: #3ddc97;
-  --color-muted: #5b6b66;
-  --color-line: #e3e7e4;
+  /* App-wide canvas (page background). Cards/panels/nav use plain white
+   * (Tailwind's built-in), giving the two-tier surface model the brand
+   * brief asks for without a third token.
+   *
+   * Third pass: the user supplied a literal design-system reference image
+   * (a swatch sheet with hex labels) as the new ground truth, explicitly
+   * overriding both prior text specs where they conflict. Its values
+   * revert text-primary/secondary/border/background back toward the
+   * *first* spec's numbers rather than the *second* (corrective) pass's
+   * slightly different hex choices — reconciled here to exactly what the
+   * image shows, not averaged across all three sources. */
+  --color-paper: #f5f7fb;
+  --color-ink: #182230;
+  --color-muted: #667085;
+  --color-line: #e2e6ef;
 
-  --font-display: var(--font-display-src), ui-sans-serif, system-ui, sans-serif;
-  --font-sans: var(--font-body-src), ui-sans-serif, system-ui, sans-serif;
+  /* Primary brand/accent — confident blue, not the old emerald. Primary
+   * actions, links, active states. Unchanged across all three passes —
+   * every spec and the reference image agree on these exact values. */
+  --color-pine: #465bff;
+  /* Hover/pressed state for solid pine buttons — a real darker shade,
+   * not an opacity trick (opacity over a light page lightens, which is
+   * the wrong direction for "pressed"). */
+  --color-pine-hover: #3446db;
+  /* Secondary accent — the reference image's own "Accent" swatch
+   * (#9B5CFF) matches this token's existing value exactly, confirming it
+   * as the real solid fill for the Boosted badge (image §Components) —
+   * no change needed, just a new direct consumer. */
+  --color-mint: #9b5cff;
+  /* Subtle accent surface — selected filters, highlighted rows, callouts. */
+  --color-subtle: #eef2ff;
+
+  /* Reference image's own swatch values — not used by any component yet
+   * on this pass, but declared now so the token system matches the
+   * design system's full declared palette rather than only the subset
+   * this landing page happens to consume today. */
+  --color-success: #12b76a;
+  --color-warning: #f59e0b;
+  --color-error: #c83d4d;
+
+  /* One unified typeface (Inter) rather than a display/body pairing —
+   * both tokens point at the same font source now; headings are
+   * distinguished by weight/size/spacing, not a different family. Both
+   * tokens kept (not collapsed into one) so every existing `font-display`/
+   * `font-sans` utility class across the codebase keeps working unchanged. */
+  --font-display: var(--font-src), ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-src), ui-sans-serif, system-ui, sans-serif;
 }
 
 @layer base {
@@ -38,5 +82,19 @@
       animation-duration: 0.01ms !important;
       transition-duration: 0.01ms !important;
     }
+  }
+}
+
+@layer utilities {
+  /* Round-8 item 3: the job list's own independent scroll column (round
+   * 7) should stay scrollable without showing a visible scrollbar next
+   * to the map — no Tailwind plugin for this is installed, so it's a
+   * small hand-written utility rather than pulling one in for one rule. */
+  .scrollbar-hide {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
   }
 }

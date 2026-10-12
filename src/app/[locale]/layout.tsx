@@ -2,20 +2,26 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { NextIntlClientProvider, hasLocale } from "next-intl";
 import { setRequestLocale, getTranslations } from "next-intl/server";
-import { Space_Grotesk, IBM_Plex_Sans } from "next/font/google";
+import { Geist } from "next/font/google";
 import { routing } from "@/i18n/routing";
 import "../globals.css";
 
-// Two distinct free families for a technical audience (§11).
-const display = Space_Grotesk({
+// Corrective landing-page redesign: switched from Inter to **Geist**, the
+// spec's actually-preferred font. The prior pass stayed on Inter reasoning
+// "already wired" — re-checked properly this round rather than reapplying
+// that: Next.js 16.3.8's bundled `next/font/google` metadata
+// (`node_modules/next/dist/compiled/@next/font/dist/google/font-data.json`)
+// genuinely lists "Geist" with a full 100-900 variable weight axis and a
+// `latin` subset, so this is the exact same zero-new-dependency mechanism
+// already used for Inter before it — a one-line swap, not a new package.
+// Geist's sharper, more technical character is also a real part of
+// answering the corrective brief's call for "distinctive through
+// typography," which Inter's deliberately neutral, ubiquitous design
+// works against. One `--font-src` variable still feeds both the
+// `--font-display`/`--font-sans` theme tokens in globals.css.
+const geist = Geist({
   subsets: ["latin"],
-  variable: "--font-display-src",
-  display: "swap",
-});
-const body = IBM_Plex_Sans({
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
-  variable: "--font-body-src",
+  variable: "--font-src",
   display: "swap",
 });
 
@@ -50,7 +56,7 @@ export default async function LocaleLayout({ children, params }: Props) {
   setRequestLocale(locale);
 
   return (
-    <html lang={locale} className={`${display.variable} ${body.variable}`}>
+    <html lang={locale} className={geist.variable}>
       <body className="bg-paper text-ink antialiased">
         <NextIntlClientProvider>{children}</NextIntlClientProvider>
       </body>
