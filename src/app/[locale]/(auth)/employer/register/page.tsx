@@ -1,8 +1,13 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { getTranslations, setRequestLocale } from "next-intl/server";
+import { Users, FileText, TrendingUp } from "lucide-react";
 import { Link } from "@/i18n/navigation";
 import { AuthForm } from "@/components/auth/AuthForm";
+import { AuthSplitScreen } from "@/components/auth/AuthSplitScreen";
+import { AuthHero } from "@/components/auth/AuthHero";
+import { TopEmployerLogos } from "@/components/auth/TopEmployerLogos";
+import { getTopEmployerCompanies } from "@/lib/db/companies";
 
 type Props = { params: Promise<{ locale: string }> };
 
@@ -16,10 +21,32 @@ export default async function EmployerRegisterPage({ params }: Props) {
   const { locale } = await params;
   setRequestLocale(locale);
   const t = await getTranslations({ locale, namespace: "auth" });
+  const h = await getTranslations({ locale, namespace: "auth.employerRegisterHero" });
+  const topEmployers = await getTopEmployerCompanies();
 
   return (
-    <>
-      <h1 className="mb-6 text-2xl font-bold text-ink">{t("employerRegisterTitle")}</h1>
+    <AuthSplitScreen
+      hero={
+        <AuthHero
+          eyebrow={h("eyebrow")}
+          headlinePrefix={h("headlinePrefix")}
+          headlineEmphasis={h("headlineEmphasis")}
+          subtitle={h("subtitle")}
+          bullets={[
+            { Icon: Users, title: h("bullet1Title"), desc: h("bullet1Desc") },
+            { Icon: FileText, title: h("bullet2Title"), desc: h("bullet2Desc") },
+            { Icon: TrendingUp, title: h("bullet3Title"), desc: h("bullet3Desc") },
+          ]}
+        >
+          <TopEmployerLogos
+            companies={topEmployers}
+            trustHeadline={h("trustHeadline")}
+            viewAllCompanies={h("viewAllCompanies")}
+          />
+        </AuthHero>
+      }
+    >
+      <h2 className="mb-6 text-2xl font-bold text-ink">{t("employerRegisterTitle")}</h2>
       <Suspense>
         <AuthForm role="employer" mode="register" />
       </Suspense>
@@ -29,6 +56,6 @@ export default async function EmployerRegisterPage({ params }: Props) {
           {t("logIn")}
         </Link>
       </p>
-    </>
+    </AuthSplitScreen>
   );
 }

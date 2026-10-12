@@ -3,6 +3,7 @@
 import { useState, type FormEvent } from "react";
 import { useSearchParams } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
+import { Eye, EyeOff } from "lucide-react";
 import { Link, useRouter } from "@/i18n/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { validateNif } from "@/lib/nif";
@@ -21,7 +22,7 @@ type Mode = "login" | "register";
 
 const OAUTH_PROVIDERS = ["google", "github", "linkedin_oidc"] as const;
 
-const inputClass = "h-9 rounded-lg border border-line bg-white px-3 text-sm";
+const inputClass = "h-11 rounded-lg border border-line bg-white px-3 text-sm";
 const labelClass = "flex flex-col gap-1 text-sm";
 
 /**
@@ -50,6 +51,7 @@ export function AuthForm({ role, mode }: { role: Role; mode: Mode }) {
   });
   const [checkEmail, setCheckEmail] = useState(false);
   const [pending, setPending] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   // §6.4a — same-email dual-role: set once signInWithPassword confirms this
   // really is the account's owner, before anything is attached.
   const [attachOffer, setAttachOffer] = useState<{ nif?: string; companyName?: string } | null>(null);
@@ -273,15 +275,25 @@ export function AuthForm({ role, mode }: { role: Role; mode: Mode }) {
 
       <label className={labelClass}>
         <span>{t("password")}</span>
-        <input
-          type="password"
-          required
-          minLength={mode === "register" ? 8 : undefined}
-          autoComplete={mode === "register" ? "new-password" : "current-password"}
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          className={inputClass}
-        />
+        <span className="relative flex items-center">
+          <input
+            type={showPassword ? "text" : "password"}
+            required
+            minLength={mode === "register" ? 8 : undefined}
+            autoComplete={mode === "register" ? "new-password" : "current-password"}
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className={`${inputClass} w-full pr-10`}
+          />
+          <button
+            type="button"
+            onClick={() => setShowPassword((v) => !v)}
+            aria-label={t(showPassword ? "hidePassword" : "showPassword")}
+            className="absolute right-3 text-muted hover:text-ink"
+          >
+            {showPassword ? <EyeOff className="h-4 w-4" aria-hidden="true" /> : <Eye className="h-4 w-4" aria-hidden="true" />}
+          </button>
+        </span>
       </label>
       {mode === "register" && <PasswordChecklist password={password} />}
 
@@ -312,7 +324,7 @@ export function AuthForm({ role, mode }: { role: Role; mode: Mode }) {
       <button
         type="submit"
         disabled={pending}
-        className="flex h-9 items-center justify-center gap-2 rounded-lg bg-pine px-3 text-sm font-medium text-white hover:bg-pine/90 disabled:opacity-50"
+        className="flex h-11 items-center justify-center gap-2 rounded-lg bg-pine px-3 text-sm font-medium text-white hover:bg-pine/90 disabled:opacity-50"
       >
         {pending && (
           <span className="h-3.5 w-3.5 shrink-0 animate-spin rounded-full border-2 border-white/40 border-t-white" />
@@ -337,7 +349,7 @@ export function AuthForm({ role, mode }: { role: Role; mode: Mode }) {
                 key={provider}
                 type="button"
                 onClick={() => handleOAuth(provider)}
-                className="h-9 flex-1 rounded-lg border border-line bg-white text-sm hover:bg-paper"
+                className="h-11 flex-1 rounded-lg border border-line bg-white text-sm hover:bg-paper"
               >
                 {t(`provider.${provider}`)}
               </button>

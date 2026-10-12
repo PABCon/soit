@@ -1,8 +1,11 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { getTranslations, setRequestLocale } from "next-intl/server";
+import { FileText, Bookmark, User } from "lucide-react";
 import { Link } from "@/i18n/navigation";
 import { AuthForm } from "@/components/auth/AuthForm";
+import { AuthSplitScreen } from "@/components/auth/AuthSplitScreen";
+import { AuthHero } from "@/components/auth/AuthHero";
 
 type Props = { params: Promise<{ locale: string }> };
 
@@ -16,10 +19,24 @@ export default async function CandidateLoginPage({ params }: Props) {
   const { locale } = await params;
   setRequestLocale(locale);
   const t = await getTranslations({ locale, namespace: "auth" });
+  const h = await getTranslations({ locale, namespace: "auth.candidateLoginHero" });
 
   return (
-    <>
-      <h1 className="mb-6 text-2xl font-bold text-ink">{t("candidateLoginTitle")}</h1>
+    <AuthSplitScreen
+      hero={
+        <AuthHero
+          headlinePrefix={h("headlinePrefix")}
+          headlineEmphasis={h("headlineEmphasis")}
+          subtitle={h("subtitle")}
+          bullets={[
+            { Icon: FileText, title: h("bullet1Title"), desc: h("bullet1Desc") },
+            { Icon: Bookmark, title: h("bullet2Title"), desc: h("bullet2Desc") },
+            { Icon: User, title: h("bullet3Title"), desc: h("bullet3Desc") },
+          ]}
+        />
+      }
+    >
+      <h2 className="mb-6 text-2xl font-bold text-ink">{t("candidateLoginTitle")}</h2>
       <Suspense>
         <AuthForm role="candidate" mode="login" />
       </Suspense>
@@ -29,6 +46,6 @@ export default async function CandidateLoginPage({ params }: Props) {
           {t("createAccount")}
         </Link>
       </p>
-    </>
+    </AuthSplitScreen>
   );
 }
