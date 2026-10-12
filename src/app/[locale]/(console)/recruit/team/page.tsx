@@ -20,7 +20,7 @@ export default async function TeamPage({ params }: Props) {
 
   return (
     <>
-      <h1 className="text-2xl font-bold">{t("team")}</h1>
+      <h1 className="text-3xl font-bold lg:text-4xl">{t("team")}</h1>
       <div className="mt-6">
         <TeamManager members={members} invites={invites} isOwner={ctx.role === "owner"} myEmployerId={ctx.employerId} />
       </div>

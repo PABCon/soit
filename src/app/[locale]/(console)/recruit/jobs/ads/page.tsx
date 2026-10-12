@@ -29,7 +29,7 @@ export default async function JobAdsPricingPage({ params, searchParams }: Props)
 
   return (
     <>
-      <h1 className="text-2xl font-bold">{t("pricing")}</h1>
+      <h1 className="text-3xl font-bold lg:text-4xl">{t("pricing")}</h1>
 
       {purchase === "success" && (
         <p className="mt-4 rounded-lg bg-mint/25 px-4 py-3 text-sm text-pine">{t("purchaseSuccess")}</p>

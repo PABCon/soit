@@ -19,7 +19,7 @@ export default async function EmployerMessagesPage({ params }: Props) {
   return (
     <>
       <InboxRealtimeRefresh filter={`company_id=eq.${ctx.company.id}`} />
-      <h1 className="text-2xl font-bold">{t("inboxTitle")}</h1>
+      <h1 className="text-3xl font-bold lg:text-4xl">{t("inboxTitle")}</h1>
 
       {threads.length === 0 ? (
         <p className="mt-8 text-sm text-muted">{t("noThreads")}</p>

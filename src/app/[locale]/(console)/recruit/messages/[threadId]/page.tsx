@@ -25,7 +25,7 @@ export default async function EmployerThreadPage({ params }: Props) {
         ← {t("inboxTitle")}
       </Link>
       <div className="mt-2">
-        <h1 className="text-2xl font-bold">{thread.candidateName ?? t("candidateAnonymous")}</h1>
+        <h1 className="text-3xl font-bold lg:text-4xl">{thread.candidateName ?? t("candidateAnonymous")}</h1>
         <p className="mt-1 text-sm text-muted">{thread.jobTitle}</p>
       </div>
 

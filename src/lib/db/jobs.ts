@@ -279,36 +279,83 @@ export type ConsoleJob = Job & {
   id: string;
   status: JobRow["status"];
   applicantCount: number;
+  newApplicantCount: number;
+  viewCount: number;
 };
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- the query builder's generic type narrows per-filter-call in a way that's awkward to thread through a shared helper otherwise
+function tabFilter(query: any, tab: ConsoleTab, nowIso: string): any {
+  if (tab === "active") return query.eq("status", "published").gt("expires_at", nowIso);
+  if (tab === "drafts") return query.eq("status", "draft");
+  return query.or(`and(status.eq.published,expires_at.lte.${nowIso}),status.eq.inactive,status.eq.closed`);
+}
 
 export async function getCompanyJobs(companyId: string, tab: ConsoleTab): Promise<ConsoleJob[]> {
   const supabase = await createClient();
   const nowIso = new Date().toISOString();
+  const sevenDaysAgoIso = new Date(Date.now() - 7 * 86_400_000).toISOString();
 
-  let query = supabase
-    .from("jobs")
-    .select(`${SELECT}, applications(count)`)
-    .eq("company_id", companyId);
-
-  if (tab === "active") {
-    query = query.eq("status", "published").gt("expires_at", nowIso);
-  } else if (tab === "drafts") {
-    query = query.eq("status", "draft");
-  } else {
-    query = query.or(
-      `and(status.eq.published,expires_at.lte.${nowIso}),status.eq.inactive,status.eq.closed`,
-    );
-  }
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- the query builder's own type narrows per-filter-call, awkward to thread through a shared helper otherwise
+  let query: any = supabase.from("jobs").select(`${SELECT}, applications(count), view_count`).eq("company_id", companyId);
+  query = tabFilter(query, tab, nowIso);
 
   const { data, error } = await query.order("created_at", { ascending: false });
   if (error || !data) return [];
 
-  return (data as unknown as (JobRow & { applications: { count: number }[] })[]).map((row) => ({
+  const rows = data as unknown as (JobRow & { applications: { count: number }[]; view_count: number })[];
+
+  // One extra query for the whole tab (not per-job) to get a real "new in
+  // the last 7 days" count per job — the company-wide dashboard stat
+  // already computes the same thing in aggregate; this is the identical
+  // real `applications.created_at` fact, just grouped per job instead of
+  // summed across all of them.
+  const jobIds = rows.map((r) => r.id);
+  const newCountByJob = new Map<string, number>();
+  if (jobIds.length > 0) {
+    const { data: recent } = await supabase
+      .from("applications")
+      .select("job_id")
+      .in("job_id", jobIds)
+      .gt("created_at", sevenDaysAgoIso);
+    for (const row of (recent ?? []) as { job_id: string }[]) {
+      newCountByJob.set(row.job_id, (newCountByJob.get(row.job_id) ?? 0) + 1);
+    }
+  }
+
+  return rows.map((row) => ({
     ...toJob(row),
     id: row.id,
     status: row.status,
     applicantCount: row.applications?.[0]?.count ?? 0,
+    newApplicantCount: newCountByJob.get(row.id) ?? 0,
+    viewCount: row.view_count,
   }));
+}
+
+export type JobTabCounts = { active: number; inactive: number; drafts: number };
+
+/** The tab bar needs every tab's count at once (Active 4 / Inactive 0 /
+ *  Drafts 0), not just the currently-selected one — three cheap
+ *  `count: "exact", head: true` aggregates, same pattern
+ *  `getEmployerDashboardStats` already uses, no rows fetched. */
+export async function getJobTabCounts(companyId: string): Promise<JobTabCounts> {
+  const supabase = await createClient();
+  const nowIso = new Date().toISOString();
+
+  const [active, inactive, drafts] = await Promise.all(
+    (["active", "inactive", "drafts"] as const).map((tab) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- same builder-narrowing reason as tabFilter's other call site
+      let q: any = supabase.from("jobs").select("id", { count: "exact", head: true }).eq("company_id", companyId);
+      q = tabFilter(q, tab, nowIso);
+      return q;
+    }),
+  );
+
+  return {
+    active: active.count ?? 0,
+    inactive: inactive.count ?? 0,
+    drafts: drafts.count ?? 0,
+  };
 }
 
 export type EmployerDashboardStats = {

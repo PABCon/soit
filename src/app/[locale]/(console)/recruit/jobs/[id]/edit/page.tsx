@@ -30,7 +30,7 @@ export default async function EditJobPage({ params }: Props) {
   return (
     <>
       <div className="flex items-center justify-between gap-4">
-        <h1 className="text-2xl font-bold">{t("editJobAd")}</h1>
+        <h1 className="text-3xl font-bold lg:text-4xl">{t("editJobAd")}</h1>
         <Link
           href={`/recruit/jobs/${job.id}/applicants`}
           className="text-sm font-medium text-pine hover:underline"

@@ -20,7 +20,7 @@ export default async function ApiPage({ params }: Props) {
   if (!ctx.company.top_employer_active) {
     return (
       <>
-        <h1 className="text-2xl font-bold">{t("apiHeading")}</h1>
+        <h1 className="text-3xl font-bold lg:text-4xl">{t("apiHeading")}</h1>
         <div className="mt-4 max-w-lg rounded-xl border border-line bg-paper/60 p-6 text-center">
           <p className="text-sm text-ink">{t("apiUpsell")}</p>
           <Link
@@ -36,7 +36,7 @@ export default async function ApiPage({ params }: Props) {
 
   return (
     <>
-      <h1 className="text-2xl font-bold">{t("apiHeading")}</h1>
+      <h1 className="text-3xl font-bold lg:text-4xl">{t("apiHeading")}</h1>
       <div className="mt-6">
         {ctx.role === "owner" ? (
           <ApiKeyManager existingKey={await getMyApiKey()} />

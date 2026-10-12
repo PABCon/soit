@@ -1,24 +1,27 @@
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
 import { getMyEmployerContext } from "@/lib/db/companies";
-import { getCompanyJobs, getEmployerDashboardStats, type ConsoleTab } from "@/lib/db/jobs";
-import { JobListRow } from "@/components/console/JobListRow";
+import { getCompanyJobs, getEmployerDashboardStats, getJobTabCounts, type ConsoleTab } from "@/lib/db/jobs";
 import { DashboardStats } from "@/components/console/DashboardStats";
+import { NewApplicantsBanner } from "@/components/console/NewApplicantsBanner";
+import { ConsoleJobsExplorer } from "@/components/console/ConsoleJobsExplorer";
 
 type Props = {
   params: Promise<{ locale: string }>;
   searchParams: Promise<{ tab?: string }>;
 };
 
-const TABS: { key: ConsoleTab; labelKey: string }[] = [
-  { key: "active", labelKey: "tabActive" },
-  { key: "inactive", labelKey: "tabInactive" },
-  { key: "drafts", labelKey: "tabDrafts" },
-];
-
 /** Employers land here (§7.2). Tabs per the spec's table: Active
  *  (published + not expired), Inactive (published+expired, paused,
- *  closed), Drafts. No job is ever invisible to its own employer. */
+ *  closed), Drafts. No job is ever invisible to its own employer.
+ *
+ *  Round 22 restyle: heading/subtitle/stat-strip/banner/toolbar/row
+ *  layout all rebuilt per the reference design — same real data and
+ *  server actions underneath (`getCompanyJobs`, `getEmployerDashboardStats`,
+ *  `setJobStatusAction`/`deleteJobAction` via `ConsoleJobRow`), nothing
+ *  fabricated. Tab counts now come from a dedicated query
+ *  (`getJobTabCounts`) so all three tabs show their real count at once,
+ *  not just the currently-selected one. */
 export default async function MyJobAdsPage({ params, searchParams }: Props) {
   const { locale } = await params;
   const { tab: rawTab } = await searchParams;
@@ -31,52 +34,34 @@ export default async function MyJobAdsPage({ params, searchParams }: Props) {
   }
 
   const tab: ConsoleTab = rawTab === "inactive" || rawTab === "drafts" ? rawTab : "active";
-  const [jobs, stats] = await Promise.all([
+  const [jobs, stats, tabCounts] = await Promise.all([
     getCompanyJobs(ctx.company.id, tab),
     getEmployerDashboardStats(ctx.company.id),
+    getJobTabCounts(ctx.company.id),
   ]);
 
   return (
     <>
       <div className="flex items-center justify-between gap-4">
-        <h1 className="text-2xl font-bold">{t("myJobAds")}</h1>
+        <div>
+          <h1 className="text-3xl font-bold lg:text-4xl">{t("myJobAds")}</h1>
+          <p className="mt-1 text-sm text-muted">{t("myJobAdsSubtitle")}</p>
+        </div>
         <Link
           href="/recruit/jobs/new"
-          className="flex h-9 items-center rounded-lg bg-pine px-3 text-sm font-medium text-white hover:bg-pine/90"
+          className="flex h-11 shrink-0 items-center rounded-lg bg-pine px-4 text-sm font-medium text-white hover:bg-pine/90"
         >
           {t("addJobAd")}
         </Link>
       </div>
 
-      <div className="mt-4">
+      <div className="mt-6">
         <DashboardStats stats={stats} locale={locale} />
       </div>
 
-      <div className="mt-6 flex gap-1 overflow-x-auto border-b border-line">
-        {TABS.map(({ key, labelKey }) => (
-          <Link
-            key={key}
-            href={{ pathname: "/recruit", query: key === "active" ? {} : { tab: key } }}
-            className={
-              tab === key
-                ? "-mb-px shrink-0 border-b-2 border-pine px-3 py-2 text-sm font-medium whitespace-nowrap text-ink"
-                : "shrink-0 px-3 py-2 text-sm whitespace-nowrap text-muted"
-            }
-          >
-            {t(labelKey)}
-          </Link>
-        ))}
-      </div>
+      <NewApplicantsBanner count={stats.newApplicantsLast7Days} />
 
-      {jobs.length === 0 ? (
-        <p className="mt-8 text-sm text-muted">{t("empty")}</p>
-      ) : (
-        <ul className="mt-4 divide-y divide-line border-t border-line">
-          {jobs.map((job) => (
-            <JobListRow key={job.id} job={job} tab={tab} />
-          ))}
-        </ul>
-      )}
+      <ConsoleJobsExplorer jobs={jobs} tab={tab} tabCounts={tabCounts} />
     </>
   );
 }

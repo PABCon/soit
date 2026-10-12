@@ -1,7 +1,19 @@
 "use client";
 
-import { useMemo, useState, type FormEvent } from "react";
+import { useMemo, useState, type FormEvent, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
+import {
+  Link2,
+  FileText,
+  SlidersHorizontal,
+  DollarSign,
+  Calendar,
+  Layers,
+  Globe2,
+  Sparkles,
+  Star,
+  X,
+} from "lucide-react";
 import { useRouter } from "@/i18n/navigation";
 import {
   saveJobAction,
@@ -12,6 +24,7 @@ import {
 import type { JobFormInput } from "@/lib/db/jobs";
 import type { SkillLevel } from "@/lib/types";
 import type { ExtractedJob } from "@/lib/ai/extract-job";
+import { buttonClassName } from "@/components/Button";
 
 type TechTagOption = { id: string; label: string; aliases: string[] };
 type LocationOption = { id: string; slug: string; name: string };
@@ -43,8 +56,46 @@ type Initial = {
 };
 
 const LEVELS: SkillLevel[] = ["basic", "intermediate", "advanced", "expert"];
-const inputClass = "h-9 rounded-lg border border-line bg-white px-3 text-sm disabled:bg-paper disabled:text-muted";
-const labelClass = "flex flex-col gap-1 text-sm";
+const inputClass =
+  "h-10 rounded-lg border border-line bg-white px-3 text-sm text-ink placeholder:text-muted disabled:bg-paper disabled:text-muted";
+const labelClass = "flex flex-col gap-1.5 text-sm font-medium text-ink";
+
+/** Round 25 restyle: every section of this form is now a bordered card with
+ *  a small icon badge + title + subtitle, matching the reference's own
+ *  "Basic information" / "Job details" / "Salary" / "Tech stack" etc.
+ *  layout — real functionality underneath is entirely unchanged, this is
+ *  presentation only. */
+function SectionCard({
+  icon: Icon,
+  title,
+  subtitle,
+  children,
+  headerExtra,
+}: {
+  icon: React.ComponentType<{ className?: string; "aria-hidden"?: boolean }>;
+  title: string;
+  subtitle?: string;
+  children: ReactNode;
+  headerExtra?: ReactNode;
+}) {
+  return (
+    <fieldset className="rounded-xl border border-line bg-white p-5">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-start gap-3">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-pine/10 text-pine">
+            <Icon className="h-5 w-5" aria-hidden={true} />
+          </span>
+          <div>
+            <legend className="font-display text-base font-semibold text-ink">{title}</legend>
+            {subtitle && <p className="mt-0.5 text-xs text-muted">{subtitle}</p>}
+          </div>
+        </div>
+        {headerExtra}
+      </div>
+      <div className="mt-4">{children}</div>
+    </fieldset>
+  );
+}
 
 function LevelSelect({
   value,
@@ -61,7 +112,7 @@ function LevelSelect({
     <select
       value={value ?? ""}
       onChange={(e) => onChange((e.target.value || null) as SkillLevel | null)}
-      className={className ?? "h-7 rounded border border-line bg-white px-1 text-xs"}
+      className={className ?? "h-8 rounded-lg border border-line bg-white px-2 text-xs text-ink"}
     >
       <option value="">{t("levelUnspecified")}</option>
       {LEVELS.map((lv) => (
@@ -337,357 +388,379 @@ export function JobForm({
   }
 
   return (
-    <form className="flex max-w-2xl flex-col gap-5">
+    <form className="flex flex-col gap-6">
       {error && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
       {notice && <p className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800">{notice}</p>}
 
-      {!initial && (
-        <div className="rounded-lg border border-line bg-paper p-4">
-          <span className="text-sm font-medium">{t("pasteJobLink")}</span>
-          <div className="mt-2 flex gap-2">
-            <input
-              type="url"
-              value={extractUrl}
-              onChange={(e) => setExtractUrl(e.target.value)}
-              placeholder="https://…"
-              className={`${inputClass} flex-1`}
-            />
-            <button
-              type="button"
-              disabled={extracting || !extractUrl.trim()}
-              onClick={handleExtract}
-              className="h-9 shrink-0 rounded-lg bg-pine px-3 text-sm font-medium text-white hover:bg-pine/90 disabled:opacity-50"
-            >
-              {extracting ? t("extracting") : t("fetchAndFill")}
-            </button>
-          </div>
-          {extractError && <p className="mt-2 text-xs text-red-700">{extractError}</p>}
-          {extractNotice && <p className="mt-2 text-xs text-pine">{extractNotice}</p>}
-        </div>
-      )}
-
-      <label className={labelClass}>
-        <span>{t("title")}</span>
-        <input value={title} onChange={(e) => setTitle(e.target.value)} className={inputClass} />
-      </label>
-
-      <label className={labelClass}>
-        <div className="flex items-center justify-between">
-          <span>{t("description")}</span>
-          <button
-            type="button"
-            disabled={polishing || !description.trim()}
-            onClick={handlePolish}
-            className="text-xs font-medium text-pine hover:underline disabled:opacity-50"
-          >
-            {polishing ? t("polishing") : t("polishWithAi")}
-          </button>
-        </div>
-        <textarea
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          rows={8}
-          className={`${inputClass} h-auto py-2`}
-        />
-        <span className="text-xs text-muted">{t("descriptionHint")}</span>
-        {polishError && <span className="text-xs text-red-700">{polishError}</span>}
-      </label>
-
-      <label className={labelClass}>
-        <span>{t("externalApplyUrl")}</span>
-        <input
-          type="url"
-          value={externalApplyUrl}
-          onChange={(e) => setExternalApplyUrl(e.target.value)}
-          placeholder="https://…"
-          className={inputClass}
-        />
-        <span className="text-xs text-muted">{t("externalApplyUrlHint")}</span>
-      </label>
-
-      <div className="grid grid-cols-2 gap-4">
-        <label className={labelClass}>
-          <span>{t("language")}</span>
-          <select
-            value={language}
-            onChange={(e) => setLanguage(e.target.value as "pt" | "en")}
-            className={inputClass}
-          >
-            <option value="pt">PT</option>
-            <option value="en">EN</option>
-          </select>
-        </label>
-
-        <label className={labelClass}>
-          <span>{t("seniority")}</span>
-          <select
-            value={seniority}
-            onChange={(e) => setSeniority(e.target.value as JobFormInput["seniority"])}
-            className={inputClass}
-          >
-            {(["junior", "mid", "senior", "lead"] as const).map((s) => (
-              <option key={s} value={s}>
-                {t(`seniorityOption.${s}`)}
-              </option>
-            ))}
-          </select>
-        </label>
-      </div>
-
-      <div className="grid grid-cols-2 gap-4">
-        <label className={labelClass}>
-          <span>{t("workModel")}</span>
-          <select
-            value={workModel}
-            onChange={(e) => setWorkModel(e.target.value as JobFormInput["workModel"])}
-            className={inputClass}
-          >
-            {(["remote", "hybrid", "office"] as const).map((w) => (
-              <option key={w} value={w}>
-                {t(`workModelOption.${w}`)}
-              </option>
-            ))}
-          </select>
-        </label>
-
-        <label className={labelClass}>
-          <span>{t("location")}</span>
-          <select
-            value={locationId}
-            disabled={workModel === "remote"}
-            onChange={(e) => setLocationId(e.target.value)}
-            className={inputClass}
-          >
-            <option value="">
-              {workModel === "remote" ? t("locationRemote") : t("locationPlaceholder")}
-            </option>
-            {locations.map((loc) => (
-              <option key={loc.id} value={loc.id}>
-                {loc.name}
-              </option>
-            ))}
-          </select>
-        </label>
-      </div>
-
-      <label className={labelClass}>
-        <span>{t("category")}</span>
-        <select value={categoryId} onChange={(e) => setCategoryId(e.target.value)} className={inputClass}>
-          <option value="">{t("categoryPlaceholder")}</option>
-          {jobCategories.map((cat) => (
-            <option key={cat.id} value={cat.id}>
-              {t(`categoryOption.${cat.slug}`)}
-            </option>
-          ))}
-        </select>
-      </label>
-
-      <fieldset className="rounded-lg border border-line p-4">
-        <legend className="px-1 text-sm font-medium text-ink">{t("salaryLegend")}</legend>
-        <div className="grid grid-cols-2 gap-4">
-          <label className={labelClass}>
-            <span>{t("salaryMin")}</span>
-            <input
-              type="number"
-              min={1}
-              value={salaryMin}
-              onChange={(e) => setSalaryMin(e.target.value)}
-              className={inputClass}
-            />
-          </label>
-          <label className={labelClass}>
-            <span>{t("salaryMax")}</span>
-            <input
-              type="number"
-              min={1}
-              value={salaryMax}
-              onChange={(e) => setSalaryMax(e.target.value)}
-              className={inputClass}
-            />
-          </label>
-        </div>
-        <div className="mt-4 grid grid-cols-2 gap-4">
-          <label className={labelClass}>
-            <span>{t("salaryPeriod")}</span>
-            <select
-              value={salaryPeriod}
-              onChange={(e) => setSalaryPeriod(e.target.value as JobFormInput["salaryPeriod"])}
-              className={inputClass}
-            >
-              {(["hour", "day", "month", "year"] as const).map((p) => (
-                <option key={p} value={p}>
-                  {t(`salaryPeriodOption.${p}`)}
-                </option>
-              ))}
-            </select>
-          </label>
-          {salaryPeriod === "month" && (
-            <label className={labelClass}>
-              <span>{t("salaryMonths")}</span>
-              <select
-                value={salaryMonths}
-                onChange={(e) => setSalaryMonths(e.target.value)}
-                className={inputClass}
-              >
-                {[12, 13, 14].map((m) => (
-                  <option key={m} value={m}>
-                    {m}
-                  </option>
-                ))}
-              </select>
-            </label>
-          )}
-        </div>
-        {isPayingCustomer ? (
-          <label className="mt-4 flex items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              checked={!salaryPublic}
-              onChange={(e) => setSalaryPublic(!e.target.checked)}
-            />
-            <span>{t("hideSalaryPublicly")}</span>
-          </label>
-        ) : (
-          <p className="mt-4 text-xs text-muted">{t("hideSalaryUpsell")}</p>
-        )}
-        <div className="mt-4">
-          <span className="text-sm">{t("employmentType")}</span>
-          <p className="text-xs text-muted">{t("employmentTypeHint")}</p>
-          <div className="mt-1.5 flex flex-wrap gap-1.5">
-            {(["permanent", "fixed_term", "contractor", "freelance", "internship"] as const).map((et) => (
-              <button
-                key={et}
-                type="button"
-                onClick={() => toggleEmploymentType(et)}
-                className={
-                  employmentTypes.includes(et)
-                    ? "rounded-md border border-pine bg-pine px-2 py-0.5 text-xs text-white"
-                    : "rounded-md border border-line px-2 py-0.5 text-xs text-muted hover:border-muted"
-                }
-              >
-                {t(`employmentTypeOption.${et}`)}
-              </button>
-            ))}
-          </div>
-        </div>
-      </fieldset>
-
-      <label className={labelClass}>
-        <span>{t("expiresAt")}</span>
-        <input
-          type="date"
-          min={new Date().toISOString().slice(0, 10)}
-          value={expiresAt}
-          onChange={(e) => setExpiresAt(e.target.value)}
-          className={inputClass}
-        />
-        <span className="text-xs text-muted">{t("expiresAtHint")}</span>
-      </label>
-
-      <div>
-        <span className="text-sm">{t("techTags")}</span>
-        <input
-          value={tagFilter}
-          onChange={(e) => {
-            setTagFilter(e.target.value);
-            setTechRequestState("idle");
-          }}
-          placeholder={t("techTagsFilter")}
-          className={`${inputClass} mt-1 w-full`}
-        />
-        {selectedTags.length > 0 && (
-          <ul className="mt-2 flex flex-col gap-1.5">
-            {selectedTags.map((sel) => {
-              const tag = techTags.find((tg) => tg.id === sel.id);
-              if (!tag) return null;
-              return (
-                <li
-                  key={sel.id}
-                  className="flex flex-wrap items-center gap-2 rounded-md border border-pine bg-pine/10 px-2 py-1"
-                >
-                  <span className="text-xs font-medium text-pine">{tag.label}</span>
-                  <LevelSelect value={sel.level} onChange={(level) => updateTagLevel(sel.id, level)} t={t} />
-                  <label className="flex items-center gap-1 text-[11px] text-ink">
-                    <input
-                      type="checkbox"
-                      checked={sel.required}
-                      onChange={(e) => updateTagRequired(sel.id, e.target.checked)}
-                    />
-                    {t("mustHave")}
-                  </label>
-                  <button type="button" onClick={() => toggleTag(sel.id)} className="ml-auto text-xs text-pine">
-                    ×
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
-        )}
-        <div className="mt-2 max-h-48 overflow-y-auto rounded-lg border border-line bg-white p-2">
-          <ul className="flex flex-wrap gap-1.5">
-            {filteredTags.slice(0, 60).map((tag) => (
-              <li key={tag.id}>
+      <div className="grid grid-cols-1 items-start gap-6 lg:grid-cols-[1fr_380px]">
+        <div className="flex flex-col gap-6">
+          {!initial && (
+            <SectionCard icon={Link2} title={t("pasteJobLink")} subtitle={t("pasteJobLinkSubtitle")}>
+              <div className="flex gap-2">
+                <input
+                  type="url"
+                  value={extractUrl}
+                  onChange={(e) => setExtractUrl(e.target.value)}
+                  placeholder="https://…"
+                  className={`${inputClass} flex-1`}
+                />
                 <button
                   type="button"
-                  onClick={() => toggleTag(tag.id)}
-                  className={
-                    selectedTags.some((t) => t.id === tag.id)
-                      ? "rounded-md border border-pine bg-pine px-2 py-0.5 text-xs text-white"
-                      : "rounded-md border border-line px-2 py-0.5 text-xs text-muted hover:border-muted"
-                  }
+                  disabled={extracting || !extractUrl.trim()}
+                  onClick={handleExtract}
+                  className={`shrink-0 ${buttonClassName({ size: "md" })}`}
                 >
-                  {tag.label}
+                  {extracting ? t("extracting") : t("fetchAndFill")}
                 </button>
-              </li>
-            ))}
-          </ul>
-        </div>
-        {tagFilter.trim().length >= 2 && filteredTags.length === 0 && (
-          <div className="mt-2 text-xs text-muted">
-            {techRequestState === "sent" ? (
-              <p className="text-pine">{t("techTagRequestSent")}</p>
-            ) : techRequestState === "exists" ? (
-              <p>{t("techTagRequestExists")}</p>
-            ) : (
-              <button
-                type="button"
-                disabled={techRequestState === "pending"}
-                onClick={requestMissingTechTag}
-                className="text-pine hover:underline disabled:opacity-50"
-              >
-                {techRequestState === "pending"
-                  ? t("techTagRequestPending")
-                  : t("techTagRequestCta", { query: tagFilter.trim() })}
-              </button>
-            )}
-          </div>
-        )}
-      </div>
+              </div>
+              {extractError && <p className="mt-2 text-xs text-red-700">{extractError}</p>}
+              {extractNotice && <p className="mt-2 text-xs text-pine">{extractNotice}</p>}
+            </SectionCard>
+          )}
 
-      <div>
-        <span className="text-sm">{t("requiredLanguages")}</span>
-        <ul className="mt-2 flex flex-col gap-1.5">
-          {spokenLanguages.map((lang) => {
-            const sel = selectedLanguages.find((l) => l.id === lang.id);
-            return (
-              <li key={lang.id} className="flex items-center gap-3 text-sm">
-                <label className="flex items-center gap-1.5">
-                  <input type="checkbox" checked={!!sel} onChange={() => toggleLanguage(lang.id)} />
-                  {lang.label}
+          <SectionCard icon={FileText} title={t("basicInfoTitle")} subtitle={t("basicInfoSubtitle")}>
+            <div className="flex flex-col gap-5">
+              <label className={labelClass}>
+                <span>{t("title")}</span>
+                <input value={title} onChange={(e) => setTitle(e.target.value)} className={inputClass} />
+              </label>
+
+              <label className={labelClass}>
+                <div className="flex items-center justify-between">
+                  <span>{t("description")}</span>
+                  <button
+                    type="button"
+                    disabled={polishing || !description.trim()}
+                    onClick={handlePolish}
+                    className="inline-flex items-center gap-1 text-xs font-medium text-pine hover:text-pine-hover disabled:opacity-50"
+                  >
+                    <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
+                    {polishing ? t("polishing") : t("polishWithAi")}
+                  </button>
+                </div>
+                <textarea
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  rows={8}
+                  className={`${inputClass} h-auto py-2`}
+                />
+                <span className="text-xs text-muted">{t("descriptionHint")}</span>
+                {polishError && <span className="text-xs text-red-700">{polishError}</span>}
+              </label>
+
+              <label className={labelClass}>
+                <span>{t("externalApplyUrl")}</span>
+                <input
+                  type="url"
+                  value={externalApplyUrl}
+                  onChange={(e) => setExternalApplyUrl(e.target.value)}
+                  placeholder="https://…"
+                  className={inputClass}
+                />
+                <span className="text-xs text-muted">{t("externalApplyUrlHint")}</span>
+              </label>
+            </div>
+          </SectionCard>
+
+          <SectionCard icon={SlidersHorizontal} title={t("jobDetailsTitle")} subtitle={t("jobDetailsSubtitle")}>
+            <div className="flex flex-col gap-5">
+              <div className="grid grid-cols-2 gap-4">
+                <label className={labelClass}>
+                  <span>{t("language")}</span>
+                  <select
+                    value={language}
+                    onChange={(e) => setLanguage(e.target.value as "pt" | "en")}
+                    className={inputClass}
+                  >
+                    <option value="pt">PT</option>
+                    <option value="en">EN</option>
+                  </select>
                 </label>
-                {sel && <LevelSelect value={sel.level} onChange={(level) => updateLanguageLevel(lang.id, level)} t={t} />}
-              </li>
-            );
-          })}
-        </ul>
+
+                <label className={labelClass}>
+                  <span>{t("seniority")}</span>
+                  <select
+                    value={seniority}
+                    onChange={(e) => setSeniority(e.target.value as JobFormInput["seniority"])}
+                    className={inputClass}
+                  >
+                    {(["junior", "mid", "senior", "lead"] as const).map((s) => (
+                      <option key={s} value={s}>
+                        {t(`seniorityOption.${s}`)}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <label className={labelClass}>
+                  <span>{t("workModel")}</span>
+                  <select
+                    value={workModel}
+                    onChange={(e) => setWorkModel(e.target.value as JobFormInput["workModel"])}
+                    className={inputClass}
+                  >
+                    {(["remote", "hybrid", "office"] as const).map((w) => (
+                      <option key={w} value={w}>
+                        {t(`workModelOption.${w}`)}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className={labelClass}>
+                  <span>{t("location")}</span>
+                  <select
+                    value={locationId}
+                    disabled={workModel === "remote"}
+                    onChange={(e) => setLocationId(e.target.value)}
+                    className={inputClass}
+                  >
+                    <option value="">
+                      {workModel === "remote" ? t("locationRemote") : t("locationPlaceholder")}
+                    </option>
+                    {locations.map((loc) => (
+                      <option key={loc.id} value={loc.id}>
+                        {loc.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+
+              <label className={labelClass}>
+                <span>{t("category")}</span>
+                <select value={categoryId} onChange={(e) => setCategoryId(e.target.value)} className={inputClass}>
+                  <option value="">{t("categoryPlaceholder")}</option>
+                  {jobCategories.map((cat) => (
+                    <option key={cat.id} value={cat.id}>
+                      {t(`categoryOption.${cat.slug}`)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+          </SectionCard>
+        </div>
+
+        <div className="flex flex-col gap-6">
+          <SectionCard icon={DollarSign} title={t("salaryLegend")}>
+            <div className="flex flex-col gap-4">
+              <div className="grid grid-cols-2 gap-4">
+                <label className={labelClass}>
+                  <span>{t("salaryMin")}</span>
+                  <input
+                    type="number"
+                    min={1}
+                    value={salaryMin}
+                    onChange={(e) => setSalaryMin(e.target.value)}
+                    className={inputClass}
+                  />
+                </label>
+                <label className={labelClass}>
+                  <span>{t("salaryMax")}</span>
+                  <input
+                    type="number"
+                    min={1}
+                    value={salaryMax}
+                    onChange={(e) => setSalaryMax(e.target.value)}
+                    className={inputClass}
+                  />
+                </label>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <label className={labelClass}>
+                  <span>{t("salaryPeriod")}</span>
+                  <select
+                    value={salaryPeriod}
+                    onChange={(e) => setSalaryPeriod(e.target.value as JobFormInput["salaryPeriod"])}
+                    className={inputClass}
+                  >
+                    {(["hour", "day", "month", "year"] as const).map((p) => (
+                      <option key={p} value={p}>
+                        {t(`salaryPeriodOption.${p}`)}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                {salaryPeriod === "month" && (
+                  <label className={labelClass}>
+                    <span>{t("salaryMonths")}</span>
+                    <select
+                      value={salaryMonths}
+                      onChange={(e) => setSalaryMonths(e.target.value)}
+                      className={inputClass}
+                    >
+                      {[12, 13, 14].map((m) => (
+                        <option key={m} value={m}>
+                          {m}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                )}
+              </div>
+              {isPayingCustomer ? (
+                <label className="flex items-center gap-2 text-sm text-ink">
+                  <input
+                    type="checkbox"
+                    checked={!salaryPublic}
+                    onChange={(e) => setSalaryPublic(!e.target.checked)}
+                  />
+                  <span>{t("hideSalaryPublicly")}</span>
+                </label>
+              ) : (
+                <p className="text-xs text-muted">{t("hideSalaryUpsell")}</p>
+              )}
+              <div>
+                <span className="text-sm font-medium text-ink">{t("employmentType")}</span>
+                <p className="mt-0.5 text-xs text-muted">{t("employmentTypeHint")}</p>
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {(["permanent", "fixed_term", "contractor", "freelance", "internship"] as const).map((et) => (
+                    <button
+                      key={et}
+                      type="button"
+                      onClick={() => toggleEmploymentType(et)}
+                      className={
+                        employmentTypes.includes(et)
+                          ? "rounded-full border border-pine bg-pine px-3 py-1.5 text-xs font-medium text-white"
+                          : "rounded-full border border-line px-3 py-1.5 text-xs font-medium text-ink hover:border-muted"
+                      }
+                    >
+                      {t(`employmentTypeOption.${et}`)}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </SectionCard>
+
+          <SectionCard icon={Calendar} title={t("expiresAt")} subtitle={t("expiresAtHint")}>
+            <input
+              type="date"
+              min={new Date().toISOString().slice(0, 10)}
+              value={expiresAt}
+              onChange={(e) => setExpiresAt(e.target.value)}
+              className={`${inputClass} w-full`}
+            />
+          </SectionCard>
+
+          <SectionCard icon={Layers} title={t("techTags")} subtitle={t("techTagsSubtitle")}>
+            <div>
+              <input
+                value={tagFilter}
+                onChange={(e) => {
+                  setTagFilter(e.target.value);
+                  setTechRequestState("idle");
+                }}
+                placeholder={t("techTagsFilter")}
+                className={`${inputClass} w-full`}
+              />
+              {selectedTags.length > 0 && (
+                <ul className="mt-3 flex flex-wrap gap-2">
+                  {selectedTags.map((sel) => {
+                    const tag = techTags.find((tg) => tg.id === sel.id);
+                    if (!tag) return null;
+                    return (
+                      <li key={sel.id} className="flex items-center gap-1.5">
+                        <span className="flex items-center gap-1 rounded-full bg-pine/10 py-1 pr-1 pl-3 text-xs font-medium text-pine">
+                          {tag.label}
+                          <button
+                            type="button"
+                            onClick={() => updateTagRequired(sel.id, !sel.required)}
+                            title={sel.required ? t("mustHave") : t("niceToHave")}
+                            aria-label={sel.required ? t("mustHave") : t("niceToHave")}
+                            aria-pressed={sel.required}
+                            className="flex h-5 w-5 items-center justify-center rounded-full hover:bg-pine/10"
+                          >
+                            <Star
+                              className={sel.required ? "h-3 w-3 fill-pine text-pine" : "h-3 w-3 text-pine/40"}
+                              aria-hidden="true"
+                            />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => toggleTag(sel.id)}
+                            aria-label={t("removeTag", { tag: tag.label })}
+                            className="flex h-5 w-5 items-center justify-center rounded-full hover:bg-pine/10"
+                          >
+                            <X className="h-3 w-3" aria-hidden="true" />
+                          </button>
+                        </span>
+                        <LevelSelect value={sel.level} onChange={(level) => updateTagLevel(sel.id, level)} t={t} />
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+              <div className="mt-3 max-h-48 overflow-y-auto rounded-lg border border-line bg-paper p-2">
+                <ul className="flex flex-wrap gap-1.5">
+                  {filteredTags.slice(0, 60).map((tag) => (
+                    <li key={tag.id}>
+                      <button
+                        type="button"
+                        onClick={() => toggleTag(tag.id)}
+                        className={
+                          selectedTags.some((t) => t.id === tag.id)
+                            ? "rounded-md border border-pine bg-pine px-2 py-1 text-xs font-medium text-white"
+                            : "rounded-md border border-line bg-white px-2 py-1 text-xs text-ink hover:border-muted"
+                        }
+                      >
+                        {tag.label}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              {tagFilter.trim().length >= 2 && filteredTags.length === 0 && (
+                <div className="mt-2 text-xs text-muted">
+                  {techRequestState === "sent" ? (
+                    <p className="text-pine">{t("techTagRequestSent")}</p>
+                  ) : techRequestState === "exists" ? (
+                    <p>{t("techTagRequestExists")}</p>
+                  ) : (
+                    <button
+                      type="button"
+                      disabled={techRequestState === "pending"}
+                      onClick={requestMissingTechTag}
+                      className="text-pine hover:underline disabled:opacity-50"
+                    >
+                      {techRequestState === "pending"
+                        ? t("techTagRequestPending")
+                        : t("techTagRequestCta", { query: tagFilter.trim() })}
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+          </SectionCard>
+
+          <SectionCard icon={Globe2} title={t("requiredLanguages")} subtitle={t("requiredLanguagesSubtitle")}>
+            <ul className="flex flex-col gap-2.5">
+              {spokenLanguages.map((lang) => {
+                const sel = selectedLanguages.find((l) => l.id === lang.id);
+                return (
+                  <li key={lang.id} className="flex items-center justify-between gap-3 text-sm">
+                    <label className="flex items-center gap-2 text-ink">
+                      <input type="checkbox" checked={!!sel} onChange={() => toggleLanguage(lang.id)} />
+                      {lang.label}
+                    </label>
+                    {sel && <LevelSelect value={sel.level} onChange={(level) => updateLanguageLevel(lang.id, level)} t={t} />}
+                  </li>
+                );
+              })}
+            </ul>
+          </SectionCard>
+        </div>
       </div>
 
-      <div className="flex gap-3">
+      <div className="flex justify-end gap-3">
         <button
           type="button"
           disabled={pending !== null}
           onClick={(e) => handleSubmit(e, false)}
-          className="h-10 rounded-lg border border-line bg-white px-4 text-sm font-medium text-ink hover:border-muted disabled:opacity-50"
+          className={buttonClassName({ variant: "secondary", size: "md" })}
         >
           {t("saveDraft")}
         </button>
@@ -695,7 +768,7 @@ export function JobForm({
           type="button"
           disabled={pending !== null}
           onClick={(e) => handleSubmit(e, true)}
-          className="h-10 rounded-lg bg-pine px-4 text-sm font-medium text-white hover:bg-pine/90 disabled:opacity-50"
+          className={buttonClassName({ size: "md" })}
         >
           {t("publish")}
         </button>

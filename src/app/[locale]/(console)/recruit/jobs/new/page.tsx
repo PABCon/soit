@@ -23,7 +23,7 @@ export default async function NewJobPage({ params }: Props) {
 
   return (
     <>
-      <h1 className="text-2xl font-bold">{t("addJobAd")}</h1>
+      <h1 className="text-3xl font-bold lg:text-4xl">{t("addJobAd")}</h1>
       <div className="mt-6">
         <JobForm
           techTags={techTags}

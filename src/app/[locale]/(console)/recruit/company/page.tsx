@@ -20,7 +20,7 @@ export default async function CompanyProfilePage({ params }: Props) {
 
   return (
     <>
-      <h1 className="text-2xl font-bold">{t("companyProfile")}</h1>
+      <h1 className="text-3xl font-bold lg:text-4xl">{t("companyProfile")}</h1>
       <div className="mt-6">
         <CompanyProfileForm
           company={ctx.company}

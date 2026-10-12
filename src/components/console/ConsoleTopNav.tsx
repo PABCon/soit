@@ -29,8 +29,11 @@ export async function ConsoleTopNav({
     <header className="sticky top-0 z-30 border-b border-line bg-paper/90 backdrop-blur">
       <div className="mx-auto flex h-14 max-w-[1600px] items-center gap-4 px-4 sm:px-6">
         <Link href="/recruit" className="shrink-0 leading-tight">
-          <span className="block font-display text-lg font-bold text-pine">{brand("name")}</span>
-          <span className="block text-[11px] text-muted">{t("title")}</span>
+          {/* eslint-disable-next-line @next/next/no-img-element -- small local brand asset, not a remote/optimizable photo */}
+          <img src="/logo-justit.png" alt={brand("name")} className="h-7 w-auto" />
+          {/* Hidden below sm — same measured mobile-overflow fix as the
+           *  candidate TopNav's own tagline (see its comment). */}
+          <span className="mt-0.5 hidden text-[11px] text-muted sm:block">{t("title")}</span>
         </Link>
         <div className="ml-auto flex shrink-0 items-center gap-2">
           <LanguageSwitcher />

@@ -29,7 +29,7 @@ export default async function EmployerSettingsPage({ params }: Props) {
 
   return (
     <>
-      <h1 className="text-2xl font-bold">{t("myAccount")}</h1>
+      <h1 className="text-3xl font-bold lg:text-4xl">{t("myAccount")}</h1>
 
       <section className="mt-6">
         <h2 className="font-display text-sm font-semibold text-muted">{t("myProfile")}</h2>
