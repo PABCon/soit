@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { Link, useRouter } from "@/i18n/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Dropdown } from "@/components/Dropdown";
+import { buttonClassName } from "@/components/Button";
 
 const item = "block w-full truncate px-3 py-2 text-left text-sm text-ink hover:bg-paper";
 
@@ -171,11 +172,16 @@ export function LoginMenu() {
        *  reproduced 6/6 on production via a real candidate-logout →
        *  employer-login sequence with the redirect captured on the
        *  wire, not guessed. */}
-      <Link
-        href="/recruit"
-        prefetch={false}
-        className="flex h-9 items-center rounded-lg bg-pine px-3 text-sm font-medium text-white hover:bg-pine/90"
-      >
+      {/* Round-13 correction: round 12 reverted Search (and every other
+       *  header control) from `lg` back down to the shared `md` size this
+       *  Link had previously been matched to in round 7 — but this
+       *  literal's own `size: "lg"` was left behind from round 9, so it
+       *  was the one thing still oversized relative to its neighbors.
+       *  `buttonClassName` is still imported directly (can't use the
+       *  `Button` component itself — this is a navigation Link, not a
+       *  submit action) so it can't silently drift from Button's own
+       *  recipe again. */}
+      <Link href="/recruit" prefetch={false} className={buttonClassName()}>
         {t("addOffer")}
       </Link>
     </>

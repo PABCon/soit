@@ -134,3 +134,55 @@ export async function getJobRecommendationsForCandidate(limit = 20): Promise<Rec
     jobs: scored.slice(0, limit).map((s) => ({ ...s.job, matchScore: s.matchScore, matchedTechLabels: s.matchedTechLabels })),
   };
 }
+
+export type JobMatchBannerResult =
+  | { ok: true; score: number }
+  | { ok: false; reason: "not_a_candidate" | "empty_profile" | "no_preferences" | "below_threshold" };
+
+/** Round-19 — the job detail page's "AI match" banner: a per-job score
+ *  for the logged-in candidate, reusing the exact same scoring engine and
+ *  `MIN_MATCH_SCORE` threshold as the recommendations list above, rather
+ *  than inventing a second "AI match" notion. Mirrors
+ *  `RecommendationsResult`'s discriminated shape (round-15's version
+ *  collapsed every non-match case to a bare `null`, which meant the
+ *  banner either showed a real match or rendered nothing at all — this
+ *  version lets the banner always show *something*, same "ads mentality"
+ *  reasoning `RecommendationsTeaser` already applies on `/jobs`) —
+ *  `"below_threshold"` covers both "this job isn't live/found" and "a
+ *  real score that just doesn't clear the bar for this specific job." */
+export async function getJobMatchScoreForCandidate(jobId: string): Promise<JobMatchBannerResult> {
+  const supabase = await createClient();
+  const { data: candidateId } = await supabase.rpc("my_candidate_id");
+  if (!candidateId) return { ok: false, reason: "not_a_candidate" };
+
+  const [skillsAndEducation, prefs] = await Promise.all([
+    getMyCandidateSkillsAndEducation(),
+    getMyCandidateJobPreferences(),
+  ]);
+
+  const skillIds = new Set((skillsAndEducation?.techTags ?? []).map((t) => t.techTagId));
+  const hasPrefs =
+    !!prefs &&
+    (prefs.categoryIds.length > 0 ||
+      prefs.locationIds.length > 0 ||
+      !!prefs.workModel ||
+      !!prefs.employmentType ||
+      prefs.salaryMin != null ||
+      prefs.salaryMax != null);
+
+  if (skillIds.size === 0) return { ok: false, reason: "empty_profile" };
+  if (!hasPrefs) return { ok: false, reason: "no_preferences" };
+
+  const { data } = await supabase
+    .from("jobs")
+    .select(RECS_SELECT)
+    .eq("id", jobId)
+    .eq("status", "published")
+    .gt("expires_at", new Date().toISOString())
+    .maybeSingle();
+
+  if (!data) return { ok: false, reason: "below_threshold" };
+
+  const { score } = scoreJob(data as unknown as RecsJobRow, skillIds, prefs);
+  return score >= MIN_MATCH_SCORE ? { ok: true, score } : { ok: false, reason: "below_threshold" };
+}

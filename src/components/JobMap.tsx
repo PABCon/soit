@@ -141,7 +141,7 @@ export function JobMap({ jobs }: { jobs: Job[] }) {
 
   return (
     <div className="relative h-full w-full">
-      <div ref={containerRef} className="h-full w-full rounded-xl" />
+      <div ref={containerRef} className="h-full w-full rounded-[10px]" />
       <p className="pointer-events-none absolute bottom-2 left-2 z-[400] rounded bg-white/85 px-2 py-1 text-[10px] text-muted">
         {t("mapHint")}
       </p>

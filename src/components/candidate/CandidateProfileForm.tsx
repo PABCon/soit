@@ -11,6 +11,7 @@ import type {
   CandidateJobPreferences,
 } from "@/lib/db/candidate-profile";
 import type { ParseCvResult } from "@/app/[locale]/(candidate)/profile/actions";
+import { Tabs } from "@/components/Tabs";
 import { OverviewSection } from "@/components/candidate/OverviewSection";
 import { JobPreferencesSection } from "@/components/candidate/JobPreferencesSection";
 import { ExperienceSection } from "@/components/candidate/ExperienceSection";
@@ -142,24 +143,11 @@ export function CandidateProfileForm({
         <p className="mb-4 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800">{t("aiDraftNotice")}</p>
       )}
 
-      <div role="tablist" className="flex gap-1 border-b border-line">
-        {TABS.map((key) => (
-          <button
-            key={key}
-            type="button"
-            role="tab"
-            aria-selected={tab === key}
-            onClick={() => setTab(key)}
-            className={
-              tab === key
-                ? "border-b-2 border-pine px-4 py-2 text-sm font-medium text-pine"
-                : "border-b-2 border-transparent px-4 py-2 text-sm font-medium text-muted hover:text-ink"
-            }
-          >
-            {t(`tab.${key}`)}
-          </button>
-        ))}
-      </div>
+      <Tabs
+        tabs={TABS.map((key) => ({ key, label: t(`tab.${key}`) }))}
+        active={tab}
+        onChange={(key) => setTab(key as Tab)}
+      />
 
       <div className="mt-6">
         {tab === "overview" && (

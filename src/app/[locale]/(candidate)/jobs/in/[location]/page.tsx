@@ -29,7 +29,7 @@ export default async function JobsInLocationPage({ params }: Props) {
     <>
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold">{t("jobsIn", { place: result.locationName ?? "" })}</h1>
+          <h1 className="text-3xl font-bold lg:text-4xl">{t("jobsIn", { place: result.locationName ?? "" })}</h1>
         </div>
         <Link
           href="/jobs"

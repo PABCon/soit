@@ -2,7 +2,9 @@
 
 import { useMemo, useState, type FormEvent, type KeyboardEvent } from "react";
 import { useTranslations } from "next-intl";
+import { Search, MapPin, ChevronDown } from "lucide-react";
 import { Link, usePathname, useRouter } from "@/i18n/navigation";
+import { Button } from "@/components/Button";
 import { useUrlSearchParams, writeUrlSearchParams } from "@/hooks/useUrlSearchParams";
 import { saveSearchAction } from "@/app/[locale]/(candidate)/saved-searches/actions";
 import type { LocationOption } from "@/lib/db/locations";
@@ -137,8 +139,19 @@ function SearchBarFields({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="hidden min-w-0 max-w-xl flex-1 items-center gap-1.5 sm:flex">
+    // Round-12 correction: rounds 5-7 grew every control here to h-14,
+    // chasing a misread of the reference as wanting search to visibly
+    // dominate the header. A pixel-measured comparison against the real
+    // Design System Showcase shows the input, dropdown, and buttons
+    // there all share one compact height — the same h-11 every other
+    // `Button` in this app already uses. Reverted to that single shared
+    // control height instead of a one-off larger size.
+    <form onSubmit={handleSubmit} className="flex w-full min-w-0 items-center gap-2">
       <div className="relative min-w-0 flex-1">
+        <Search
+          className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted"
+          aria-hidden="true"
+        />
         <input
           type="search"
           value={q}
@@ -156,7 +169,7 @@ function SearchBarFields({
           aria-autocomplete="list"
           aria-controls="search-suggestions"
           autoComplete="off"
-          className="h-9 w-full min-w-0 rounded-lg border border-line bg-white px-3 text-sm placeholder:text-muted"
+          className="h-11 w-full min-w-0 rounded-lg border border-line bg-white pr-4 pl-9 text-sm placeholder:text-muted"
         />
         {suggestionsOpen && filteredSuggestions.length > 0 && (
           <ul
@@ -191,25 +204,38 @@ function SearchBarFields({
           </ul>
         )}
       </div>
-      <select
-        value={near}
-        onChange={(e) => setNear(e.target.value)}
-        className="h-9 shrink-0 rounded-lg border border-line bg-white px-2 text-xs text-ink"
-      >
-        <option value="">{t("searchAnywhere")}</option>
-        {locations.map((l) => (
-          <option key={l.id} value={l.slug}>
-            {l.name}
-          </option>
-        ))}
-      </select>
+      {/* Dropdown swatch fidelity: a left location-pin icon + the same
+       *  appearance-none custom chevron JobsExplorer's sort control
+       *  already uses, instead of the native select arrow. */}
+      <span className="relative inline-flex h-11 shrink-0 items-center">
+        <MapPin
+          className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted"
+          aria-hidden="true"
+        />
+        <select
+          value={near}
+          onChange={(e) => setNear(e.target.value)}
+          className="h-11 shrink-0 appearance-none rounded-lg border border-line bg-white py-0 pr-8 pl-9 text-sm text-ink"
+        >
+          <option value="">{t("searchAnywhere")}</option>
+          {locations.map((l) => (
+            <option key={l.id} value={l.slug}>
+              {l.name}
+            </option>
+          ))}
+        </select>
+        <ChevronDown
+          className="pointer-events-none absolute top-1/2 right-3 h-4 w-4 -translate-y-1/2 text-muted"
+          aria-hidden="true"
+        />
+      </span>
       {near && (
-        <label className="flex shrink-0 items-center gap-1 text-xs whitespace-nowrap text-muted">
+        <label className="flex h-11 shrink-0 items-center gap-1 text-xs whitespace-nowrap text-muted">
           {t("searchRadiusLabel")}
           <select
             value={radiusKm}
             onChange={(e) => setRadiusKm(e.target.value)}
-            className="h-9 shrink-0 rounded-lg border border-line bg-white px-2 text-xs text-ink"
+            className="h-8 shrink-0 rounded-lg border border-line bg-white px-2 text-xs text-ink"
           >
             {RADIUS_OPTIONS.map((r) => (
               <option key={r} value={r}>
@@ -219,12 +245,9 @@ function SearchBarFields({
           </select>
         </label>
       )}
-      <button
-        type="submit"
-        className="h-9 shrink-0 rounded-lg bg-pine px-3 text-sm font-medium text-white hover:bg-pine/90"
-      >
+      <Button type="submit" className="shrink-0">
         {t("searchSubmit")}
-      </button>
+      </Button>
       {saveState === "saved" ? (
         <Link
           href="/saved-searches"
@@ -236,12 +259,12 @@ function SearchBarFields({
           {t("saveSearchSaved")}
         </Link>
       ) : (
-        <button
-          type="button"
+        <Button
+          variant="ghost"
           onClick={handleSave}
           disabled={!canSave || saveState === "saving"}
           title={saveState === "error" ? t("saveSearchError") : t("saveSearchHint")}
-          className="flex h-9 shrink-0 items-center gap-1.5 rounded-lg px-2 text-xs font-medium text-muted transition-colors hover:bg-paper hover:text-pine disabled:opacity-40"
+          className="shrink-0 px-2"
         >
           <svg
             viewBox="0 0 24 24"
@@ -255,7 +278,7 @@ function SearchBarFields({
             <path d="M6 4h12v16l-6-4-6 4V4Z" />
           </svg>
           <span className="hidden lg:inline">{t("saveSearch")}</span>
-        </button>
+        </Button>
       )}
       {saveState === "error" && (
         <span className="shrink-0 text-xs text-red-700">{t("saveSearchError")}</span>

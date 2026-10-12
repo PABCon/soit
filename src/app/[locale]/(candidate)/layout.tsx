@@ -53,17 +53,22 @@ export default async function CandidateLayout({
   if (blockEmployer) redirect({ href: "/recruit", locale });
 
   return (
-    <div className="flex min-h-dvh flex-col">
-      {/* Rail is always `fixed` now — a floating trigger + popover, never a
-       *  layout-affecting sidebar — so it's just an overlay here, not a
-       *  flex sibling the content column has to share width with. */}
+    // Round-5 architectural fix: Rail's collapsed icon strip now gets a
+    // real, reserved-width gutter as a flex sibling of the content column
+    // — not a `fixed` overlay guessing at a safe offset. This guarantees
+    // zero overlap with anything in the content column at any viewport
+    // width or scroll position, by construction (see Rail.tsx's own
+    // comment for the full reasoning).
+    <div className="flex min-h-dvh flex-col sm:flex-row">
       <Rail unreadMessageCount={unreadMessageCount} />
-      <TopNav />
-      <CvOnboardingPrompt />
-      <main className="mx-auto w-full max-w-[1600px] flex-1 px-4 py-8 sm:px-6">
-        {children}
-      </main>
-      <Footer />
+      <div className="flex min-w-0 flex-1 flex-col">
+        <TopNav />
+        <CvOnboardingPrompt />
+        <main className="mx-auto w-full max-w-[1600px] flex-1 px-4 py-8 sm:px-6">
+          {children}
+        </main>
+        <Footer />
+      </div>
     </div>
   );
 }

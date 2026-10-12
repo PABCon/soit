@@ -30,7 +30,7 @@ export default async function CandidateMessagesPage({ params }: Props) {
   return (
     <>
       {candidateId && <InboxRealtimeRefresh filter={`candidate_id=eq.${candidateId}`} />}
-      <h1 className="text-2xl font-bold">{t("inboxTitle")}</h1>
+      <h1 className="text-3xl font-bold lg:text-4xl">{t("inboxTitle")}</h1>
 
       {threads.length === 0 ? (
         <p className="mt-8 text-sm text-muted">{t("noThreads")}</p>

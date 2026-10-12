@@ -49,7 +49,7 @@ export default async function JobsInLocationFacetPage({ params }: Props) {
     <>
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold">
+          <h1 className="text-3xl font-bold lg:text-4xl">
             {t("facetJobsIn", { facet: facetLabel, place })}
           </h1>
         </div>

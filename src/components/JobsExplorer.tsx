@@ -1,20 +1,32 @@
 "use client";
 
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
 import dynamic from "next/dynamic";
 import { JobRow } from "@/components/JobRow";
 import { Switch } from "@/components/Switch";
+import { Button } from "@/components/Button";
 import { TechIcon } from "@/components/icons/tech-icons";
 import { CategoryIcon } from "@/components/icons/category-icons";
 import { useUrlSearchParams, writeUrlSearchParams, parseListParam } from "@/hooks/useUrlSearchParams";
 import { haversineKm } from "@/lib/geo";
 import type { Job, Seniority, WorkModel } from "@/lib/types";
 import type { EmploymentType } from "@/components/Salary";
-import type { FeaturedTechCount } from "@/lib/db/tech-tags";
-import type { JobCategoryOption } from "@/lib/db/job-categories";
 import type { LocationOption } from "@/lib/db/locations";
 import type { SpokenLanguageOption } from "@/lib/db/spoken-languages";
+
+/** The quick-filter row's merged, ranked data shape (round-5 feedback —
+ *  replaces a curated ~20-tag subset with the full tech-tag vocabulary
+ *  merged with every category, ranked purely by live job count, assembled
+ *  once server-side in jobs/page.tsx from the same job list this
+ *  component already receives). `label` is the raw tech-tag label for a
+ *  tech entry (already display-ready, untranslated by design — tech names
+ *  aren't translatable); for a category entry it's the raw DB label,
+ *  unused for display since the category name is translated client-side
+ *  by slug, same as before. */
+export type QuickFilterOption =
+  | { kind: "tech"; slug: string; label: string; count: number }
+  | { kind: "category"; slug: string; label: string; count: number };
 
 const JobMap = dynamic(() => import("@/components/JobMap").then((m) => m.JobMap), { ssr: false });
 
@@ -47,30 +59,57 @@ function monthlyFloor(job: Job): number | null {
   }
 }
 
-/** One circular icon chip for the curated tech/category filter row (§7.1,
- *  real-usage QA — replaces the old scrollable pill-list row entirely; this
- *  one wraps onto as many rows as it needs and never scrolls). */
+const CHIP_WIDTH = 72;
+const CHIP_GAP = 12; // gap-x-3
+// Round-7 fix: the count badge overflows ~6px past the chip's own right
+// edge (`-right-1` on a 16px badge) — reserving this much slack in the
+// fitted-count arithmetic keeps the last chip's badge from landing right
+// at (or past) the row's own boundary.
+const BADGE_SLACK = 8;
+
+/** One circular icon chip for the tech/category filter row (round-6 —
+ *  a real live job-count badge, per the reference screenshot, at the
+ *  icon's corner). */
 function CircleChip({
   active,
   onClick,
   label,
+  count,
   children,
 }: {
   active: boolean;
   onClick: () => void;
   label: string;
+  count?: number;
   children: ReactNode;
 }) {
   return (
-    <button type="button" onClick={onClick} title={label} className="flex w-16 flex-col items-center gap-1">
-      <span
-        className={`flex h-12 w-12 items-center justify-center rounded-full border-2 bg-white transition-colors ${
-          active ? "border-pine bg-pine/10" : "border-line hover:border-muted"
-        }`}
-      >
-        {children}
+    // 40px icon container, 1px neutral border, subtle blue-tinted hover.
+    // `shrink-0` — a fixed-width item (round-6: now in a true single-row,
+    // no-wrap, no-scroll layout — see the measured-count row below).
+    <button type="button" onClick={onClick} title={label} className="flex w-[72px] shrink-0 flex-col items-center gap-1">
+      <span className="relative h-10 w-10">
+        <span
+          className={`flex h-10 w-10 items-center justify-center rounded-full border bg-white transition-colors ${
+            active ? "border-pine bg-pine/10" : "border-line hover:border-pine/40 hover:bg-subtle"
+          }`}
+        >
+          {children}
+        </span>
+        {count !== undefined && (
+          // Round-7 fix: this badge was getting clipped — the row's own
+          // `overflow-hidden` (needed for the no-wrap safety net) was
+          // also clipping vertical overflow, since Tailwind's
+          // `overflow-hidden` clips both axes. The row now uses
+          // `overflow-x-hidden` instead (horizontal-only) plus a bit of
+          // top padding, so this badge's `-top-1`/`-right-1` overflow has
+          // real room.
+          <span className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-pine px-1 text-[9px] font-semibold text-white">
+            {count > 999 ? "999+" : count}
+          </span>
+        )}
       </span>
-      <span className={`w-full truncate text-center text-[11px] ${active ? "font-semibold text-pine" : "text-muted"}`}>
+      <span className={`line-clamp-2 w-full text-center text-xs leading-[14px] ${active ? "font-semibold text-pine" : "text-muted"}`}>
         {label}
       </span>
     </button>
@@ -95,15 +134,13 @@ const CROSS_ICON = (
  */
 export function JobsExplorer({
   jobs: allJobs,
-  featuredTech,
-  categories,
+  quickFilters,
   locations,
   spokenLanguages,
   favoriteJobIds,
 }: {
   jobs: Job[];
-  featuredTech: FeaturedTechCount[];
-  categories: JobCategoryOption[];
+  quickFilters: QuickFilterOption[];
   locations: LocationOption[];
   spokenLanguages: SpokenLanguageOption[];
   /** null when the viewer isn't a candidate — hides the heart entirely
@@ -117,6 +154,30 @@ export function JobsExplorer({
 
   const [showMoreFilters, setShowMoreFilters] = useState(false);
   const [mapVisible, setMapVisible] = useState(true);
+
+  // Round-6 feedback: the row must be a genuine single row, never wrap —
+  // `flex-wrap` was exactly the mistake. `flex-nowrap` on the container
+  // makes wrapping structurally impossible regardless of timing; this
+  // measures the container's actual width (ResizeObserver, re-fires on
+  // resize) and renders only as many ranked chips as fit. Every chip has
+  // an identical 72px width, so arithmetic against that known width is
+  // equivalent to measuring each one individually.
+  const quickFilterRowRef = useRef<HTMLDivElement>(null);
+  const [visibleQuickFilterCount, setVisibleQuickFilterCount] = useState(quickFilters.length);
+
+  useEffect(() => {
+    const el = quickFilterRowRef.current;
+    if (!el) return;
+    function recompute() {
+      const perChip = CHIP_WIDTH + CHIP_GAP;
+      const count = Math.max(0, Math.floor((el!.clientWidth - BADGE_SLACK + CHIP_GAP) / perChip));
+      setVisibleQuickFilterCount(count);
+    }
+    recompute();
+    const ro = new ResizeObserver(recompute);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
 
   const tech = parseListParam(searchParams, "tech");
   const cat = parseListParam(searchParams, "cat");
@@ -215,40 +276,108 @@ export function JobsExplorer({
     workModel.length + seniority.length + adLanguage.length + employmentType.length + reqLanguage.length + (minSalary ? 1 : 0);
   const activeCount = tech.length + cat.length + panelActiveCount + (remoteOnly ? 1 : 0) + (q ? 1 : 0) + (near ? 1 : 0);
 
+  // Design-system reference image's "Filter Chip (active)" swatch — a
+  // pale-blue-fill/blue-border chip with its own "×" to remove just that
+  // one filter — shown explicitly in the full mockup's toolbar row
+  // ("Lisboa ×  Senior ×  Permanent ×"). Backed entirely by filter
+  // dimensions and removal logic that already exist (toggleListParam/
+  // updateParams); remote stays excluded since the Switch above it is
+  // already that dimension's one control.
+  const activeFilterChips: { key: string; label: string; onRemove: () => void }[] = [
+    ...tech.map((v) => ({ key: `tech-${v}`, label: v, onRemove: () => toggleListParam("tech", tech, v) })),
+    ...cat.map((v) => ({
+      key: `cat-${v}`,
+      label: tjf(`categoryOption.${v}`),
+      onRemove: () => toggleListParam("cat", cat, v),
+    })),
+    ...seniority.map((v) => ({
+      key: `seniority-${v}`,
+      label: t(`seniority.${v}`),
+      onRemove: () => toggleListParam("seniority", seniority, v),
+    })),
+    ...workModel.map((v) => ({
+      key: `workModel-${v}`,
+      label: t(`workModel.${v}`),
+      onRemove: () => toggleListParam("workModel", workModel, v),
+    })),
+    ...employmentType.map((v) => ({
+      key: `empType-${v}`,
+      label: tjf(`employmentTypeOption.${v}`),
+      onRemove: () => toggleListParam("empType", employmentType, v),
+    })),
+    ...reqLanguage.map((v) => ({
+      key: `reqLang-${v}`,
+      label: spokenLanguages.find((l) => l.slug === v)?.label ?? v,
+      onRemove: () => toggleListParam("reqLang", reqLanguage, v),
+    })),
+    ...adLanguage.map((v) => ({ key: `lang-${v}`, label: ta(v), onRemove: () => toggleListParam("lang", adLanguage, v) })),
+    ...(minSalary > 0
+      ? [{ key: "minSalary", label: `€${minSalary.toLocaleString("pt-PT")}+`, onRemove: () => updateParams({ minSalary: null }) }]
+      : []),
+    ...(nearLocation
+      ? [{ key: "near", label: nearLocation.name, onRemove: () => updateParams({ near: null, radiusKm: null }) }]
+      : []),
+    ...(q ? [{ key: "q", label: `"${q}"`, onRemove: () => updateParams({ q: null }) }] : []),
+  ];
+
+  // Filter-label typography: 13px/18px, medium-to-semibold weight. 8px
+  // radius (rectangular, not a pill) — the corrective brief explicitly
+  // calls out "too many pills" as part of the generic feel; these toggle
+  // chips are the one pill-shaped element that had no real reason to stay
+  // round (unlike the circular icon selector or a true status badge).
+  //
+  // Round-7 consistency audit: the active-state recipe was solid-pine-
+  // fill/white-text — but the reference's own "Filter Chip (active)"
+  // swatch (confirmed via a zoomed crop) is a *pale* blue tint with a
+  // pine border and pine text — the exact same recipe the toolbar's
+  // removable active-filter chips already use correctly. Fixed to match;
+  // the default/inactive state's text also moved from `text-muted` to
+  // `text-ink`, matching the swatch's own "Lisboa +" example, which
+  // reads as normal dark text, not muted gray.
   const chip = (on: boolean) =>
-    `shrink-0 rounded-full border px-3 py-1.5 text-xs transition-colors ${
+    `shrink-0 rounded-lg border px-3 py-1.5 text-[13px] leading-[18px] font-medium transition-colors ${
       on
-        ? "border-pine bg-pine text-white"
-        : "border-line bg-white text-muted hover:border-muted hover:text-ink"
+        ? "border-pine bg-subtle text-pine"
+        : "border-line bg-white text-ink hover:border-muted"
     }`;
 
   return (
     <>
-      {/* Item 5 — curated circular icon chips (real logos for tech, generic
-       *  glyphs for categories), never the full ~159-tag vocabulary
-       *  companies pick from. Wraps onto as many rows as it needs — no
-       *  horizontal scroll. */}
-      <div className="flex flex-wrap gap-x-3 gap-y-4">
-        {featuredTech.map((tag) => (
-          <CircleChip
-            key={tag.slug}
-            label={tag.label}
-            active={tech.includes(tag.label)}
-            onClick={() => toggleListParam("tech", tech, tag.label)}
-          >
-            <TechIcon slug={tag.slug} className="h-6 w-6" />
-          </CircleChip>
-        ))}
-        {categories.map((c) => (
-          <CircleChip
-            key={c.id}
-            label={tjf(`categoryOption.${c.slug}`)}
-            active={cat.includes(c.slug)}
-            onClick={() => toggleListParam("cat", cat, c.slug)}
-          >
-            <CategoryIcon slug={c.slug} className="h-5 w-5 text-ink" />
-          </CircleChip>
-        ))}
+      {/* Round-6 feedback: a genuine single row, never wrapping — see the
+       *  measurement effect above. `overflow-x-hidden` (not full
+       *  `overflow-hidden`, which clips vertical overflow too — the real
+       *  cause of round-7's clipped badges) is a safety net for the brief
+       *  pre-measurement render only; at steady state exactly
+       *  `visibleQuickFilterCount` chips are rendered, never more than
+       *  fit. `pt-1` gives the badges' own `-top-1` overflow real room
+       *  above the row. Round-7: the "All" chip is removed — it had no
+       *  wired behavior worth keeping as its own element; a real
+       *  "clear quick filters" action is a separate feature to propose,
+       *  not something to invent here. */}
+      <div ref={quickFilterRowRef} className="flex flex-nowrap gap-x-3 overflow-x-hidden pt-1">
+        {quickFilters.slice(0, visibleQuickFilterCount).map((item) =>
+          item.kind === "tech" ? (
+            <CircleChip
+              key={`tech-${item.slug}`}
+              label={item.label}
+              count={item.count}
+              active={tech.includes(item.label)}
+              onClick={() => toggleListParam("tech", tech, item.label)}
+            >
+              <TechIcon slug={item.slug} label={item.label} className="h-[18px] w-[18px]" />
+            </CircleChip>
+          ) : (
+            <CircleChip
+              key={`cat-${item.slug}`}
+              label={tjf(`categoryOption.${item.slug}`)}
+              count={item.count}
+              active={cat.includes(item.slug)}
+              onClick={() => toggleListParam("cat", cat, item.slug)}
+            >
+              <CategoryIcon slug={item.slug} className="h-[18px] w-[18px] text-ink" />
+            </CircleChip>
+          ),
+        )}
       </div>
 
       {/* Item 8 — count, sort and the remote toggle all on one row, above
@@ -257,15 +386,33 @@ export function JobsExplorer({
       <div className="mt-5 flex flex-wrap items-center gap-4">
         <p className="text-sm font-medium text-ink">{t("results", { count: jobs.length })}</p>
 
-        <select
-          value={sort}
-          onChange={(e) => updateParams({ sort: e.target.value === "recent" ? null : e.target.value })}
-          className="h-9 rounded-lg border border-line bg-white px-2 text-xs text-ink"
-        >
-          <option value="recent">{t("sortRecent")}</option>
-          <option value="oldest">{t("sortOldest")}</option>
-          <option value="salary">{t("sortSalary")}</option>
-        </select>
+        {/* `appearance-none` + a custom chevron — item 5, pixel fidelity:
+         *  the native select arrow didn't match the reference's toolbar
+         *  controls. Same 36px/13px/8px-radius tokens as every other
+         *  control in this row. */}
+        <span className="relative inline-flex h-9 items-center">
+          <select
+            value={sort}
+            onChange={(e) => updateParams({ sort: e.target.value === "recent" ? null : e.target.value })}
+            className="h-9 appearance-none rounded-lg border border-line bg-white py-0 pr-7 pl-3 text-[13px] leading-[18px] font-medium text-ink transition-colors hover:border-muted focus:outline-none focus-visible:ring-2 focus-visible:ring-pine"
+          >
+            <option value="recent">{t("sortRecent")}</option>
+            <option value="oldest">{t("sortOldest")}</option>
+            <option value="salary">{t("sortSalary")}</option>
+          </select>
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className="pointer-events-none absolute right-2 h-3.5 w-3.5 text-muted"
+            aria-hidden="true"
+          >
+            <path d="m6 9 6 6 6-6" />
+          </svg>
+        </span>
 
         <Switch
           checked={remoteOnly}
@@ -273,15 +420,52 @@ export function JobsExplorer({
           label={t("remoteOnly")}
         />
 
-        <button type="button" onClick={toggleMoreFilters} className={chip(showMoreFilters)}>
+        {/* Round-7 consistency audit: this was reusing the toggleable
+         *  filter-chip recipe (solid-pine when open) — but the reference
+         *  explicitly labels "More filters" as the Secondary Button
+         *  example (white bg, pine border/text, no state-dependent fill).
+         *  Now a real `Button variant="secondary"` instance, same as any
+         *  other secondary action — its open/closed state is conveyed by
+         *  the panel itself, not by recoloring the trigger. */}
+        <Button
+          variant="secondary"
+          onClick={toggleMoreFilters}
+          className="h-9 gap-1.5 px-3 text-[13px] leading-[18px] font-medium"
+        >
+          <svg
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className="h-3.5 w-3.5"
+            aria-hidden="true"
+          >
+            <path d="M4 6h16M7 12h10M10 18h4" />
+          </svg>
           {t("moreFilters")}
           {panelActiveCount > 0 ? ` (${panelActiveCount})` : ""}
-        </button>
+        </Button>
+
+        {activeFilterChips.map((f) => (
+          <button
+            key={f.key}
+            type="button"
+            onClick={f.onRemove}
+            className="flex h-9 shrink-0 items-center gap-1 rounded-lg border border-pine bg-subtle px-3 text-[13px] font-medium text-pine"
+          >
+            {f.label}
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="h-3.5 w-3.5">
+              <path d="M6 6l12 12M18 6L6 18" />
+            </svg>
+          </button>
+        ))}
 
         {activeCount > 0 && (
-          <button type="button" onClick={clearAll} className="text-xs font-medium text-pine underline underline-offset-2">
+          <Button variant="danger" onClick={clearAll} className="h-9 px-3 text-[13px] leading-[18px] font-medium">
             {t("clear")}
-          </button>
+          </Button>
         )}
       </div>
 
@@ -307,7 +491,19 @@ export function JobsExplorer({
 
       <div className="mt-4 flex items-start gap-6">
         {showMoreFilters && (
-          <aside className="w-full shrink-0 space-y-4 rounded-xl border border-line bg-white p-4 sm:w-64">
+          // relative z-[25] — landing-page redesign spec §6.8: Rail (the
+          // floating left nav, fixed, z-20) and this panel occupy the same
+          // left-side screen region, and Rail's `top-1/2` anchor means it
+          // tracks the viewport's vertical center regardless of scroll
+          // position, so there's no scroll position that reliably avoids a
+          // collision. A static (non-positioned) element always paints
+          // below a positioned one in the same stacking context regardless
+          // of z-index, which is why this panel was getting obscured even
+          // though it had no z-index conflict on paper. Explicit stacking
+          // above Rail (z-20) but below the sticky header (z-30) guarantees
+          // the open filters panel is never obscured, independent of scroll
+          // position or Rail's own open/closed state.
+          <aside className="relative z-[25] w-full shrink-0 space-y-4 rounded-[10px] border border-line bg-white p-4 sm:w-64">
             <div>
               <p className="text-xs font-semibold text-muted uppercase">{t("filterSectionWorkModel")}</p>
               <div className="mt-1.5 flex flex-wrap gap-1.5">
@@ -412,10 +608,36 @@ export function JobsExplorer({
 
         {/* Items 3, 12 — split view sharing this exact filtered set, so the
          *  map never goes stale/empty relative to the list. */}
-        <div className={`grid min-w-0 flex-1 gap-6 ${mapVisible ? "lg:grid-cols-[1fr_1.1fr]" : ""}`}>
-          <div className={mapVisible ? "order-2 lg:order-1" : ""}>
+        {/* Round-8 item 2: list:map is 2:1, not the near-even 1:1.1 split —
+         *  the list is the primary surface, the map a secondary aid. */}
+        <div className={`grid min-w-0 flex-1 gap-6 ${mapVisible ? "lg:grid-cols-[2fr_1fr]" : ""}`}>
+          {/* Round-7: independent scroll for the list, desktop/side-by-side
+           *  only — same `sticky top-20 h-[calc(100dvh-8rem)]` box the map
+           *  column already uses (so both columns align), but with
+           *  `overflow-y-auto` instead of `overflow-hidden` so the list's
+           *  own content scrolls once the sticky box reaches its pinned
+           *  position. No `overscroll-behavior` is set anywhere, so once
+           *  this inner scroll is exhausted, scrolling naturally chains to
+           *  the outer page — standard browser behavior, not something to
+           *  wire up by hand. Scoped to `lg:` (and to `mapVisible`, the
+           *  actual "list+map side by side" condition) — the stacked
+           *  mobile layout keeps plain single-page scroll, unchanged.
+           *  Round-8 item 3: `scrollbar-hide` keeps this column's own
+           *  scroll (confirmed still scrollable — the utility only hides
+           *  the browser's painted scrollbar, never disables scrolling
+           *  itself) from sitting right next to the map's edge. */}
+          <div
+            className={
+              mapVisible
+                ? "order-2 scrollbar-hide lg:sticky lg:top-20 lg:order-1 lg:h-[calc(100dvh-8rem)] lg:overflow-y-auto"
+                : ""
+            }
+          >
             {jobs.length > 0 ? (
-              <ul className="border-t border-line">
+              // gap-2 (8px) — §6.6's "vertical gap between cards," replacing
+              // the old single-border-t table-row treatment now that each
+              // JobRow is its own bordered card.
+              <ul className="flex flex-col gap-2">
                 {jobs.map((job) => (
                   <JobRow
                     key={job.slug}
@@ -441,7 +663,7 @@ export function JobsExplorer({
           </div>
 
           {mapVisible && (
-            <div className="relative order-1 hidden h-[420px] overflow-hidden rounded-xl border border-line lg:sticky lg:top-20 lg:order-2 lg:block lg:h-[calc(100dvh-8rem)]">
+            <div className="relative order-1 hidden h-[420px] overflow-hidden rounded-[10px] border border-line lg:sticky lg:top-20 lg:order-2 lg:block lg:h-[calc(100dvh-8rem)]">
               <button
                 type="button"
                 onClick={() => setMapVisible(false)}

@@ -85,21 +85,35 @@ const TECH_ICONS: Record<string, TechIconEntry> = {
   azure: { fallback: "Azure" },
 };
 
-export function TechIcon({ slug, className = "h-6 w-6" }: { slug: string; className?: string }) {
-  const entry = TECH_ICONS[slug];
-  if (!entry) return null;
+/** A short, readable abbreviation for a tag with no curated icon/fallback
+ *  entry at all — "Business Development" -> "BD", "Scrum" -> "Sc". Used
+ *  only once the real vocabulary is shown in full (round-5 dynamic
+ *  quick-filter row, not just the original 20-tag curated subset), where
+ *  most tags genuinely have no real logo and returning nothing would
+ *  leave an empty circle. */
+function genericFallback(label: string): string {
+  const words = label.trim().split(/\s+/).filter(Boolean);
+  if (words.length >= 2) return words.slice(0, 2).map((w) => w[0]?.toUpperCase() ?? "").join("");
+  return label.slice(0, 2).toUpperCase();
+}
 
-  if ("fallback" in entry) {
+export function TechIcon({ slug, label, className = "h-6 w-6" }: { slug: string; label?: string; className?: string }) {
+  const entry = TECH_ICONS[slug];
+
+  if (entry && !("fallback" in entry)) {
     return (
-      <span className={`flex items-center justify-center text-[9px] leading-none font-bold text-ink ${className}`}>
-        {entry.fallback}
-      </span>
+      <svg viewBox="0 0 24 24" className={className} fill={`#${entry.hex}`} aria-hidden="true">
+        <path d={entry.path} />
+      </svg>
     );
   }
 
+  const fallbackText = entry && "fallback" in entry ? entry.fallback : label ? genericFallback(label) : null;
+  if (!fallbackText) return null;
+
   return (
-    <svg viewBox="0 0 24 24" className={className} fill={`#${entry.hex}`} aria-hidden="true">
-      <path d={entry.path} />
-    </svg>
+    <span className={`flex items-center justify-center text-[9px] leading-none font-bold text-ink ${className}`}>
+      {fallbackText}
+    </span>
   );
 }

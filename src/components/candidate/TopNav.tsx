@@ -38,15 +38,35 @@ export async function TopNav() {
     // sticky header should always outrank floating page content, not just
     // match it.
     <header className="sticky top-0 z-30 border-b border-line bg-paper/90 backdrop-blur">
-      <div className="mx-auto flex h-14 max-w-[1600px] items-center gap-4 px-4 sm:px-6">
-        <Link href="/jobs" className="shrink-0 leading-tight">
-          <span className="block font-display text-lg font-bold text-pine">{brand("name")}</span>
-          <span className="block text-[11px] text-muted">{brand("navTagline")}</span>
+      {/* h-16 (64px) — round-12 correction: rounds 5-7 progressively grew
+       *  this to h-20 with h-14 controls, chasing a misread of the
+       *  reference as wanting search to be "the dominant element." A
+       *  pixel-measured comparison against the actual Design System
+       *  Showcase header shows every control there (input, dropdown,
+       *  buttons) shares one compact height — the same `h-11` `Button`
+       *  already uses everywhere else in this app — inside a modest
+       *  header, not a deliberately oversized one. `grid-cols-[1fr_auto_
+       *  1fr]` still makes the search bar genuinely centered regardless
+       *  of how wide the logo or the right-side group happen to be. */}
+      <div className="mx-auto grid h-16 w-full max-w-[1600px] grid-cols-[1fr_auto_1fr] items-center gap-4 px-4 sm:px-6">
+        <Link href="/jobs" className="justify-self-start leading-tight">
+          {/* eslint-disable-next-line @next/next/no-img-element -- small local brand asset, not a remote/optimizable photo */}
+          <img src="/logo-justit.png" alt={brand("name")} className="h-7 w-auto" />
+          {/* Hidden below sm: a real, measured mobile overflow bug — this
+           *  single-line, un-wrapped tagline forced the whole logo block to
+           *  ~200px wide (its own natural text width), which combined with
+           *  the nav's own shrink-0 button group overflowed a 390px
+           *  viewport by ~90px. Purely decorative subtitle, not
+           *  functional — hiding it at the one breakpoint where it doesn't
+           *  fit is a real fix, not a content removal. */}
+          <span className="mt-0.5 hidden text-[11px] text-muted sm:block">{brand("navTagline")}</span>
         </Link>
 
-        <SearchBar locations={locations} suggestions={suggestions} />
+        <div className="hidden w-full max-w-2xl min-w-0 justify-self-center sm:block">
+          <SearchBar locations={locations} suggestions={suggestions} />
+        </div>
 
-        <div className="ml-auto flex shrink-0 items-center gap-2">
+        <div className="flex shrink-0 items-center justify-self-end gap-2">
           <LanguageSwitcher />
           <LoginMenu />
         </div>
