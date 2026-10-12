@@ -4918,3 +4918,297 @@ data were deleted.
 Verified: `tsc --noEmit`, `eslint` on every changed file, the full
 test suite (114 passing), `npm run build`, and the live-browser check
 above.
+
+## Landing-page redesign, round 5: a real architectural fix for the Rail
+
+Six pieces of direct feedback on the `/jobs` landing page redesign, after
+rounds 1-4's progressively more literal passes at a reference image. The
+headline item (1) was an explicit, pointed correction: every prior Rail
+attempt (rounds 3-4) treated it as a `fixed`-positioned floating overlay
+with a computed offset that happened not to collide with whatever else
+was on screen at one specific viewport width — and kept failing at some
+other width/scroll combination because nothing ever actually *reserved*
+the space. Fixed properly this time: `(candidate)/layout.tsx` now wraps
+Rail and the content column in a real `flex sm:flex-row`, so Rail's
+Collapsed icon strip renders inside a genuine `w-16` flex sibling —
+`sticky` + `h-dvh` + `justify-center`, flush at the true left edge,
+vertically centered and pinned through scroll. Content is pushed right
+by exactly that width, by construction — verified via `boundingBox()`
+that the gap between the gutter and `<main>` is exactly `0` at every
+tested width (1440/1920/2560), not just visually close. The Expanded
+(labeled) state stays a transient `fixed` overlay anchored flush against
+the gutter's own right edge — the one state explicitly allowed to keep
+floating, since it only exists while open and never changes the
+reserved gutter's width; dismissed via the existing `useClickOutside`
+hook (a `display: contents` wrapper around both the gutter and the
+overlay lets one ref correctly treat clicking the toggle button as
+"inside," even though it and the overlay are visually in different
+places).
+
+2. **Removed the permanent `highlight` treatment** — two Rail entries
+   (recommendations, salary calculator) had a hardcoded `highlight: true`
+   that rendered them solid-pine *regardless of route*, alongside
+   whichever page was genuinely active — reading as two "active" items at
+   once. `active` is now computed purely from the current route for every
+   item; the two growth-mechanic entries instead get a small, quiet
+   sparkle marker (hidden the moment they *are* the active page, so the
+   two signals never stack) — a different, non-confusable visual
+   language, not a second "this is active" claim.
+3. No change — the banner's icon-based avatar was already correct.
+4. **The curated ~20-tag quick-filter row is now a dynamic, full-
+   vocabulary ranking** — real-usage feedback was that it still surfaced
+   low-signal entries (e.g. bare "SQL") while hiding genuinely common
+   ones outside the old curated subset, and that horizontal scrolling
+   ("crazy list you have to scroll") was back after round 3's literal
+   reference-image fidelity reintroduced it. `jobs/page.tsx` now computes
+   a merged, ranked list — every tech-tag label with a live job plus
+   every category with a live job, by actual count, capped at 20 — from
+   the same `jobs` array already fetched (no new query, same pattern as
+   the page's existing `topLocations`/`topCategories`). `JobsExplorer`
+   renders it as a plain `flex-wrap` row instead of `overflow-x-auto` —
+   safe now (unlike the original round-2 wrap bug) because every chip is
+   a fixed 72px width, so wrapping is clean and genuinely resize-aware
+   for free, no JS measurement needed. `TechIcon` gained a `label` prop
+   and a generic-abbreviation fallback (e.g. "Business Development" ->
+   "BD") for the many tags outside its original 20-tag curated icon set,
+   which previously rendered nothing at all for an unmapped slug.
+5. **Toolbar pixel fixes** — the sort `<select>` now uses
+   `appearance-none` plus a custom chevron (native arrows didn't match
+   the rest of the toolbar's controls), and "More filters" gained a
+   small sliders icon to match the row's icon+label convention; every
+   control in the row now shares the same 36px height / 13px-15px
+   leading-18 font-medium tokens.
+6. **Search bar enlarged and genuinely centered** — `TopNav`'s header
+   changed from a plain flex row to `grid-cols-[1fr_auto_1fr]`: the logo
+   sits in the first `1fr` column, the search form in the middle `auto`
+   column (`justify-self-center`), the language/login group in the last
+   `1fr` column — the middle column is exactly centered on the header's
+   own width by construction, regardless of how unequal the two side
+   groups' content widths are (confirmed via measurement: the search
+   bar's center matches the header's own center, not naively the full
+   viewport's, since the header itself now starts after Rail's gutter).
+   `SearchBar`'s own controls grew from h-11 to h-12/h-10 and its input
+   text from `text-sm` to `text-[15px]`.
+
+Verified live via Playwright (installed `--no-save`, fully uninstalled
+afterward) at 1440×900, 1920×1080, 2560×1444, and 390×844: the Rail
+gutter/main gap measures exactly 0px at every desktop width, both before
+and after scrolling 1200px; exactly one rail link ever has a solid
+background; the quick-filter row's `scrollWidth` never exceeds its
+`clientWidth` at any size (no scroll) and wraps cleanly on mobile; the
+"More filters" panel opens with a clean 24px gap from the gutter, no
+overlap; the search bar's measured center matches the header's own
+center within rounding at every desktop width. `tsc --noEmit`, `eslint`
+on every changed file, the full test suite (114 passing), `npm run
+build`, and `check:i18n` (928 keys, in sync — the now-dead
+`feed.scrollMore` key was removed) all pass.
+
+## Landing-page redesign, round 6: a concrete reference, a real wrap bug, and four smaller fixes
+
+Six more items, this round with a concrete reference screenshot
+(justjoin.it's own sidebar) and one real regression in round 5's own
+report — worth reading carefully, since it's a genuine "said one thing,
+shipped another" case, not just more polish.
+
+1. **Rail rebuilt to match the reference's own interaction model.**
+   Round 5 kept the reserved-gutter layout fix (correct, kept unchanged)
+   but got the *contents* wrong two ways: the icon strip was vertically
+   centered (`justify-center`) rather than genuinely full-height, reading
+   as a short floating panel rather than a real sidebar; and it was
+   click-to-toggle, not hover-driven like the reference. Fixed both:
+   icons now run top-aligned down the column with generous spacing
+   (`justify-start`, bigger `gap-2`/`p-3` touch targets, bigger `h-5 w-5`
+   icons); the *same* `<nav>` element (not a separate overlay) now grows
+   from `w-16` to `w-56` on `onMouseEnter`/`onMouseLeave` — since it
+   lives inside the reserved `w-16` gutter div with no `overflow-hidden`
+   on that parent, growing wider simply overflows outward and paints
+   over page content with zero layout reflow, the same "temporarily
+   overlay wider than its reserved width" mechanic round 5 already
+   established, just hover-triggered on one element instead of two. A
+   `pinned` state (OR'd with `hovered`) keeps the old click-toggle
+   working as an explicit fallback for touch/keyboard, per the
+   instruction to keep it rather than remove it.
+2. **A real regression, confirmed and fixed properly this time**: round
+   5's own report claimed "switched to `flex-wrap`... safe now" — but
+   `flex-wrap` by definition wraps once items don't fit, which is
+   exactly the bug reported back. Reverted to `flex-nowrap
+   overflow-hidden` and added a real measurement: a `ResizeObserver` on
+   the row's container computes `Math.floor((width + gap) / (72 + gap))
+   - 1` (one slot reserved for the new "All" chip) and renders only that
+   many ranked items — since every `CircleChip` is a fixed 72px width,
+   this arithmetic is equivalent to measuring each item individually,
+   and `overflow-hidden` is a safety net for the one frame before the
+   effect's first measurement lands. Verified this time with an actual
+   geometry check, not a screenshot glance — every rendered chip's
+   `boundingBox().y` is identical (one shared row), and the row's own
+   `scrollWidth` never exceeds its `clientWidth`, at all four tested
+   widths.
+3. **The "IT jobs" `<h1>` removed entirely** from `jobs/page.tsx`, per
+   direct instruction — a real SEO/accessibility tradeoff (this page no
+   longer has a landmark heading of its own), noted rather than silently
+   accepted, but it's what was explicitly asked for.
+4. **A live job-count badge on every quick-filter chip** (the reference
+   screenshot's own small numbered circle per icon) — the count was
+   already computed server-side for the round-5 ranking; `CircleChip`
+   gained an optional `count` prop rendering a small `bg-pine` badge at
+   the icon's corner (same visual idiom as Rail's existing unread-count
+   badge, not a new component).
+5. **Search bar enlarged again, meaningfully this time** — round 5's
+   `h-12` wasn't enough. `TopNav`'s header grew from `h-16` to `h-20` to
+   give real room, the centered grid column widened from `max-w-2xl` to
+   `max-w-3xl`, and every `SearchBar` control grew to `h-14`
+   (`text-base` input, `px-5`/`px-6` padding) — reads as the header's
+   dominant element now, matching the reference's own proportions,
+   rather than another small bump.
+6. **The round-5 sparkle marker removed entirely**, no replacement — the
+   two growth-mechanic Rail entries (recommendations, salary calculator)
+   are now visually identical to every other item except for the one
+   genuinely active route, which was already the rule round 5 itself
+   established for solid-pine highlighting.
+
+Verified live via Playwright (installed `--no-save`, fully uninstalled
+afterward) at 1440×900, 1920×1080, 2560×1444, and 390×844, dev server
+left running throughout and afterward per instruction (not stopped this
+time): hovering the rail measurably grows it from 64px to 224px wide and
+mouse-leave measurably collapses it back to 64px, at every desktop
+width, confirmed via `boundingBox()` before/during/after hover, not just
+a screenshot glance; the quick-filter row's chips all share one
+`boundingBox().y` (a real single-row geometry check, the thing round 5's
+own verification missed) with zero `scrollWidth` overflow at any tested
+width, each carrying a visible count badge; zero `<h1>` elements on the
+page; zero elements matching the old sparkle marker; the search input
+measures 56px tall (`h-14`) versus round 5's 48px. `tsc --noEmit`,
+`eslint` on every changed file, the full test suite (114 passing),
+`npm run build`, and `check:i18n` (929 keys, in sync — the new
+`feed.allFilters` key added) all pass.
+
+## Landing-page redesign, round 7: pure-hover Rail, a real badge-clipping bug, independent list scroll, and a design-system consistency audit
+
+Three planned items plus two more folded in mid-round — the biggest
+single-round item was a full audit against the reference's own
+"Components" swatch panel, which found several real drifts across
+earlier rounds' isolated fixes.
+
+1. **Rail simplified to pure hover, repositioned below the header.** The
+   round-6 click-toggle fallback (`pinned` state + `useClickOutside`) is
+   gone entirely, per explicit instruction — desktop is hover-only now,
+   no manual control at all. Flagged, not silently absorbed: this
+   removes the only non-hover path to the expanded (labeled) state,
+   which is a real a11y regression for anyone who can't hover
+   (keyboard-only, some touch/assistive setups) — every route is still
+   reachable via its icon + `title` tooltip, just never with a visible
+   label for them. Separately, round 6's full-height top-aligned look
+   (built to match the justjoin.it reference literally) is reverted back
+   to vertically centered — but centered in the viewport area *below*
+   the header, not the full viewport: `sticky top-20` (the header's own
+   `h-20`) + `h-[calc(100dvh-5rem)]` + `justify-center` together
+   guarantee the nav's box starts exactly at the header's bottom edge
+   even at scroll position 0 (sticky's own clamping behavior, not an
+   extra margin), so it can never read as overlapping the navbar.
+2. **A real badge-clipping bug, root-caused correctly.** The round-6
+   count badge was getting cut off — the row's `overflow-hidden` (added
+   for the no-wrap safety net) clips *both* axes in Tailwind, so it was
+   also clipping the badge's own `-top-1`/`-right-1` overflow, not just
+   horizontal overflow past the row's edge. Fixed with `overflow-x-hidden`
+   (horizontal-only) plus `pt-1` padding for vertical headroom, and a
+   `BADGE_SLACK` constant shaving a few px off the fitted-chip-count
+   arithmetic so the *last* chip's badge has room on the right too.
+   Separately, the "All" chip is removed entirely — it had no real
+   wired behavior worth keeping as its own element, per direct
+   feedback; a genuine "clear quick filters" action stays a future,
+   deliberately-proposed feature, not invented here as a side effect.
+3. **Independent scroll for the job list, desktop/side-by-side only.**
+   The list column now uses the identical `sticky top-20
+   h-[calc(100dvh-8rem)]` box the map column already used (so both
+   columns stay aligned), just with `overflow-y-auto` instead of
+   `overflow-hidden` — no `overscroll-behavior` is set anywhere, so once
+   the inner list's own scroll is exhausted, scroll naturally chains to
+   the outer page, standard browser behavior rather than something
+   hand-wired. Scoped to `lg:` and to `mapVisible` (the actual
+   "list+map side by side" condition) — the stacked mobile layout is
+   untouched. Verified with a real scroll-then-scroll-again sequence,
+   not just CSS inspection: at 1440px the inner list's `scrollTop`
+   genuinely stopped advancing (494→494) after enough wheel input, and
+   a further scroll tick then moved the *outer* page's `scrollY`
+   (233→680) — real chaining, confirmed end to end.
+4. **A late addition, folded into the same round**: the Rail's white
+   background "doesn't add anything" per direct feedback — dropped
+   entirely, on both the collapsed and hover-expanded states, along
+   with the border/shadow that existed specifically to separate that
+   white surface from the page (keeping either with no backing fill
+   would've looked like a stray line/shadow floating over job content,
+   not a clean cue) — the expanded state is now fully flush/transparent,
+   matching the collapsed state's existing treatment.
+5. **A deliberate design-system consistency audit**, prompted by a
+   direct observation that Search and Add Offer — both meant to be the
+   Primary Button variant — didn't actually look alike. Checked
+   `Button.tsx`'s real usage against a zoomed crop of the reference's
+   own Components swatch panel (Primary/Secondary/Ghost/Danger,
+   Input/Dropdown/Toggle, Filter Chip default/active, the three badge
+   types, Skill/Language/Status tags, Salary) rather than trusting an
+   earlier round's low-resolution read of the same image — found four
+   real, independently-introduced drifts:
+   - **Add Offer** (`LoginMenu.tsx`) was never routed through the shared
+     `Button` component at all — a hand-rolled `<Link>` with its own
+     slightly different recipe (`h-9`/`px-3` instead of Button's own
+     `h-11`/`px-4`, and `hover:bg-pine/90` — an opacity blend — instead
+     of the real `pine-hover` token). Can't use the `Button` component
+     directly (it's a navigation Link, not a submit action), so matched
+     its className to Button's actual base+primary recipe exactly.
+   - **"More filters"** was reusing the toggleable filter-chip recipe
+     (solid-pine fill when the panel is open) — but the reference
+     explicitly labels "More filters" as its *Secondary Button* example
+     (white bg, pine border/text, no state-dependent fill). Now a real
+     `Button variant="secondary"` instance; its open/closed state is
+     conveyed by the panel itself, not by recoloring the trigger.
+   - **Ghost Button** (`Button.tsx`'s own `ghost` variant, used by
+     "Save search") was `text-muted hover:text-pine` — gray at rest,
+     blue only on hover. The reference's own Ghost Button swatch shows
+     blue text at rest. Fixed to `text-pine hover:text-pine-hover`.
+   - **The panel's filter-toggle chips** (`chip()` helper — work model,
+     seniority, contract type, etc.) had their active state as
+     solid-pine-fill/white-text; the reference's own "Filter Chip
+     (active)" swatch is a *pale* blue tint with a pine border and pine
+     text — the exact recipe the toolbar's removable active-filter
+     chips already used correctly. Fixed to match; the inactive state's
+     text also moved from `text-muted` to `text-ink`, matching the
+     swatch's own default-chip example, which reads as normal dark
+     text, not muted gray.
+   - **One further finding, a genuine correction of an earlier round's
+     own misread, not new drift**: a zoomed crop of the "Badge: Boosted"
+     swatch shows a pale purple tint with bold purple text — not the
+     solid-fill/white-text treatment this badge had carried since an
+     earlier round explicitly claimed (at the time, from the same image
+     at low resolution) that the reference showed "noticeably bolder"
+     solid fills. The crop proves that claim wrong for this one badge
+     specifically — "Badge: Top Employer" and "Badge: New" were both
+     re-checked against the same crop and are genuinely correct as
+     already built (solid amber+dark-text, and pale-blue+blue-text
+     respectively) — only Boosted needed fixing, to `bg-mint/15
+     text-mint`.
+   - **Everything else spot-checked and found already correct, no
+     change made**: Input Field, Dropdown (both already had the custom-
+     chevron/border treatment from round 5), Toggle (`Switch.tsx`),
+     Danger/Action ("Clear all," already a real `Button
+     variant="danger"` instance), Skill/Language/Status tags (the
+     neutral outlined treatment from an earlier round's corrective
+     pass), and Salary.
+
+Verified live via Playwright (installed `--no-save`, fully uninstalled
+afterward), dev server left running throughout and after (per
+instruction, this round and the one before it): at every desktop width,
+the rail's own box top measures exactly 80px (the header's `h-20`),
+confirmed never less — i.e. never overlapping the header — at any
+width, both before and after hovering; hovering still measurably grows
+the rail from 64px to 224px and back; zero `<button>` elements remain
+inside the rail `<nav>` (confirming the click-toggle is genuinely gone,
+not just visually hidden); every quick-filter chip's count badge has a
+non-negative, fully-visible bounding box at all four sizes (the exact
+clipping this round fixed); zero elements match the old "All" chip
+selector; Add Offer and Search now compute to the identical real
+background color (`rgb(70, 91, 255)`), confirmed via
+`getComputedStyle`, not just a visual glance; the independent-scroll
+chaining sequence above. `tsc --noEmit`, `eslint` on every changed
+file, the full test suite (114 passing), `npm run build`, and
+`check:i18n` (928 keys, in sync — the dead `feed.allFilters` key was
+removed) all pass.

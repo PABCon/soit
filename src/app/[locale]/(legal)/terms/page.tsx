@@ -19,7 +19,7 @@ export default async function TermsPage({ params }: Props) {
 
   return (
     <>
-      <h1 className="text-2xl font-bold">{t("termsTitle")}</h1>
+      <h1 className="text-3xl font-bold lg:text-4xl">{t("termsTitle")}</h1>
       <p className="mt-4 text-sm text-muted">{t("placeholderBody")}</p>
     </>
   );
