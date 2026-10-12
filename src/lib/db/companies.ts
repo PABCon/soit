@@ -309,6 +309,7 @@ export type CompanyListItem = {
   companyType: string | null;
   activeJobsCount: number;
   primaryLocation: string | null;
+  locationSlug: string | null;
 };
 
 /** Powers `/companies` (§7.1) — every company with at least one live job.
@@ -322,24 +323,38 @@ export async function getVerifiedCompanies(): Promise<CompanyListItem[]> {
 
   const { data: liveJobs } = await supabase
     .from("jobs")
-    .select("location, companies!inner(slug, company_name, company_logo_url, industry, company_type)")
+    .select(
+      "location, locations ( slug ), companies!inner(slug, company_name, company_logo_url, industry, company_type)",
+    )
     .eq("status", "published")
     .gt("expires_at", new Date().toISOString());
 
   const bySlug = new Map<
     string,
-    { company: { company_name: string; company_logo_url: string | null; industry: string | null; company_type: string | null }; count: number; location: string | null }
+    {
+      company: { company_name: string; company_logo_url: string | null; industry: string | null; company_type: string | null };
+      count: number;
+      location: string | null;
+      locationSlug: string | null;
+    }
   >();
   for (const job of (liveJobs ?? []) as unknown as {
     location: string | null;
+    locations: { slug: string } | null;
     companies: { slug: string; company_name: string; company_logo_url: string | null; industry: string | null; company_type: string | null };
   }[]) {
     const entry = bySlug.get(job.companies.slug);
     if (entry) {
       entry.count += 1;
       if (!entry.location && job.location) entry.location = job.location;
+      if (!entry.locationSlug && job.locations?.slug) entry.locationSlug = job.locations.slug;
     } else {
-      bySlug.set(job.companies.slug, { company: job.companies, count: 1, location: job.location });
+      bySlug.set(job.companies.slug, {
+        company: job.companies,
+        count: 1,
+        location: job.location,
+        locationSlug: job.locations?.slug ?? null,
+      });
     }
   }
 
@@ -354,9 +369,35 @@ export async function getVerifiedCompanies(): Promise<CompanyListItem[]> {
         companyType: c.company_type,
         activeJobsCount: agg?.count ?? 0,
         primaryLocation: agg?.location ?? null,
+        locationSlug: agg?.locationSlug ?? null,
       };
     })
     .sort((a, b) => b.activeJobsCount - a.activeJobsCount || a.name.localeCompare(b.name));
+}
+
+export type TopEmployerLogo = { slug: string; name: string; logoUrl: string };
+
+/** Powers the employer-signup page's "Top employers that trust Just IT"
+ *  section (round 21) — real, currently-subscribed Top Employer companies
+ *  only, never a fabricated/static logo list naming companies that aren't
+ *  actual customers. `top_employer_active` already has a public grant
+ *  (same flag `CompanyProfileBody`'s own badge reads), so no admin client
+ *  needed. A company with no logo set has nothing to show in a logo wall,
+ *  so it's excluded here rather than rendered as a blank tile. */
+export async function getTopEmployerCompanies(): Promise<TopEmployerLogo[]> {
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("companies")
+    .select("slug, company_name, company_logo_url")
+    .eq("top_employer_active", true)
+    .not("company_logo_url", "is", null)
+    .order("company_name");
+
+  return (data ?? []).map((c) => ({
+    slug: c.slug,
+    name: c.company_name,
+    logoUrl: c.company_logo_url as string,
+  }));
 }
 
 export async function updateCompanyProfile(fields: {

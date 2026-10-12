@@ -13,6 +13,9 @@ import { normalizeWebsiteUrl } from "@/lib/url";
 // both simpler and sufficient.
 import { CompanyMap } from "@/components/CompanyMap";
 import { getVideoEmbedUrl } from "@/lib/video-embed";
+import { Badge } from "@/components/Badge";
+import { MapPin, Users, Building2 } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 
 export async function getCompanyPageMetadata(slug: string) {
   const company = await getCompanyBySlug(slug);
@@ -37,6 +40,17 @@ const SOCIAL_ICONS: { key: "facebookUrl" | "linkedinUrl" | "instagramUrl" | "you
   },
   { key: "xUrl", path: "m5 5 6 8-6.3 6h1.7L11.9 14 15.5 19H19l-6.3-8.5L19 5h-1.7L12.1 10.5 8.5 5H5Z" },
 ];
+
+// Literal class strings (not computed) so Tailwind's scanner actually
+// generates them — the stat-card grid must have exactly as many columns as
+// cards are rendered (1-4), not a hardcoded count that leaves an uneven
+// trailing gap whenever a card is omitted.
+const STAT_GRID_COLS: Record<number, string> = {
+  1: "sm:grid-cols-1",
+  2: "sm:grid-cols-2",
+  3: "sm:grid-cols-3",
+  4: "sm:grid-cols-4",
+};
 
 /** Public company profile content (§7.1) — a key SEO + employer-branding
  *  asset, and the target of every job's JSON-LD `sameAs`. Shared between
@@ -69,11 +83,11 @@ export async function CompanyProfileBody({
   );
   const websiteUrl = normalizeWebsiteUrl(company.website);
 
-  const statCards = [
-    { label: t("officeLocations"), value: officeLocations.length ? officeLocations.join(", ") : null },
-    { label: t("activeOffers"), value: String(jobs.length) },
-    { label: t("companyType"), value: company.companyType },
-    { label: t("industry"), value: company.industry },
+  const statCards: { label: string; value: string | null; icon: LucideIcon }[] = [
+    { label: t("officeLocations"), value: officeLocations.length ? officeLocations.join(", ") : null, icon: MapPin },
+    { label: t("activeOffers"), value: String(jobs.length), icon: Users },
+    { label: t("companyType"), value: company.companyType, icon: Building2 },
+    { label: t("industry"), value: company.industry, icon: Building2 },
   ].filter((c) => c.value !== null);
 
   return (
@@ -148,9 +162,9 @@ export async function CompanyProfileBody({
         <div className="flex items-center justify-center gap-2">
           <h1 className="font-display text-2xl font-bold">{company.name}</h1>
           {company.topEmployerActive && (
-            <span className="rounded bg-amber-400/90 px-1.5 py-0.5 text-[10px] font-semibold tracking-wide text-ink uppercase">
+            <Badge variant="topEmployer" size="sm">
               {t("topEmployer")}
-            </span>
+            </Badge>
           )}
         </div>
 
@@ -160,20 +174,34 @@ export async function CompanyProfileBody({
       </div>
 
       {statCards.length > 0 && (
-        <div className="mt-8 grid grid-cols-2 gap-4 sm:grid-cols-4">
+        // Round-14 measurement against the reference: its stat-card row is
+        // ~49px tall with a bare, uncontained icon (no background square) —
+        // the old `h-9 w-9 bg-subtle` icon badge alone was taller than the
+        // reference's entire card. Also: the grid column count must track
+        // how many cards actually render (1-4, `companyType` is frequently
+        // unset) — a hardcoded `sm:grid-cols-4` left an empty, unbalanced
+        // track whenever fewer than 4 cards were present, instead of the
+        // reference's cards stretching to fill the full row evenly.
+        <div className={`mt-5 grid grid-cols-2 gap-4 ${STAT_GRID_COLS[statCards.length] ?? "sm:grid-cols-4"}`}>
           {statCards.map((card) => (
-            <div key={card.label} className="rounded-xl border border-line bg-white px-4 py-3 text-center">
-              <p className="text-xs text-muted">{card.label}</p>
-              <p className="mt-1 truncate text-sm font-semibold text-ink" title={card.value ?? undefined}>
-                {card.value}
-              </p>
+            <div
+              key={card.label}
+              className="flex items-center gap-3 rounded-xl border border-line bg-white px-4 py-3"
+            >
+              <card.icon className="h-6 w-6 shrink-0 text-pine" aria-hidden="true" />
+              <span className="min-w-0">
+                <p className="text-xs leading-tight text-muted">{card.label}</p>
+                <p className="truncate text-sm leading-tight font-semibold text-ink" title={card.value ?? undefined}>
+                  {card.value}
+                </p>
+              </span>
             </div>
           ))}
         </div>
       )}
 
       {company.location && (
-        <section className="mt-10">
+        <section className="mt-6">
           <h2 className="font-display text-lg font-semibold">{t("ourOffice")}</h2>
           <p className="mt-1 text-sm text-muted">
             {company.address ? `${company.address}, ${company.location.name}` : company.location.name}
@@ -184,49 +212,144 @@ export async function CompanyProfileBody({
         </section>
       )}
 
-      {company.aboutUsText && (
-        <section className="mt-10">
-          <h2 className="font-display text-lg font-semibold">{t("aboutUs")}</h2>
-          <p className="mt-2 max-w-2xl text-sm leading-relaxed whitespace-pre-line text-muted">
-            {company.aboutUsText}
-          </p>
-        </section>
-      )}
+      {(company.aboutUsText ||
+        company.howWeWorkText ||
+        company.benefitsText ||
+        (company.customSectionTitle && company.customSectionBody) ||
+        company.galleryPhotos.length > 0 ||
+        company.galleryVideos.length > 0) && (
+        // Round-14: pixel-measured against the reference (banner/stat-card
+        // edges, column text-wrap boundaries) — its two columns split
+        // ~63:37, not the ~67:33 `grid-cols-3`+`col-span-2` produced, and
+        // every inter-section gap on the page measured 12-25px, nowhere
+        // near the 40px (`mt-10`/`gap-10`/`space-y-10`) used throughout.
+        <div className="mt-6 grid grid-cols-1 gap-10 lg:grid-cols-[3fr_2fr]">
+          {/* Reference layout: narrative/benefits content on the left, media on
+           *  the right — same real "omit when empty" fields as before, just
+           *  arranged into the two-column treatment the reference shows
+           *  instead of one long single column. */}
+          <div className="space-y-6">
+            {company.aboutUsText && (
+              <section>
+                <h2 className="font-display text-lg font-semibold">{t("aboutUs")}</h2>
+                <p className="mt-2 max-w-2xl text-sm leading-relaxed whitespace-pre-line text-muted">
+                  {company.aboutUsText}
+                </p>
+              </section>
+            )}
 
-      {company.howWeWorkText && (
-        <section className="mt-10">
-          <h2 className="font-display text-lg font-semibold">{t("howWeWork")}</h2>
-          <p className="mt-2 max-w-2xl text-sm leading-relaxed whitespace-pre-line text-muted">
-            {company.howWeWorkText}
-          </p>
-        </section>
-      )}
+            {company.howWeWorkText && (
+              <section>
+                <h2 className="font-display text-lg font-semibold">{t("howWeWork")}</h2>
+                <p className="mt-2 max-w-2xl text-sm leading-relaxed whitespace-pre-line text-muted">
+                  {company.howWeWorkText}
+                </p>
+              </section>
+            )}
 
-      {company.benefitsText && (
-        <section className="mt-10">
-          <h2 className="font-display text-lg font-semibold">{t("benefits")}</h2>
-          <p className="mt-2 max-w-2xl text-sm leading-relaxed whitespace-pre-line text-muted">
-            {company.benefitsText}
-          </p>
-        </section>
+            {company.benefitsText && (
+              <section>
+                <h2 className="font-display text-lg font-semibold">{t("benefits")}</h2>
+                <p className="mt-2 max-w-2xl text-sm leading-relaxed whitespace-pre-line text-muted">
+                  {company.benefitsText}
+                </p>
+              </section>
+            )}
+
+            {company.customSectionTitle && company.customSectionBody && (
+              <section>
+                <h2 className="font-display text-lg font-semibold">{company.customSectionTitle}</h2>
+                <p className="mt-2 max-w-2xl text-sm leading-relaxed whitespace-pre-line text-muted">
+                  {company.customSectionBody}
+                </p>
+              </section>
+            )}
+          </div>
+
+          <div className="space-y-6">
+            {company.galleryPhotos.length > 0 && (
+              <section>
+                <h2 className="font-display text-lg font-semibold">{t("photoGallery")}</h2>
+                <ul className="mt-4 grid grid-cols-2 gap-3">
+                  {company.galleryPhotos.map((p) => (
+                    <li key={p.id} className="aspect-square overflow-hidden rounded-lg border border-line">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={p.url} alt="" className="h-full w-full object-cover" />
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            )}
+
+            {company.galleryVideos.length > 0 && (
+              <section>
+                <h2 className="font-display text-lg font-semibold">{t("videoGallery")}</h2>
+                <ul className="mt-4 space-y-4">
+                  {company.galleryVideos.map((v) => {
+                    const embedUrl = getVideoEmbedUrl(v.url);
+                    return (
+                      <li key={v.id}>
+                        {embedUrl ? (
+                          <div className="overflow-hidden rounded-lg border border-line bg-black">
+                            <div className="aspect-video">
+                              <iframe
+                                src={embedUrl}
+                                title={v.title}
+                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                allowFullScreen
+                                className="h-full w-full"
+                              />
+                            </div>
+                            <p className="px-3 py-2 text-sm text-ink">{v.title}</p>
+                          </div>
+                        ) : (
+                          <a
+                            href={v.url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="flex items-center gap-2 rounded-lg border border-line bg-white px-3 py-2 text-sm text-pine hover:bg-paper"
+                          >
+                            <svg viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4 shrink-0">
+                              <path d="M8 5.5v13l11-6.5-11-6.5Z" />
+                            </svg>
+                            {v.title}
+                          </a>
+                        )}
+                      </li>
+                    );
+                  })}
+                </ul>
+              </section>
+            )}
+          </div>
+        </div>
       )}
 
       {company.teamMembers.length > 0 && (
-        <section className="mt-10">
+        <section className="mt-6">
           <h2 className="font-display text-lg font-semibold">{t("ourTeam")}</h2>
-          <ul className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-3">
+          {/* Round-14: the reference shows a compact, content-sized pill
+           *  (avatar left, name/role stacked to its right) — not a centered,
+           *  avatar-on-top card stretched to fill a grid cell. `flex-wrap`
+           *  instead of a grid so each card only takes the width it needs. */}
+          <ul className="mt-4 flex flex-wrap gap-4">
             {company.teamMembers.map((m) => (
-              <li key={m.id} className="rounded-xl border border-line bg-white px-4 py-3 text-center">
+              <li
+                key={m.id}
+                className="flex items-center gap-3 rounded-xl border border-line bg-white px-4 py-3"
+              >
                 {m.photoUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element -- Supabase Storage URL
-                  <img src={m.photoUrl} alt="" className="mx-auto h-14 w-14 rounded-full object-cover" />
+                  <img src={m.photoUrl} alt="" className="h-10 w-10 shrink-0 rounded-full object-cover" />
                 ) : (
-                  <span className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-pine font-display text-lg font-bold text-white">
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-pine font-display text-sm font-bold text-white">
                     {m.name.slice(0, 1).toUpperCase() || "?"}
                   </span>
                 )}
-                <p className="mt-2 text-sm font-semibold text-ink">{m.name}</p>
-                {m.role && <p className="mt-0.5 text-xs text-muted">{m.role}</p>}
+                <span className="min-w-0">
+                  <p className="text-sm leading-tight font-semibold text-ink">{m.name}</p>
+                  {m.role && <p className="text-xs leading-tight text-muted">{m.role}</p>}
+                </span>
               </li>
             ))}
           </ul>
@@ -234,9 +357,9 @@ export async function CompanyProfileBody({
       )}
 
       {company.testimonials.length > 0 && (
-        <section className="mt-10">
+        <section className="mt-6">
           <h2 className="font-display text-lg font-semibold">{t("testimonials")}</h2>
-          <ul className="mt-4 grid gap-4 sm:grid-cols-2">
+          <ul className="mt-4 space-y-4">
             {company.testimonials.map((x) => (
               <li key={x.id} className="rounded-xl border border-line bg-white p-4">
                 <p className="text-sm text-ink italic">&ldquo;{x.quote}&rdquo;</p>
@@ -250,71 +373,7 @@ export async function CompanyProfileBody({
         </section>
       )}
 
-      {company.galleryPhotos.length > 0 && (
-        <section className="mt-10">
-          <h2 className="font-display text-lg font-semibold">{t("photoGallery")}</h2>
-          <ul className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
-            {company.galleryPhotos.map((p) => (
-              <li key={p.id} className="aspect-square overflow-hidden rounded-lg border border-line">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={p.url} alt="" className="h-full w-full object-cover" />
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
-
-      {company.galleryVideos.length > 0 && (
-        <section className="mt-10">
-          <h2 className="font-display text-lg font-semibold">{t("videoGallery")}</h2>
-          <ul className="mt-4 grid gap-4 sm:grid-cols-2">
-            {company.galleryVideos.map((v) => {
-              const embedUrl = getVideoEmbedUrl(v.url);
-              return (
-                <li key={v.id}>
-                  {embedUrl ? (
-                    <div className="overflow-hidden rounded-lg border border-line bg-black">
-                      <div className="aspect-video">
-                        <iframe
-                          src={embedUrl}
-                          title={v.title}
-                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                          allowFullScreen
-                          className="h-full w-full"
-                        />
-                      </div>
-                      <p className="px-3 py-2 text-sm text-ink">{v.title}</p>
-                    </div>
-                  ) : (
-                    <a
-                      href={v.url}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="flex items-center gap-2 rounded-lg border border-line bg-white px-3 py-2 text-sm text-pine hover:bg-paper"
-                    >
-                      <svg viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4 shrink-0">
-                        <path d="M8 5.5v13l11-6.5-11-6.5Z" />
-                      </svg>
-                      {v.title}
-                    </a>
-                  )}
-                </li>
-              );
-            })}
-          </ul>
-        </section>
-      )}
-
-      {company.customSectionTitle && company.customSectionBody && (
-        <section className="mt-10">
-          <h2 className="font-display text-lg font-semibold">{company.customSectionTitle}</h2>
-          <p className="mt-2 max-w-2xl text-sm leading-relaxed whitespace-pre-line text-muted">
-            {company.customSectionBody}
-          </p>
-        </section>
-      )}
-
-      <section className="mt-10">
+      <section className="mt-6">
         <h2 className="font-display text-lg font-semibold">
           {t("openJobs", { count: jobs.length })}
         </h2>

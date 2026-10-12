@@ -33,12 +33,18 @@ export function CompanyLogo({
 
   if (company.logoUrl) {
     return (
-      // eslint-disable-next-line @next/next/no-img-element -- external Supabase Storage URLs, not local assets.
-      <img
-        src={company.logoUrl}
-        alt=""
-        className={`${SIZES[size]} ${shapeClass} shrink-0 object-cover`}
-      />
+      // A neutral bordered tile, not a hard crop — real company logos come
+      // in every aspect ratio (wide wordmarks, tall marks, perfect
+      // squares), and object-cover was silently cropping/distorting
+      // anything that wasn't already square. object-contain preserves the
+      // whole logo; the white tile + hairline border keeps every logo
+      // legible and visually consistent regardless of its own background.
+      <div
+        className={`${SIZES[size]} ${shapeClass} flex shrink-0 items-center justify-center overflow-hidden border border-line bg-white p-1.5`}
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element -- external Supabase Storage URLs, not local assets. */}
+        <img src={company.logoUrl} alt="" className="h-full w-full object-contain" />
+      </div>
     );
   }
 
