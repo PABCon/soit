@@ -135,12 +135,31 @@ async function upsertCompanySubscription(companyId: string, subscription: Stripe
     .eq("id", companyId);
 }
 
+/** Stripe always generates a receipt_url on a successful Charge, no
+ *  separate invoice object needed for a one-time payment — captured once
+ *  here rather than calling the Stripe API on every billing-history page
+ *  render. Best-effort: a failure here must never block the actual
+ *  fulfillment (credits/email) above it. */
+async function fetchReceiptUrl(session: Stripe.Checkout.Session): Promise<string | null> {
+  const paymentIntentId = typeof session.payment_intent === "string" ? session.payment_intent : session.payment_intent?.id;
+  if (!paymentIntentId) return null;
+  try {
+    const pi = await stripe.paymentIntents.retrieve(paymentIntentId, { expand: ["latest_charge"] });
+    const charge = pi.latest_charge;
+    return typeof charge === "string" ? null : (charge?.receipt_url ?? null);
+  } catch (err) {
+    console.error("fetchReceiptUrl failed:", (err as Error).message);
+    return null;
+  }
+}
+
 async function fulfillAdCreditPurchase(session: Stripe.Checkout.Session) {
   const companyId = session.client_reference_id;
   const quantity = Number(session.metadata?.ad_credit_quantity ?? 0);
   if (!companyId || !quantity) return;
 
   const admin = createAdminClient();
+  const receiptUrl = await fetchReceiptUrl(session);
 
   // Idempotent: a unique index on stripe_checkout_session_id means a
   // retried webhook delivery for the same session is a harmless duplicate-
@@ -154,6 +173,7 @@ async function fulfillAdCreditPurchase(session: Stripe.Checkout.Session) {
     unit_price_cents: Math.round((session.amount_total ?? 0) / quantity),
     total_cents: session.amount_total ?? 0,
     currency: session.currency ?? "eur",
+    receipt_url: receiptUrl,
   });
   if (insertError) {
     if (insertError.code === "23505") return; // already fulfilled

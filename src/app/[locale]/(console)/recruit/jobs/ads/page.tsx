@@ -25,7 +25,7 @@ export default async function JobAdsPricingPage({ params, searchParams }: Props)
   const supabase = await createClient();
   const { data: purchases } = await supabase
     .from("job_ad_purchases")
-    .select("id, quantity, total_cents, currency, created_at")
+    .select("id, quantity, total_cents, currency, created_at, receipt_url")
     .eq("company_id", ctx.company.id)
     .order("created_at", { ascending: false });
 

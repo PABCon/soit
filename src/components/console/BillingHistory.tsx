@@ -20,15 +20,12 @@ export type AdCreditPurchaseRow = {
  *  Employer's own recurring invoices live in Stripe's hosted Customer
  *  Portal instead (see "Manage billing" in TopEmployerCard) — that's
  *  where real multi-invoice history with PDFs belongs, not reimplemented
- *  here. Per-row `Download` is meant to use the real Stripe charge
- *  receipt_url, captured at webhook-fulfillment time — `job_ad_purchases.
- *  receipt_url` (migration 20261016120000) exists on disk but isn't live
- *  yet (`supabase db push` couldn't reach the DB pooler from this
- *  environment — a real, reported connection timeout, not assumed fixed).
- *  The webhook deliberately does NOT write to that column until it's
- *  confirmed live, so every row just shows "—" here for now rather than
- *  risk the insert itself failing and silently blocking real ad-credit
- *  fulfillment. */
+ *  here. Per-row `Download` uses the real Stripe charge receipt_url
+ *  (`job_ad_purchases.receipt_url`, migration 20261016120000), captured
+ *  once by the webhook at fulfillment time (see `fetchReceiptUrl` in
+ *  `api/stripe/webhook/route.ts`) rather than calling the Stripe API on
+ *  every page render. A row purchased before that column existed just
+ *  shows "—". */
 export async function BillingHistory({
   purchases,
   locale,
