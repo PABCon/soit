@@ -469,13 +469,14 @@ async function countOtherLiveJobs(
  *  otherwise write status='published' directly; the gate has to live here.
  *
  *  §pricing adds a second gate on top: every verified company may always
- *  have 1 job live for free (Top Employer raises that standing allowance
- *  to 10); beyond that, publishing needs a purchased ad credit. Hiding the
- *  salary publicly and getting bump credits/the auto-boost are both perks
- *  of being a paying customer in *either* form (a spent credit or an
- *  active Top Employer subscription) — not tied to which specific slot
- *  this job happens to occupy, so a paying company's "free" first job can
- *  hide its salary too, same as any of its others. */
+ *  have 1 job live for free — Top Employer gets no bump to this baseline
+ *  (per the pricing round that unbundled job-ad slots from the
+ *  subscription); beyond that, publishing needs a purchased ad credit.
+ *  Hiding the salary publicly and getting bump credits/the auto-boost are
+ *  both perks of being a paying customer in *either* form (a spent credit
+ *  or an active Top Employer subscription) — not tied to which specific
+ *  slot this job happens to occupy, so a paying company's "free" first
+ *  job can hide its salary too, same as any of its others. */
 export async function saveJob(
   jobId: string | null,
   input: JobFormInput,
@@ -508,7 +509,7 @@ export async function saveJob(
 
   const liveCount = await countOtherLiveJobs(supabase, company.id, jobId);
   const isPayingCustomer = company.ad_credits_available > 0 || company.top_employer_active;
-  const effectiveFreeCap = company.top_employer_active ? 10 : 1;
+  const effectiveFreeCap = 1;
   const canPublishFree = liveCount < effectiveFreeCap;
   const canPublishWithCredit = company.ad_credits_available > 0;
   const canPublish = isVerified && (canPublishFree || canPublishWithCredit);
@@ -675,7 +676,7 @@ export async function setJobStatus(
 
   const liveCount = await countOtherLiveJobs(supabase, company.id, jobId);
   const isPayingCustomer = company.ad_credits_available > 0 || company.top_employer_active;
-  const effectiveFreeCap = company.top_employer_active ? 10 : 1;
+  const effectiveFreeCap = 1;
   const canPublishFree = liveCount < effectiveFreeCap;
   const canPublishWithCredit = company.ad_credits_available > 0;
   if (!(canPublishFree || canPublishWithCredit)) return { ok: false, message: "noAdCredits" };

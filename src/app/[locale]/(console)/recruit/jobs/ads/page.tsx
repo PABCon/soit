@@ -27,6 +27,21 @@ export default async function JobAdsPricingPage({ params, searchParams }: Props)
     .eq("company_id", ctx.company.id)
     .order("created_at", { ascending: false });
 
+  // Which plan an active Top Employer is actually billed on — surfaced
+  // alongside the Active/Renews badge so a real subscriber (possibly still
+  // grandfathered on an older Price — see scripts/stripe-setup.mjs) never
+  // reads as "on the new advertised price" just because the card is active.
+  const { data: activeSubscription } = ctx.company.top_employer_active
+    ? await supabase
+        .from("company_subscriptions")
+        .select("billing_interval")
+        .eq("company_id", ctx.company.id)
+        .in("status", ["active", "trialing", "past_due"])
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle()
+    : { data: null };
+
   return (
     <>
       <h1 className="text-3xl font-bold lg:text-4xl">{t("pricing")}</h1>
@@ -45,10 +60,16 @@ export default async function JobAdsPricingPage({ params, searchParams }: Props)
       )}
 
       <section className="mt-8">
-        <h2 className="text-lg font-semibold text-ink">{t("jobAdsHeading")}</h2>
-        <p className="mt-1 text-sm text-muted">
-          {t("adCreditsRemaining", { count: ctx.company.ad_credits_available })}
-        </p>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 className="text-lg font-semibold text-ink">{t("jobAdsHeading")}</h2>
+          <span
+            className={`rounded-full px-3 py-1 text-sm font-semibold ${
+              ctx.company.ad_credits_available > 0 ? "bg-mint/25 text-pine" : "bg-paper text-muted"
+            }`}
+          >
+            {t("adCreditsRemaining", { count: ctx.company.ad_credits_available })}
+          </span>
+        </div>
         <div className="mt-4">
           <AdCreditPacks />
         </div>
@@ -58,7 +79,11 @@ export default async function JobAdsPricingPage({ params, searchParams }: Props)
         <h2 className="text-lg font-semibold text-ink">{t("topEmployerHeading")}</h2>
         <p className="mt-1 text-sm text-muted">{t("topEmployerHeadingSubtitle")}</p>
         <div className="mt-4 max-w-md">
-          <TopEmployerCard active={ctx.company.top_employer_active} periodEnd={ctx.company.top_employer_period_end} />
+          <TopEmployerCard
+            active={ctx.company.top_employer_active}
+            periodEnd={ctx.company.top_employer_period_end}
+            billingInterval={(activeSubscription?.billing_interval as "month" | "year" | null) ?? null}
+          />
         </div>
       </section>
 

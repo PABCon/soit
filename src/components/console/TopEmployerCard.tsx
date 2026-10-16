@@ -15,10 +15,17 @@ const PERK_KEYS = [
   "topEmployerPerkApi",
   "topEmployerPerkBumps",
   "topEmployerPerkProfile",
-  "topEmployerPerkSlots",
 ] as const;
 
-export function TopEmployerCard({ active, periodEnd }: { active: boolean; periodEnd: string | null }) {
+export function TopEmployerCard({
+  active,
+  periodEnd,
+  billingInterval,
+}: {
+  active: boolean;
+  periodEnd: string | null;
+  billingInterval?: "month" | "year" | null;
+}) {
   const t = useTranslations("console");
   const locale = useLocale();
   const [interval, setInterval] = useState<BillingInterval>("year");
@@ -71,8 +78,13 @@ export function TopEmployerCard({ active, periodEnd }: { active: boolean; period
         )}
       </div>
 
+      {active && billingInterval && (
+        <p className="mt-2 text-sm font-medium text-ink">
+          {billingInterval === "year" ? t("billingAnnual") : t("billingMonthly")}
+        </p>
+      )}
       {active && periodEnd && (
-        <p className="mt-2 text-sm text-muted">
+        <p className="mt-1 text-sm text-muted">
           {t("topEmployerRenewsOn", { date: new Date(periodEnd).toLocaleDateString(locale === "pt" ? "pt-PT" : "en-GB") })}
         </p>
       )}
@@ -139,8 +151,11 @@ export function TopEmployerCard({ active, periodEnd }: { active: boolean; period
           </div>
 
           <p className="mt-4 font-display text-3xl font-bold text-ink">
-            {interval === "month" ? "€585" : "€497"}
-            <span className="text-base font-normal text-muted"> {t("perMonth")}</span>
+            {interval === "month" ? "€500" : "€5000"}
+            <span className="text-base font-normal text-muted">
+              {" "}
+              {interval === "month" ? t("perMonth") : t("perYear")}
+            </span>
           </p>
           {interval === "year" && <p className="mt-0.5 text-xs text-muted">{t("billingAnnualNote")}</p>}
 

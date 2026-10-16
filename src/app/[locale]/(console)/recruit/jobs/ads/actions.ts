@@ -64,9 +64,14 @@ export async function createAdCreditCheckoutAction(
   }
 }
 
+// v2 pricing: flat €500/month, annual = 500×10 ("2 months free") — see
+// scripts/stripe-setup.mjs. The superseded top_employer_monthly/
+// top_employer_annual Prices are never referenced here anymore, but stay
+// provisioned (Prices are immutable) since real subscribers are still on
+// them until they churn or are migrated.
 const TOP_EMPLOYER_LOOKUP_KEYS = {
-  month: "top_employer_monthly",
-  year: "top_employer_annual",
+  month: "top_employer_monthly_v2",
+  year: "top_employer_annual_v2",
 } as const;
 
 export type BillingInterval = keyof typeof TOP_EMPLOYER_LOOKUP_KEYS;
