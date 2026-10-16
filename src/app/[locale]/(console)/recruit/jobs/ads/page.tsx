@@ -1,10 +1,12 @@
 import { redirect } from "@/i18n/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
+import { Coins, Crown, HelpCircle } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { getMyEmployerContext } from "@/lib/db/companies";
 import { AdCreditPacks } from "@/components/console/AdCreditPacks";
 import { TopEmployerCard } from "@/components/console/TopEmployerCard";
 import { BillingHistory, type AdCreditPurchaseRow } from "@/components/console/BillingHistory";
+import { buttonClassName } from "@/components/Button";
 
 type Props = {
   params: Promise<{ locale: string }>;
@@ -45,6 +47,7 @@ export default async function JobAdsPricingPage({ params, searchParams }: Props)
   return (
     <>
       <h1 className="text-3xl font-bold lg:text-4xl">{t("pricing")}</h1>
+      <p className="mt-1 text-muted">{t("pricingSubtitle")}</p>
 
       {purchase === "success" && (
         <p className="mt-4 rounded-lg bg-mint/25 px-4 py-3 text-sm text-pine">{t("purchaseSuccess")}</p>
@@ -60,15 +63,27 @@ export default async function JobAdsPricingPage({ params, searchParams }: Props)
       )}
 
       <section className="mt-8">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <h2 className="text-lg font-semibold text-ink">{t("jobAdsHeading")}</h2>
-          <span
-            className={`rounded-full px-3 py-1 text-sm font-semibold ${
-              ctx.company.ad_credits_available > 0 ? "bg-mint/25 text-pine" : "bg-paper text-muted"
-            }`}
-          >
-            {t("adCreditsRemaining", { count: ctx.company.ad_credits_available })}
-          </span>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-pine/10 text-pine">
+              <Coins className="h-5 w-5" />
+            </span>
+            <div>
+              <h2 className="text-lg font-semibold text-ink">{t("jobAdsHeading")}</h2>
+              <div className="flex items-center gap-1.5 text-sm text-muted">
+                <span className={ctx.company.ad_credits_available > 0 ? "font-medium text-pine" : ""}>
+                  {t("adCreditsRemaining", { count: ctx.company.ad_credits_available })}
+                </span>
+                <span title={t("adCreditsInfo")} aria-label={t("adCreditsInfo")}>
+                  <HelpCircle className="h-3.5 w-3.5" />
+                </span>
+              </div>
+            </div>
+          </div>
+          <a href="#whats-included" className={buttonClassName({ variant: "secondary", size: "md" })}>
+            <HelpCircle className="h-4 w-4" />
+            {t("howCreditsWork")}
+          </a>
         </div>
         <div className="mt-4">
           <AdCreditPacks />
@@ -76,9 +91,16 @@ export default async function JobAdsPricingPage({ params, searchParams }: Props)
       </section>
 
       <section className="mt-10">
-        <h2 className="text-lg font-semibold text-ink">{t("topEmployerHeading")}</h2>
-        <p className="mt-1 text-sm text-muted">{t("topEmployerHeadingSubtitle")}</p>
-        <div className="mt-4 max-w-md">
+        <div className="flex items-center gap-3">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-amber-100 text-amber-600">
+            <Crown className="h-5 w-5" />
+          </span>
+          <div>
+            <h2 className="text-lg font-semibold text-ink">{t("topEmployerHeading")}</h2>
+            <p className="text-sm text-muted">{t("topEmployerHeadingSubtitle")}</p>
+          </div>
+        </div>
+        <div className="mt-4">
           <TopEmployerCard
             active={ctx.company.top_employer_active}
             periodEnd={ctx.company.top_employer_period_end}
@@ -89,8 +111,13 @@ export default async function JobAdsPricingPage({ params, searchParams }: Props)
 
       <section className="mt-10">
         <h2 className="text-lg font-semibold text-ink">{t("billingHistoryHeading")}</h2>
+        <p className="mt-1 text-sm text-muted">{t("billingHistorySubtitle")}</p>
         <div className="mt-4">
-          <BillingHistory purchases={(purchases ?? []) as AdCreditPurchaseRow[]} locale={locale} />
+          <BillingHistory
+            purchases={(purchases ?? []) as AdCreditPurchaseRow[]}
+            locale={locale}
+            canManageBilling={ctx.company.top_employer_active}
+          />
         </div>
       </section>
     </>

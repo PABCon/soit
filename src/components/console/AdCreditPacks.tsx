@@ -3,7 +3,9 @@
 import { useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
+import { CheckCircle2, Users } from "lucide-react";
 import { createAdCreditCheckoutAction, type AdCreditPackSize } from "@/app/[locale]/(console)/recruit/jobs/ads/actions";
+import { buttonClassName } from "@/components/Button";
 
 // §pricing — the reverse-engineered volume curve (anchored on €59 at n=1
 // and the real ITDS rate of ~€20/ad at n≈108), rounded to clean checkout
@@ -17,6 +19,17 @@ const PACKS: { quantity: AdCreditPackSize; totalEur: number; discountPct: number
   { quantity: 3, totalEur: 117, discountPct: 34 },
   { quantity: 5, totalEur: 170, discountPct: 42 },
 ];
+
+const BEST_VALUE_QUANTITY: AdCreditPackSize = 5;
+
+const INCLUDED_KEYS = [
+  "adPackPerkBump",
+  "adPackPerkSalary",
+  "adPackPerkDuration",
+  "adPackPerkFields",
+  "adPackPerkEdit",
+  "adPackPerkReach",
+] as const;
 
 export function AdCreditPacks() {
   const t = useTranslations("console");
@@ -48,47 +61,77 @@ export function AdCreditPacks() {
           <p className="text-sm text-muted">{t("freeTierLabel")}</p>
           <p className="mt-2 font-display text-2xl font-bold text-ink">{t("freeTierPrice")}</p>
           <p className="mt-1 text-xs text-muted">{t("freeTierCaption")}</p>
+          <Link href="/recruit/jobs/new" className={buttonClassName({ variant: "secondary", size: "md", className: "mt-4 w-full" })}>
+            {t("freeTierGetStarted")}
+          </Link>
         </div>
-        {PACKS.map((pack) => (
-          <div key={pack.quantity} className="relative flex flex-col items-center rounded-xl border border-line bg-white p-5 text-center">
-            {pack.discountPct > 0 && (
-              <span className="absolute top-3 right-3 rounded bg-mint/25 px-1.5 py-0.5 text-[10px] font-semibold tracking-wide text-pine uppercase">
-                −{pack.discountPct}%
-              </span>
-            )}
-            <p className="text-sm text-muted">{t("adPackLabel", { count: pack.quantity })}</p>
-            <p className="mt-2 font-display text-2xl font-bold text-ink">€{pack.totalEur}</p>
-            <p className="mt-1 text-xs text-muted">
-              €{(pack.totalEur / pack.quantity).toFixed(0)} {t("perAd")}
-            </p>
-            <button
-              type="button"
-              disabled={pending !== null}
-              onClick={() => buy(pack.quantity)}
-              className="mt-4 h-9 w-full rounded-lg bg-pine text-sm font-semibold text-white hover:bg-pine/90 disabled:opacity-50"
+        {PACKS.map((pack) => {
+          const isBestValue = pack.quantity === BEST_VALUE_QUANTITY;
+          return (
+            <div
+              key={pack.quantity}
+              className={`relative flex flex-col items-center rounded-xl border bg-white p-5 text-center ${
+                isBestValue ? "border-2 border-pine" : "border-line"
+              }`}
             >
-              {pending === pack.quantity ? t("redirecting") : t("buyPack")}
-            </button>
-          </div>
-        ))}
+              {isBestValue && (
+                <span className="absolute -top-3 right-3 rounded bg-ink px-2 py-0.5 text-[10px] font-semibold tracking-wide text-white uppercase">
+                  {t("bestValueBadge")}
+                </span>
+              )}
+              {pack.discountPct > 0 && (
+                <span className="absolute top-3 right-3 rounded bg-mint/25 px-1.5 py-0.5 text-[10px] font-semibold tracking-wide text-pine uppercase">
+                  −{pack.discountPct}%
+                </span>
+              )}
+              <p className="text-sm text-muted">{t("adPackLabel", { count: pack.quantity })}</p>
+              <p className="mt-2 font-display text-2xl font-bold text-ink">€{pack.totalEur}</p>
+              <p className="mt-1 text-xs text-muted">
+                €{(pack.totalEur / pack.quantity).toFixed(0)} {t("perAd")}
+              </p>
+              <button
+                type="button"
+                disabled={pending !== null}
+                onClick={() => buy(pack.quantity)}
+                className="mt-4 h-9 w-full rounded-lg bg-pine text-sm font-semibold text-white hover:bg-pine/90 disabled:opacity-50"
+              >
+                {pending === pack.quantity ? t("redirecting") : t("buyPack")}
+              </button>
+            </div>
+          );
+        })}
       </div>
       {error && <p className="mt-3 text-sm text-red-700">{error}</p>}
 
-      {/* One shared explanation, not repeated per card — every pack
-       *  includes the exact same three things, so saying it four times
-       *  was noise, not information. */}
-      <details className="mt-4 text-sm text-muted">
-        <summary className="cursor-pointer font-medium text-pine">{t("adPackWhatsIncluded")}</summary>
-        <ul className="mt-2 space-y-1 pl-1">
-          <li>{t("adPackPerkBump")}</li>
-          <li>{t("adPackPerkSalary")}</li>
-          <li>{t("adPackPerkDuration")}</li>
-        </ul>
-      </details>
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-line bg-subtle p-4">
+        <div className="flex items-center gap-3">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-pine/10 text-pine">
+            <Users className="h-5 w-5" />
+          </span>
+          <div>
+            <p className="font-semibold text-ink">{t("needMoreTitle")}</p>
+            <p className="text-sm text-muted">{t("needMoreSubtitle")}</p>
+          </div>
+        </div>
+        <Link href="/recruit/contact" className={buttonClassName({ variant: "secondary" })}>
+          {t("contactSales")}
+        </Link>
+      </div>
 
-      <p className="mt-3 text-sm text-muted">
-        {t("talkToSales")} <Link href="/recruit/contact" className="font-medium text-pine hover:underline">{t("contactUs")}</Link>
-      </p>
+      {/* Always visible, matching the reference — every pack includes the
+       *  exact same perks, so this is one shared card, not repeated per
+       *  pack or hidden behind a disclosure toggle. */}
+      <div id="whats-included" className="mt-4 rounded-xl border border-line bg-white p-4">
+        <p className="font-semibold text-ink">{t("adPackWhatsIncluded")}</p>
+        <ul className="mt-3 grid grid-cols-1 gap-x-8 gap-y-2 text-sm text-ink sm:grid-cols-2">
+          {INCLUDED_KEYS.map((key) => (
+            <li key={key} className="flex items-start gap-2">
+              <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-pine" />
+              <span>{t(key)}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
     </div>
   );
 }
