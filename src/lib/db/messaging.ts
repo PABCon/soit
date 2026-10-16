@@ -6,6 +6,21 @@ import { getMyEmployerContext } from "./companies";
 import { logEvent } from "@/lib/events";
 import { sendEmail } from "@/lib/email/send";
 import { newMessageEmail } from "@/lib/email/templates/new-message";
+import { sniffAttachmentType } from "@/lib/file-sniff";
+
+// Round 31 — real attachments. Same 5MB cap as the `cvs` bucket (§6.7);
+// the private `message-attachments` bucket has no client RLS policies at
+// all, same shape as `cvs` — every upload goes through the admin client,
+// only after the caller is already confirmed a legitimate party to the
+// thread, and every read is a short-lived signed URL minted the same way.
+const MAX_ATTACHMENT_BYTES = 5 * 1024 * 1024;
+const ATTACHMENT_CONTENT_TYPES: Record<Exclude<ReturnType<typeof sniffAttachmentType>, null>, string> = {
+  pdf: "application/pdf",
+  docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  png: "image/png",
+  jpeg: "image/jpeg",
+  webp: "image/webp",
+};
 
 // Direct messaging (§AI Pieces backlog) — one thread shape, two entry
 // points: matching outreach (blinded until the candidate's first reply,
@@ -115,7 +130,36 @@ export async function getOrCreateThreadForMatch(candidateId: string, jobId: stri
   return { ok: true, threadId };
 }
 
-export type SendMessageResult = { ok: true } | { ok: false; reason: "forbidden" | "not_found" };
+export type SendMessageResult = { ok: true } | { ok: false; reason: "forbidden" | "not_found" | "bad_attachment" };
+
+type UploadedAttachment = { path: string; filename: string; contentType: string; sizeBytes: number };
+
+/** Uploads via the admin client only — same "no client storage policies
+ *  at all" posture as the `cvs` bucket; the caller must already have
+ *  passed `sendMessage()`'s own authorization check before this runs.
+ *  Content-sniffed by magic bytes (never the declared/extension type),
+ *  same discipline `file-sniff.ts` already established for CVs. */
+async function uploadMessageAttachment(
+  threadId: string,
+  file: File,
+): Promise<{ ok: true; attachment: UploadedAttachment } | { ok: false }> {
+  if (file.size === 0 || file.size > MAX_ATTACHMENT_BYTES) return { ok: false };
+
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  const kind = sniffAttachmentType(bytes);
+  if (!kind) return { ok: false };
+
+  const path = `${threadId}/${crypto.randomUUID()}.${kind}`;
+  const contentType = ATTACHMENT_CONTENT_TYPES[kind];
+  const admin = createAdminClient();
+  const { error } = await admin.storage.from("message-attachments").upload(path, bytes, { contentType });
+  if (error) return { ok: false };
+
+  return {
+    ok: true,
+    attachment: { path, filename: file.name, contentType, sizeBytes: file.size },
+  };
+}
 
 /** The one place `messages` ever gets written, from either side —
  *  resolves the caller's role, applies the unlock flip (candidate's
@@ -123,10 +167,17 @@ export type SendMessageResult = { ok: true } | { ok: false; reason: "forbidden" 
  *  notification email. `identity_unlocked`/`last_message_at` are
  *  updated via the admin client deliberately: neither role has a
  *  column grant for them (see the migration) — this is server-computed
- *  state, not something either party directly controls. */
-export async function sendMessage(threadId: string, body: string): Promise<SendMessageResult> {
+ *  state, not something either party directly controls.
+ *
+ *  Round 31 — `file` is optional and symmetric for both roles: a
+ *  candidate's first reply on a still-blinded match thread can carry an
+ *  attachment too, and the upload only ever runs *after* the
+ *  authorization check below, so there's no path for an unauthorized
+ *  sender (or a party to a thread that isn't theirs) to write a file
+ *  into storage before that check has run. */
+export async function sendMessage(threadId: string, body: string, file?: File | null): Promise<SendMessageResult> {
   const trimmed = body.trim();
-  if (!trimmed) return { ok: false, reason: "forbidden" };
+  if (!trimmed && !file) return { ok: false, reason: "forbidden" };
 
   const supabase = await createClient();
   const { data: thread } = await supabase
@@ -148,10 +199,26 @@ export async function sendMessage(threadId: string, body: string): Promise<SendM
   if (!isEmployer && !isCandidate) return { ok: false, reason: "forbidden" };
   const senderType: "employer" | "candidate" = isEmployer ? "employer" : "candidate";
 
+  let attachment: UploadedAttachment | null = null;
+  if (file) {
+    const uploaded = await uploadMessageAttachment(threadId, file);
+    if (!uploaded.ok) return { ok: false, reason: "bad_attachment" };
+    attachment = uploaded.attachment;
+  }
+
+  // `messages_body_check` requires non-empty text — an attachment with
+  // no typed caption falls back to its own filename rather than needing
+  // a schema change to allow true emptiness (see the migration's note).
+  const finalBody = trimmed || attachment!.filename;
+
   const { error: insertError } = await supabase.from("messages").insert({
     thread_id: threadId,
     sender_type: senderType,
-    body: trimmed,
+    body: finalBody,
+    attachment_path: attachment?.path ?? null,
+    attachment_filename: attachment?.filename ?? null,
+    attachment_content_type: attachment?.contentType ?? null,
+    attachment_size_bytes: attachment?.sizeBytes ?? null,
   });
   if (insertError) return { ok: false, reason: "forbidden" };
 
@@ -227,6 +294,10 @@ async function notifyNewMessage({ thread, senderType }: { thread: ThreadRow; sen
   }
 }
 
+function attachmentPrefixed(body: string, attachmentPath: string | null): string {
+  return attachmentPath ? `📎 ${body}` : body;
+}
+
 export type EmployerThreadSummary = {
   threadId: string;
   jobId: string;
@@ -263,7 +334,7 @@ export async function getMyThreadsAsEmployer(): Promise<EmployerThreadSummary[]>
       }
       const { data: lastMessage } = await supabase
         .from("messages")
-        .select("body")
+        .select("body, attachment_path")
         .eq("thread_id", row.id)
         .order("created_at", { ascending: false })
         .limit(1)
@@ -276,7 +347,7 @@ export async function getMyThreadsAsEmployer(): Promise<EmployerThreadSummary[]>
         origin: row.origin,
         identityUnlocked: row.identity_unlocked,
         candidateName,
-        lastMessagePreview: lastMessage?.body ?? null,
+        lastMessagePreview: lastMessage ? attachmentPrefixed(lastMessage.body, lastMessage.attachment_path) : null,
         lastMessageAt: row.last_message_at,
         unread: !row.employer_last_read_at || row.last_message_at > row.employer_last_read_at,
       };
@@ -319,7 +390,7 @@ export async function getMyThreadsAsCandidate(): Promise<CandidateThreadSummary[
       const job = row.jobs as unknown as { title: string; companies: { company_name: string } };
       const { data: lastMessage } = await supabase
         .from("messages")
-        .select("body")
+        .select("body, attachment_path")
         .eq("thread_id", row.id)
         .order("created_at", { ascending: false })
         .limit(1)
@@ -330,7 +401,7 @@ export async function getMyThreadsAsCandidate(): Promise<CandidateThreadSummary[
         jobId: row.job_id,
         jobTitle: job.title,
         companyName: job.companies.company_name,
-        lastMessagePreview: lastMessage?.body ?? null,
+        lastMessagePreview: lastMessage ? attachmentPrefixed(lastMessage.body, lastMessage.attachment_path) : null,
         lastMessageAt: row.last_message_at,
         unread: !row.candidate_last_read_at || row.last_message_at > row.candidate_last_read_at,
       };
@@ -343,7 +414,16 @@ export async function getMyCandidateUnreadThreadCount(): Promise<number> {
   return threads.filter((t) => t.unread).length;
 }
 
-export type ThreadMessage = { id: string; senderType: "employer" | "candidate"; body: string; createdAt: string };
+export type ThreadMessage = {
+  id: string;
+  senderType: "employer" | "candidate";
+  body: string;
+  createdAt: string;
+  attachment: { filename: string; contentType: string; sizeBytes: number; signedUrl: string } | null;
+};
+
+/** Same 15-minute cap already used for CV signed URLs. */
+const ATTACHMENT_SIGNED_URL_TTL_SECONDS = 900;
 
 export type ThreadDetailResult =
   | {
@@ -380,13 +460,37 @@ export async function getThreadDetail(threadId: string): Promise<ThreadDetailRes
 
   const { data: messageRows } = await supabase
     .from("messages")
-    .select("id, sender_type, body, created_at")
+    .select("id, sender_type, body, created_at, attachment_path, attachment_filename, attachment_content_type, attachment_size_bytes")
     .eq("thread_id", threadId)
     .order("created_at", { ascending: true });
 
+  // Signed URLs are minted here, after the authorization check above
+  // already confirmed the caller is a legitimate party to this thread —
+  // same "no client storage policy, sign after the app-code check"
+  // posture as the `cvs` bucket's own CV downloads.
+  const admin = createAdminClient();
+  const messages: ThreadMessage[] = await Promise.all(
+    (messageRows ?? []).map(async (m) => {
+      let attachment: ThreadMessage["attachment"] = null;
+      if (m.attachment_path && m.attachment_filename && m.attachment_content_type && m.attachment_size_bytes !== null) {
+        const { data: signed } = await admin.storage
+          .from("message-attachments")
+          .createSignedUrl(m.attachment_path, ATTACHMENT_SIGNED_URL_TTL_SECONDS);
+        attachment = signed
+          ? {
+              filename: m.attachment_filename,
+              contentType: m.attachment_content_type,
+              sizeBytes: m.attachment_size_bytes,
+              signedUrl: signed.signedUrl,
+            }
+          : null;
+      }
+      return { id: m.id, senderType: m.sender_type, body: m.body, createdAt: m.created_at, attachment };
+    }),
+  );
+
   let candidateName: string | null = null;
   if (isEmployer && thread.identity_unlocked) {
-    const admin = createAdminClient();
     const { data: candidate } = await admin.from("candidates").select("full_name").eq("id", thread.candidate_id).single();
     candidateName = candidate?.full_name ?? null;
   }
@@ -402,6 +506,6 @@ export async function getThreadDetail(threadId: string): Promise<ThreadDetailRes
     identityUnlocked: thread.identity_unlocked,
     candidateName,
     companyName: job.companies.company_name,
-    messages: (messageRows ?? []).map((m) => ({ id: m.id, senderType: m.sender_type, body: m.body, createdAt: m.created_at })),
+    messages,
   };
 }

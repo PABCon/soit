@@ -4,6 +4,7 @@ import { redirect, Link } from "@/i18n/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getThreadDetail } from "@/lib/db/messaging";
 import { ThreadReplyBox } from "@/components/ThreadReplyBox";
+import { MessageAttachment } from "@/components/messaging/MessageAttachment";
 import { ThreadRealtimeRefresh } from "@/components/messaging/ThreadRealtimeRefresh";
 import { sendCandidateMessageAction } from "./actions";
 
@@ -46,7 +47,10 @@ export default async function CandidateThreadPage({ params }: Props) {
                 : "mr-auto max-w-[80%] rounded-lg rounded-tl-none bg-paper px-3 py-2 text-sm text-ink"
             }
           >
-            <p>{m.body}</p>
+            {(!m.attachment || m.body !== m.attachment.filename) && <p>{m.body}</p>}
+            {m.attachment && (
+              <MessageAttachment attachment={m.attachment} tone={m.senderType === "candidate" ? "own" : "other"} />
+            )}
             <p className={m.senderType === "candidate" ? "mt-1 text-[10px] text-white/70" : "mt-1 text-[10px] text-muted"}>
               {format.dateTime(new Date(m.createdAt), { dateStyle: "short", timeStyle: "short" })}
             </p>
