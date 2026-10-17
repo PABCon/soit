@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { Search, MapPin, ChevronDown } from "lucide-react";
 import { Link, usePathname, useRouter } from "@/i18n/navigation";
 import { Button } from "@/components/Button";
+import { Dropdown } from "@/components/Dropdown";
 import { useUrlSearchParams, writeUrlSearchParams } from "@/hooks/useUrlSearchParams";
 import { saveSearchAction } from "@/app/[locale]/(candidate)/saved-searches/actions";
 import type { LocationOption } from "@/lib/db/locations";
@@ -13,6 +14,71 @@ const RADIUS_OPTIONS = [10, 25, 50, 100];
 const MAX_SUGGESTIONS = 6;
 
 export type SearchSuggestion = { label: string; kind: "tech" | "category" };
+
+/** Real-usage QA item: the native `<select>` this replaced had its OS
+ *  popup expand leftward over the search input when there wasn't room to
+ *  its right (a real browser-level anchoring quirk, not something CSS on
+ *  a native `<select>` can control). Same fix as `StatusDropdown`
+ *  (`AllApplicantsList.tsx`) — a portal-rendered `Dropdown` this app
+ *  fully controls the position of. `align="left"` anchors the panel's
+ *  left edge to the trigger's own left edge, so it only ever grows
+ *  rightward, away from the search input sitting to its left. */
+function LocationPicker({
+  locations,
+  value,
+  onChange,
+}: {
+  locations: LocationOption[];
+  value: string;
+  onChange: (slug: string) => void;
+}) {
+  const t = useTranslations("nav");
+  const selectedLabel = value ? (locations.find((l) => l.slug === value)?.name ?? t("searchAnywhere")) : t("searchAnywhere");
+
+  return (
+    <Dropdown
+      portal
+      align="left"
+      trigger={
+        <>
+          <MapPin className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted" aria-hidden="true" />
+          <span className="max-w-32 truncate">{selectedLabel}</span>
+          <ChevronDown className="pointer-events-none absolute top-1/2 right-3 h-4 w-4 -translate-y-1/2 text-muted" aria-hidden="true" />
+        </>
+      }
+      triggerClassName="relative inline-flex h-11 shrink-0 items-center rounded-lg border border-line bg-white py-0 pr-8 pl-9 text-sm text-ink transition-colors hover:border-muted"
+      panelClassName="max-h-72 w-56 overflow-y-auto rounded-lg border border-line bg-white py-1 shadow-md"
+    >
+      {(close) => (
+        <>
+          <button
+            type="button"
+            onClick={() => {
+              onChange("");
+              close();
+            }}
+            className={value === "" ? "block w-full px-3 py-1.5 text-left text-sm font-medium text-pine" : "block w-full px-3 py-1.5 text-left text-sm text-ink hover:bg-paper"}
+          >
+            {t("searchAnywhere")}
+          </button>
+          {locations.map((l) => (
+            <button
+              key={l.id}
+              type="button"
+              onClick={() => {
+                onChange(l.slug);
+                close();
+              }}
+              className={l.slug === value ? "block w-full px-3 py-1.5 text-left text-sm font-medium text-pine" : "block w-full px-3 py-1.5 text-left text-sm text-ink hover:bg-paper"}
+            >
+              {l.name}
+            </button>
+          ))}
+        </>
+      )}
+    </Dropdown>
+  );
+}
 
 /** Global search (§7.1 phase 5) — title keyword + "near a curated city
  *  within N km" (Haversine over the already-fetched job list in
@@ -169,7 +235,7 @@ function SearchBarFields({
           aria-autocomplete="list"
           aria-controls="search-suggestions"
           autoComplete="off"
-          className="h-11 w-full min-w-0 rounded-lg border border-line bg-white pr-4 pl-9 text-sm placeholder:text-muted"
+          className="h-11 w-full min-w-0 rounded-lg border border-line bg-white pr-4 pl-9 text-sm placeholder:text-muted placeholder:text-[1.75rem] placeholder:leading-none"
         />
         {suggestionsOpen && filteredSuggestions.length > 0 && (
           <ul
@@ -204,46 +270,20 @@ function SearchBarFields({
           </ul>
         )}
       </div>
-      {/* Dropdown swatch fidelity: a left location-pin icon + the same
-       *  appearance-none custom chevron JobsExplorer's sort control
-       *  already uses, instead of the native select arrow. */}
-      <span className="relative inline-flex h-11 shrink-0 items-center">
-        <MapPin
-          className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted"
-          aria-hidden="true"
-        />
+      <LocationPicker locations={locations} value={near} onChange={setNear} />
+      {near && (
         <select
-          value={near}
-          onChange={(e) => setNear(e.target.value)}
-          className="h-11 shrink-0 appearance-none rounded-lg border border-line bg-white py-0 pr-8 pl-9 text-sm text-ink"
+          value={radiusKm}
+          onChange={(e) => setRadiusKm(e.target.value)}
+          aria-label={t("searchRadiusLabel")}
+          className="h-11 shrink-0 rounded-lg border border-line bg-white px-2 text-xs text-ink"
         >
-          <option value="">{t("searchAnywhere")}</option>
-          {locations.map((l) => (
-            <option key={l.id} value={l.slug}>
-              {l.name}
+          {RADIUS_OPTIONS.map((r) => (
+            <option key={r} value={r}>
+              {r} km
             </option>
           ))}
         </select>
-        <ChevronDown
-          className="pointer-events-none absolute top-1/2 right-3 h-4 w-4 -translate-y-1/2 text-muted"
-          aria-hidden="true"
-        />
-      </span>
-      {near && (
-        <label className="flex h-11 shrink-0 items-center gap-1 text-xs whitespace-nowrap text-muted">
-          {t("searchRadiusLabel")}
-          <select
-            value={radiusKm}
-            onChange={(e) => setRadiusKm(e.target.value)}
-            className="h-8 shrink-0 rounded-lg border border-line bg-white px-2 text-xs text-ink"
-          >
-            {RADIUS_OPTIONS.map((r) => (
-              <option key={r} value={r}>
-                {r} km
-              </option>
-            ))}
-          </select>
-        </label>
       )}
       <Button type="submit" className="shrink-0">
         {t("searchSubmit")}
