@@ -816,7 +816,6 @@
     "columnActions": "Actions",
     "infoLine": "Applicant status and candidate actions are managed from this list.",
     "noResults": "No applicants match your filters.",
-    "changeStatus": "Change status",
     "appliedFor": "Applied for “{job}”",
     "backToApplicants": "← Back to applicants",
     "notProvided": "Not provided",

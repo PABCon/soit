@@ -816,7 +816,6 @@
     "columnActions": "Ações",
     "infoLine": "O estado da candidatura e as ações sobre o candidato são geridos a partir desta lista.",
     "noResults": "Nenhuma candidatura corresponde aos filtros.",
-    "changeStatus": "Alterar estado",
     "appliedFor": "Candidatura para “{job}”",
     "backToApplicants": "← Voltar às candidaturas",
     "notProvided": "Não fornecido",

@@ -103,6 +103,37 @@ export async function getOrCreateThreadForApplicant(applicationId: string, first
   return { ok: true, threadId };
 }
 
+/** Bug fix (`/recruit/applicants` restyle): "Message" must open the real
+ *  thread page immediately, not a small inline compose box first. This
+ *  is `getOrCreateThreadForApplicant` minus the forced first
+ *  `sendMessage()` call — find-or-create the thread and hand back its id
+ *  so the caller can navigate straight to `/recruit/messages/[threadId]`,
+ *  where the real `ThreadComposer` already handles an empty, brand-new
+ *  thread correctly. */
+export async function getOrCreateThreadIdForApplicant(applicationId: string): Promise<StartThreadResult> {
+  const ctx = await getMyEmployerContext();
+  if (!ctx) return { ok: false, reason: "not_an_employer" };
+
+  const supabase = await createClient();
+  const { data: application } = await supabase
+    .from("applications")
+    .select("candidate_id, job_id, jobs!inner ( company_id )")
+    .eq("id", applicationId)
+    .maybeSingle();
+  if (!application) return { ok: false, reason: "not_found" };
+  const job = application.jobs as unknown as { company_id: string };
+  if (job.company_id !== ctx.company.id) return { ok: false, reason: "not_found" };
+
+  const threadId = await ensureThread(supabase, {
+    companyId: ctx.company.id,
+    candidateId: application.candidate_id,
+    jobId: application.job_id,
+    origin: "application",
+    identityUnlocked: true,
+  });
+  return { ok: true, threadId };
+}
+
 /** Matching outreach — identity stays blinded until the candidate
  *  replies. Re-verifies paying-customer status at send time, same as
  *  `candidate-matches.ts`'s read gate — matching access shouldn't

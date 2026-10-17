@@ -1,14 +1,13 @@
 "use client";
 
-import { useMemo, useState, type ReactNode } from "react";
+import { useMemo, useState, useTransition, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
 import { Search, Briefcase, ListFilter, ArrowUpDown, ChevronDown, User, Info } from "lucide-react";
-import { Link } from "@/i18n/navigation";
-import { updateStatusAction, startApplicantThreadAction } from "@/app/[locale]/(console)/recruit/jobs/[id]/applicants/actions";
-import { StartThreadButton } from "@/components/StartThreadButton";
+import { Link, useRouter } from "@/i18n/navigation";
+import { openApplicantThreadAction } from "@/app/[locale]/(console)/recruit/jobs/[id]/applicants/actions";
+import { ApplicantStatusSelect } from "@/components/console/ApplicantStatusSelect";
 import { buttonClassName } from "@/components/Button";
 import { Badge, type BadgeVariant } from "@/components/Badge";
-import { Dropdown } from "@/components/Dropdown";
 import type { CompanyApplicant, MyApplication } from "@/lib/db/applications";
 
 type Status = MyApplication["status"];
@@ -53,6 +52,32 @@ function FilterSelect({
   );
 }
 
+/** Bug fix: "Message" used to open a small inline compose box right in
+ *  the row — now it navigates straight to the real thread page, same as
+ *  every other messaging entry point in this app. No message is sent
+ *  until the employer actually composes one there. */
+function MessageButton({ applicationId }: { applicationId: string }) {
+  const t = useTranslations("messaging");
+  const router = useRouter();
+  const [pending, startTransition] = useTransition();
+
+  return (
+    <button
+      type="button"
+      disabled={pending}
+      onClick={() =>
+        startTransition(async () => {
+          const result = await openApplicantThreadAction(applicationId);
+          if (result.ok) router.push(`/recruit/messages/${result.threadId}`);
+        })
+      }
+      className={buttonClassName()}
+    >
+      {pending ? t("sending") : t("message")}
+    </button>
+  );
+}
+
 /** Item 2 (§7.2 review) — applicants across every one of the employer's
  *  jobs, not just one at a time. Restyled against the Applicant Management
  *  Dashboard reference: a search+filter+sort toolbar (client-side, same
@@ -87,10 +112,6 @@ export function AllApplicantsList({ applicants, locale }: { applicants: CompanyA
     });
     return result;
   }, [applicants, query, jobFilter, statusFilter, sort]);
-
-  async function handleStatusChange(jobId: string, applicationId: string, status: Status) {
-    await updateStatusAction(jobId, applicationId, status);
-  }
 
   if (applicants.length === 0) {
     return <p className="mt-8 text-sm text-muted">{t("empty")}</p>;
@@ -191,39 +212,8 @@ export function AllApplicantsList({ applicants, locale }: { applicants: CompanyA
                         ) : (
                           <span className="text-xs text-muted">{t("cvUnavailable")}</span>
                         )}
-                        <StartThreadButton
-                          redirectBase="/recruit/messages"
-                          onSend={(body) => startApplicantThreadAction(a.id, body)}
-                          triggerClassName={buttonClassName()}
-                        />
-                        <Dropdown
-                          trigger={<ChevronDown className="h-4 w-4" aria-hidden="true" />}
-                          triggerLabel={t("changeStatus")}
-                          triggerClassName="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-line bg-white text-ink hover:bg-paper"
-                          panelClassName="w-40 rounded-lg border border-line bg-white py-1 shadow-md"
-                        >
-                          {(close) => (
-                            <>
-                              {STATUSES.map((s) => (
-                                <button
-                                  key={s}
-                                  type="button"
-                                  onClick={() => {
-                                    handleStatusChange(a.jobId, a.id, s);
-                                    close();
-                                  }}
-                                  className={
-                                    s === a.status
-                                      ? "block w-full px-3 py-1.5 text-left text-sm font-medium text-pine"
-                                      : "block w-full px-3 py-1.5 text-left text-sm text-ink hover:bg-paper"
-                                  }
-                                >
-                                  {t(`status.${s}`)}
-                                </button>
-                              ))}
-                            </>
-                          )}
-                        </Dropdown>
+                        <MessageButton applicationId={a.id} />
+                        <ApplicantStatusSelect jobId={a.jobId} applicationId={a.id} initialStatus={a.status} />
                       </div>
                     </td>
                   </tr>
