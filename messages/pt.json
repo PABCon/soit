@@ -163,6 +163,7 @@
     "industry": "Setor",
     "companySize": "Dimensão da empresa",
     "save": "Guardar",
+    "saveProfile": "Guardar perfil",
     "saved": "Guardado.",
     "teamMembers": "Membros",
     "roleLabel": {
@@ -219,11 +220,16 @@
       "extraction_failed": "Não foi possível extrair nada dessa página neste momento."
     },
     "myAccount": "A minha conta",
+    "myAccountSubtitle": "Faça a gestão do seu perfil e da segurança da conta.",
     "applicants": "Candidaturas",
     "myProfile": "O meu perfil",
+    "myProfileSubtitle": "Esta informação é usada para gerir a sua conta e não é visível aos candidatos.",
     "fullName": "Nome completo",
     "phone": "Telefone",
     "uploadAvatar": "Carregar foto",
+    "changePhoto": "Alterar foto",
+    "avatarRecommendedSize": "Tamanho recomendado: 400 x 400 px",
+    "avatarFileHint": "JPG ou PNG (máx. 2 MB)",
     "avatarError": {
       "no_session": "Algo correu mal. Tente novamente.",
       "file_too_large": "Essa imagem é demasiado grande — máximo 2MB.",
@@ -659,6 +665,7 @@
     "resetPasswordTitle": "Definir nova palavra-passe",
     "resetPasswordHint": "Escolha uma nova palavra-passe para a sua conta.",
     "changePassword": "Alterar palavra-passe",
+    "changePasswordSubtitle": "Escolha uma palavra-passe forte para manter a sua conta segura.",
     "newPassword": "Nova palavra-passe",
     "confirmPassword": "Confirmar nova palavra-passe",
     "passwordMismatch": "As palavras-passe não coincidem.",

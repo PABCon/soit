@@ -17,7 +17,6 @@ export default async function EmployerSettingsPage({ params }: Props) {
   const { locale } = await params;
   setRequestLocale(locale);
   const t = await getTranslations({ locale, namespace: "console" });
-  const ta = await getTranslations({ locale, namespace: "auth" });
 
   const supabase = await createClient();
   const {
@@ -30,25 +29,17 @@ export default async function EmployerSettingsPage({ params }: Props) {
   return (
     <>
       <h1 className="text-3xl font-bold lg:text-4xl">{t("myAccount")}</h1>
+      <p className="mt-1 text-muted">{t("myAccountSubtitle")}</p>
 
-      <section className="mt-6">
-        <h2 className="font-display text-sm font-semibold text-muted">{t("myProfile")}</h2>
-        <div className="mt-2">
-          <EmployerProfileForm
-            initialFullName={metadata?.full_name ?? ""}
-            initialPhone={metadata?.phone ?? ""}
-            email={user.email ?? ""}
-            avatarUrl={metadata?.avatar_url ?? null}
-          />
-        </div>
-      </section>
-
-      <section className="mt-10">
-        <h2 className="font-display text-sm font-semibold text-muted">{ta("changePassword")}</h2>
-        <div className="mt-2">
-          <PasswordChangeForm />
-        </div>
-      </section>
+      <div className="mt-6 space-y-6">
+        <EmployerProfileForm
+          initialFullName={metadata?.full_name ?? ""}
+          initialPhone={metadata?.phone ?? ""}
+          email={user.email ?? ""}
+          avatarUrl={metadata?.avatar_url ?? null}
+        />
+        <PasswordChangeForm variant="card" />
+      </div>
     </>
   );
 }

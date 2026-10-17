@@ -2,9 +2,11 @@
 
 import { useState, type FormEvent } from "react";
 import { useTranslations } from "next-intl";
+import { Upload } from "lucide-react";
 import { updateMyProfileAction, uploadMyAvatarAction } from "@/app/[locale]/(console)/recruit/settings/actions";
+import { buttonClassName } from "@/components/Button";
 
-const inputClass = "h-9 rounded-lg border border-line bg-white px-3 text-sm";
+const inputClass = "h-11 rounded-lg border border-line bg-white px-3 text-sm";
 const labelClass = "flex flex-col gap-1 text-sm";
 
 export function EmployerProfileForm({
@@ -50,49 +52,54 @@ export function EmployerProfileForm({
   }
 
   return (
-    <div className="max-w-xl space-y-4">
-      {fileError && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{fileError}</p>}
+    <div className="rounded-xl border border-line bg-white p-6">
+      <h2 className="text-lg font-semibold text-ink">{t("myProfile")}</h2>
+      <p className="mt-1 text-sm text-muted">{t("myProfileSubtitle")}</p>
 
-      <div className="flex items-center gap-4">
+      {fileError && <p className="mt-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{fileError}</p>}
+
+      <div className="mt-5 flex items-center gap-4">
         {avatarUrl ? (
           // eslint-disable-next-line @next/next/no-img-element -- external Supabase Storage URL
-          <img src={avatarUrl} alt="" className="h-16 w-16 rounded-full object-cover" />
+          <img src={avatarUrl} alt="" className="h-20 w-20 shrink-0 rounded-full object-cover" />
         ) : (
-          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-pine font-display text-lg font-bold text-white">
+          <div className="flex h-20 w-20 shrink-0 items-center justify-center rounded-full bg-pine font-display text-xl font-bold text-white">
             {fullName.slice(0, 1).toUpperCase() || "?"}
           </div>
         )}
-        <label className="cursor-pointer text-sm font-medium text-pine hover:underline">
-          {t("uploadAvatar")}
-          <input
-            type="file"
-            accept="image/png,image/jpeg,image/webp"
-            className="hidden"
-            onChange={(e) => e.target.files?.[0] && handleAvatar(e.target.files[0])}
-          />
-        </label>
+        <div>
+          <label className={`${buttonClassName({ variant: "secondary", size: "md" })} cursor-pointer`}>
+            <Upload className="h-4 w-4" aria-hidden="true" />
+            {t("changePhoto")}
+            <input
+              type="file"
+              accept="image/png,image/jpeg,image/webp"
+              className="hidden"
+              onChange={(e) => e.target.files?.[0] && handleAvatar(e.target.files[0])}
+            />
+          </label>
+          <p className="mt-2 text-xs text-muted">{t("avatarRecommendedSize")}</p>
+          <p className="text-xs text-muted">{t("avatarFileHint")}</p>
+        </div>
       </div>
 
-      <form onSubmit={handleSubmit} className="flex max-w-sm flex-col gap-4">
+      <form onSubmit={handleSubmit} className="mt-6 grid gap-4 sm:grid-cols-2">
         <label className={labelClass}>
-          <span>{t("fullName")}</span>
+          <span className="font-medium text-ink">{t("fullName")}</span>
           <input value={fullName} onChange={(e) => setFullName(e.target.value)} className={inputClass} />
         </label>
         <label className={labelClass}>
-          <span>{t("email")}</span>
+          <span className="font-medium text-ink">{t("email")}</span>
           <input value={email} disabled className={`${inputClass} bg-paper text-muted`} />
         </label>
         <label className={labelClass}>
-          <span>{t("phone")}</span>
+          <span className="font-medium text-ink">{t("phone")}</span>
           <input value={phone} onChange={(e) => setPhone(e.target.value)} className={inputClass} />
         </label>
-        <div className="flex items-center gap-3">
-          <button
-            type="submit"
-            disabled={pending}
-            className="h-10 rounded-lg bg-pine px-4 text-sm font-medium text-white hover:bg-pine/90 disabled:opacity-50"
-          >
-            {t("save")}
+
+        <div className="flex items-center gap-3 sm:col-span-2">
+          <button type="submit" disabled={pending} className={buttonClassName({ size: "md" })}>
+            {t("saveProfile")}
           </button>
           {saved && <span className="text-sm text-pine">{t("saved")}</span>}
         </div>

@@ -163,6 +163,7 @@
     "industry": "Industry",
     "companySize": "Company size",
     "save": "Save",
+    "saveProfile": "Save profile",
     "saved": "Saved.",
     "teamMembers": "Members",
     "roleLabel": {
@@ -219,11 +220,16 @@
       "extraction_failed": "Couldn't extract anything from that page right now."
     },
     "myAccount": "My account",
+    "myAccountSubtitle": "Manage your profile and account security.",
     "applicants": "Applicants",
     "myProfile": "My profile",
+    "myProfileSubtitle": "This information is used to manage your account and will not be visible to candidates.",
     "fullName": "First and last name",
     "phone": "Phone",
     "uploadAvatar": "Upload photo",
+    "changePhoto": "Change photo",
+    "avatarRecommendedSize": "Recommended size: 400 x 400 px",
+    "avatarFileHint": "JPG or PNG (max 2 MB)",
     "avatarError": {
       "no_session": "Something went wrong. Try again.",
       "file_too_large": "That image is too large — 2MB maximum.",
@@ -659,6 +665,7 @@
     "resetPasswordTitle": "Set a new password",
     "resetPasswordHint": "Choose a new password for your account.",
     "changePassword": "Change password",
+    "changePasswordSubtitle": "Choose a strong password to keep your account secure.",
     "newPassword": "New password",
     "confirmPassword": "Confirm new password",
     "passwordMismatch": "Passwords don't match.",
