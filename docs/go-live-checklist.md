@@ -12,6 +12,15 @@ items close, same as every other doc in this project.
 Not a step-by-step build plan — these are independent, tick off in
 whatever order makes sense.
 
+**Re-audited 2026-10-17** against live Vercel/Supabase/Stripe state (not
+memory/CLAUDE.md, which itself stops narrating new work after the
+"Landing-page redesign, round 7" entry despite dozens of real commits
+since). Everything below was re-checked directly except Supabase's
+current Free/Pro plan and its Auth provider config, which this round's
+tooling couldn't reach (Management-API token access was blocked) —
+those two keep their prior status on the strength of there being no
+commit or CLAUDE.md entry anywhere suggesting either changed.
+
 ## Domain & DNS
 
 - [x] Register/confirm `justit.pt` — registered, DNS delegated to
@@ -144,10 +153,14 @@ whatever order makes sense.
 ## SEO
 
 - [ ] Submit the real domain to Google Search Console; run the Rich
-      Results Test against a real job page's `JobPosting` JSON-LD
-- [ ] Re-confirm `sitemap.xml`/`robots.txt` once the real domain is live
-      (both already exist and are dynamically generated — just need
-      re-checking against the real host, not rebuilding)
+      Results Test against a real job page's `JobPosting` JSON-LD —
+      still not confirmed done (can't verify Search Console submission
+      from here either way)
+- [x] `sitemap.xml`/`robots.txt` re-confirmed against the real host
+      2026-10-17 — both derive their host from `NEXT_PUBLIC_SITE_URL`
+      at runtime (no hardcoded domain), which is already
+      `https://justit.pt` in production, so both are correct with zero
+      further action needed
 
 ## Admin panel
 
@@ -199,22 +212,91 @@ whatever order makes sense.
       API access (phases 2–4 of the pricing work) are all built and
       verified live on both environments — see CLAUDE.md. Public API
       docs at `/developers`, linked from the pricing page, shipped
-      2026-10-01.
+      2026-10-01. **Pricing itself changed since then**: Top Employer
+      is now a flat **€500/mo or €5,000/yr** (2 months free paid
+      annually), with the old bundled-10-job-slots perk removed —
+      every verified company, Top Employer included, gets the same
+      1-free-job standing allowance, and ad credits are bought
+      separately by anyone (round 33, commit `202c117`). Confirmed
+      live 2026-10-17: the pricing page renders exactly €500/€5000,
+      and the new `top_employer_monthly_v2`/`top_employer_annual_v2`
+      Stripe Prices exist and are what Checkout references now.
+- [ ] **Two real Top Employer subscriptions are still on the OLD,
+      pre-round-33 `top_employer_annual` Stripe Price** — confirmed
+      live again 2026-10-17 (unresolved since round 33, not a new
+      finding on its own, but worth restating since this doc hadn't
+      captured it until now). Stripe Prices are immutable, so a
+      pricing change never moves an existing subscriber — this isn't a
+      bug, just a standing fact; whether/when to migrate them (or just
+      let them keep renewing at the old price) is a business decision,
+      not a code one. The two real subscriptions:
+      - **ITDS** (`company_id 7c056b01-...`) — correctly synced,
+        `top_employer_active: true`.
+      - **"Test Company"** (`company_id 01f26edb-...`) — Stripe shows
+        this subscription `status: active` (renews 2027-09-30), but
+        `companies.top_employer_active` reads **false**. This is a
+        real, previously-undocumented desync, found by this audit
+        cross-referencing Stripe directly against the database (not
+        just the app's own UI). The `company_subscriptions` row itself
+        is correct (`status: active`, last written 2026-09-30, never
+        updated since) — only the denormalized `companies.
+        top_employer_active` cache column is wrong. The exact cause
+        wasn't recoverable from here (Postgres/Supabase keeps no
+        row-level history to inspect); most likely a stray manual/
+        test write against this specific company at some point rather
+        than a reproducible app bug — but it means this company is
+        currently being under-served relative to what it's paying for
+        (no badge, no site placement, console shows it as not
+        subscribed) and should be corrected directly (a one-line
+        `update companies set top_employer_active = true where id =
+        '01f26edb-87d5-4962-a331-ebbdf9698cb8'` would fix the visible
+        symptom; worth doing once someone's looking at this row anyway).
+- [ ] **A related, more serious gap found during this same audit, not
+      previously known**: the live Stripe webhook endpoint is still
+      registered at `https://soit.vercel.app/api/stripe/webhook` — the
+      **old** domain, never moved to `justit.pt`. Since 2026-10-09 (the
+      "canonical domain" fix, commit `f3b5946`), `soit.vercel.app`
+      308-redirects **every single path** — including this webhook
+      route — to `justit.pt`, and Stripe does not follow redirects when
+      delivering a webhook. In effect, **any real subscription-
+      lifecycle event since 2026-10-09 (renewals, payment failures,
+      cancellations) for this endpoint has likely been silently failing
+      to deliver** — this is now a live, currently-broken piece of
+      billing infra, not just the "hasn't been registered for prod yet"
+      gap this line originally described. (It doesn't explain the Test
+      Company desync above, which predates the redirect — but it does
+      mean a real Stripe-side event can't naturally self-correct that
+      desync either, so both need fixing together.) Fix: register a
+      fresh webhook endpoint at `https://justit.pt/api/stripe/webhook`
+      with its own signing secret set in Vercel's production env, move
+      the same event subscriptions over, and retire the old
+      `soit.vercel.app` endpoint in Stripe's dashboard once the new one
+      is confirmed receiving events.
 - [ ] The "6+ ads" tier is deliberately not self-serve (a "talk to
       sales" contact link only) — when a real deal happens, the Stripe
       Checkout Session/invoice for it is created manually via the
-      Dashboard, not through this codebase's checkout action.
+      Dashboard, not through this codebase's checkout action. Still
+      accurate as designed — not an open task, just restating the
+      deliberate behavior for anyone reading this section top to
+      bottom.
 
 ## Product / business (not code)
 
-- [x] Pricing model — the real business-model conversation finally
-      happened 2026-09-30, grounded in real competitor pricing (justjoin.it,
+- [x] Pricing model — the real business-model conversation happened
+      2026-09-30, grounded in real competitor pricing (justjoin.it,
       LinkedIn, Indeed) and one real data point (an existing customer's
-      actual spend at scale on a competitor board), reverse-engineered
-      into a volume-discount curve rather than guessed at. Two products:
-      self-serve job-ad credits (building now) and a Top Employer
-      subscription (scoped, not built yet). See CLAUDE.md's "Employer
-      pricing & billing" entries for the full numbers and reasoning.
+      actual spend at scale on a competitor board). Both products it
+      defined are now fully built and live, confirmed again 2026-10-17:
+      self-serve job-ad credits (4 one-time packs, volume-discounted)
+      and a Top Employer subscription — though the latter's own pricing
+      changed partway through (round 33): flat **€500/mo or €5,000/yr**
+      now, not the original discount-curve design, once bundling 10
+      free job slots into it turned out to double up against the
+      1-free-job standing allowance every verified company already
+      gets. See CLAUDE.md's "Employer pricing & billing" entries for
+      the full history, and the Billing/Stripe section above for the
+      two real subscribers still grandfathered on the pre-round-33
+      price (one of which has a separate, currently-open sync issue).
 - [x] Contact/support channel, email half — `/recruit/contact` page
       shipped 2026-09-29 (employer-only by your own explicit call, not
       a general/candidate channel — genuinely gated via the console's
