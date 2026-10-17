@@ -1,24 +1,33 @@
 import { notFound } from "next/navigation";
 import { getTranslations, getFormatter, setRequestLocale } from "next-intl/server";
-import { Lock } from "lucide-react";
+import { Lock, ListChecks, Briefcase, FileText as CvIcon } from "lucide-react";
 import { Link } from "@/i18n/navigation";
 import { getCandidateMatchDetail } from "@/lib/db/candidate-matches";
 import { StartThreadButton } from "@/components/StartThreadButton";
 import { MatchStatusSelect } from "@/components/console/MatchStatusSelect";
 import { MatchSummarySection } from "@/components/console/MatchSummarySection";
+import { SectionHeading } from "@/components/SectionHeading";
 import { candidateDisplayNumber } from "@/lib/match-display";
 import { startMatchThreadAction } from "../actions";
 
 type Props = { params: Promise<{ locale: string; jobId: string; candidateId: string }> };
 
-/** Round 26 (page 04 reference) — the blinded match's own profile page.
- *  Per the user's explicit Decision 1: the mockup's disabled "Reveal
- *  contact details"/"View CV" controls are replaced with the one real
- *  action this project actually has for unblinding a match — a message,
- *  via the same `StartThreadButton`/`startMatchThreadAction` the phase-B
- *  messaging work already built (identity only ever unlocks when the
- *  *candidate* replies — see messaging.ts's `sendMessage`). The Hidden
- *  field labels stay, as pure explanation, not a fake control. */
+/** Round 26 (page 04 reference) built from spec without a real screenshot-
+ *  vs-reference comparison; round 36 did that comparison section by
+ *  section and closed the structural gaps it found: a header avatar, an
+ *  icon-circle before every section heading (now shared via
+ *  `AiSummaryPanel`'s own `icon` prop and the new `SectionHeading`), and
+ *  a dedicated "CV / Résumé" card split out from the contact-info one —
+ *  the reference treats them as two separate cards, not one.
+ *
+ *  Per the user's explicit Decision 1 (unchanged from round 26): the
+ *  mockup's disabled "Reveal contact details"/"View CV" controls are
+ *  replaced with the one real action this project actually has for
+ *  unblinding a match — a message, via the same `StartThreadButton`/
+ *  `startMatchThreadAction` the phase-B messaging work already built
+ *  (identity only ever unlocks when the *candidate* replies — see
+ *  messaging.ts's `sendMessage`). The Hidden field labels stay, as pure
+ *  explanation, not a fake control. */
 export default async function MatchCandidateProfilePage({ params }: Props) {
   const { locale, jobId, candidateId } = await params;
   setRequestLocale(locale);
@@ -53,18 +62,23 @@ export default async function MatchCandidateProfilePage({ params }: Props) {
       </Link>
 
       <div className="mt-2 flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <div className="flex flex-wrap items-center gap-2">
-            <h1 className="font-display text-2xl font-bold">{t("candidateNumber", { number: displayNumber })}</h1>
-            <span className="rounded-full bg-green-100 px-2.5 py-1 text-xs font-semibold text-green-700">
-              {t("matchedCandidateBadge")}
-            </span>
+        <div className="flex min-w-0 items-start gap-4">
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-pine font-display text-lg font-bold text-white">
+            C
           </div>
-          <p className="mt-0.5 text-sm text-muted">
-            {match.aiSummaryGeneratedAt
-              ? t("matchedForWithDate", { job: jobTitle, date: format.dateTime(new Date(match.aiSummaryGeneratedAt), { dateStyle: "short" }) })
-              : t("matchedForNoDate", { job: jobTitle })}
-          </p>
+          <div>
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="font-display text-2xl font-bold">{t("candidateNumber", { number: displayNumber })}</h1>
+              <span className="rounded-full bg-green-100 px-2.5 py-1 text-xs font-semibold text-green-700">
+                {t("matchedCandidateBadge")}
+              </span>
+            </div>
+            <p className="mt-0.5 text-sm text-muted">
+              {match.aiSummaryGeneratedAt
+                ? t("matchedForWithDate", { job: jobTitle, date: format.dateTime(new Date(match.aiSummaryGeneratedAt), { dateStyle: "short" }) })
+                : t("matchedForNoDate", { job: jobTitle })}
+            </p>
+          </div>
         </div>
         <MatchStatusSelect jobId={jobId} candidateId={candidateId} initialStatus={match.status} />
       </div>
@@ -75,7 +89,7 @@ export default async function MatchCandidateProfilePage({ params }: Props) {
 
           {match.skills.length > 0 && (
             <section>
-              <h2 className="font-display text-sm font-semibold text-muted">{t("skills")}</h2>
+              <SectionHeading icon={ListChecks}>{t("skills")}</SectionHeading>
               <div className="mt-2 flex flex-wrap gap-2">
                 {match.skills.map((skill) => (
                   <span key={skill.label} className="flex items-center gap-1.5 rounded-full border border-line bg-white px-1 py-1 pl-3 text-xs text-ink">
@@ -92,7 +106,7 @@ export default async function MatchCandidateProfilePage({ params }: Props) {
           )}
 
           <section>
-            <h2 className="font-display text-sm font-semibold text-muted">{t("experienceSectionHeading")}</h2>
+            <SectionHeading icon={Briefcase}>{t("experienceSectionHeading")}</SectionHeading>
             <p className="mt-2 text-sm text-ink">
               {match.yearsExperience != null ? t("yearsExperience", { count: match.yearsExperience }) : t("yearsExperienceUnknown")}
             </p>
@@ -102,29 +116,40 @@ export default async function MatchCandidateProfilePage({ params }: Props) {
           </section>
         </div>
 
-        <aside className="space-y-4 rounded-xl border border-line bg-white p-4">
-          <h2 className="font-display text-sm font-semibold text-ink">{t("contactInfoHeading")}</h2>
-          <div className="flex items-start gap-2 rounded-lg bg-paper p-3">
-            <Lock className="mt-0.5 h-4 w-4 shrink-0 text-muted" aria-hidden="true" />
-            <p className="text-xs text-muted">{t("contactInfoHiddenNote")}</p>
-          </div>
-          <div>
-            <p className="text-xs font-medium text-muted uppercase">{tp("email")}</p>
-            <p className="text-sm text-muted">{t("hiddenValue")}</p>
-          </div>
-          <div>
-            <p className="text-xs font-medium text-muted uppercase">{tp("phone")}</p>
-            <p className="text-sm text-muted">{t("hiddenValue")}</p>
-          </div>
-          <div>
-            <p className="text-xs font-medium text-muted uppercase">{tp("linkedinUrl")}</p>
-            <p className="text-sm text-muted">{t("hiddenValue")}</p>
-          </div>
-          <div className="border-t border-line pt-3">
-            <StartThreadButton redirectBase="/recruit/messages" onSend={startMatchThreadAction.bind(null, candidateId, jobId)} />
-          </div>
-          <p className="text-xs text-muted">{t("cvNote")}</p>
-        </aside>
+        <div className="space-y-4">
+          <aside className="space-y-4 rounded-xl border border-line bg-white p-4">
+            <h2 className="font-display text-sm font-semibold text-ink">{t("contactInfoHeading")}</h2>
+            <div className="flex items-start gap-2 rounded-lg bg-paper p-3">
+              <Lock className="mt-0.5 h-4 w-4 shrink-0 text-muted" aria-hidden="true" />
+              <p className="text-xs text-muted">{t("contactInfoHiddenNote")}</p>
+            </div>
+            <div>
+              <p className="text-xs font-medium text-muted uppercase">{tp("email")}</p>
+              <p className="text-sm text-muted">{t("hiddenValue")}</p>
+            </div>
+            <div>
+              <p className="text-xs font-medium text-muted uppercase">{tp("phone")}</p>
+              <p className="text-sm text-muted">{t("hiddenValue")}</p>
+            </div>
+            <div>
+              <p className="text-xs font-medium text-muted uppercase">{tp("linkedinUrl")}</p>
+              <p className="text-sm text-muted">{t("hiddenValue")}</p>
+            </div>
+            <div className="border-t border-line pt-3">
+              <StartThreadButton redirectBase="/recruit/messages" onSend={startMatchThreadAction.bind(null, candidateId, jobId)} />
+            </div>
+          </aside>
+
+          <aside className="space-y-2 rounded-xl border border-line bg-white p-4">
+            <div className="flex items-center gap-2">
+              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-subtle">
+                <CvIcon className="h-3.5 w-3.5 text-pine" aria-hidden="true" />
+              </span>
+              <h2 className="font-display text-sm font-semibold text-ink">{t("cvHeading")}</h2>
+            </div>
+            <p className="text-xs text-muted">{t("cvNote")}</p>
+          </aside>
+        </div>
       </div>
     </>
   );

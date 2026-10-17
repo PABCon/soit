@@ -6,19 +6,13 @@ import { Search, Briefcase, ListFilter, ArrowUpDown, ChevronDown, User, Info } f
 import { Link, useRouter } from "@/i18n/navigation";
 import { updateStatusAction, openApplicantThreadAction } from "@/app/[locale]/(console)/recruit/jobs/[id]/applicants/actions";
 import { buttonClassName } from "@/components/Button";
-import { Badge, type BadgeVariant } from "@/components/Badge";
+import { Badge } from "@/components/Badge";
 import { Dropdown } from "@/components/Dropdown";
 import type { CompanyApplicant, MyApplication } from "@/lib/db/applications";
+import { APPLICANT_STATUS_BADGE as STATUS_BADGE } from "@/lib/applicant-status-badge";
 
 type Status = MyApplication["status"];
 const STATUSES: Status[] = ["applied", "viewed", "responded", "rejected", "closed"];
-const STATUS_BADGE: Record<Status, BadgeVariant> = {
-  applied: "info",
-  viewed: "pending",
-  responded: "positive",
-  rejected: "negative",
-  closed: "neutral",
-};
 
 type Sort = "newest" | "oldest";
 

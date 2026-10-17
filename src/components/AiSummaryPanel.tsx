@@ -1,3 +1,5 @@
+import type { LucideIcon } from "lucide-react";
+
 /** Shared visual shape for every "AI summarizes this person's fit"
  *  surface in the console — originally the applicant detail page's own
  *  synopsis card, extracted and reused (round 26) by the matchmaking
@@ -13,6 +15,7 @@ export type AiSummarySection = {
 
 export function AiSummaryPanel({
   heading,
+  icon: Icon,
   summaryLabel,
   summary,
   sections,
@@ -24,6 +27,11 @@ export function AiSummaryPanel({
   error,
 }: {
   heading: string;
+  /** Optional icon shown in a small circle before the heading — the
+   *  reference design's own convention for every major section on this
+   *  page (AI summary/Skills/Experience each get one); omit for a caller
+   *  that doesn't want the icon treatment. */
+  icon?: LucideIcon;
   /** Optional sub-label shown above the summary paragraph itself (the
    *  reference's own "Profile summary" sub-heading) — omit for a surface
    *  that just wants the paragraph directly under the main heading. */
@@ -37,10 +45,21 @@ export function AiSummaryPanel({
   onGenerate: () => void;
   error: string | null;
 }) {
+  const headingRow = (
+    <div className="flex items-center gap-2">
+      {Icon && (
+        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-subtle">
+          <Icon className="h-3.5 w-3.5 text-pine" aria-hidden="true" />
+        </span>
+      )}
+      <h2 className="font-display text-sm font-semibold text-muted">{heading}</h2>
+    </div>
+  );
+
   if (!summary) {
     return (
       <section>
-        <h2 className="font-display text-sm font-semibold text-muted">{heading}</h2>
+        {headingRow}
         <button
           type="button"
           disabled={pending}
@@ -57,7 +76,7 @@ export function AiSummaryPanel({
   return (
     <section>
       <div className="flex items-center justify-between gap-4">
-        <h2 className="font-display text-sm font-semibold text-muted">{heading}</h2>
+        {headingRow}
         <button
           type="button"
           disabled={pending}

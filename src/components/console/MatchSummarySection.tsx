@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useTranslations } from "next-intl";
+import { FileText } from "lucide-react";
 import { useRouter } from "@/i18n/navigation";
 import { regenerateMatchSummaryAction } from "@/app/[locale]/(console)/recruit/matchmaking/[jobId]/actions";
 import type { MatchSummary } from "@/lib/ai/match-summary";
@@ -44,6 +45,7 @@ export function MatchSummarySection({
   return (
     <AiSummaryPanel
       heading={t("aiSummaryHeading")}
+      icon={FileText}
       summaryLabel={t("profileSummaryLabel")}
       summary={summary?.summary ?? null}
       sections={[

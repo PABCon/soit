@@ -339,10 +339,15 @@ export type Applicant = {
   linkedinUrl: string | null;
   avatarUrl: string | null;
   skills: string[];
+  /** Round-36 reference-fidelity pass: the applicant detail page's own
+   *  "Experience" section (mirroring the matchmaking candidate profile's
+   *  equivalent) needs this — the same column the candidate's own
+   *  profile form already writes, just never read on this side before. */
+  yearsExperience: number | null;
   cvSignedUrl: string | null;
 };
 
-const CANDIDATE_DETAIL_SELECT = "full_name, email, phone, linkedin_url, avatar_url, skills";
+const CANDIDATE_DETAIL_SELECT = "full_name, email, phone, linkedin_url, avatar_url, skills, years_experience";
 
 function toApplicant(
   row: { id: string; status: MyApplication["status"]; created_at: string; cover_note: string | null },
@@ -353,6 +358,7 @@ function toApplicant(
     linkedin_url: string | null;
     avatar_url: string | null;
     skills: string[] | null;
+    years_experience: number | null;
   } | null,
   cvSignedUrl: string | null,
 ): Applicant {
@@ -367,6 +373,7 @@ function toApplicant(
     linkedinUrl: candidate?.linkedin_url ?? null,
     avatarUrl: candidate?.avatar_url ?? null,
     skills: candidate?.skills ?? [],
+    yearsExperience: candidate?.years_experience ?? null,
     cvSignedUrl,
   };
 }

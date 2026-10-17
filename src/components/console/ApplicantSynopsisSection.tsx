@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useTranslations } from "next-intl";
+import { FileText } from "lucide-react";
 import { useRouter } from "@/i18n/navigation";
 import { generateApplicantSynopsisAction } from "@/app/[locale]/(console)/recruit/jobs/[id]/applicants/actions";
 import type { ApplicantSynopsis } from "@/lib/ai/applicant-synopsis";
@@ -47,6 +48,7 @@ export function ApplicantSynopsisSection({
   return (
     <AiSummaryPanel
       heading={t("aiSynopsisHeading")}
+      icon={FileText}
       summaryLabel={t("synopsisSummaryLabel")}
       summary={synopsis?.summary ?? null}
       sections={[

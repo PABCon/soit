@@ -1,9 +1,13 @@
 import { notFound } from "next/navigation";
 import { getTranslations, setRequestLocale } from "next-intl/server";
+import { ListChecks, Briefcase, FileText as CvIcon } from "lucide-react";
 import { Link } from "@/i18n/navigation";
 import { getApplicantDetail, updateApplicationStatus } from "@/lib/db/applications";
 import { ApplicantStatusSelect } from "@/components/console/ApplicantStatusSelect";
 import { ApplicantSynopsisSection } from "@/components/console/ApplicantSynopsisSection";
+import { SectionHeading } from "@/components/SectionHeading";
+import { Badge } from "@/components/Badge";
+import { APPLICANT_STATUS_BADGE } from "@/lib/applicant-status-badge";
 
 type Props = { params: Promise<{ locale: string; id: string }> };
 
@@ -13,12 +17,23 @@ type Props = { params: Promise<{ locale: string; id: string }> };
  *  untouched `applied` state; an employer who already moved a candidate
  *  further along (responded/rejected/closed) never gets silently bumped
  *  back to "viewed" just by reopening the page.
- */
+ *
+ *  Round 36: restructured to match the matchmaking candidate profile
+ *  page's layout (per the user's own words, "the application individual
+ *  candidates should look very close, there is just no need to hide
+ *  information") — same icon-circle section headings, same two-card
+ *  sidebar split (Contact information / CV / Résumé), same shared
+ *  `AiSummaryPanel`. Unlike that blinded page, every field here is real:
+ *  the candidate's actual name, a status badge reflecting their real
+ *  pipeline status, real email/phone/LinkedIn, and a genuinely working
+ *  "View CV" link — there's no anonymity to protect for a real applicant,
+ *  so none of the matchmaking page's blinding logic belongs here. */
 export default async function ApplicantDetailPage({ params }: Props) {
   const { locale, id } = await params;
   setRequestLocale(locale);
   const t = await getTranslations({ locale, namespace: "applicants" });
   const tp = await getTranslations({ locale, namespace: "profile" });
+  const tc = await getTranslations({ locale, namespace: "console" });
 
   const detail = await getApplicantDetail(id);
   if (!detail) notFound();
@@ -37,18 +52,21 @@ export default async function ApplicantDetailPage({ params }: Props) {
         {t("backToApplicants")}
       </Link>
 
-      <div className="mt-4 flex flex-wrap items-start gap-6">
-        <div className="flex min-w-0 flex-1 items-start gap-4">
+      <div className="mt-2 flex flex-wrap items-start justify-between gap-4">
+        <div className="flex min-w-0 items-start gap-4">
           {detail.avatarUrl ? (
             // eslint-disable-next-line @next/next/no-img-element -- external Supabase Storage URL
-            <img src={detail.avatarUrl} alt="" className="h-16 w-16 shrink-0 rounded-full object-cover" />
+            <img src={detail.avatarUrl} alt="" className="h-12 w-12 shrink-0 rounded-full object-cover" />
           ) : (
-            <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full bg-pine font-display text-lg font-bold text-white">
+            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-pine font-display text-lg font-bold text-white">
               {detail.candidateName.slice(0, 1).toUpperCase() || "?"}
             </div>
           )}
           <div className="min-w-0">
-            <h1 className="font-display text-2xl font-bold">{detail.candidateName}</h1>
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="font-display text-2xl font-bold">{detail.candidateName}</h1>
+              <Badge variant={APPLICANT_STATUS_BADGE[status]}>{t(`status.${status}`)}</Badge>
+            </div>
             <p className="mt-0.5 text-sm text-muted">
               <Link href={`/recruit/jobs/${detail.jobId}/applicants`} className="hover:text-pine hover:underline">
                 {t("appliedFor", { job: detail.jobTitle })}
@@ -71,7 +89,7 @@ export default async function ApplicantDetailPage({ params }: Props) {
           )}
           {detail.skills.length > 0 && (
             <section>
-              <h2 className="font-display text-sm font-semibold text-muted">{tp("skills")}</h2>
+              <SectionHeading icon={ListChecks}>{tc("skills")}</SectionHeading>
               <div className="mt-2 flex flex-wrap gap-1.5">
                 {detail.skills.map((skill) => (
                   <span key={skill} className="rounded-full border border-line bg-white px-2.5 py-1 text-xs text-ink">
@@ -81,45 +99,66 @@ export default async function ApplicantDetailPage({ params }: Props) {
               </div>
             </section>
           )}
+          <section>
+            <SectionHeading icon={Briefcase}>{tc("experienceSectionHeading")}</SectionHeading>
+            <p className="mt-2 text-sm text-ink">
+              {detail.yearsExperience != null ? tc("yearsExperience", { count: detail.yearsExperience }) : tc("yearsExperienceUnknown")}
+            </p>
+          </section>
         </div>
 
-        <aside className="space-y-4 rounded-xl border border-line bg-white p-4">
-          <div>
-            <p className="text-xs font-medium text-muted uppercase">{tp("email")}</p>
-            <p className="text-sm text-ink">{detail.candidateEmail}</p>
-          </div>
-          <div>
-            <p className="text-xs font-medium text-muted uppercase">{tp("phone")}</p>
-            <p className="text-sm text-ink">{detail.phone || t("notProvided")}</p>
-          </div>
-          <div>
-            <p className="text-xs font-medium text-muted uppercase">{tp("linkedinUrl")}</p>
-            {detail.linkedinUrl ? (
-              <a
-                href={detail.linkedinUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="text-sm text-pine hover:underline"
-              >
-                {detail.linkedinUrl}
-              </a>
+        <div className="space-y-4">
+          <aside className="space-y-4 rounded-xl border border-line bg-white p-4">
+            <h2 className="font-display text-sm font-semibold text-ink">{tc("contactInfoHeading")}</h2>
+            <div>
+              <p className="text-xs font-medium text-muted uppercase">{tp("email")}</p>
+              <p className="text-sm text-ink">{detail.candidateEmail}</p>
+            </div>
+            <div>
+              <p className="text-xs font-medium text-muted uppercase">{tp("phone")}</p>
+              <p className="text-sm text-ink">{detail.phone || t("notProvided")}</p>
+            </div>
+            <div>
+              <p className="text-xs font-medium text-muted uppercase">{tp("linkedinUrl")}</p>
+              {detail.linkedinUrl ? (
+                <a
+                  href={detail.linkedinUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-sm text-pine hover:underline"
+                >
+                  {detail.linkedinUrl}
+                </a>
+              ) : (
+                <p className="text-sm text-ink">{t("notProvided")}</p>
+              )}
+            </div>
+          </aside>
+
+          <aside className="space-y-2 rounded-xl border border-line bg-white p-4">
+            <div className="flex items-center gap-2">
+              <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-subtle">
+                <CvIcon className="h-3.5 w-3.5 text-pine" aria-hidden="true" />
+              </span>
+              <h2 className="font-display text-sm font-semibold text-ink">{tc("cvHeading")}</h2>
+            </div>
+            {detail.cvSignedUrl ? (
+              <>
+                <p className="text-sm text-ink">{t("cvAvailable")}</p>
+                <a
+                  href={detail.cvSignedUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="block text-sm font-medium text-pine hover:underline"
+                >
+                  {t("viewCv")}
+                </a>
+              </>
             ) : (
-              <p className="text-sm text-ink">{t("notProvided")}</p>
+              <p className="text-sm text-muted">{t("cvUnavailable")}</p>
             )}
-          </div>
-          {detail.cvSignedUrl ? (
-            <a
-              href={detail.cvSignedUrl}
-              target="_blank"
-              rel="noreferrer"
-              className="block text-sm font-medium text-pine hover:underline"
-            >
-              {t("viewCv")}
-            </a>
-          ) : (
-            <p className="text-sm text-muted">{t("cvUnavailable")}</p>
-          )}
-        </aside>
+          </aside>
+        </div>
       </div>
     </>
   );
