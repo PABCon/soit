@@ -9,6 +9,8 @@ import {
   deleteInviteAction,
   resendInviteAction,
 } from "@/app/[locale]/(console)/recruit/team/actions";
+import { Badge } from "@/components/Badge";
+import { Button, buttonClassName } from "@/components/Button";
 import type { TeamMember, PendingInvite } from "@/lib/db/team";
 
 /** Days until `expiresAt`, floored — used for the "expires in N days"
@@ -114,72 +116,75 @@ export function TeamManager({
   }
 
   return (
-    <div className="max-w-2xl space-y-8">
+    <div className="space-y-6">
       {error && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
 
-      <section>
-        <h2 className="font-display text-sm font-semibold text-muted">{t("teamMembers")}</h2>
-        <ul className="mt-2 divide-y divide-line border-t border-line">
+      <div className="rounded-xl border border-line bg-white p-6">
+        <h2 className="text-lg font-semibold text-ink">{t("teamMembers")}</h2>
+        <ul className="mt-5 divide-y divide-line">
           {members.map((m) => (
-            <li key={m.id} className="flex items-center justify-between py-3">
-              <div className="flex items-center gap-3">
+            <li key={m.id} className="flex flex-wrap items-center justify-between gap-3 py-4 first:pt-0 last:pb-0">
+              <div className="flex min-w-0 items-center gap-3">
                 {m.avatarUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element -- external Supabase Storage URL
-                  <img src={m.avatarUrl} alt="" className="h-8 w-8 rounded-full object-cover" />
+                  <img src={m.avatarUrl} alt="" className="h-10 w-10 shrink-0 rounded-full object-cover" />
                 ) : (
-                  <div className="flex h-8 w-8 items-center justify-center rounded-full bg-pine text-xs font-bold text-white">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-pine text-sm font-bold text-white">
                     {(m.fullName || m.email).slice(0, 1).toUpperCase()}
                   </div>
                 )}
-                <div>
-                  <p className="text-sm text-ink">{m.fullName || m.email}</p>
-                  {isOwner && m.id !== myEmployerId ? (
-                    <select
-                      value={m.role}
-                      onChange={(e) => handleRoleChange(m.id, e.target.value as "owner" | "member")}
-                      className="mt-0.5 h-6 rounded border border-line bg-white px-1 text-xs text-muted"
-                    >
-                      <option value="member">{t("roleLabel.member")}</option>
-                      <option value="owner">{t("roleLabel.owner")}</option>
-                    </select>
-                  ) : (
-                    <p className="text-xs text-muted">{t(`roleLabel.${m.role}`)}</p>
-                  )}
+                <div className="min-w-0">
+                  <p className="truncate font-medium text-ink">{m.fullName || m.email}</p>
+                  {m.fullName && <p className="truncate text-sm text-muted">{m.email}</p>}
                 </div>
               </div>
-              {isOwner && m.id !== myEmployerId && (
-                <button
-                  type="button"
-                  onClick={() => handleRemove(m.id)}
-                  className="text-xs font-medium text-red-700 hover:underline"
-                >
-                  {t("removeMember")}
-                </button>
+
+              {isOwner && m.id !== myEmployerId ? (
+                <div className="flex shrink-0 items-center gap-3">
+                  <select
+                    value={m.role}
+                    onChange={(e) => handleRoleChange(m.id, e.target.value as "owner" | "member")}
+                    className="h-9 rounded-lg border border-line bg-white px-2 text-sm text-ink"
+                  >
+                    <option value="member">{t("roleLabel.member")}</option>
+                    <option value="owner">{t("roleLabel.owner")}</option>
+                  </select>
+                  <Button variant="danger" size="md" className="h-9 px-3 text-xs" onClick={() => handleRemove(m.id)}>
+                    {t("removeMember")}
+                  </Button>
+                </div>
+              ) : (
+                <Badge variant={m.role === "owner" ? "info" : "neutral"} className="shrink-0">
+                  {t(`roleLabel.${m.role}`)}
+                </Badge>
               )}
             </li>
           ))}
         </ul>
-      </section>
+      </div>
 
       {isOwner && (
-        <section>
-          <h2 className="font-display text-sm font-semibold text-muted">{t("inviteColleague")}</h2>
-          <div className="mt-2 flex flex-wrap items-end gap-3">
+        <div className="rounded-xl border border-line bg-white p-6">
+          <h2 className="text-lg font-semibold text-ink">{t("inviteColleague")}</h2>
+          <p className="mt-1 text-sm text-muted">{t("inviteColleagueSubtitle")}</p>
+
+          <div className="mt-5 flex flex-wrap items-end gap-3">
             <label className="flex flex-col gap-1 text-sm">
-              <span>{t("email")}</span>
+              <span className="font-medium text-ink">{t("email")}</span>
               <input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="h-9 rounded-lg border border-line bg-white px-3 text-sm"
+                placeholder="name@company.com"
+                className="h-11 rounded-lg border border-line bg-white px-3 text-sm"
               />
             </label>
             <label className="flex flex-col gap-1 text-sm">
-              <span>{t("role")}</span>
+              <span className="font-medium text-ink">{t("role")}</span>
               <select
                 value={role}
                 onChange={(e) => setRole(e.target.value as "owner" | "member")}
-                className="h-9 rounded-lg border border-line bg-white px-3 text-sm"
+                className="h-11 rounded-lg border border-line bg-white px-3 text-sm"
               >
                 <option value="member">{t("roleLabel.member")}</option>
                 <option value="owner">{t("roleLabel.owner")}</option>
@@ -189,59 +194,57 @@ export function TeamManager({
               type="button"
               disabled={!email.trim() || pending}
               onClick={handleInvite}
-              className="h-9 rounded-lg bg-pine px-4 text-sm font-medium text-white hover:bg-pine/90 disabled:opacity-50"
+              className={buttonClassName({ size: "md" })}
             >
               {t("createInvite")}
             </button>
           </div>
 
           {lastLink && (
-            <div className="mt-3 flex items-center gap-2 rounded-lg border border-line bg-white px-3 py-2 text-xs">
+            <div className="mt-3 flex items-center gap-2 rounded-lg border border-line bg-paper px-3 py-2 text-xs">
               <span className="truncate text-muted">{lastLink}</span>
-              <button
-                type="button"
-                onClick={copyLink}
-                className="shrink-0 font-medium text-pine hover:underline"
-              >
+              <button type="button" onClick={copyLink} className="shrink-0 font-medium text-pine hover:underline">
                 {copied ? t("copied") : t("copyLink")}
               </button>
             </div>
           )}
 
           {invites.length > 0 && (
-            <ul className="mt-4 divide-y divide-line border-t border-line text-sm">
+            <ul className="mt-6 divide-y divide-line border-t border-line">
               {invites.map((i) => {
                 const days = daysUntil(i.expiresAt);
                 const resentLink = resentLinks[i.id];
                 return (
-                  <li key={i.id} className="flex flex-col gap-2 py-3">
+                  <li key={i.id} className="flex flex-col gap-2 py-4">
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <div className="min-w-0">
-                        <span className="text-ink">{i.email}</span>
-                        <span className="ml-2 text-xs text-muted">{t(`roleLabel.${i.role}`)}</span>
-                        <p className="text-xs text-muted">
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium text-ink">{i.email}</span>
+                          <Badge variant="neutral">{t(`roleLabel.${i.role}`)}</Badge>
+                        </div>
+                        <p className="mt-0.5 text-sm text-muted">
                           {days <= 0 ? t("inviteExpired") : t("inviteExpiresIn", { days })}
                         </p>
                       </div>
-                      <div className="flex shrink-0 items-center gap-3">
+                      <div className="flex shrink-0 items-center gap-4">
                         <button
                           type="button"
                           onClick={() => handleResend(i.id)}
-                          className="text-xs font-medium text-pine hover:underline"
+                          className="text-sm font-medium text-pine hover:underline"
                         >
                           {t("resendInvite")}
                         </button>
                         <button
                           type="button"
                           onClick={() => handleRevoke(i.id)}
-                          className="text-xs font-medium text-red-700 hover:underline"
+                          className="text-sm font-medium text-error hover:underline"
                         >
                           {t("revokeInvite")}
                         </button>
                       </div>
                     </div>
                     {resentLink && (
-                      <div className="flex items-center gap-2 rounded-lg border border-line bg-white px-3 py-2 text-xs">
+                      <div className="flex items-center gap-2 rounded-lg border border-line bg-paper px-3 py-2 text-xs">
                         <span className="truncate text-muted">{resentLink}</span>
                         <button
                           type="button"
@@ -257,7 +260,7 @@ export function TeamManager({
               })}
             </ul>
           )}
-        </section>
+        </div>
       )}
     </div>
   );
