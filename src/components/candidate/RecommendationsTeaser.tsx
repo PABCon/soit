@@ -1,5 +1,5 @@
 import { getTranslations } from "next-intl/server";
-import { Sparkles, User } from "lucide-react";
+import { Sparkles } from "lucide-react";
 import { Link } from "@/i18n/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getJobRecommendationsForCandidate } from "@/lib/db/recommendations";
@@ -47,10 +47,11 @@ export async function RecommendationsTeaser() {
     // with dark-pine bold text, and the CTA is the one genuinely solid-
     // pine, white-text element. An earlier round's "solid primary blue"
     // description was a misread of the same image, corrected here.
-    // The avatar and the three skill chips stay deliberately generic
-    // decoration (no fabricated photo), per that same earlier round's
-    // reasoning — only their colors change to read correctly on a light
-    // background instead of a dark one.
+    // The avatar is now a real supplied photo (round 4 deliberately used a
+    // generic icon instead, specifically because no real photo existed
+    // yet and inventing one would've been fabrication — that reasoning no
+    // longer applies now that a real asset was provided). The three skill
+    // chips stay as decoration alongside it.
     <Link
       href="/recommendations"
       className="relative mb-6 flex items-center justify-between gap-4 overflow-hidden rounded-lg bg-gradient-to-r from-pine/20 to-pine/5 px-4 py-3 transition-colors hover:from-pine/25 hover:to-pine/10"
@@ -70,9 +71,11 @@ export async function RecommendationsTeaser() {
        *  crowding the real text/button. */}
       <span className="relative hidden h-11 shrink-0 items-center md:flex" style={{ width: 150 }}>
         <Sparkles aria-hidden className="absolute -top-1 left-6 h-3 w-3 text-pine/60" />
-        <span className="absolute left-0 flex h-9 w-9 items-center justify-center rounded-full bg-pine/15 ring-2 ring-pine/20">
-          <User aria-hidden className="h-5 w-5 text-pine" />
-        </span>
+        <img
+          src="/recommendations-avatar.png"
+          alt=""
+          className="absolute left-0 h-9 w-9 rounded-full object-cover ring-2 ring-pine/20"
+        />
         <span className="absolute top-0 left-10 flex items-center gap-1 rounded-full bg-white px-1.5 py-0.5 shadow-sm">
           <TechIcon slug="python" className="h-3 w-3" />
           <span className="text-[9px] font-medium text-ink">Python</span>
