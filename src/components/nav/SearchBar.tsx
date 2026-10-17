@@ -213,7 +213,14 @@ function SearchBarFields({
     // `Button` in this app already uses. Reverted to that single shared
     // control height instead of a one-off larger size.
     <form onSubmit={handleSubmit} className="flex w-full min-w-0 items-center gap-2">
-      <div className="relative min-w-0 flex-1">
+      {/* Real-usage follow-up: doubling the placeholder's font-size alone
+       *  (below) left the box itself unchanged, so the bigger text just
+       *  got clipped — `min-w-0` let this flex-1 item shrink to whatever
+       *  the row's other (shrink-0) controls left over, with nothing
+       *  guaranteeing it stayed wide enough for its own content. A real
+       *  min-width fixes that: the input can never get smaller than this,
+       *  and still grows via flex-1 when the row has more room to give. */}
+      <div className="relative min-w-[300px] flex-1">
         <Search
           className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted"
           aria-hidden="true"
@@ -235,7 +242,7 @@ function SearchBarFields({
           aria-autocomplete="list"
           aria-controls="search-suggestions"
           autoComplete="off"
-          className="h-11 w-full min-w-0 rounded-lg border border-line bg-white pr-4 pl-9 text-sm placeholder:text-muted placeholder:text-[1.75rem] placeholder:leading-none"
+          className="h-11 w-full min-w-[300px] rounded-lg border border-line bg-white pr-4 pl-9 text-sm placeholder:text-muted placeholder:text-[1.75rem] placeholder:leading-none"
         />
         {suggestionsOpen && filteredSuggestions.length > 0 && (
           <ul

@@ -62,7 +62,14 @@ export async function TopNav() {
           <span className="mt-0.5 hidden text-[11px] text-muted sm:block">{brand("navTagline")}</span>
         </Link>
 
-        <div className="hidden w-full max-w-2xl min-w-0 justify-self-center sm:block">
+        {/* max-w-4xl, not max-w-2xl: real-usage follow-up — widening the
+         *  keyword input (below) to fit its own doubled-size placeholder
+         *  pushed the row's total natural width to ~790px, past the old
+         *  672px cap, so the trailing controls visually overflowed into
+         *  this column's neighbors instead of actually growing the row.
+         *  Widening this wrapper is what lets the centered-grid layout
+         *  absorb that extra width correctly, as intended. */}
+        <div className="hidden w-full max-w-4xl min-w-0 justify-self-center sm:block">
           <SearchBar locations={locations} suggestions={suggestions} />
         </div>
 
