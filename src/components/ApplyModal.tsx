@@ -2,10 +2,11 @@
 
 import { useState, type FormEvent } from "react";
 import { useTranslations } from "next-intl";
+import { FileText } from "lucide-react";
 import { Link } from "@/i18n/navigation";
 import { Modal } from "@/components/Modal";
 import { applyAction, applyAnonymousAction } from "@/app/[locale]/(candidate)/jobs/[slug]/actions";
-import type { ApplyResult, AnonymousApplyResult } from "@/lib/db/applications";
+import type { ApplyResult, AnonymousApplyResult, ApplyStatus } from "@/lib/db/applications";
 
 type Props = {
   jobSlug: string;
@@ -13,6 +14,7 @@ type Props = {
   isCandidate: boolean;
   alreadyApplied: boolean;
   externalApplyUrl: string | null;
+  storedCv: ApplyStatus["storedCv"];
 };
 
 const buttonClass =
@@ -20,7 +22,14 @@ const buttonClass =
 const inputClass = "h-9 rounded-lg border border-line bg-white px-3 text-sm";
 const labelClass = "flex flex-col gap-1 text-sm";
 
-export function ApplyModal({ jobSlug, companyName, isCandidate, alreadyApplied: initiallyApplied, externalApplyUrl }: Props) {
+export function ApplyModal({
+  jobSlug,
+  companyName,
+  isCandidate,
+  alreadyApplied: initiallyApplied,
+  externalApplyUrl,
+  storedCv,
+}: Props) {
   const t = useTranslations("apply");
   const [modalOpen, setModalOpen] = useState(false);
   const [applied, setApplied] = useState(initiallyApplied);
@@ -28,6 +37,10 @@ export function ApplyModal({ jobSlug, companyName, isCandidate, alreadyApplied: 
   const [error, setError] = useState<string | null>(null);
   const [emailHasAccount, setEmailHasAccount] = useState(false);
   const [pending, setPending] = useState(false);
+  // Real-usage QA item: a candidate with a CV already on file shouldn't be
+  // forced to re-upload it — default to reusing it, with an explicit
+  // opt-out to pick a different file instead.
+  const [cvChoice, setCvChoice] = useState<"stored" | "upload">(storedCv ? "stored" : "upload");
 
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
@@ -152,17 +165,55 @@ export function ApplyModal({ jobSlug, companyName, isCandidate, alreadyApplied: 
                 </>
               )}
 
-              <label className={labelClass}>
-                <span>{t("cv")}</span>
-                <input
-                  type="file"
-                  name="cv"
-                  required
-                  accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                  className="text-sm"
-                />
-                <span className="text-xs text-muted">{t("cvHint")}</span>
-              </label>
+              {storedCv && cvChoice === "stored" ? (
+                <div className={labelClass}>
+                  <span>{t("cv")}</span>
+                  <input type="hidden" name="cvSource" value="stored" />
+                  <div className="flex items-center gap-3 rounded-lg border border-line bg-paper px-3 py-2">
+                    <FileText className="h-5 w-5 shrink-0 text-pine" aria-hidden="true" />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium text-ink">{t("cvOnFile")}</p>
+                      <p className="text-xs text-muted">{storedCv.kind.toUpperCase()}</p>
+                    </div>
+                    <a
+                      href={storedCv.signedUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="shrink-0 text-xs font-medium text-pine hover:underline"
+                    >
+                      {t("previewCv")}
+                    </a>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setCvChoice("upload")}
+                    className="self-start text-xs text-muted underline underline-offset-2 hover:text-ink"
+                  >
+                    {t("useDifferentCv")}
+                  </button>
+                </div>
+              ) : (
+                <label className={labelClass}>
+                  <span>{t("cv")}</span>
+                  <input
+                    type="file"
+                    name="cv"
+                    required
+                    accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                    className="text-sm"
+                  />
+                  <span className="text-xs text-muted">{t("cvHint")}</span>
+                  {storedCv && (
+                    <button
+                      type="button"
+                      onClick={() => setCvChoice("stored")}
+                      className="self-start text-xs text-pine underline underline-offset-2 hover:text-pine-hover"
+                    >
+                      {t("useStoredCv")}
+                    </button>
+                  )}
+                </label>
+              )}
 
               <label className={labelClass}>
                 <span>{t("coverNote")}</span>

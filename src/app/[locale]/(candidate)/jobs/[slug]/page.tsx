@@ -385,6 +385,7 @@ export default async function JobDetailPage({ params }: Props) {
               isCandidate={applyStatus.isCandidate}
               alreadyApplied={applyStatus.alreadyApplied}
               externalApplyUrl={job.externalApplyUrl}
+              storedCv={applyStatus.storedCv}
             />
             {favoriteJobIds && (
               <div className="mt-3">

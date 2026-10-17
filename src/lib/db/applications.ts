@@ -18,10 +18,9 @@ const SITE = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
 
 type UploadCvResult = { error: "file_too_large" | "bad_file" | "upload_failed" } | { path: string };
 
-async function uploadCv(admin: SupabaseClient, candidateId: string, jobId: string, file: File): Promise<UploadCvResult> {
-  if (file.size === 0 || file.size > MAX_CV_BYTES) return { error: "file_too_large" };
+async function uploadCvBytes(admin: SupabaseClient, candidateId: string, jobId: string, bytes: Uint8Array): Promise<UploadCvResult> {
+  if (bytes.byteLength === 0 || bytes.byteLength > MAX_CV_BYTES) return { error: "file_too_large" };
 
-  const bytes = new Uint8Array(await file.arrayBuffer());
   const kind = sniffFileType(bytes);
   if (!kind) return { error: "bad_file" };
 
@@ -32,6 +31,25 @@ async function uploadCv(admin: SupabaseClient, candidateId: string, jobId: strin
   if (uploadError) return { error: "upload_failed" };
 
   return { path };
+}
+
+async function uploadCv(admin: SupabaseClient, candidateId: string, jobId: string, file: File): Promise<UploadCvResult> {
+  if (file.size === 0 || file.size > MAX_CV_BYTES) return { error: "file_too_large" };
+  return uploadCvBytes(admin, candidateId, jobId, new Uint8Array(await file.arrayBuffer()));
+}
+
+/** Copies the candidate's already-stored master CV (profile.cv_url) into
+ *  this application's own per-application path, instead of asking them to
+ *  re-pick the same file — same validation (re-sniffed, same size cap) as
+ *  a fresh upload, just sourced from storage instead of a form upload. */
+async function uploadCvFromStored(admin: SupabaseClient, candidateId: string, jobId: string): Promise<UploadCvResult> {
+  const { data: candidate } = await admin.from("candidates").select("cv_url").eq("id", candidateId).maybeSingle();
+  if (!candidate?.cv_url) return { error: "bad_file" };
+
+  const { data: blob, error } = await admin.storage.from("cvs").download(candidate.cv_url);
+  if (error || !blob) return { error: "upload_failed" };
+
+  return uploadCvBytes(admin, candidateId, jobId, new Uint8Array(await blob.arrayBuffer()));
 }
 
 /** §9.1a — fires both application-flow emails. Never lets a failure here
@@ -106,22 +124,40 @@ export type ApplyResult =
         | "db_error";
     };
 
+export type ApplyStatus = {
+  isCandidate: boolean;
+  alreadyApplied: boolean;
+  /** The candidate's own master CV on file (candidate-profile.ts's
+   *  `uploadCandidateCv`), if any — real-usage QA item: don't force a
+   *  redundant re-upload at apply time when the data already exists. Null
+   *  for anonymous visitors and candidates with no stored CV, in which
+   *  case ApplyModal falls back to its original upload-required form. */
+  storedCv: { signedUrl: string; kind: "pdf" | "docx" } | null;
+};
+
 /** Server-side, for the job detail page to decide what the Apply button
  *  should do — show the modal pre-filled, or the full anonymous form. */
-export async function getApplyStatus(jobId: string): Promise<{ isCandidate: boolean; alreadyApplied: boolean }> {
+export async function getApplyStatus(jobId: string): Promise<ApplyStatus> {
   const supabase = await createClient();
   const { data: candidateId } = await supabase.rpc("my_candidate_id");
-  if (!candidateId) return { isCandidate: false, alreadyApplied: false };
+  if (!candidateId) return { isCandidate: false, alreadyApplied: false, storedCv: null };
 
-  const { data: existing } = await supabase
-    .from("applications")
-    .select("id")
-    .eq("job_id", jobId)
-    .eq("candidate_id", candidateId)
-    .maybeSingle();
+  const [{ data: existing }, { data: candidate }] = await Promise.all([
+    supabase.from("applications").select("id").eq("job_id", jobId).eq("candidate_id", candidateId).maybeSingle(),
+    supabase.from("candidates").select("cv_url").eq("id", candidateId).maybeSingle(),
+  ]);
 
-  return { isCandidate: true, alreadyApplied: !!existing };
+  let storedCv: ApplyStatus["storedCv"] = null;
+  if (candidate?.cv_url) {
+    const admin = createAdminClient();
+    const { data: signed } = await admin.storage.from("cvs").createSignedUrl(candidate.cv_url, 900);
+    if (signed) storedCv = { signedUrl: signed.signedUrl, kind: candidate.cv_url.endsWith(".docx") ? "docx" : "pdf" };
+  }
+
+  return { isCandidate: true, alreadyApplied: !!existing, storedCv };
 }
+
+export type CvSource = { kind: "upload"; file: File } | { kind: "stored" };
 
 /**
  * A candidate who's already logged in applies directly against their
@@ -129,7 +165,7 @@ export async function getApplyStatus(jobId: string): Promise<{ isCandidate: bool
  * unclaimed-profile step, RLS is the real authorization boundary via the
  * "candidates apply to live jobs" policy).
  */
-export async function applyToJob(jobSlug: string, file: File, coverNote: string): Promise<ApplyResult> {
+export async function applyToJob(jobSlug: string, cv: CvSource, coverNote: string): Promise<ApplyResult> {
   const supabase = await createClient();
 
   const { data: candidateId } = await supabase.rpc("my_candidate_id");
@@ -152,7 +188,8 @@ export async function applyToJob(jobSlug: string, file: File, coverNote: string)
   if ((recentCount ?? 0) >= DAILY_APPLICATION_CAP) return { ok: false, reason: "rate_limited" };
 
   const admin = createAdminClient();
-  const uploaded = await uploadCv(admin, candidateId, job.id, file);
+  const uploaded =
+    cv.kind === "upload" ? await uploadCv(admin, candidateId, job.id, cv.file) : await uploadCvFromStored(admin, candidateId, job.id);
   if ("error" in uploaded) return { ok: false, reason: uploaded.error };
 
   const { error: insertError } = await supabase.from("applications").insert({

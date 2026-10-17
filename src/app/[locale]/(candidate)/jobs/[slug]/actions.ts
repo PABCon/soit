@@ -3,10 +3,13 @@
 import { applyToJob, applyAnonymously, type ApplyResult, type AnonymousApplyResult } from "@/lib/db/applications";
 
 export async function applyAction(jobSlug: string, formData: FormData): Promise<ApplyResult> {
-  const file = formData.get("cv") as File | null;
   const coverNote = String(formData.get("coverNote") ?? "");
+  if (formData.get("cvSource") === "stored") {
+    return applyToJob(jobSlug, { kind: "stored" }, coverNote);
+  }
+  const file = formData.get("cv") as File | null;
   if (!file || file.size === 0) return { ok: false, reason: "bad_file" };
-  return applyToJob(jobSlug, file, coverNote);
+  return applyToJob(jobSlug, { kind: "upload", file }, coverNote);
 }
 
 export async function applyAnonymousAction(jobSlug: string, formData: FormData): Promise<AnonymousApplyResult> {
