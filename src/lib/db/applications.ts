@@ -5,6 +5,7 @@ import { logEvent } from "@/lib/events";
 import { sniffFileType } from "@/lib/file-sniff";
 import { extractCvText } from "@/lib/cv-text";
 import { generateApplicantSynopsis, type ApplicantSynopsis } from "@/lib/ai/applicant-synopsis";
+import type { CandidateExperienceEntry, CandidateCertificationEntry } from "@/lib/db/candidate-profile";
 import { sendEmail } from "@/lib/email/send";
 import { applicationConfirmationEmail } from "@/lib/email/templates/application-confirmation";
 import { newApplicantEmail } from "@/lib/email/templates/new-applicant";
@@ -445,6 +446,18 @@ export type ApplicantDetail = Applicant & {
   jobSlug: string;
   companyName: string;
   aiSynopsis: ApplicantSynopsis | null;
+  /** Round-36: the candidate's real, already-populated work history and
+   *  certifications from their own profile (`candidate_experience`/
+   *  `candidate_certifications`) — no AI involved, same admin-client
+   *  read as the rest of this function (`candidates` has no employer-
+   *  read RLS policy, and neither do its child tables). Deliberately
+   *  NOT fetched for the blinded matchmaking candidate page — real
+   *  company/school names in someone's work history could deanonymize
+   *  them while still blinded (round 26's own reasoning, still holds);
+   *  this applicant is already fully identified, so there's nothing to
+   *  protect here. */
+  experience: CandidateExperienceEntry[];
+  certifications: CandidateCertificationEntry[];
 };
 
 /** The canonical candidate-detail route (`/recruit/applicants/[id]`),
@@ -472,16 +485,45 @@ export async function getApplicantDetail(applicationId: string): Promise<Applica
   };
 
   const admin = createAdminClient();
-  const [{ data: candidate }, { data: signed }] = await Promise.all([
+  const [{ data: candidate }, { data: signed }, { data: experienceRows }, { data: certificationRows }] = await Promise.all([
     admin.from("candidates").select(CANDIDATE_DETAIL_SELECT).eq("id", data.candidate_id).single(),
     admin.storage.from("cvs").createSignedUrl(data.cv_url, 900),
+    admin
+      .from("candidate_experience")
+      .select("id, title, company, location, start_date, end_date, description, highlights")
+      .eq("candidate_id", data.candidate_id)
+      .order("start_date", { ascending: false, nullsFirst: false }),
+    admin
+      .from("candidate_certifications")
+      .select("id, name, issuer, issued_date")
+      .eq("candidate_id", data.candidate_id)
+      .order("issued_date", { ascending: false, nullsFirst: false }),
   ]);
+
+  const experience: CandidateExperienceEntry[] = (experienceRows ?? []).map((r) => ({
+    id: r.id,
+    title: r.title,
+    company: r.company,
+    location: r.location,
+    startDate: r.start_date,
+    endDate: r.end_date,
+    description: r.description,
+    highlights: r.highlights ?? [],
+  }));
+  const certifications: CandidateCertificationEntry[] = (certificationRows ?? []).map((r) => ({
+    id: r.id,
+    name: r.name,
+    issuer: r.issuer,
+    issuedDate: r.issued_date,
+  }));
 
   return {
     ...toApplicant(data, candidate, signed?.signedUrl ?? null),
     jobId: job.id,
     jobTitle: job.title,
     jobSlug: job.slug,
+    experience,
+    certifications,
     companyName: job.companies.company_name,
     aiSynopsis: (data.ai_synopsis as ApplicantSynopsis | null) ?? null,
   };

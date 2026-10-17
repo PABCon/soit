@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
-import { getTranslations, setRequestLocale } from "next-intl/server";
-import { ListChecks, Briefcase, FileText as CvIcon } from "lucide-react";
+import { getTranslations, setRequestLocale, getFormatter } from "next-intl/server";
+import { ListChecks, Briefcase, Award, FileText as CvIcon } from "lucide-react";
 import { Link } from "@/i18n/navigation";
 import { getApplicantDetail, updateApplicationStatus } from "@/lib/db/applications";
 import { ApplicantStatusSelect } from "@/components/console/ApplicantStatusSelect";
@@ -34,6 +34,12 @@ export default async function ApplicantDetailPage({ params }: Props) {
   const t = await getTranslations({ locale, namespace: "applicants" });
   const tp = await getTranslations({ locale, namespace: "profile" });
   const tc = await getTranslations({ locale, namespace: "console" });
+  const tse = await getTranslations({ locale, namespace: "skillsEducation" });
+  const format = await getFormatter({ locale });
+
+  function formatMonthYear(dateStr: string): string {
+    return format.dateTime(new Date(dateStr), { year: "numeric", month: "short" });
+  }
 
   const detail = await getApplicantDetail(id);
   if (!detail) notFound();
@@ -101,10 +107,59 @@ export default async function ApplicantDetailPage({ params }: Props) {
           )}
           <section>
             <SectionHeading icon={Briefcase}>{tc("experienceSectionHeading")}</SectionHeading>
-            <p className="mt-2 text-sm text-ink">
-              {detail.yearsExperience != null ? tc("yearsExperience", { count: detail.yearsExperience }) : tc("yearsExperienceUnknown")}
-            </p>
+            {detail.yearsExperience != null && (
+              <p className="mt-2 text-sm text-ink">{tc("yearsExperience", { count: detail.yearsExperience })}</p>
+            )}
+            {detail.experience.length > 0 ? (
+              <ol className="mt-3 space-y-4 border-l border-line pl-4">
+                {detail.experience.map((entry) => (
+                  <li key={entry.id}>
+                    <p className="font-medium text-ink">{entry.title}</p>
+                    <p className="text-sm text-muted">
+                      {entry.company}
+                      {entry.location ? ` · ${entry.location}` : ""}
+                    </p>
+                    {entry.startDate && (
+                      <p className="text-xs text-muted">
+                        {formatMonthYear(entry.startDate)} – {entry.endDate ? formatMonthYear(entry.endDate) : t("present")}
+                      </p>
+                    )}
+                    {entry.description && <p className="mt-1 text-sm text-ink">{entry.description}</p>}
+                    {entry.highlights.length > 0 && (
+                      <ul className="mt-1 space-y-0.5">
+                        {entry.highlights.map((highlight, i) => (
+                          <li key={i} className="flex items-start gap-1.5 text-sm text-ink">
+                            <span aria-hidden className="text-muted">
+                              •
+                            </span>
+                            {highlight}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </li>
+                ))}
+              </ol>
+            ) : (
+              detail.yearsExperience == null && <p className="mt-2 text-sm text-muted">{tc("yearsExperienceUnknown")}</p>
+            )}
           </section>
+
+          {detail.certifications.length > 0 && (
+            <section>
+              <SectionHeading icon={Award}>{tse("certifications")}</SectionHeading>
+              <ul className="mt-2 space-y-2">
+                {detail.certifications.map((cert) => (
+                  <li key={cert.id}>
+                    <p className="text-sm font-medium text-ink">{cert.name}</p>
+                    <p className="text-xs text-muted">
+                      {[cert.issuer, cert.issuedDate ? formatMonthYear(cert.issuedDate) : null].filter(Boolean).join(" · ")}
+                    </p>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
         </div>
 
         <div className="space-y-4">
