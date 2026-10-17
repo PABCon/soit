@@ -526,8 +526,19 @@ export async function getThreadDetail(threadId: string): Promise<ThreadDetailRes
     candidateName = candidate?.full_name ?? null;
   }
 
+  // Item-1 latency check: this is a non-critical bookkeeping write (marks
+  // the thread read) that was blocking the response on the critical path
+  // — same class of bug this project has fixed before via `after()`
+  // (`/api/auth/landing`'s `last_role` update, VIES retry scheduling).
+  // Deferred the same way; the client already has the messages it needs
+  // from the rest of this function.
   const readColumn = isEmployer ? "employer_last_read_at" : "candidate_last_read_at";
-  await supabase.from("message_threads").update({ [readColumn]: new Date().toISOString() }).eq("id", threadId);
+  const markRead = () => supabase.from("message_threads").update({ [readColumn]: new Date().toISOString() }).eq("id", threadId);
+  try {
+    after(markRead);
+  } catch {
+    void markRead();
+  }
 
   return {
     ok: true,
