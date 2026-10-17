@@ -807,6 +807,7 @@
   },
   "applications": {
     "title": "As minhas candidaturas",
+    "subtitle": "Acompanhe o estado de cada candidatura que submeteu.",
     "empty": "Ainda não se candidatou a nenhuma vaga.",
     "status": {
       "applied": "Candidatado",
@@ -818,10 +819,12 @@
   },
   "favorites": {
     "title": "Vagas guardadas",
+    "subtitle": "Vagas que guardou para rever mais tarde.",
     "empty": "Ainda não guardou nenhuma vaga."
   },
   "savedSearches": {
     "title": "Pesquisas guardadas",
+    "subtitle": "Volte a executar uma pesquisa guardada quando quiser, ou receba notificações de novas vagas.",
     "empty": "Ainda não guardou nenhuma pesquisa.",
     "delete": "Remover",
     "notifyMe": "Notificar-me"
@@ -875,9 +878,12 @@
   "messaging": {
     "inboxTitle": "Mensagens",
     "inboxSubtitle": "Conversas com candidatos sobre as suas vagas.",
+    "candidateInboxSubtitle": "Conversas com empresas sobre as suas candidaturas.",
     "searchPlaceholder": "Pesquisar conversas…",
     "emptyHeading": "As suas conversas com candidatos vão aparecer aqui.",
     "emptySubtext": "Quando os candidatos lhe enviarem mensagens sobre as suas vagas, vão aparecer aqui.",
+    "candidateEmptyHeading": "As suas conversas com empresas vão aparecer aqui.",
+    "candidateEmptySubtext": "Quando uma empresa lhe enviar uma mensagem sobre uma candidatura, vai aparecer aqui.",
     "noSearchResults": "Nenhuma conversa corresponde à sua pesquisa.",
     "conversationContext": "Conversa sobre a sua oferta de emprego",
     "noThreads": "Ainda não há conversas.",

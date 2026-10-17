@@ -4,6 +4,8 @@ import { redirect, Link } from "@/i18n/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getMyApplications } from "@/lib/db/applications";
 import { CompanyLogo } from "@/components/CompanyLogo";
+import { Badge } from "@/components/Badge";
+import { APPLICANT_STATUS_BADGE } from "@/lib/applicant-status-badge";
 
 type Props = { params: Promise<{ locale: string }> };
 
@@ -29,13 +31,17 @@ export default async function ApplicationsPage({ params }: Props) {
   return (
     <>
       <h1 className="text-3xl font-bold lg:text-4xl">{t("title")}</h1>
+      <p className="mt-1 text-muted">{t("subtitle")}</p>
 
       {applications.length === 0 ? (
         <p className="mt-8 text-sm text-muted">{t("empty")}</p>
       ) : (
-        <ul className="mt-6 divide-y divide-line border-t border-line">
+        <ul className="mt-6 flex flex-col gap-3">
           {applications.map((app) => (
-            <li key={app.id} className="flex items-center gap-4 py-4">
+            <li
+              key={app.id}
+              className="flex items-center gap-4 rounded-xl border border-line bg-white p-4 transition-colors hover:border-pine"
+            >
               <CompanyLogo company={app.job.company} />
               <div className="min-w-0 flex-1">
                 <Link
@@ -46,9 +52,9 @@ export default async function ApplicationsPage({ params }: Props) {
                 </Link>
                 <p className="mt-0.5 text-sm text-muted">{app.job.company.name}</p>
               </div>
-              <span className="shrink-0 rounded-md border border-line bg-white px-2 py-1 text-xs font-medium text-muted">
+              <Badge variant={APPLICANT_STATUS_BADGE[app.status]} className="shrink-0">
                 {t(`status.${app.status}`)}
-              </span>
+              </Badge>
             </li>
           ))}
         </ul>

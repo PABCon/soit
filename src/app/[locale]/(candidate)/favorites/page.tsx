@@ -34,11 +34,12 @@ export default async function FavoritesPage({ params }: Props) {
   return (
     <>
       <h1 className="text-3xl font-bold lg:text-4xl">{t("title")}</h1>
+      <p className="mt-1 text-muted">{t("subtitle")}</p>
 
       {jobs.length === 0 ? (
         <p className="mt-8 text-sm text-muted">{t("empty")}</p>
       ) : (
-        <ul className="mt-6 border-t border-line">
+        <ul className="mt-6 flex flex-col gap-2">
           {jobs.map((job) => (
             <JobRow key={job.slug} job={job} isFavorited={true} />
           ))}

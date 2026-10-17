@@ -2,17 +2,16 @@
 
 import { useRef, useState, useTransition } from "react";
 import { useTranslations } from "next-intl";
-import { Paperclip, X } from "lucide-react";
+import { Paperclip, Send, X } from "lucide-react";
 import { useRouter } from "@/i18n/navigation";
+import { buttonClassName } from "@/components/Button";
 
 const MAX_ATTACHMENT_BYTES = 5 * 1024 * 1024;
 
-/** Round 31 — gained real attachment support, minimally: a plain paperclip
- *  button + hidden file input, same client-side size pre-check as the
- *  console's `ThreadComposer`, no other styling changes to this shared
- *  component (it's also the candidate-side reply box, out of round 30's
- *  console-only restyle scope — adding capability here isn't a styling
- *  change, so it stays in bounds). */
+/** The candidate-side reply box — round 30 restyled its console twin
+ *  (`ThreadComposer`) but explicitly left this one alone since that round
+ *  was console-only; the candidate-side design-consistency pass now
+ *  extends the identical recipe here. Same `onSend` contract either way. */
 type SendResult = { ok: true } | { ok: false; reason?: string };
 
 export function ThreadReplyBox({ onSend }: { onSend: (body: string, file: File | null) => Promise<SendResult> }) {
@@ -54,7 +53,7 @@ export function ThreadReplyBox({ onSend }: { onSend: (body: string, file: File |
   return (
     <div className="mt-4 border-t border-line pt-4">
       {file && (
-        <div className="mb-2 flex items-center gap-2 rounded-lg bg-paper px-2 py-1 text-xs text-ink">
+        <div className="mb-2 flex items-center gap-2 rounded-lg bg-subtle px-3 py-1.5 text-sm text-ink">
           <Paperclip className="h-3.5 w-3.5 shrink-0 text-muted" aria-hidden="true" />
           <span className="min-w-0 flex-1 truncate">{file.name}</span>
           <button
@@ -66,37 +65,44 @@ export function ThreadReplyBox({ onSend }: { onSend: (body: string, file: File |
             aria-label={t("removeAttachment")}
             className="shrink-0 text-muted hover:text-ink"
           >
-            <X className="h-3.5 w-3.5" aria-hidden="true" />
+            <X className="h-4 w-4" aria-hidden="true" />
           </button>
         </div>
       )}
-      <textarea
-        value={body}
-        onChange={(e) => setBody(e.target.value)}
-        placeholder={t("messagePlaceholder")}
-        rows={3}
-        className="w-full rounded-lg border border-line p-2 text-sm"
-      />
-      <div className="mt-2 flex items-center gap-3">
+      <div className="flex items-center gap-3 rounded-xl border border-line bg-white p-2 pl-4">
         <input ref={fileInputRef} type="file" onChange={handleFileChange} className="hidden" />
         <button
           type="button"
           onClick={() => fileInputRef.current?.click()}
           aria-label={t("attachFile")}
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-line text-muted hover:text-pine"
+          className="shrink-0 text-muted hover:text-pine"
         >
-          <Paperclip className="h-4 w-4" aria-hidden="true" />
+          <Paperclip className="h-5 w-5" aria-hidden="true" />
         </button>
+        <input
+          type="text"
+          value={body}
+          onChange={(e) => setBody(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !e.shiftKey) {
+              e.preventDefault();
+              submit();
+            }
+          }}
+          placeholder={t("messagePlaceholder")}
+          className="h-10 min-w-0 flex-1 text-sm placeholder:text-muted focus:outline-none"
+        />
         <button
           type="button"
           disabled={pending || (!body.trim() && !file)}
           onClick={submit}
-          className="h-9 rounded-lg bg-pine px-4 text-sm font-semibold text-white hover:bg-pine/90 disabled:opacity-50"
+          className={buttonClassName({ className: "shrink-0 gap-2" })}
         >
+          <Send className="h-4 w-4" aria-hidden="true" />
           {pending ? t("sending") : t("send")}
         </button>
       </div>
-      {error && <p className="mt-1 text-xs text-red-700">{error}</p>}
+      {error && <p className="mt-1.5 text-xs text-red-700">{error}</p>}
     </div>
   );
 }

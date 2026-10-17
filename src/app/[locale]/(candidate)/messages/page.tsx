@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 import { getTranslations, setRequestLocale } from "next-intl/server";
-import { redirect, Link } from "@/i18n/navigation";
+import { redirect } from "@/i18n/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getMyThreadsAsCandidate } from "@/lib/db/messaging";
 import { InboxRealtimeRefresh } from "@/components/messaging/InboxRealtimeRefresh";
+import { CandidateMessagesInbox } from "@/components/messaging/CandidateMessagesInbox";
 
 type Props = { params: Promise<{ locale: string }> };
 
@@ -31,30 +32,9 @@ export default async function CandidateMessagesPage({ params }: Props) {
     <>
       {candidateId && <InboxRealtimeRefresh filter={`candidate_id=eq.${candidateId}`} />}
       <h1 className="text-3xl font-bold lg:text-4xl">{t("inboxTitle")}</h1>
+      <p className="mt-1 text-sm text-muted">{t("candidateInboxSubtitle")}</p>
 
-      {threads.length === 0 ? (
-        <p className="mt-8 text-sm text-muted">{t("noThreads")}</p>
-      ) : (
-        <ul className="mt-6 divide-y divide-line border-t border-line">
-          {threads.map((thread) => (
-            <li key={thread.threadId}>
-              <Link
-                href={`/messages/${thread.threadId}`}
-                className="flex items-center justify-between gap-4 py-4 hover:bg-paper"
-              >
-                <div className="min-w-0 flex-1">
-                  <p className={thread.unread ? "font-semibold text-ink" : "font-medium text-ink"}>{thread.companyName}</p>
-                  <p className="truncate text-sm text-muted">
-                    {thread.jobTitle}
-                    {thread.lastMessagePreview ? ` · ${thread.lastMessagePreview}` : ""}
-                  </p>
-                </div>
-                {thread.unread && <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-pine" aria-hidden />}
-              </Link>
-            </li>
-          ))}
-        </ul>
-      )}
+      <CandidateMessagesInbox threads={threads} />
     </>
   );
 }

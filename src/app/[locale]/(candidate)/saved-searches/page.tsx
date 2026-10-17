@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { getTranslations, setRequestLocale } from "next-intl/server";
+import { Search } from "lucide-react";
 import { redirect } from "@/i18n/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getMySavedSearches, savedSearchHref } from "@/lib/db/saved-searches";
@@ -35,13 +36,20 @@ export default async function SavedSearchesPage({ params }: Props) {
   return (
     <>
       <h1 className="text-3xl font-bold lg:text-4xl">{t("title")}</h1>
+      <p className="mt-1 text-muted">{t("subtitle")}</p>
 
       {searches.length === 0 ? (
         <p className="mt-8 text-sm text-muted">{t("empty")}</p>
       ) : (
-        <ul className="mt-6 divide-y divide-line border-t border-line">
+        <ul className="mt-6 flex flex-col gap-3">
           {searches.map((s) => (
-            <li key={s.id} className="flex items-center gap-4 py-4">
+            <li
+              key={s.id}
+              className="flex items-center gap-4 rounded-xl border border-line bg-white p-4 transition-colors hover:border-pine"
+            >
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-subtle">
+                <Search className="h-4 w-4 text-pine" aria-hidden="true" />
+              </span>
               <div className="min-w-0 flex-1">
                 <Link
                   href={savedSearchHref(s.query)}

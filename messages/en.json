@@ -807,6 +807,7 @@
   },
   "applications": {
     "title": "My applications",
+    "subtitle": "Track the status of every job you've applied to.",
     "empty": "You haven't applied to any jobs yet.",
     "status": {
       "applied": "Applied",
@@ -818,10 +819,12 @@
   },
   "favorites": {
     "title": "Saved jobs",
+    "subtitle": "Jobs you've saved to review later.",
     "empty": "You haven't saved any jobs yet."
   },
   "savedSearches": {
     "title": "Saved searches",
+    "subtitle": "Re-run a saved search anytime, or get notified when new jobs match.",
     "empty": "You haven't saved any searches yet.",
     "delete": "Remove",
     "notifyMe": "Notify me"
@@ -875,9 +878,12 @@
   "messaging": {
     "inboxTitle": "Messages",
     "inboxSubtitle": "Conversations with candidates about your job offers.",
+    "candidateInboxSubtitle": "Conversations with employers about your applications.",
     "searchPlaceholder": "Search conversations…",
     "emptyHeading": "Your candidate conversations will appear here.",
     "emptySubtext": "When candidates message you about your job ads, they will be listed here.",
+    "candidateEmptyHeading": "Your conversations with employers will appear here.",
+    "candidateEmptySubtext": "When an employer messages you about an application, it will be listed here.",
     "noSearchResults": "No conversations match your search.",
     "conversationContext": "Conversation about your job offer",
     "noThreads": "No conversations yet.",
