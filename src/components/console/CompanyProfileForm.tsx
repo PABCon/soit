@@ -2,31 +2,48 @@
 
 import { useState, type FormEvent } from "react";
 import { useTranslations } from "next-intl";
+import { CheckCircle2, Clock, AlertTriangle, Upload } from "lucide-react";
 import { Link } from "@/i18n/navigation";
 import { CompanyLogo } from "@/components/CompanyLogo";
 import { updateProfileAction, uploadImageAction } from "@/app/[locale]/(console)/recruit/company/actions";
 import type { MyCompany, CompanyRichProfileLists } from "@/lib/db/companies";
 import type { LocationOption } from "@/lib/db/locations";
-import { TopEmployerBlurGate } from "@/components/console/TopEmployerBlurGate";
+import { TopEmployerLockedProfile } from "@/components/console/TopEmployerLockedProfile";
 import { TeamMembersSection } from "@/components/console/TeamMembersSection";
 import { TestimonialsSection } from "@/components/console/TestimonialsSection";
 import { PhotoGallerySection } from "@/components/console/PhotoGallerySection";
 import { VideoGallerySection } from "@/components/console/VideoGallerySection";
 import { CompanyAutofillPanel, type AutofillApplyFields } from "@/components/console/CompanyAutofillPanel";
 import { CompanyProfilePreview } from "@/components/console/CompanyProfilePreview";
+import { buttonClassName } from "@/components/Button";
 
-const inputClass = "h-9 rounded-lg border border-line bg-white px-3 text-sm";
+const inputClass = "h-11 rounded-lg border border-line bg-white px-3 text-sm";
 const labelClass = "flex flex-col gap-1 text-sm";
 
 function VerificationBanner({ status }: { status: MyCompany["verification_status"] }) {
   const t = useTranslations("console");
   if (status === "verified") {
-    return <p className="rounded-lg bg-mint/20 px-3 py-2 text-sm text-pine">{t("verifiedBanner")}</p>;
+    return (
+      <div className="flex items-center gap-3 rounded-xl bg-subtle px-4 py-3 text-sm text-pine">
+        <CheckCircle2 className="h-5 w-5 shrink-0" aria-hidden="true" />
+        <span className="font-medium">{t("verifiedBanner")}</span>
+      </div>
+    );
   }
   if (status === "pending" || status === "unverified") {
-    return <p className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800">{t("pendingBanner")}</p>;
+    return (
+      <div className="flex items-center gap-3 rounded-xl bg-warning/10 px-4 py-3 text-sm text-amber-800">
+        <Clock className="h-5 w-5 shrink-0" aria-hidden="true" />
+        <span className="font-medium">{t("pendingBanner")}</span>
+      </div>
+    );
   }
-  return <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{t("failedBanner")}</p>;
+  return (
+    <div className="flex items-center gap-3 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">
+      <AlertTriangle className="h-5 w-5 shrink-0" aria-hidden="true" />
+      <span className="font-medium">{t("failedBanner")}</span>
+    </div>
+  );
 }
 
 const SOCIAL_FIELDS = ["facebook_url", "linkedin_url", "instagram_url", "youtube_url", "tiktok_url", "x_url"] as const;
@@ -151,60 +168,70 @@ export function CompanyProfileForm({
   }
 
   const saveControls = (
-    <div className="flex items-center gap-3">
-      <button
-        type="submit"
-        disabled={pending}
-        className="h-10 rounded-lg bg-pine px-4 text-sm font-medium text-white hover:bg-pine/90 disabled:opacity-50"
-      >
+    <div className="flex items-center gap-4">
+      <button type="submit" disabled={pending} className={buttonClassName({ size: "md" })}>
         {t("save")}
       </button>
       {saved && <span className="text-sm text-pine">{t("saved")}</span>}
-      <Link href={`/companies/${company.slug}/preview`} target="_blank" className="text-sm text-pine hover:underline">
+      <Link href={`/companies/${company.slug}/preview`} target="_blank" className="text-sm font-medium text-pine hover:underline">
         {t("viewPublicProfile")}
       </Link>
     </div>
   );
 
   return (
-    <div className="max-w-xl space-y-6">
+    <div className="max-w-3xl space-y-6">
       <VerificationBanner status={company.verification_status} />
       {imageError && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{imageError}</p>}
 
-      <div className="flex items-center gap-4">
-        <CompanyLogo company={{ slug: "", name: company.company_name, logoUrl: logoPreview }} size="lg" />
+      <div className="grid gap-6 sm:grid-cols-2">
         <div>
-          <label className="cursor-pointer text-sm font-medium text-pine hover:underline">
-            {t("uploadLogo")}
-            <input
-              type="file"
-              accept="image/png,image/jpeg,image/webp,image/svg+xml"
-              className="hidden"
-              onChange={(e) => e.target.files?.[0] && handleImage("logo", e.target.files[0])}
-            />
-          </label>
-          {imageSuccess === "logo" && <p className="text-xs text-pine">{t("imageUploaded")}</p>}
+          <p className="text-sm font-medium text-ink">{t("companyLogo")}</p>
+          <div className="mt-2 flex items-center gap-4">
+            <CompanyLogo company={{ slug: "", name: company.company_name, logoUrl: logoPreview }} size="lg" />
+            <div>
+              <label className={`${buttonClassName({ variant: "secondary", size: "md" })} cursor-pointer`}>
+                <Upload className="h-4 w-4" aria-hidden="true" />
+                {t("uploadLogo")}
+                <input
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp,image/svg+xml"
+                  className="hidden"
+                  onChange={(e) => e.target.files?.[0] && handleImage("logo", e.target.files[0])}
+                />
+              </label>
+              <p className="mt-2 text-xs text-muted">{t("logoRecommendedSize")}</p>
+              <p className="text-xs text-muted">{t("logoFileHint")}</p>
+              {imageSuccess === "logo" && <p className="mt-1 text-xs text-pine">{t("imageUploaded")}</p>}
+            </div>
+          </div>
         </div>
-      </div>
 
-      <div className="flex items-center gap-4">
-        {coverPreview ? (
-          // eslint-disable-next-line @next/next/no-img-element -- Supabase Storage URL or a transient local object URL
-          <img src={coverPreview} alt="" className="h-16 w-28 rounded-lg border border-line object-cover" />
-        ) : (
-          <div className="h-16 w-28 rounded-lg bg-gradient-to-br from-pine to-mint" aria-hidden="true" />
-        )}
         <div>
-          <label className="cursor-pointer text-sm font-medium text-pine hover:underline">
-            {t("uploadCover")}
-            <input
-              type="file"
-              accept="image/png,image/jpeg,image/webp,image/svg+xml"
-              className="hidden"
-              onChange={(e) => e.target.files?.[0] && handleImage("cover", e.target.files[0])}
-            />
-          </label>
-          {imageSuccess === "cover" && <p className="text-xs text-pine">{t("imageUploaded")}</p>}
+          <p className="text-sm font-medium text-ink">{t("coverImage")}</p>
+          <div className="mt-2 flex items-center gap-4">
+            {coverPreview ? (
+              // eslint-disable-next-line @next/next/no-img-element -- Supabase Storage URL or a transient local object URL
+              <img src={coverPreview} alt="" className="h-16 w-28 shrink-0 rounded-lg border border-line object-cover" />
+            ) : (
+              <div className="h-16 w-28 shrink-0 rounded-lg bg-gradient-to-br from-pine to-mint" aria-hidden="true" />
+            )}
+            <div>
+              <label className={`${buttonClassName({ variant: "secondary", size: "md" })} cursor-pointer`}>
+                <Upload className="h-4 w-4" aria-hidden="true" />
+                {t("uploadCover")}
+                <input
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp,image/svg+xml"
+                  className="hidden"
+                  onChange={(e) => e.target.files?.[0] && handleImage("cover", e.target.files[0])}
+                />
+              </label>
+              <p className="mt-2 text-xs text-muted">{t("coverRecommendedSize")}</p>
+              <p className="text-xs text-muted">{t("coverFileHint")}</p>
+              {imageSuccess === "cover" && <p className="mt-1 text-xs text-pine">{t("imageUploaded")}</p>}
+            </div>
+          </div>
         </div>
       </div>
 
@@ -218,12 +245,18 @@ export function CompanyProfileForm({
       />
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+        <div className="grid gap-4 sm:grid-cols-2">
+          <label className={labelClass}>
+            <span className="font-medium text-ink">{t("companyName")}</span>
+            <input value={name} onChange={(e) => setName(e.target.value)} className={inputClass} />
+          </label>
+          <label className={labelClass}>
+            <span className="font-medium text-ink">{t("website")}</span>
+            <input value={website} onChange={(e) => setWebsite(e.target.value)} className={inputClass} />
+          </label>
+        </div>
         <label className={labelClass}>
-          <span>{t("companyName")}</span>
-          <input value={name} onChange={(e) => setName(e.target.value)} className={inputClass} />
-        </label>
-        <label className={labelClass}>
-          <span>{t("description")}</span>
+          <span className="font-medium text-ink">{t("description")}</span>
           <textarea
             value={description}
             onChange={(e) => setDescription(e.target.value)}
@@ -231,28 +264,24 @@ export function CompanyProfileForm({
             className={`${inputClass} h-auto py-2`}
           />
         </label>
-        <label className={labelClass}>
-          <span>{t("website")}</span>
-          <input value={website} onChange={(e) => setWebsite(e.target.value)} className={inputClass} />
-        </label>
         <div className="grid grid-cols-2 gap-4">
           <label className={labelClass}>
-            <span>{t("industry")}</span>
+            <span className="font-medium text-ink">{t("industry")}</span>
             <input value={industry} onChange={(e) => setIndustry(e.target.value)} className={inputClass} />
           </label>
           <label className={labelClass}>
-            <span>{t("companySize")}</span>
+            <span className="font-medium text-ink">{t("companySize")}</span>
             <input value={size} onChange={(e) => setSize(e.target.value)} className={inputClass} />
           </label>
         </div>
         <label className={labelClass}>
-          <span>{t("companyType")}</span>
+          <span className="font-medium text-ink">{t("companyType")}</span>
           <input value={companyType} onChange={(e) => setCompanyType(e.target.value)} className={inputClass} />
         </label>
 
         <div className="grid grid-cols-2 gap-4">
           <label className={labelClass}>
-            <span>{t("location")}</span>
+            <span className="font-medium text-ink">{t("location")}</span>
             <select value={locationId} onChange={(e) => setLocationId(e.target.value)} className={inputClass}>
               <option value="">{t("locationPlaceholder")}</option>
               {locations.map((l) => (
@@ -263,17 +292,17 @@ export function CompanyProfileForm({
             </select>
           </label>
           <label className={labelClass}>
-            <span>{t("address")}</span>
+            <span className="font-medium text-ink">{t("address")}</span>
             <input value={address} onChange={(e) => setAddress(e.target.value)} className={inputClass} />
           </label>
         </div>
 
         <fieldset className="flex flex-col gap-3">
-          <legend className="text-sm font-medium">{t("socialLinks")}</legend>
+          <legend className="text-sm font-medium text-ink">{t("socialLinks")}</legend>
           <div className="grid grid-cols-2 gap-4">
             {SOCIAL_FIELDS.map((field) => (
               <label key={field} className={labelClass}>
-                <span>{t(field.replace("_url", ""))}</span>
+                <span className="font-medium text-ink">{t(field.replace("_url", ""))}</span>
                 <input
                   type="url"
                   value={socials[field]}
@@ -311,85 +340,81 @@ export function CompanyProfileForm({
         </div>
 
         {/* Non-Top-Employer companies only ever see the rich-profile section
-         *  blurred behind an upsell gate below — placing Save after that
-         *  gate made it look like saving itself was gated too. Save now
-         *  sits right after the fields a non-Top-Employer company can
-         *  actually use; Top Employer companies keep it at the end, after
-         *  their own (now unblurred) rich-profile fields. */}
+         *  as a locked upsell below — placing Save after that section made
+         *  it look like saving itself was gated too. Save now sits right
+         *  after the fields a non-Top-Employer company can actually use;
+         *  Top Employer companies keep it at the end, after their own
+         *  (now unlocked) rich-profile fields. */}
         {!isTopEmployer && saveControls}
 
-        {(() => {
-          const fields = (
-            <fieldset className="flex flex-col gap-4">
-              <legend className="text-sm font-medium">{t("richProfileHeading")}</legend>
-              <label className={labelClass}>
-                <span>{t("richProfileAboutUs")}</span>
-                <textarea
-                  value={aboutUs}
-                  onChange={(e) => setAboutUs(e.target.value)}
-                  placeholder={t("richProfileAboutUsPlaceholder")}
-                  rows={3}
-                  className={`${inputClass} h-auto py-2`}
-                />
-              </label>
-              <label className={labelClass}>
-                <span>{t("richProfileHowWeWork")}</span>
-                <textarea
-                  value={howWeWork}
-                  onChange={(e) => setHowWeWork(e.target.value)}
-                  placeholder={t("richProfileHowWeWorkPlaceholder")}
-                  rows={3}
-                  className={`${inputClass} h-auto py-2`}
-                />
-              </label>
-              <label className={labelClass}>
-                <span>{t("richProfileBenefits")}</span>
-                <textarea
-                  value={benefits}
-                  onChange={(e) => setBenefits(e.target.value)}
-                  placeholder={t("richProfileBenefitsPlaceholder")}
-                  rows={3}
-                  className={`${inputClass} h-auto py-2`}
-                />
-              </label>
-              <label className={labelClass}>
-                <span>{t("richProfileCustomSectionTitle")}</span>
-                <input
-                  value={customTitle}
-                  onChange={(e) => setCustomTitle(e.target.value)}
-                  placeholder={t("richProfileCustomSectionTitlePlaceholder")}
-                  className={inputClass}
-                />
-              </label>
-              <label className={labelClass}>
-                <span>{t("richProfileCustomSectionBody")}</span>
-                <textarea
-                  value={customBody}
-                  onChange={(e) => setCustomBody(e.target.value)}
-                  placeholder={t("richProfileCustomSectionBodyPlaceholder")}
-                  rows={3}
-                  className={`${inputClass} h-auto py-2`}
-                />
-              </label>
-            </fieldset>
-          );
-          return isTopEmployer ? fields : <TopEmployerBlurGate>{fields}</TopEmployerBlurGate>;
-        })()}
+        {isTopEmployer && (
+          <fieldset className="flex flex-col gap-4">
+            <legend className="text-sm font-medium text-ink">{t("richProfileHeading")}</legend>
+            <label className={labelClass}>
+              <span className="font-medium text-ink">{t("richProfileAboutUs")}</span>
+              <textarea
+                value={aboutUs}
+                onChange={(e) => setAboutUs(e.target.value)}
+                placeholder={t("richProfileAboutUsPlaceholder")}
+                rows={3}
+                className={`${inputClass} h-auto py-2`}
+              />
+            </label>
+            <label className={labelClass}>
+              <span className="font-medium text-ink">{t("richProfileHowWeWork")}</span>
+              <textarea
+                value={howWeWork}
+                onChange={(e) => setHowWeWork(e.target.value)}
+                placeholder={t("richProfileHowWeWorkPlaceholder")}
+                rows={3}
+                className={`${inputClass} h-auto py-2`}
+              />
+            </label>
+            <label className={labelClass}>
+              <span className="font-medium text-ink">{t("richProfileBenefits")}</span>
+              <textarea
+                value={benefits}
+                onChange={(e) => setBenefits(e.target.value)}
+                placeholder={t("richProfileBenefitsPlaceholder")}
+                rows={3}
+                className={`${inputClass} h-auto py-2`}
+              />
+            </label>
+            <label className={labelClass}>
+              <span className="font-medium text-ink">{t("richProfileCustomSectionTitle")}</span>
+              <input
+                value={customTitle}
+                onChange={(e) => setCustomTitle(e.target.value)}
+                placeholder={t("richProfileCustomSectionTitlePlaceholder")}
+                className={inputClass}
+              />
+            </label>
+            <label className={labelClass}>
+              <span className="font-medium text-ink">{t("richProfileCustomSectionBody")}</span>
+              <textarea
+                value={customBody}
+                onChange={(e) => setCustomBody(e.target.value)}
+                placeholder={t("richProfileCustomSectionBodyPlaceholder")}
+                rows={3}
+                className={`${inputClass} h-auto py-2`}
+              />
+            </label>
+          </fieldset>
+        )}
 
         {isTopEmployer && saveControls}
       </form>
 
-      {(() => {
-        const lists = (
-          <div className="space-y-6">
-            <TeamMembersSection members={richProfile.teamMembers} />
-            <TestimonialsSection testimonials={richProfile.testimonials} />
-            <PhotoGallerySection photos={richProfile.galleryPhotos} />
-            <VideoGallerySection videos={richProfile.galleryVideos} />
-          </div>
-        );
-        return isTopEmployer ? lists : <TopEmployerBlurGate>{lists}</TopEmployerBlurGate>;
-      })()}
+      {isTopEmployer ? (
+        <div className="space-y-6">
+          <TeamMembersSection members={richProfile.teamMembers} />
+          <TestimonialsSection testimonials={richProfile.testimonials} />
+          <PhotoGallerySection photos={richProfile.galleryPhotos} />
+          <VideoGallerySection videos={richProfile.galleryVideos} />
+        </div>
+      ) : (
+        <TopEmployerLockedProfile />
+      )}
     </div>
   );
 }

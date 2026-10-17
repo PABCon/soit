@@ -2,7 +2,9 @@
 
 import { useState } from "react";
 import { useTranslations } from "next-intl";
+import { Link2 } from "lucide-react";
 import { autofillCompanyProfileAction, applySuggestedLogoAction } from "@/app/[locale]/(console)/recruit/company/actions";
+import { buttonClassName } from "@/components/Button";
 import type { ExtractedCompanyProfile } from "@/lib/ai/extract-company-profile";
 
 export type AutofillApplyFields = {
@@ -101,21 +103,28 @@ export function CompanyAutofillPanel({
 
   return (
     <div className="rounded-xl border border-line bg-paper p-4">
-      <h2 className="text-sm font-semibold">{t("autofillHeading")}</h2>
-      <p className="mt-1 text-xs text-muted">{t("autofillHint")}</p>
+      <div className="flex items-start gap-3">
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-subtle">
+          <Link2 className="h-4 w-4 text-pine" aria-hidden="true" />
+        </span>
+        <div>
+          <h2 className="text-sm font-semibold text-ink">{t("autofillHeading")}</h2>
+          <p className="mt-1 text-xs text-muted">{t("autofillHint")}</p>
+        </div>
+      </div>
       <div className="mt-3 flex gap-2">
         <input
           type="url"
           value={url}
           onChange={(e) => setUrl(e.target.value)}
           placeholder="https://..."
-          className="h-9 flex-1 rounded-lg border border-line bg-white px-3 text-sm"
+          className="h-11 flex-1 rounded-lg border border-line bg-white px-3 text-sm"
         />
         <button
           type="button"
           onClick={handleFetch}
           disabled={pending || !url}
-          className="h-9 shrink-0 rounded-lg bg-pine px-4 text-sm font-medium text-white disabled:opacity-50"
+          className={buttonClassName({ size: "md", className: "shrink-0 disabled:opacity-50" })}
         >
           {pending ? t("autofillFetching") : t("autofillFetchButton")}
         </button>
