@@ -897,12 +897,16 @@
   },
   "profile": {
     "title": "My profile",
+    "subtitle": "Keep your profile up to date so employers can find and match with you.",
+    "photoCvHeading": "Photo & CV",
+    "photoCvSubtitle": "Add a profile photo and keep your CV current for applications.",
     "tab": {
       "overview": "Overview",
       "preferences": "Job Preferences",
       "experience": "Experience",
       "skills": "Skills & Education"
     },
+    "basicInfoHeading": "Basic information",
     "fullName": "First and last name",
     "email": "Email",
     "phone": "Phone",
@@ -965,6 +969,7 @@
   "jobPreferences": {
     "categories": "Categories you're interested in",
     "locations": "Locations you're interested in",
+    "workPreferencesHeading": "Work preferences",
     "workModel": "Work model",
     "employmentType": "Employment type",
     "any": "Any",
@@ -1307,8 +1312,11 @@
     }
   },
   "settings": {
+    "subtitle": "Manage your language, communication preferences, and account.",
     "language": "Language",
+    "languageSubtitle": "Choose the language Just IT is displayed in.",
     "preferences": "Preferences",
+    "preferencesSubtitle": "Control which emails we send you.",
     "marketingOptIn": "Send me occasional emails about new features and job-market tips",
     "marketingOptInHint": "You'll always get transactional emails (applications, messages) regardless of this setting.",
     "yourData": "Your data",

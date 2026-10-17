@@ -897,12 +897,16 @@
   },
   "profile": {
     "title": "O meu perfil",
+    "subtitle": "Mantenha o seu perfil atualizado para que as empresas o possam encontrar e combinar consigo.",
+    "photoCvHeading": "Foto e CV",
+    "photoCvSubtitle": "Adicione uma foto de perfil e mantenha o seu CV atualizado para as candidaturas.",
     "tab": {
       "overview": "Visão geral",
       "preferences": "Preferências de vaga",
       "experience": "Experiência",
       "skills": "Competências e Formação"
     },
+    "basicInfoHeading": "Informações básicas",
     "fullName": "Nome completo",
     "email": "Email",
     "phone": "Telefone",
@@ -965,6 +969,7 @@
   "jobPreferences": {
     "categories": "Categorias do seu interesse",
     "locations": "Localizações do seu interesse",
+    "workPreferencesHeading": "Preferências de trabalho",
     "workModel": "Modelo de trabalho",
     "employmentType": "Tipo de contrato",
     "any": "Qualquer",
@@ -1307,8 +1312,11 @@
     }
   },
   "settings": {
+    "subtitle": "Faça a gestão do idioma, preferências de comunicação e conta.",
     "language": "Idioma",
+    "languageSubtitle": "Escolha o idioma em que o Just IT é apresentado.",
     "preferences": "Preferências",
+    "preferencesSubtitle": "Controle que emails lhe enviamos.",
     "marketingOptIn": "Enviar-me emails ocasionais sobre novas funcionalidades e dicas do mercado de trabalho",
     "marketingOptInHint": "Continuará sempre a receber emails transacionais (candidaturas, mensagens), independentemente desta opção.",
     "yourData": "Os seus dados",

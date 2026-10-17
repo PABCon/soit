@@ -2,8 +2,11 @@
 
 import { useState } from "react";
 import { useTranslations } from "next-intl";
+import { Briefcase } from "lucide-react";
 import { saveCandidateExperienceAction } from "@/app/[locale]/(candidate)/profile/actions";
 import { useAutosave } from "@/hooks/useAutosave";
+import { CardHeading } from "@/components/CardHeading";
+import { buttonClassName } from "@/components/Button";
 import type { CandidateExperienceEntry } from "@/lib/db/candidate-profile";
 
 type DraftExperience = {
@@ -16,7 +19,7 @@ type DraftExperience = {
   highlights: string[];
 };
 
-const fieldClass = "h-8 rounded border border-line bg-white px-2 text-xs";
+const fieldClass = "h-9 rounded-lg border border-line bg-white px-2.5 text-sm";
 
 /** §AI Pieces backlog, profile-depth phase — work history was previously
  *  captured only as a single derived `years_experience` number; this is a
@@ -87,106 +90,114 @@ export function ExperienceSection({
     );
   }
 
-  return (
-    <div className="max-w-2xl space-y-4">
-      <div className="flex items-center justify-between">
-        <span className="text-sm font-semibold">{t("workExperience")}</span>
-        <div className="flex items-center gap-3">
-          {status === "pending" || status === "saving" ? (
-            <span className="text-xs text-muted">{t("saving")}</span>
-          ) : status === "saved" ? (
-            <span className="text-xs text-pine">{t("saved")}</span>
-          ) : null}
-          <button type="button" onClick={add} className="text-xs font-medium text-pine hover:underline">
-            {t("addExperience")}
-          </button>
-        </div>
-      </div>
-      <ul className="flex flex-col gap-3">
-        {entries.map((e, i) => (
-          <li key={i} className="rounded-lg border border-line bg-white p-3">
-            <div className="grid grid-cols-2 gap-2">
-              <input
-                value={e.title}
-                onChange={(ev) => update(i, { title: ev.target.value })}
-                placeholder={t("jobTitle")}
-                className={fieldClass}
-              />
-              <input
-                value={e.company}
-                onChange={(ev) => update(i, { company: ev.target.value })}
-                placeholder={t("company")}
-                className={fieldClass}
-              />
-              <input
-                value={e.location ?? ""}
-                onChange={(ev) => update(i, { location: ev.target.value || null })}
-                placeholder={t("location")}
-                className={fieldClass}
-              />
-              <div />
-              <label className="flex flex-col gap-0.5 text-[11px] text-muted">
-                {t("startDate")}
-                <input
-                  type="date"
-                  value={e.startDate ?? ""}
-                  onChange={(ev) => update(i, { startDate: ev.target.value || null })}
-                  className={fieldClass}
-                />
-              </label>
-              <label className="flex flex-col gap-0.5 text-[11px] text-muted">
-                {t("endDate")}
-                <input
-                  type="date"
-                  value={e.endDate ?? ""}
-                  onChange={(ev) => update(i, { endDate: ev.target.value || null })}
-                  className={fieldClass}
-                />
-              </label>
-            </div>
-            <textarea
-              value={e.description ?? ""}
-              onChange={(ev) => update(i, { description: ev.target.value || null })}
-              placeholder={t("description")}
-              rows={2}
-              className="mt-2 w-full rounded border border-line bg-white px-2 py-1.5 text-xs"
-            />
+  const statusIndicator =
+    status === "pending" || status === "saving" ? (
+      <span className="text-sm text-muted">{t("saving")}</span>
+    ) : status === "saved" ? (
+      <span className="text-sm text-pine">{t("saved")}</span>
+    ) : null;
 
-            <div className="mt-2">
-              <span className="text-[11px] font-medium text-muted">{t("highlights")}</span>
-              <ul className="mt-1 flex flex-col gap-1">
-                {e.highlights.map((h, hi) => (
-                  <li key={hi} className="flex items-center gap-1.5">
-                    <span aria-hidden className="text-muted">
-                      •
-                    </span>
-                    <input
-                      value={h}
-                      onChange={(ev) => updateHighlight(i, hi, ev.target.value)}
-                      placeholder={t("highlightPlaceholder")}
-                      className={`${fieldClass} flex-1`}
-                    />
-                    <button type="button" onClick={() => removeHighlight(i, hi)} className="text-xs text-red-700">
-                      ×
-                    </button>
-                  </li>
-                ))}
-              </ul>
-              <button
-                type="button"
-                onClick={() => addHighlight(i)}
-                className="mt-1 text-xs font-medium text-pine hover:underline"
-              >
-                {t("addHighlight")}
+  return (
+    <div className="max-w-3xl space-y-6">
+      <div className="rounded-xl border border-line bg-white p-6">
+        <CardHeading
+          icon={Briefcase}
+          title={t("workExperience")}
+          action={
+            <div className="flex items-center gap-3">
+              {statusIndicator}
+              <button type="button" onClick={add} className={buttonClassName({ variant: "secondary", size: "md" })}>
+                {t("addExperience")}
               </button>
             </div>
+          }
+        />
+        <ul className="mt-5 flex flex-col gap-4">
+          {entries.map((e, i) => (
+            <li key={i} className="rounded-lg border border-line bg-white p-4">
+              <div className="grid gap-3 sm:grid-cols-2">
+                <input
+                  value={e.title}
+                  onChange={(ev) => update(i, { title: ev.target.value })}
+                  placeholder={t("jobTitle")}
+                  className={fieldClass}
+                />
+                <input
+                  value={e.company}
+                  onChange={(ev) => update(i, { company: ev.target.value })}
+                  placeholder={t("company")}
+                  className={fieldClass}
+                />
+                <input
+                  value={e.location ?? ""}
+                  onChange={(ev) => update(i, { location: ev.target.value || null })}
+                  placeholder={t("location")}
+                  className={fieldClass}
+                />
+                <div />
+                <label className="flex flex-col gap-1 text-xs text-muted">
+                  {t("startDate")}
+                  <input
+                    type="date"
+                    value={e.startDate ?? ""}
+                    onChange={(ev) => update(i, { startDate: ev.target.value || null })}
+                    className={fieldClass}
+                  />
+                </label>
+                <label className="flex flex-col gap-1 text-xs text-muted">
+                  {t("endDate")}
+                  <input
+                    type="date"
+                    value={e.endDate ?? ""}
+                    onChange={(ev) => update(i, { endDate: ev.target.value || null })}
+                    className={fieldClass}
+                  />
+                </label>
+              </div>
+              <textarea
+                value={e.description ?? ""}
+                onChange={(ev) => update(i, { description: ev.target.value || null })}
+                placeholder={t("description")}
+                rows={2}
+                className="mt-3 w-full rounded-lg border border-line bg-white px-2.5 py-1.5 text-sm"
+              />
 
-            <button type="button" onClick={() => remove(i)} className="mt-2 block text-xs text-red-700">
-              {t("remove")}
-            </button>
-          </li>
-        ))}
-      </ul>
+              <div className="mt-3">
+                <span className="text-xs font-medium text-muted">{t("highlights")}</span>
+                <ul className="mt-1.5 flex flex-col gap-1.5">
+                  {e.highlights.map((h, hi) => (
+                    <li key={hi} className="flex items-center gap-1.5">
+                      <span aria-hidden className="text-muted">
+                        •
+                      </span>
+                      <input
+                        value={h}
+                        onChange={(ev) => updateHighlight(i, hi, ev.target.value)}
+                        placeholder={t("highlightPlaceholder")}
+                        className={`${fieldClass} flex-1`}
+                      />
+                      <button type="button" onClick={() => removeHighlight(i, hi)} className="text-sm text-red-700">
+                        ×
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+                <button
+                  type="button"
+                  onClick={() => addHighlight(i)}
+                  className="mt-1.5 text-xs font-medium text-pine hover:underline"
+                >
+                  {t("addHighlight")}
+                </button>
+              </div>
+
+              <button type="button" onClick={() => remove(i)} className="mt-3 block text-sm text-red-700 hover:underline">
+                {t("remove")}
+              </button>
+            </li>
+          ))}
+        </ul>
+      </div>
     </div>
   );
 }

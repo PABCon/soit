@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { getTranslations, setRequestLocale } from "next-intl/server";
+import { Globe, Bell, Download, AlertTriangle } from "lucide-react";
 import { redirect } from "@/i18n/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { PasswordChangeForm } from "@/components/auth/PasswordChangeForm";
@@ -7,6 +8,7 @@ import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { MarketingOptInToggle } from "@/components/candidate/MarketingOptInToggle";
 import { DeleteAccountSection } from "@/components/candidate/DeleteAccountSection";
 import { DataExportButton } from "@/components/candidate/DataExportButton";
+import { CardHeading } from "@/components/CardHeading";
 import { getMyCandidateProfile } from "@/lib/db/candidate-profile";
 
 type Props = { params: Promise<{ locale: string }> };
@@ -20,7 +22,6 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function CandidateSettingsPage({ params }: Props) {
   const { locale } = await params;
   setRequestLocale(locale);
-  const t = await getTranslations({ locale, namespace: "auth" });
   const ts = await getTranslations({ locale, namespace: "settings" });
   const trail = await getTranslations({ locale, namespace: "rail" });
 
@@ -35,43 +36,41 @@ export default async function CandidateSettingsPage({ params }: Props) {
   return (
     <>
       <h1 className="text-3xl font-bold lg:text-4xl">{trail("settings")}</h1>
+      <p className="mt-1 text-muted">{ts("subtitle")}</p>
 
-      <section className="mt-6">
-        <h2 className="font-display text-sm font-semibold text-muted">{t("changePassword")}</h2>
-        <div className="mt-2">
-          <PasswordChangeForm />
-        </div>
-      </section>
+      <div className="mt-6 max-w-2xl space-y-6">
+        <PasswordChangeForm variant="card" />
 
-      <section className="mt-10">
-        <h2 className="font-display text-sm font-semibold text-muted">{ts("language")}</h2>
-        <div className="mt-2">
-          <LanguageSwitcher />
-        </div>
-      </section>
-
-      {profile && (
-        <section className="mt-10">
-          <h2 className="font-display text-sm font-semibold text-muted">{ts("preferences")}</h2>
-          <div className="mt-2">
-            <MarketingOptInToggle initialOptIn={profile.marketingOptIn} />
+        <div className="rounded-xl border border-line bg-white p-6">
+          <CardHeading icon={Globe} title={ts("language")} subtitle={ts("languageSubtitle")} />
+          <div className="mt-5">
+            <LanguageSwitcher />
           </div>
-        </section>
-      )}
-
-      <section className="mt-10">
-        <h2 className="font-display text-sm font-semibold text-muted">{ts("yourData")}</h2>
-        <div className="mt-2">
-          <DataExportButton />
         </div>
-      </section>
 
-      <section className="mt-10">
-        <h2 className="font-display text-sm font-semibold text-muted">{ts("dangerZone")}</h2>
-        <div className="mt-2">
-          <DeleteAccountSection />
+        {profile && (
+          <div className="rounded-xl border border-line bg-white p-6">
+            <CardHeading icon={Bell} title={ts("preferences")} subtitle={ts("preferencesSubtitle")} />
+            <div className="mt-5">
+              <MarketingOptInToggle initialOptIn={profile.marketingOptIn} />
+            </div>
+          </div>
+        )}
+
+        <div className="rounded-xl border border-line bg-white p-6">
+          <CardHeading icon={Download} title={ts("yourData")} />
+          <div className="mt-5">
+            <DataExportButton />
+          </div>
         </div>
-      </section>
+
+        <div className="rounded-xl border border-red-200 bg-white p-6">
+          <CardHeading icon={AlertTriangle} title={ts("dangerZone")} tone="danger" />
+          <div className="mt-5">
+            <DeleteAccountSection />
+          </div>
+        </div>
+      </div>
     </>
   );
 }

@@ -2,7 +2,10 @@
 
 import { useState } from "react";
 import { useTranslations } from "next-intl";
+import { Code2, Languages as LanguagesIcon, GraduationCap, Award } from "lucide-react";
 import { LevelSelect } from "@/components/LevelSelect";
+import { CardHeading } from "@/components/CardHeading";
+import { buttonClassName } from "@/components/Button";
 import {
   saveCandidateSkillsAction,
   saveCandidateLanguagesAction,
@@ -28,12 +31,12 @@ type DraftEducation = {
 };
 type DraftCertification = { name: string; issuer: string | null; issuedDate: string | null };
 
-const fieldClass = "h-8 rounded border border-line bg-white px-2 text-xs";
-const cardClass = "rounded-lg border border-line bg-white p-4";
+const fieldClass = "h-9 rounded-lg border border-line bg-white px-2.5 text-sm";
+const cardClass = "rounded-xl border border-line bg-white p-6";
 
 function StatusIndicator({ status, t }: { status: AutosaveStatus; t: ReturnType<typeof useTranslations> }) {
-  if (status === "pending" || status === "saving") return <span className="text-xs text-muted">{t("saving")}</span>;
-  if (status === "saved") return <span className="text-xs text-pine">{t("saved")}</span>;
+  if (status === "pending" || status === "saving") return <span className="text-sm text-muted">{t("saving")}</span>;
+  if (status === "saved") return <span className="text-sm text-pine">{t("saved")}</span>;
   return null;
 }
 
@@ -179,12 +182,9 @@ export function SkillsEducationSection({
   return (
     <div className="max-w-2xl space-y-6">
       <div className={cardClass}>
-        <div className="flex items-center justify-between">
-          <span className="text-sm font-semibold">{t("skills")}</span>
-          <StatusIndicator status={skillsStatus} t={t} />
-        </div>
+        <CardHeading icon={Code2} title={t("skills")} action={<StatusIndicator status={skillsStatus} t={t} />} />
         {skills.length > 0 && (
-          <ul className="mt-2 flex flex-wrap gap-1.5">
+          <ul className="mt-5 flex flex-wrap gap-1.5">
             {skills.map((s) => (
               <li
                 key={s.techTagId}
@@ -208,7 +208,7 @@ export function SkillsEducationSection({
           value={skillFilter}
           onChange={(e) => setSkillFilter(e.target.value)}
           placeholder={t("addSkillPlaceholder")}
-          className="mt-2 h-9 w-full rounded-lg border border-line bg-white px-3 text-sm"
+          className="mt-4 h-11 w-full rounded-lg border border-line bg-white px-3 text-sm"
         />
         {filteredTags.length > 0 && (
           <ul className="mt-1 flex max-h-32 flex-wrap gap-1.5 overflow-y-auto rounded-lg border border-line bg-white p-2">
@@ -231,11 +231,12 @@ export function SkillsEducationSection({
       </div>
 
       <div className={cardClass}>
-        <div className="flex items-center justify-between">
-          <span className="text-sm font-semibold">{t("languages")}</span>
-          <StatusIndicator status={languagesStatus} t={t} />
-        </div>
-        <ul className="mt-2 flex flex-col gap-1.5">
+        <CardHeading
+          icon={LanguagesIcon}
+          title={t("languages")}
+          action={<StatusIndicator status={languagesStatus} t={t} />}
+        />
+        <ul className="mt-5 flex flex-col gap-1.5">
           {spokenLanguages.map((lang) => {
             const sel = languages.find((l) => l.spokenLanguageId === lang.id);
             return (
@@ -257,19 +258,26 @@ export function SkillsEducationSection({
       </div>
 
       <div className={cardClass}>
-        <div className="flex items-center justify-between">
-          <span className="text-sm font-semibold">{t("education")}</span>
-          <div className="flex items-center gap-3">
-            <StatusIndicator status={educationStatus} t={t} />
-            <button type="button" onClick={addEducation} className="text-xs font-medium text-pine hover:underline">
-              {t("addEducation")}
-            </button>
-          </div>
-        </div>
-        <ul className="mt-2 flex flex-col gap-3">
+        <CardHeading
+          icon={GraduationCap}
+          title={t("education")}
+          action={
+            <div className="flex items-center gap-3">
+              <StatusIndicator status={educationStatus} t={t} />
+              <button
+                type="button"
+                onClick={addEducation}
+                className={buttonClassName({ variant: "secondary", size: "md" })}
+              >
+                {t("addEducation")}
+              </button>
+            </div>
+          }
+        />
+        <ul className="mt-5 flex flex-col gap-3">
           {education.map((entry, i) => (
-            <li key={i} className="rounded-lg border border-line p-3">
-              <div className="grid grid-cols-2 gap-2">
+            <li key={i} className="rounded-lg border border-line p-4">
+              <div className="grid gap-2 sm:grid-cols-2">
                 <input
                   value={entry.institution}
                   onChange={(e) => updateEducation(i, { institution: e.target.value })}
@@ -307,7 +315,7 @@ export function SkillsEducationSection({
                   className={fieldClass}
                 />
               </div>
-              <button type="button" onClick={() => removeEducation(i)} className="mt-2 text-xs text-red-700">
+              <button type="button" onClick={() => removeEducation(i)} className="mt-3 text-sm text-red-700 hover:underline">
                 {t("remove")}
               </button>
             </li>
@@ -316,19 +324,22 @@ export function SkillsEducationSection({
       </div>
 
       <div className={cardClass}>
-        <div className="flex items-center justify-between">
-          <span className="text-sm font-semibold">{t("certifications")}</span>
-          <div className="flex items-center gap-3">
-            <StatusIndicator status={certsStatus} t={t} />
-            <button type="button" onClick={addCert} className="text-xs font-medium text-pine hover:underline">
-              {t("addCertification")}
-            </button>
-          </div>
-        </div>
-        <ul className="mt-2 flex flex-col gap-3">
+        <CardHeading
+          icon={Award}
+          title={t("certifications")}
+          action={
+            <div className="flex items-center gap-3">
+              <StatusIndicator status={certsStatus} t={t} />
+              <button type="button" onClick={addCert} className={buttonClassName({ variant: "secondary", size: "md" })}>
+                {t("addCertification")}
+              </button>
+            </div>
+          }
+        />
+        <ul className="mt-5 flex flex-col gap-3">
           {certs.map((c, i) => (
-            <li key={i} className="rounded-lg border border-line p-3">
-              <div className="grid grid-cols-2 gap-2">
+            <li key={i} className="rounded-lg border border-line p-4">
+              <div className="grid gap-2 sm:grid-cols-2">
                 <input
                   value={c.name}
                   onChange={(e) => updateCert(i, { name: e.target.value })}
@@ -348,7 +359,7 @@ export function SkillsEducationSection({
                   className={fieldClass}
                 />
               </div>
-              <button type="button" onClick={() => removeCert(i)} className="mt-2 text-xs text-red-700">
+              <button type="button" onClick={() => removeCert(i)} className="mt-3 text-sm text-red-700 hover:underline">
                 {t("remove")}
               </button>
             </li>

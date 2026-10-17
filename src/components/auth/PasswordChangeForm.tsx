@@ -2,11 +2,12 @@
 
 import { useState, type FormEvent } from "react";
 import { useTranslations } from "next-intl";
-import { Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff, Lock } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { passwordMeetsRequirements } from "@/lib/password";
 import { PasswordChecklist } from "@/components/auth/PasswordChecklist";
 import { buttonClassName } from "@/components/Button";
+import { CardHeading } from "@/components/CardHeading";
 
 const inputClass = "h-9 rounded-lg border border-line bg-white px-3 text-sm";
 const cardInputClass = "h-11 rounded-lg border border-line bg-white px-3 text-sm";
@@ -69,8 +70,7 @@ export function PasswordChangeForm({
   if (variant === "card") {
     return (
       <div className="rounded-xl border border-line bg-white p-6">
-        <h2 className="text-lg font-semibold text-ink">{t("changePassword")}</h2>
-        <p className="mt-1 text-sm text-muted">{t("changePasswordSubtitle")}</p>
+        <CardHeading icon={Lock} title={t("changePassword")} subtitle={t("changePasswordSubtitle")} />
 
         <form onSubmit={handleSubmit} className="mt-5 flex flex-col gap-4">
           {error && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}

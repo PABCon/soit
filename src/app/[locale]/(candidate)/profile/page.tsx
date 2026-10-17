@@ -63,6 +63,7 @@ export default async function CandidateProfilePage({ params }: Props) {
   return (
     <>
       <h1 className="text-3xl font-bold lg:text-4xl">{t("title")}</h1>
+      <p className="mt-1 text-muted">{t("subtitle")}</p>
       <div className="mt-6">
         <CandidateProfileForm
           profile={profile}

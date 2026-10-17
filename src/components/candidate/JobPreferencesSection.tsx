@@ -2,8 +2,10 @@
 
 import { useState } from "react";
 import { useTranslations } from "next-intl";
+import { Tag, MapPin, Briefcase } from "lucide-react";
 import { saveCandidateJobPreferencesAction } from "@/app/[locale]/(candidate)/profile/actions";
 import { useAutosave } from "@/hooks/useAutosave";
+import { CardHeading } from "@/components/CardHeading";
 import type {
   CandidateJobPreferences,
   WorkModelPreference,
@@ -33,7 +35,8 @@ const EMPLOYMENT_TYPES: EmploymentTypePreference[] = [
   "internship",
 ];
 const SALARY_PERIODS: SalaryPeriodPreference[] = ["hour", "day", "month", "year"];
-const selectClass = "h-9 rounded-lg border border-line bg-white px-3 text-sm";
+const selectClass = "h-11 rounded-lg border border-line bg-white px-3 text-sm";
+const cardClass = "rounded-xl border border-line bg-white p-6";
 
 /** §AI Pieces backlog, profile-depth phase — new: lets a candidate scope
  *  what they're actually interested in, so a future recommendation engine
@@ -94,37 +97,39 @@ export function JobPreferencesSection({
     }));
   }
 
-  return (
-    <div className="max-w-xl space-y-6">
-      <div className="flex items-center justify-between">
-        <span className="text-sm font-semibold">{t("categories")}</span>
-        {status === "pending" || status === "saving" ? (
-          <span className="text-xs text-muted">{t("saving")}</span>
-        ) : status === "saved" ? (
-          <span className="text-xs text-pine">{t("saved")}</span>
-        ) : null}
-      </div>
-      <ul className="-mt-4 flex flex-wrap gap-1.5">
-        {jobCategories.map((cat) => (
-          <li key={cat.id}>
-            <button
-              type="button"
-              onClick={() => toggleCategory(cat.id)}
-              className={
-                draft.categoryIds.includes(cat.id)
-                  ? "rounded-md border border-pine bg-pine px-2 py-1 text-xs text-white"
-                  : "rounded-md border border-line px-2 py-1 text-xs text-muted hover:border-muted"
-              }
-            >
-              {jf(`categoryOption.${cat.slug}`)}
-            </button>
-          </li>
-        ))}
-      </ul>
+  const statusIndicator =
+    status === "pending" || status === "saving" ? (
+      <span className="text-sm text-muted">{t("saving")}</span>
+    ) : status === "saved" ? (
+      <span className="text-sm text-pine">{t("saved")}</span>
+    ) : null;
 
-      <div>
-        <span className="text-sm font-semibold">{t("locations")}</span>
-        <ul className="mt-2 flex flex-wrap gap-1.5">
+  return (
+    <div className="max-w-2xl space-y-6">
+      <div className={cardClass}>
+        <CardHeading icon={Tag} title={t("categories")} action={statusIndicator} />
+        <ul className="mt-5 flex flex-wrap gap-1.5">
+          {jobCategories.map((cat) => (
+            <li key={cat.id}>
+              <button
+                type="button"
+                onClick={() => toggleCategory(cat.id)}
+                className={
+                  draft.categoryIds.includes(cat.id)
+                    ? "rounded-md border border-pine bg-pine px-2 py-1 text-xs text-white"
+                    : "rounded-md border border-line px-2 py-1 text-xs text-ink hover:border-muted"
+                }
+              >
+                {jf(`categoryOption.${cat.slug}`)}
+              </button>
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      <div className={cardClass}>
+        <CardHeading icon={MapPin} title={t("locations")} />
+        <ul className="mt-5 flex flex-wrap gap-1.5">
           {locations.map((loc) => (
             <li key={loc.id}>
               <button
@@ -133,7 +138,7 @@ export function JobPreferencesSection({
                 className={
                   draft.locationIds.includes(loc.id)
                     ? "rounded-md border border-pine bg-pine px-2 py-1 text-xs text-white"
-                    : "rounded-md border border-line px-2 py-1 text-xs text-muted hover:border-muted"
+                    : "rounded-md border border-line px-2 py-1 text-xs text-ink hover:border-muted"
                 }
               >
                 {loc.name}
@@ -143,83 +148,86 @@ export function JobPreferencesSection({
         </ul>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
-        <label className="flex flex-col gap-1 text-sm">
-          <span>{t("workModel")}</span>
-          <select
-            value={draft.workModel}
-            onChange={(e) => setDraft((prev) => ({ ...prev, workModel: e.target.value as WorkModelPreference | "" }))}
-            className={selectClass}
-          >
-            <option value="">{t("any")}</option>
-            {WORK_MODELS.map((w) => (
-              <option key={w} value={w}>
-                {jf(`workModelOption.${w}`)}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="flex flex-col gap-1 text-sm">
-          <span>{t("employmentType")}</span>
-          <select
-            value={draft.employmentType}
-            onChange={(e) =>
-              setDraft((prev) => ({ ...prev, employmentType: e.target.value as EmploymentTypePreference | "" }))
-            }
-            className={selectClass}
-          >
-            <option value="">{t("any")}</option>
-            {EMPLOYMENT_TYPES.map((et) => (
-              <option key={et} value={et}>
-                {jf(`employmentTypeOption.${et}`)}
-              </option>
-            ))}
-          </select>
-        </label>
-      </div>
-
-      <fieldset className="rounded-lg border border-line p-4">
-        <legend className="px-1 text-sm font-medium text-ink">{t("desiredSalary")}</legend>
-        <div className="grid grid-cols-3 gap-4">
+      <div className={cardClass}>
+        <CardHeading icon={Briefcase} title={t("workPreferencesHeading")} />
+        <div className="mt-5 grid gap-4 sm:grid-cols-2">
           <label className="flex flex-col gap-1 text-sm">
-            <span>{t("min")}</span>
-            <input
-              type="number"
-              min={0}
-              value={draft.salaryMin}
-              onChange={(e) => setDraft((prev) => ({ ...prev, salaryMin: e.target.value }))}
-              className={selectClass}
-            />
-          </label>
-          <label className="flex flex-col gap-1 text-sm">
-            <span>{t("max")}</span>
-            <input
-              type="number"
-              min={0}
-              value={draft.salaryMax}
-              onChange={(e) => setDraft((prev) => ({ ...prev, salaryMax: e.target.value }))}
-              className={selectClass}
-            />
-          </label>
-          <label className="flex flex-col gap-1 text-sm">
-            <span>{t("period")}</span>
+            <span className="font-medium text-ink">{t("workModel")}</span>
             <select
-              value={draft.salaryPeriod}
+              value={draft.workModel}
+              onChange={(e) => setDraft((prev) => ({ ...prev, workModel: e.target.value as WorkModelPreference | "" }))}
+              className={selectClass}
+            >
+              <option value="">{t("any")}</option>
+              {WORK_MODELS.map((w) => (
+                <option key={w} value={w}>
+                  {jf(`workModelOption.${w}`)}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="flex flex-col gap-1 text-sm">
+            <span className="font-medium text-ink">{t("employmentType")}</span>
+            <select
+              value={draft.employmentType}
               onChange={(e) =>
-                setDraft((prev) => ({ ...prev, salaryPeriod: e.target.value as SalaryPeriodPreference | "" }))
+                setDraft((prev) => ({ ...prev, employmentType: e.target.value as EmploymentTypePreference | "" }))
               }
               className={selectClass}
             >
-              <option value="">—</option>
-              {SALARY_PERIODS.map((p) => (
-                <option key={p} value={p}>
-                  {jf(`salaryPeriodOption.${p}`)}
+              <option value="">{t("any")}</option>
+              {EMPLOYMENT_TYPES.map((et) => (
+                <option key={et} value={et}>
+                  {jf(`employmentTypeOption.${et}`)}
                 </option>
               ))}
             </select>
           </label>
         </div>
-      </fieldset>
+
+        <fieldset className="mt-5 flex flex-col gap-3 border-t border-line pt-5">
+          <legend className="text-sm font-medium text-ink">{t("desiredSalary")}</legend>
+          <div className="grid grid-cols-3 gap-4">
+            <label className="flex flex-col gap-1 text-sm">
+              <span className="font-medium text-ink">{t("min")}</span>
+              <input
+                type="number"
+                min={0}
+                value={draft.salaryMin}
+                onChange={(e) => setDraft((prev) => ({ ...prev, salaryMin: e.target.value }))}
+                className={selectClass}
+              />
+            </label>
+            <label className="flex flex-col gap-1 text-sm">
+              <span className="font-medium text-ink">{t("max")}</span>
+              <input
+                type="number"
+                min={0}
+                value={draft.salaryMax}
+                onChange={(e) => setDraft((prev) => ({ ...prev, salaryMax: e.target.value }))}
+                className={selectClass}
+              />
+            </label>
+            <label className="flex flex-col gap-1 text-sm">
+              <span className="font-medium text-ink">{t("period")}</span>
+              <select
+                value={draft.salaryPeriod}
+                onChange={(e) =>
+                  setDraft((prev) => ({ ...prev, salaryPeriod: e.target.value as SalaryPeriodPreference | "" }))
+                }
+                className={selectClass}
+              >
+                <option value="">—</option>
+                {SALARY_PERIODS.map((p) => (
+                  <option key={p} value={p}>
+                    {jf(`salaryPeriodOption.${p}`)}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+        </fieldset>
+      </div>
     </div>
   );
 }
