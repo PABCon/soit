@@ -62,31 +62,23 @@ commit or CLAUDE.md entry anywhere suggesting either changed.
 
 ## Auth
 
-- [ ] Add real OAuth credentials for Google/GitHub/LinkedIn/Facebook —
-      the buttons, click handlers, and `/auth/callback` exchange are
-      all already built and working (`AuthForm.tsx`, provider-agnostic);
-      confirmed all four are wired in code but disabled
-      (`external_*_enabled: false`) on the live project since no
-      `[auth.external.*]` block exists yet for any of them in
-      `supabase/config.toml`. Each provider needs its own app created
-      on **your own account** on that provider's platform — not
-      something that can be done on your behalf:
-      - **Google**: Google Cloud Console → new OAuth 2.0 Client ID
-        (Web application) → authorized redirect URI
-        `https://<project-ref>.supabase.co/auth/v1/callback`
-      - **GitHub**: github.com/settings/developers → New OAuth App →
-        same callback URL as the "Authorization callback URL"
-      - **LinkedIn**: LinkedIn Developer Portal → new app → request
-        the "Sign In with LinkedIn using OpenID Connect" product →
-        same callback URL as an authorized redirect URI
-      - **Facebook** (added 2026-10-17, same pattern as the other
-        three): Meta for Developers → new app → Facebook Login product
-        → same callback URL as a valid OAuth redirect URI. Meta's own
-        app review process is stricter than the other three providers
-        — expect more friction here than with Google/GitHub/LinkedIn.
-      Once you have each Client ID/Secret, paste them into Supabase
-      Dashboard → Authentication → Providers (or hand them over and
-      they can be set via the Management API).
+- [x] Real OAuth credentials for Google/GitHub/LinkedIn/Facebook —
+      **configured 2026-10-17**, via a direct `PATCH /v1/projects/
+      {ref}/config/auth` (Management API, same mechanism as the
+      password-policy change). All four confirmed live via a follow-up
+      `GET` on the same endpoint: `external_github_enabled`,
+      `external_linkedin_oidc_enabled`, `external_facebook_enabled`,
+      and `external_google_enabled` all read `true`, each with its
+      real `client_id` matching what was set. Secrets were never
+      printed back or written to disk — confirmed by `client_id`/
+      `enabled` only, the standard way to verify this kind of change
+      without re-exposing a credential. **Not yet verified end-to-end**:
+      no live OAuth consent-screen round trip has been driven in this
+      environment (no browser automation available) — the buttons,
+      click handlers, and `/auth/callback` exchange were already built
+      and working beforehand (`AuthForm.tsx`, provider-agnostic); a
+      real sign-in attempt through each provider is the next real test,
+      whenever someone can click through it by hand.
 - [x] Real code gap found 2026-09-29, **fixed 2026-10-17**:
       `ensureCandidateProfile()` (`src/lib/auth/complete-registration.ts`)
       now reads `user.app_metadata.provider` for `auth_provider` (was
@@ -99,8 +91,9 @@ commit or CLAUDE.md entry anywhere suggesting either changed.
       db push` run by you**, same as every schema change in this
       project; not yet applied as of this writing. Verified via
       `tsc`/`eslint`/`check:i18n`/`npm run test`/`npm run build` only —
-      same limitation as the original OAuth wiring: no real OAuth
-      credentials exist yet to exercise a live round trip end-to-end.
+      real credentials now exist (see above) but no live OAuth round
+      trip has actually been driven through this environment yet (no
+      browser automation available here).
 
 ## Database / infra
 
