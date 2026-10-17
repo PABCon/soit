@@ -7,6 +7,7 @@ import {
   setSavedSearchNotifyOptIn,
   type SearchQuery,
   type SaveSearchResult,
+  type SetNotifyOptInResult,
 } from "@/lib/db/saved-searches";
 
 export async function saveSearchAction(query: SearchQuery, label: string): Promise<SaveSearchResult> {
@@ -20,7 +21,8 @@ export async function deleteSavedSearchAction(id: string): Promise<void> {
   revalidatePath("/saved-searches");
 }
 
-export async function setSavedSearchNotifyOptInAction(id: string, optIn: boolean): Promise<void> {
-  await setSavedSearchNotifyOptIn(id, optIn);
-  revalidatePath("/saved-searches");
+export async function setSavedSearchNotifyOptInAction(id: string, optIn: boolean): Promise<SetNotifyOptInResult> {
+  const result = await setSavedSearchNotifyOptIn(id, optIn);
+  if (result.ok) revalidatePath("/saved-searches");
+  return result;
 }

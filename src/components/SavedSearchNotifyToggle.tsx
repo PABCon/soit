@@ -16,7 +16,10 @@ export function SavedSearchNotifyToggle({ id, initialOptIn }: { id: string; init
       label={t("notifyMe")}
       onChange={(next) => {
         setOptIn(next);
-        startTransition(() => setSavedSearchNotifyOptInAction(id, next));
+        startTransition(async () => {
+          const result = await setSavedSearchNotifyOptInAction(id, next);
+          if (!result.ok) setOptIn(!next);
+        });
       }}
     />
   );

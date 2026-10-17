@@ -1,0 +1,21 @@
+-- Real bug, reproduced directly against the live DB: clicking the
+-- notify-me toggle on /saved-searches crashed the page. Root cause —
+-- `saved_searches`'s original migration (20260927224500_saved_searches.sql)
+-- granted `authenticated` only `select, insert, delete` ("this table only
+-- supports save/list/delete for now," per its own comment, written before
+-- notifications existed). When `notify_opt_in` was added later
+-- (20261009150000_saved_search_notifications.sql), that migration's own
+-- comment claimed "the existing grant is table-wide, not column-restricted
+-- — no grant change needed" — true about *columns*, but wrong about the
+-- actual gap: `update` was never granted on this table at all, for any
+-- column. `setSavedSearchNotifyOptIn()`'s UPDATE call throws a real
+-- `42501 permission denied for table saved_searches`, and since it's a
+-- Server Action invoked directly from a client component (no try/catch
+-- at the call site), that throw crashes the page.
+--
+-- Scoped to just this column, same pattern as `marketing_opt_in`'s own
+-- grant (20261009140000_candidate_marketing_opt_in.sql) — a candidate may
+-- flip their own notify preference; nothing else on this row should
+-- become writable by this grant (label/query are set once at save time,
+-- never edited in place).
+grant update (notify_opt_in) on saved_searches to authenticated;

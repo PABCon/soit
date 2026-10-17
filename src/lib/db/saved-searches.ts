@@ -76,17 +76,26 @@ export async function getMySavedSearches(): Promise<SavedSearch[]> {
   }));
 }
 
-export async function setSavedSearchNotifyOptIn(id: string, optIn: boolean): Promise<void> {
+export type SetNotifyOptInResult = { ok: true } | { ok: false; reason: "not_a_candidate" | "db_error" };
+
+/** Real bug, reproduced live: this threw on any failure (originally a
+ *  missing `update` grant on the table — see the grant migration), and
+ *  since it's invoked from a client component with no try/catch at the
+ *  call site, that throw crashed the whole page. Returns a typed result
+ *  instead, same pattern as `saveSearch()` above, so a future transient
+ *  DB hiccup degrades to a reverted toggle instead of a crash. */
+export async function setSavedSearchNotifyOptIn(id: string, optIn: boolean): Promise<SetNotifyOptInResult> {
   const supabase = await createClient();
   const { data: candidateId } = await supabase.rpc("my_candidate_id");
-  if (!candidateId) throw new Error("Not a candidate");
+  if (!candidateId) return { ok: false, reason: "not_a_candidate" };
 
   const { error } = await supabase
     .from("saved_searches")
     .update({ notify_opt_in: optIn })
     .eq("id", id)
     .eq("candidate_id", candidateId);
-  if (error) throw new Error(error.message);
+  if (error) return { ok: false, reason: "db_error" };
+  return { ok: true };
 }
 
 export async function deleteSavedSearch(id: string): Promise<void> {
