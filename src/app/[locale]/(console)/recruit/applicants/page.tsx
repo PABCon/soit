@@ -19,7 +19,7 @@ export default async function AllApplicantsPage({ params }: Props) {
   return (
     <>
       <h1 className="text-3xl font-bold lg:text-4xl">{t("allApplicantsTitle")}</h1>
-      <AllApplicantsList applicants={applicants} />
+      <AllApplicantsList applicants={applicants} locale={locale} />
     </>
   );
 }

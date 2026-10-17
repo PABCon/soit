@@ -10,9 +10,15 @@ import { useRouter } from "@/i18n/navigation";
 export function StartThreadButton({
   onSend,
   redirectBase,
+  triggerClassName = "shrink-0 text-sm font-medium text-pine hover:underline",
 }: {
   onSend: (body: string) => Promise<{ ok: boolean; threadId?: string }>;
   redirectBase: string;
+  /** Defaults to the original link-style trigger — other callers
+   *  (`ApplicantsList`, the matchmaking candidate page) are unaffected;
+   *  `AllApplicantsList`'s table restyle passes the shared `Button` recipe
+   *  instead, to match its real buttons. */
+  triggerClassName?: string;
 }) {
   const t = useTranslations("messaging");
   const router = useRouter();
@@ -23,11 +29,7 @@ export function StartThreadButton({
 
   if (!open) {
     return (
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        className="shrink-0 text-sm font-medium text-pine hover:underline"
-      >
+      <button type="button" onClick={() => setOpen(true)} className={triggerClassName}>
         {t("message")}
       </button>
     );

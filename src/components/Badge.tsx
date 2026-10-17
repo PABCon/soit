@@ -1,6 +1,16 @@
 import type { ReactNode } from "react";
 
-export type BadgeVariant = "topEmployer" | "boosted" | "new" | "warning" | "match";
+export type BadgeVariant =
+  | "topEmployer"
+  | "boosted"
+  | "new"
+  | "warning"
+  | "match"
+  | "info"
+  | "pending"
+  | "positive"
+  | "negative"
+  | "neutral";
 
 // Round-10 full-fidelity sweep against the Design System Showcase: the
 // reference's own "Badge: Top Employer" swatch (sampled directly, pixel
@@ -19,6 +29,16 @@ const VARIANTS: Record<BadgeVariant, string> = {
   boosted: "bg-mint/15 text-mint",
   new: "bg-subtle text-pine",
   match: "bg-pine/10 text-pine",
+  // Round-"applicants dashboard restyle": generic status-tone variants —
+  // same color values as the job-specific ones above, but named for what
+  // they mean rather than which job-side feature introduced them, so a
+  // non-job context (e.g. an applicant's pipeline status) doesn't have to
+  // reach for a confusingly-named variant like "boosted" or "topEmployer".
+  info: "bg-pine/10 text-pine",
+  pending: "bg-warning text-amber-900",
+  positive: "bg-mint/15 text-mint",
+  negative: "bg-error/10 text-error",
+  neutral: "bg-line text-muted",
 };
 
 export function Badge({
