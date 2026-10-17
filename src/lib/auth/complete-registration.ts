@@ -136,6 +136,21 @@ export async function ensureCandidateProfile(user: User): Promise<{ landingPath:
     .maybeSingle();
   if (existingCandidate) return { landingPath: "/jobs" };
 
+  // Real code gap, fixed: `meta.pending_auth_provider` is read nowhere
+  // written by this codebase (the old "always resolves to 'email'" bug) —
+  // `user.app_metadata.provider` is Supabase Auth's own real record of which
+  // provider authenticated this user (`"email"`, `"google"`, `"github"`,
+  // `"linkedin_oidc"`, `"facebook"`), set by Supabase itself, not app code.
+  // OAuth providers don't agree on one metadata shape — `full_name`/`name`
+  // and `avatar_url`/`picture` are the two real variants seen across
+  // Google/GitHub/LinkedIn OIDC/Facebook's own `user_metadata` payloads, so
+  // both are tried. Never set for a plain email/password signup, where
+  // `user_metadata` carries none of these fields — the `||`/`??` fallbacks
+  // leave `full_name`/`avatar_url` exactly as before for that case.
+  const authProvider = user.app_metadata?.provider || "email";
+  const oauthName = meta.full_name || meta.name;
+  const oauthAvatar = meta.avatar_url || meta.picture;
+
   const { data: unclaimed } = await admin
     .from("candidates")
     .select("id")
@@ -152,9 +167,10 @@ export async function ensureCandidateProfile(user: User): Promise<{ landingPath:
     await admin.from("candidates").insert({
       auth_user_id: user.id,
       email,
-      full_name: meta.full_name || email.split("@")[0],
+      full_name: oauthName || email.split("@")[0],
+      avatar_url: oauthAvatar || null,
       email_verified: true,
-      auth_provider: meta.pending_auth_provider || "email",
+      auth_provider: authProvider,
     });
   }
 

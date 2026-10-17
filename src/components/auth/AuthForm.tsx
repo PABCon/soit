@@ -9,6 +9,7 @@ import { createClient } from "@/lib/supabase/client";
 import { validateNif } from "@/lib/nif";
 import { passwordMeetsRequirements } from "@/lib/password";
 import { PasswordChecklist } from "@/components/auth/PasswordChecklist";
+import { FacebookIcon } from "@/components/icons/FacebookIcon";
 
 /** Only ever honour a same-origin relative path — never redirect based on
  *  an attacker-controlled `next` value (open-redirect). */
@@ -20,7 +21,7 @@ function safeNext(value: string | null): string | null {
 type Role = "candidate" | "employer";
 type Mode = "login" | "register";
 
-const OAUTH_PROVIDERS = ["google", "github", "linkedin_oidc"] as const;
+const OAUTH_PROVIDERS = ["google", "github", "linkedin_oidc", "facebook"] as const;
 
 const inputClass = "h-11 rounded-lg border border-line bg-white px-3 text-sm";
 const labelClass = "flex flex-col gap-1 text-sm";
@@ -349,8 +350,15 @@ export function AuthForm({ role, mode }: { role: Role; mode: Mode }) {
                 key={provider}
                 type="button"
                 onClick={() => handleOAuth(provider)}
-                className="h-11 flex-1 rounded-lg border border-line bg-white text-sm hover:bg-paper"
+                className="flex h-11 flex-1 items-center justify-center gap-2 rounded-lg border border-line bg-white text-sm hover:bg-paper"
               >
+                {/* No icon set exists for Google/GitHub/LinkedIn here (text-only
+                 *  buttons) — Facebook gets one since a real brand mark was
+                 *  specifically asked for; lucide-react has no Facebook glyph,
+                 *  so this one path/hex pair was extracted once from
+                 *  simple-icons, same one-time-extraction convention as
+                 *  src/components/icons/tech-icons.tsx. */}
+                {provider === "facebook" && <FacebookIcon className="h-4 w-4" />}
                 {t(`provider.${provider}`)}
               </button>
             ))}

@@ -62,10 +62,10 @@ commit or CLAUDE.md entry anywhere suggesting either changed.
 
 ## Auth
 
-- [ ] Add real OAuth credentials for Google/GitHub/LinkedIn — the
-      buttons, click handlers, and `/auth/callback` exchange are all
-      already built and working (`AuthForm.tsx`, provider-agnostic);
-      confirmed all three are wired in code but disabled
+- [ ] Add real OAuth credentials for Google/GitHub/LinkedIn/Facebook —
+      the buttons, click handlers, and `/auth/callback` exchange are
+      all already built and working (`AuthForm.tsx`, provider-agnostic);
+      confirmed all four are wired in code but disabled
       (`external_*_enabled: false`) on the live project since no
       `[auth.external.*]` block exists yet for any of them in
       `supabase/config.toml`. Each provider needs its own app created
@@ -79,25 +79,28 @@ commit or CLAUDE.md entry anywhere suggesting either changed.
       - **LinkedIn**: LinkedIn Developer Portal → new app → request
         the "Sign In with LinkedIn using OpenID Connect" product →
         same callback URL as an authorized redirect URI
+      - **Facebook** (added 2026-10-17, same pattern as the other
+        three): Meta for Developers → new app → Facebook Login product
+        → same callback URL as a valid OAuth redirect URI. Meta's own
+        app review process is stricter than the other three providers
+        — expect more friction here than with Google/GitHub/LinkedIn.
       Once you have each Client ID/Secret, paste them into Supabase
       Dashboard → Authentication → Providers (or hand them over and
       they can be set via the Management API).
-- [ ] Real code gap found 2026-09-29, not yet fixed:
+- [x] Real code gap found 2026-09-29, **fixed 2026-10-17**:
       `ensureCandidateProfile()` (`src/lib/auth/complete-registration.ts`)
-      never actually reads what an OAuth provider returns — `avatar_url`
-      is never set by any path, `full_name` falls back to the email's
-      local-part, and `auth_provider` always resolves to `"email"`
-      (reads a `pending_auth_provider` field nothing in the codebase
-      ever sets). Fix is scoped and ready to execute (read
-      `user.app_metadata.provider`/`user.user_metadata` instead) — see
-      Phase 5 of `~/.claude/plans/refactored-zooming-wren.md`. Also
-      needs a one-line migration (`auth_provider` enum still has the
-      old value `'linkedin'`, not Supabase's real provider id
-      `'linkedin_oidc'`). Doesn't need any credentials to build — only
-      needs a real provider connected to verify end-to-end.
-- [ ] Facebook login is not wired at all yet (only Google/GitHub/
-      LinkedIn buttons exist) — add if/when wanted; Meta's own app
-      review process is stricter than the other three providers.
+      now reads `user.app_metadata.provider` for `auth_provider` (was
+      stuck on `"email"` always, via a `pending_auth_provider` field
+      nothing ever set) and `user.user_metadata.full_name`/`name` +
+      `avatar_url`/`picture` for name/avatar (previously never read at
+      all). New migration `20261017200000_linkedin_oidc_provider.sql`
+      renames the `auth_provider` enum's `'linkedin'` value to
+      Supabase's real provider id `'linkedin_oidc'` — **needs `supabase
+      db push` run by you**, same as every schema change in this
+      project; not yet applied as of this writing. Verified via
+      `tsc`/`eslint`/`check:i18n`/`npm run test`/`npm run build` only —
+      same limitation as the original OAuth wiring: no real OAuth
+      credentials exist yet to exercise a live round trip end-to-end.
 
 ## Database / infra
 

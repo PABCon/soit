@@ -673,7 +673,8 @@
     "provider": {
       "google": "Google",
       "github": "GitHub",
-      "linkedin_oidc": "LinkedIn"
+      "linkedin_oidc": "LinkedIn",
+      "facebook": "Facebook"
     },
     "inviteTitle": "Join your team on Just IT",
     "inviteBody": "You've been invited to join {company} as a recruiter.",
