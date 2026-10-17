@@ -1254,10 +1254,25 @@
     "name": "Name",
     "email": "Email",
     "message": "Message",
-    "send": "Send",
+    "send": "Send message",
     "sending": "Sending…",
     "sentConfirmation": "Message sent. We'll get back to you soon.",
-    "errorGeneric": "Something went wrong. Try again."
+    "errorGeneric": "Something went wrong. Try again.",
+    "formHeading": "Send a message",
+    "formSubtitle": "Fill in the form below and we'll get back to you as soon as we can.",
+    "namePlaceholder": "Your name",
+    "emailPlaceholder": "Your email address",
+    "messagePlaceholder": "Tell us how we can help…",
+    "helpHeading": "How can we help?",
+    "helpSubtitle": "Tell us what you need help with and include any relevant job or billing details so we can assist you.",
+    "topics": {
+      "topicJobsTitle": "Job advertisements",
+      "topicJobsDescription": "Questions about posting jobs, editing job ads, visibility or applications.",
+      "topicAccountTitle": "Account and team access",
+      "topicAccountDescription": "Help with your account, team members, permissions or login issues.",
+      "topicBillingTitle": "Billing and payments",
+      "topicBillingDescription": "Questions about pricing, invoices, payments or your subscription."
+    }
   },
   "settings": {
     "language": "Language",

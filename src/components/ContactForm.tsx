@@ -3,9 +3,10 @@
 import { useState, type FormEvent } from "react";
 import { useTranslations } from "next-intl";
 import { sendContactMessageAction } from "@/app/[locale]/(console)/recruit/contact/actions";
+import { buttonClassName } from "@/components/Button";
 
-const inputClass = "h-9 rounded-lg border border-line bg-white px-3 text-sm";
-const labelClass = "flex flex-col gap-1 text-sm";
+const inputClass = "h-11 rounded-lg border border-line bg-white px-3 text-sm placeholder:text-muted";
+const labelClass = "flex flex-col gap-1.5 text-sm font-medium text-ink";
 
 /** Item 7 (§ real-usage QA, employer-console review), the email half —
  *  the chat half was deliberately skipped for now (2026-09-29: no live
@@ -46,40 +47,48 @@ export function ContactForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex max-w-md flex-col gap-4">
-      {sent && <p className="rounded-lg bg-mint/20 px-3 py-2 text-sm text-pine">{t("sentConfirmation")}</p>}
-      {error && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
-      <label className={labelClass}>
-        <span>{t("name")}</span>
-        <input required value={name} onChange={(e) => setName(e.target.value)} className={inputClass} />
-      </label>
-      <label className={labelClass}>
-        <span>{t("email")}</span>
-        <input
-          required
-          type="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          className={inputClass}
-        />
-      </label>
-      <label className={labelClass}>
-        <span>{t("message")}</span>
-        <textarea
-          required
-          value={message}
-          onChange={(e) => setMessage(e.target.value)}
-          rows={5}
-          className={`${inputClass} h-auto py-2`}
-        />
-      </label>
-      <button
-        type="submit"
-        disabled={pending}
-        className="h-10 rounded-lg bg-pine px-4 text-sm font-medium text-white hover:bg-pine/90 disabled:opacity-50"
-      >
-        {pending ? t("sending") : t("send")}
-      </button>
-    </form>
+    <div className="rounded-xl border border-line bg-white p-6">
+      <h2 className="text-lg font-semibold text-ink">{t("formHeading")}</h2>
+      <p className="mt-1 text-sm text-muted">{t("formSubtitle")}</p>
+      <form onSubmit={handleSubmit} className="mt-5 flex flex-col gap-4">
+        {sent && <p className="rounded-lg bg-mint/20 px-3 py-2 text-sm text-pine">{t("sentConfirmation")}</p>}
+        {error && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
+        <label className={labelClass}>
+          <span>{t("name")}</span>
+          <input
+            required
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder={t("namePlaceholder")}
+            className={inputClass}
+          />
+        </label>
+        <label className={labelClass}>
+          <span>{t("email")}</span>
+          <input
+            required
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder={t("emailPlaceholder")}
+            className={inputClass}
+          />
+        </label>
+        <label className={labelClass}>
+          <span>{t("message")}</span>
+          <textarea
+            required
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+            placeholder={t("messagePlaceholder")}
+            rows={5}
+            className={`${inputClass} h-auto py-2`}
+          />
+        </label>
+        <button type="submit" disabled={pending} className={buttonClassName({ size: "lg", className: "w-full" })}>
+          {pending ? t("sending") : t("send")}
+        </button>
+      </form>
+    </div>
   );
 }

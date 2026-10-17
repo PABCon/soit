@@ -1254,10 +1254,25 @@
     "name": "Nome",
     "email": "Email",
     "message": "Mensagem",
-    "send": "Enviar",
+    "send": "Enviar mensagem",
     "sending": "A enviar…",
     "sentConfirmation": "Mensagem enviada. Entraremos em contacto brevemente.",
-    "errorGeneric": "Algo correu mal. Tente novamente."
+    "errorGeneric": "Algo correu mal. Tente novamente.",
+    "formHeading": "Enviar uma mensagem",
+    "formSubtitle": "Preencha o formulário abaixo e responderemos assim que possível.",
+    "namePlaceholder": "O seu nome",
+    "emailPlaceholder": "O seu endereço de email",
+    "messagePlaceholder": "Diga-nos como podemos ajudar…",
+    "helpHeading": "Como podemos ajudar?",
+    "helpSubtitle": "Diga-nos do que precisa e inclua detalhes relevantes sobre a vaga ou faturação para que possamos ajudar.",
+    "topics": {
+      "topicJobsTitle": "Anúncios de emprego",
+      "topicJobsDescription": "Dúvidas sobre publicar vagas, editar anúncios, visibilidade ou candidaturas.",
+      "topicAccountTitle": "Conta e acesso da equipa",
+      "topicAccountDescription": "Ajuda com a sua conta, membros da equipa, permissões ou problemas de login.",
+      "topicBillingTitle": "Faturação e pagamentos",
+      "topicBillingDescription": "Dúvidas sobre preços, faturas, pagamentos ou a sua subscrição."
+    }
   },
   "settings": {
     "language": "Idioma",
