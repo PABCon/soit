@@ -4,10 +4,10 @@ import { useMemo, useState, useTransition, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
 import { Search, Briefcase, ListFilter, ArrowUpDown, ChevronDown, User, Info } from "lucide-react";
 import { Link, useRouter } from "@/i18n/navigation";
-import { openApplicantThreadAction } from "@/app/[locale]/(console)/recruit/jobs/[id]/applicants/actions";
-import { ApplicantStatusSelect } from "@/components/console/ApplicantStatusSelect";
+import { updateStatusAction, openApplicantThreadAction } from "@/app/[locale]/(console)/recruit/jobs/[id]/applicants/actions";
 import { buttonClassName } from "@/components/Button";
 import { Badge, type BadgeVariant } from "@/components/Badge";
+import { Dropdown } from "@/components/Dropdown";
 import type { CompanyApplicant, MyApplication } from "@/lib/db/applications";
 
 type Status = MyApplication["status"];
@@ -52,10 +52,12 @@ function FilterSelect({
   );
 }
 
-/** Bug fix: "Message" used to open a small inline compose box right in
- *  the row — now it navigates straight to the real thread page, same as
- *  every other messaging entry point in this app. No message is sent
- *  until the employer actually composes one there. */
+/** Bug fix: "Message" navigates straight to the real thread page instead
+ *  of opening a small inline compose box — no message is sent at this
+ *  point, so the pending label says "Opening…", not "Sending…" (a
+ *  separate bug: the label previously borrowed `sending`, which is
+ *  accurate for `ThreadComposer`'s own button on the thread page, not
+ *  for this find-or-create-then-navigate action). */
 function MessageButton({ applicationId }: { applicationId: string }) {
   const t = useTranslations("messaging");
   const router = useRouter();
@@ -73,8 +75,71 @@ function MessageButton({ applicationId }: { applicationId: string }) {
       }
       className={buttonClassName()}
     >
-      {pending ? t("sending") : t("message")}
+      {pending ? t("opening") : t("message")}
     </button>
+  );
+}
+
+/** Bug fix: the status badge IS the editable control now — clicking it
+ *  opens a portal-rendered `Dropdown` (immune to the table wrapper's
+ *  `overflow-x-auto` clipping the old absolute-positioned panel) instead
+ *  of a separate `<select>` living in Actions, which left two different
+ *  status displays on the same row. `onChange` updates the parent's
+ *  optimistic state immediately; `updateStatusAction` persists in the
+ *  background, same fire-and-forget pattern the old inline `<select>`
+ *  already used here. */
+function StatusDropdown({
+  jobId,
+  applicationId,
+  status,
+  onChange,
+}: {
+  jobId: string;
+  applicationId: string;
+  status: Status;
+  onChange: (status: Status) => void;
+}) {
+  const t = useTranslations("applicants");
+
+  function select(next: Status, close: () => void) {
+    onChange(next);
+    close();
+    if (next !== status) updateStatusAction(jobId, applicationId, next);
+  }
+
+  return (
+    <Dropdown
+      portal
+      trigger={
+        <span className="inline-flex items-center gap-1">
+          <Badge variant={STATUS_BADGE[status]}>{t(`status.${status}`)}</Badge>
+          <ChevronDown className="h-3 w-3 text-muted" aria-hidden="true" />
+        </span>
+      }
+      triggerLabel={t("changeStatus")}
+      triggerClassName="inline-flex items-center rounded-full hover:opacity-80"
+      align="left"
+      panelClassName="w-40 rounded-lg border border-line bg-white py-1 shadow-md"
+    >
+      {(close) => (
+        <>
+          {STATUSES.map((s) => (
+            <button
+              key={s}
+              type="button"
+              onClick={() => select(s, close)}
+              className={
+                s === status
+                  ? "block w-full px-3 py-1.5 text-left text-sm font-medium text-pine"
+                  : "block w-full px-3 py-1.5 text-left text-sm text-ink hover:bg-paper"
+              }
+            >
+              {t(`status.${s}`)}
+            </button>
+          ))}
+        </>
+      )}
+    </Dropdown>
   );
 }
 
@@ -91,16 +156,26 @@ export function AllApplicantsList({ applicants, locale }: { applicants: CompanyA
   const [jobFilter, setJobFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [sort, setSort] = useState<Sort>("newest");
+  // Optimistic status overrides — the server action's own revalidatePath
+  // targets the per-job applicants page, not this aggregated one, so a
+  // status change needs to update this list's own display immediately
+  // rather than waiting on a reload that was never coming.
+  const [statusOverrides, setStatusOverrides] = useState<Record<string, Status>>({});
+
+  const effectiveApplicants = useMemo(
+    () => applicants.map((a) => (statusOverrides[a.id] ? { ...a, status: statusOverrides[a.id] } : a)),
+    [applicants, statusOverrides],
+  );
 
   const jobs = useMemo(() => {
     const map = new Map<string, string>();
-    for (const a of applicants) map.set(a.jobId, a.jobTitle);
+    for (const a of effectiveApplicants) map.set(a.jobId, a.jobTitle);
     return [...map.entries()].sort((a, b) => a[1].localeCompare(b[1]));
-  }, [applicants]);
+  }, [effectiveApplicants]);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    const result = applicants.filter((a) => {
+    const result = effectiveApplicants.filter((a) => {
       if (q && !a.candidateName.toLowerCase().includes(q) && !a.jobTitle.toLowerCase().includes(q)) return false;
       if (jobFilter && a.jobId !== jobFilter) return false;
       if (statusFilter && a.status !== statusFilter) return false;
@@ -111,7 +186,7 @@ export function AllApplicantsList({ applicants, locale }: { applicants: CompanyA
       return sort === "oldest" ? diff : -diff;
     });
     return result;
-  }, [applicants, query, jobFilter, statusFilter, sort]);
+  }, [effectiveApplicants, query, jobFilter, statusFilter, sort]);
 
   if (applicants.length === 0) {
     return <p className="mt-8 text-sm text-muted">{t("empty")}</p>;
@@ -201,7 +276,12 @@ export function AllApplicantsList({ applicants, locale }: { applicants: CompanyA
                       })}
                     </td>
                     <td className="px-4 py-3">
-                      <Badge variant={STATUS_BADGE[a.status]}>{t(`status.${a.status}`)}</Badge>
+                      <StatusDropdown
+                        jobId={a.jobId}
+                        applicationId={a.id}
+                        status={a.status}
+                        onChange={(s) => setStatusOverrides((o) => ({ ...o, [a.id]: s }))}
+                      />
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
@@ -213,7 +293,6 @@ export function AllApplicantsList({ applicants, locale }: { applicants: CompanyA
                           <span className="text-xs text-muted">{t("cvUnavailable")}</span>
                         )}
                         <MessageButton applicationId={a.id} />
-                        <ApplicantStatusSelect jobId={a.jobId} applicationId={a.id} initialStatus={a.status} />
                       </div>
                     </td>
                   </tr>
