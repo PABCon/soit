@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { useFormatter, useTranslations } from "next-intl";
+import { useFormatter, useLocale, useTranslations } from "next-intl";
 import { useRouter } from "@/i18n/navigation";
 import type { Job } from "@/lib/types";
 import "leaflet/dist/leaflet.css";
@@ -23,6 +23,23 @@ import "leaflet/dist/leaflet.css";
  *
  * Pins are divIcons carrying the salary, because the salary is the point.
  *
+ * MULTIPLE JOBS, ONE POINT: location is per-city, not per-address, so
+ * several jobs in the same city share the exact same lat/lng (the city's
+ * centroid) — stacked exactly on top of each other, only one ever visible/
+ * clickable. Jobs are grouped by coordinate (rounded to 4 decimals, ~11m)
+ * before rendering — deliberately not a real clustering library
+ * (Leaflet.markercluster etc.): the root cause here is literally identical
+ * coordinates at a handful of job count, not visual crowding that shifts
+ * with zoom level, so a simple "same point → one marker" grouping is both
+ * simpler and more directly correct than zoom-aware distance clustering.
+ * A single-job point renders exactly as before; a 2+ point renders a
+ * count-badge marker whose popup lists every job there (title/company/
+ * salary, each a real link) — built as raw HTML/Tailwind matching
+ * `CompactJobRow`'s visual recipe (Leaflet popups are plain DOM, not
+ * React, so the component itself can't be mounted directly), with clicks
+ * on the popup's job links intercepted to use the same client-side router
+ * navigation the existing single-job marker click already uses.
+ *
  * The Leaflet map instance is created exactly once and only ever torn down
  * on real unmount — a real-usage QA round (phase 5, search) surfaced a
  * production-only "Cannot read properties of undefined (reading
@@ -43,6 +60,7 @@ export function JobMap({ jobs }: { jobs: Job[] }) {
   const router = useRouter();
   const format = useFormatter();
   const t = useTranslations("feed");
+  const locale = useLocale();
 
   // Refs keep the effects below from needing to re-run when these
   // identities change — updated in their own effects rather than during
@@ -52,6 +70,11 @@ export function JobMap({ jobs }: { jobs: Job[] }) {
   useEffect(() => {
     routerRef.current = router;
   }, [router]);
+
+  const localeRef = useRef(locale);
+  useEffect(() => {
+    localeRef.current = locale;
+  }, [locale]);
 
   const labelRef = useRef<(job: Job) => string>(() => "");
   useEffect(() => {
@@ -65,6 +88,20 @@ export function JobMap({ jobs }: { jobs: Job[] }) {
             notation: "compact",
           });
   }, [format, t]);
+
+  // Builds one <a> row inside a multi-job marker's popup, mirroring
+  // CompactJobRow.tsx's own visual recipe (title / company · location ·
+  // work model / salary) as raw HTML — a Leaflet popup is plain DOM, not a
+  // React tree, so the real component can't be mounted into it directly.
+  const popupRowRef = useRef<(job: Job) => string>(() => "");
+  useEffect(() => {
+    popupRowRef.current = (job: Job) => `
+      <a href="/${localeRef.current}/jobs/${job.slug}" data-slug="${job.slug}" class="map-job-link block border-b border-line py-2 last:border-0 hover:bg-subtle">
+        <p class="truncate text-sm font-semibold text-ink">${job.title}</p>
+        <p class="truncate text-xs text-muted">${job.company.name} · ${job.location ?? t("remote")} · ${t(`workModel.${job.workModel}`)}</p>
+        <p class="mt-0.5 text-xs font-semibold text-[#0C6B58]">${labelRef.current(job)}</p>
+      </a>`;
+  }, [t]);
 
   const jobsRef = useRef(jobs);
   useEffect(() => {
@@ -80,18 +117,69 @@ export function JobMap({ jobs }: { jobs: Job[] }) {
     markers.clearLayers();
     const pinned = jobsRef.current.filter((j) => j.lat !== null && j.lng !== null);
 
+    // Group by (near-)identical coordinate — see the file's own doc
+    // comment for why this is a simple rounding grouping rather than a
+    // real clustering library.
+    const groups = new Map<string, Job[]>();
     for (const job of pinned) {
+      const key = `${(job.lat as number).toFixed(4)},${(job.lng as number).toFixed(4)}`;
+      const group = groups.get(key);
+      if (group) group.push(job);
+      else groups.set(key, [job]);
+    }
+
+    for (const group of groups.values()) {
+      const [lat, lng] = [group[0].lat as number, group[0].lng as number];
+
+      if (group.length === 1) {
+        const job = group[0];
+        const icon = L.divIcon({
+          className: "",
+          html: `<span class="inline-flex whitespace-nowrap rounded-full bg-[#0C6B58] px-2 py-1 text-[11px] font-bold text-white shadow-sm ring-2 ring-white">${labelRef.current(job)}</span>`,
+          iconSize: [0, 0],
+          iconAnchor: [22, 12],
+        });
+
+        L.marker([lat, lng], { icon })
+          .addTo(markers)
+          .bindPopup(`<strong>${job.title}</strong><br>${job.company.name} — ${job.location}`)
+          .on("click", () => routerRef.current.push(`/jobs/${job.slug}`));
+        continue;
+      }
+
+      // 2+ jobs stacked on the same point — a count-badge marker whose
+      // popup lists every job there instead of silently hiding all but
+      // one. No "navigate on click" handler here (unlike the single-job
+      // case above) — clicking just opens the popup, same as Leaflet's
+      // own default marker behavior, so the visitor can pick one.
       const icon = L.divIcon({
         className: "",
-        html: `<span class="inline-flex whitespace-nowrap rounded-full bg-[#0C6B58] px-2 py-1 text-[11px] font-bold text-white shadow-sm ring-2 ring-white">${labelRef.current(job)}</span>`,
+        html: `<span class="inline-flex h-7 w-7 items-center justify-center rounded-full bg-[#0C6B58] text-xs font-bold text-white shadow-sm ring-2 ring-white">${group.length}</span>`,
         iconSize: [0, 0],
-        iconAnchor: [22, 12],
+        iconAnchor: [14, 14],
       });
 
-      L.marker([job.lat as number, job.lng as number], { icon })
+      const popupHtml = `<div class="max-h-72 w-64 overflow-y-auto">${group
+        .map((job) => popupRowRef.current(job))
+        .join("")}</div>`;
+
+      const marker = L.marker([lat, lng], { icon })
         .addTo(markers)
-        .bindPopup(`<strong>${job.title}</strong><br>${job.company.name} — ${job.location}`)
-        .on("click", () => routerRef.current.push(`/jobs/${job.slug}`));
+        .bindPopup(popupHtml, { maxWidth: 280 });
+
+      marker.on("popupopen", (e) => {
+        const container = e.popup.getElement();
+        container?.querySelectorAll<HTMLAnchorElement>(".map-job-link").forEach((a) => {
+          a.addEventListener("click", (ev) => {
+            ev.preventDefault();
+            const slug = a.dataset.slug;
+            if (slug) {
+              marker.closePopup();
+              routerRef.current.push(`/jobs/${slug}`);
+            }
+          });
+        });
+      });
     }
 
     if (pinned.length > 0) {
