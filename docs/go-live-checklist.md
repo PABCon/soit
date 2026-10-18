@@ -120,11 +120,32 @@ commit or CLAUDE.md entry anywhere suggesting either changed.
 
 ## Map
 
-- [ ] Real map tile provider — `JobMap.tsx`/`CompanyMap.tsx` both use
-      OpenStreetMap's community tile server, explicitly flagged in
-      code as dev-only and not licensed for commercial use (§8.1 of
-      the spec). Pick MapTiler's free tier or self-hosted Protomaps
-      before launch.
+- [x] Real map tile provider — `JobMap.tsx`/`CompanyMap.tsx` now use
+      real MapTiler tiles (`basic-v2` style — chosen by comparing it
+      against MapTiler's other named styles side by side over a real
+      Lisbon tile; it's the calm/pale one with no saturated road
+      colors, matching the app's light, blue-accent design language),
+      replacing the dev-only OpenStreetMap community tile server. Key
+      (`NEXT_PUBLIC_MAPTILER_KEY`) is origin-restricted to
+      `justit.pt`/`www.justit.pt` on MapTiler's own account dashboard
+      — that's the real security boundary, which is why it's safe as a
+      public env var (set as Config, not Secret, in all three Vercel
+      environments). Custom `divIcon` pin markers (the existing 404-bug
+      workaround) were left untouched — this was purely a tile-layer
+      swap. Verified live on `/jobs`: 6 real `api.maptiler.com`
+      requests, all 200 (not 401/403 from the origin restriction),
+      zoom control visible, markers render and clicking one navigates
+      to the job detail page. `CompanyMap.tsx`'s tile-layer code is
+      byte-identical to `JobMap.tsx`'s (same URL template, same env
+      var, same style) but could not be independently live-verified
+      against a real company — a direct DB check found **zero
+      companies in the live database currently have `location_id` set
+      at all**, so the "Our office" section (and therefore
+      `CompanyMap`) never renders for any real company today; this is
+      a pre-existing data gap, unrelated to this tile-provider change.
+      Worth having at least one real company set an office location
+      before launch, both to exercise this and because the section is
+      otherwise dead weight.
 
 ## Compliance / legal
 

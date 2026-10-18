@@ -31,10 +31,19 @@ export function CompanyMap({ latitude, longitude }: { latitude: number; longitud
         13,
       );
       L.control.zoom({ position: "bottomright" }).addTo(map);
-      L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
-        maxZoom: 18,
-        attribution: "&copy; OpenStreetMap contributors",
-      }).addTo(map);
+      // Real MapTiler tiles — same "basic-v2" style as JobMap.tsx (§8.1,
+      // chosen for the calm/light/blue-accent look, see that file's own
+      // comment for how the style was picked), replacing the dev-only
+      // OpenStreetMap community tile server this map used before.
+      L.tileLayer(
+        `https://api.maptiler.com/maps/basic-v2/256/{z}/{x}/{y}{r}.png?key=${process.env.NEXT_PUBLIC_MAPTILER_KEY}`,
+        {
+          maxZoom: 20,
+          detectRetina: true,
+          attribution:
+            '<a href="https://www.maptiler.com/copyright/" target="_blank">&copy; MapTiler</a> <a href="https://www.openstreetmap.org/copyright" target="_blank">&copy; OpenStreetMap contributors</a>',
+        },
+      ).addTo(map);
 
       // A divIcon, not Leaflet's default L.marker icon — the default's
       // marker-icon.png/marker-shadow.png resolve relative to the current

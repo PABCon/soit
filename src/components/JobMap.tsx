@@ -10,10 +10,16 @@ import "leaflet/dist/leaflet.css";
  * Map view (§8). Coordinates are captured at post time and stored, never
  * geocoded on page load.
  *
- * TILES: OpenStreetMap's community tile server is used here for local
- * development only — its usage policy does not permit a commercial product.
- * Pick a real provider before launch (§8.1, §15.1): MapTiler's free tier, or
- * self-hosted Protomaps.
+ * TILES: real MapTiler tiles (§8.1/§15.1 — replaces the OpenStreetMap
+ * community tile server, which was dev-only, never licensed for this).
+ * Style: "basic-v2" — chosen by comparing it against MapTiler's other
+ * named styles (bright-v2, streets-v2, topo-v2, dataviz) rendered side by
+ * side over a real Lisbon tile; basic-v2 is the one that's actually calm
+ * and light (pale palette, no saturated yellow/orange roads) — a match
+ * for the design system's own light, blue-accent language, not just the
+ * cheapest default. The API key is restricted to justit.pt/www.justit.pt
+ * via MapTiler's own origin-restriction feature (configured on the
+ * account, not in code), which is why it's safe as a public env var.
  *
  * Pins are divIcons carrying the salary, because the salary is the point.
  *
@@ -115,10 +121,17 @@ export function JobMap({ jobs }: { jobs: Job[] }) {
         7,
       );
       L.control.zoom({ position: "bottomright" }).addTo(map);
-      L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
-        maxZoom: 18,
-        attribution: "&copy; OpenStreetMap contributors",
-      }).addTo(map);
+      L.tileLayer(
+        `https://api.maptiler.com/maps/basic-v2/256/{z}/{x}/{y}{r}.png?key=${process.env.NEXT_PUBLIC_MAPTILER_KEY}`,
+        {
+          maxZoom: 20,
+          // `{r}` resolves to "@2x" on a retina display, "" otherwise —
+          // Leaflet's own built-in mechanism, requires detectRetina.
+          detectRetina: true,
+          attribution:
+            '<a href="https://www.maptiler.com/copyright/" target="_blank">&copy; MapTiler</a> <a href="https://www.openstreetmap.org/copyright" target="_blank">&copy; OpenStreetMap contributors</a>',
+        },
+      ).addTo(map);
 
       mapRef.current = map;
       markersRef.current = L.layerGroup().addTo(map);
