@@ -14,7 +14,11 @@ export function AuthSplitScreen({ hero, children }: { hero: React.ReactNode; chi
       </div>
 
       <div className="flex flex-1 items-center justify-center px-4 py-10 sm:px-6">
-        <div className="w-full max-w-sm rounded-2xl border border-line bg-white p-8 shadow-sm">{children}</div>
+        {/* max-w-sm (384px) was too narrow for the 4 icon+label OAuth
+         *  buttons in one row (crammed with zero visible gap between
+         *  LinkedIn and Facebook) — widened to give all four real
+         *  breathing room, verified via direct gap measurement. */}
+        <div className="w-full max-w-md rounded-2xl border border-line bg-white p-8 shadow-sm">{children}</div>
       </div>
     </div>
   );
