@@ -3,13 +3,21 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import { getVerifiedCompanies } from "@/lib/db/companies";
 import { getLocations } from "@/lib/db/locations";
 import { CompaniesExplorer } from "@/components/CompaniesExplorer";
+import { localeAlternates, socialMeta } from "@/lib/seo";
 
 type Props = { params: Promise<{ locale: string }> };
+
+const SITE = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale } = await params;
   const t = await getTranslations({ locale, namespace: "companies" });
-  return { title: t("title") };
+  const title = t("title");
+  return {
+    title,
+    alternates: localeAlternates("/companies", locale),
+    ...socialMeta({ title, url: `${SITE}/${locale}/companies` }),
+  };
 }
 
 /** Public, indexable index of every verified company (§7.1) — the "Empresas"

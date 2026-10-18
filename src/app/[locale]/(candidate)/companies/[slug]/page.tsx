@@ -5,8 +5,8 @@ import { CompanyProfileBody, getCompanyPageMetadata } from "@/components/candida
 type Props = { params: Promise<{ locale: string; slug: string }> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { slug } = await params;
-  return getCompanyPageMetadata(slug);
+  const { locale, slug } = await params;
+  return getCompanyPageMetadata(slug, locale);
 }
 
 /** Public, indexable company page (§7.1) — a key SEO + employer-branding

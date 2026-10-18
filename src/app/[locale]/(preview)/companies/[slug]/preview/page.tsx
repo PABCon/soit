@@ -5,8 +5,8 @@ import { CompanyProfileBody, getCompanyPageMetadata } from "@/components/candida
 type Props = { params: Promise<{ locale: string; slug: string }> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { slug } = await params;
-  const meta = await getCompanyPageMetadata(slug);
+  const { locale, slug } = await params;
+  const meta = await getCompanyPageMetadata(slug, locale);
   return { ...meta, robots: { index: false, follow: false } };
 }
 

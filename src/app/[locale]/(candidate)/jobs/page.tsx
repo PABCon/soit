@@ -9,13 +9,29 @@ import { getJobCategories } from "@/lib/db/job-categories";
 import { getLocations } from "@/lib/db/locations";
 import { getSpokenLanguages } from "@/lib/db/spoken-languages";
 import { getMyFavoriteJobIds } from "@/lib/db/favorites";
+import { localeAlternates, socialMeta } from "@/lib/seo";
 
 type Props = { params: Promise<{ locale: string }> };
+
+const SITE = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale } = await params;
   const t = await getTranslations({ locale, namespace: "jobs" });
-  return { title: t("title") };
+  const tb = await getTranslations({ locale, namespace: "brand" });
+  const title = t("title");
+  const description = tb("tagline");
+  return {
+    title,
+    description,
+    // Canonical always points at the bare /jobs URL — filter state lives
+    // entirely in query params (chip filters, search), so every filtered
+    // view would otherwise be its own distinct, crawlable "duplicate
+    // content" URL with nothing telling a crawler they're all the same
+    // underlying page (SEO audit finding).
+    alternates: localeAlternates("/jobs", locale),
+    ...socialMeta({ title, description, url: `${SITE}/${locale}/jobs` }),
+  };
 }
 
 export default async function JobsPage({ params }: Props) {

@@ -5,6 +5,7 @@ import { setRequestLocale, getTranslations } from "next-intl/server";
 import { Geist } from "next/font/google";
 import { routing } from "@/i18n/routing";
 import { CookieConsentBanner } from "@/components/CookieConsentBanner";
+import { localeAlternates, socialMeta } from "@/lib/seo";
 import "../globals.css";
 
 // Corrective landing-page redesign: switched from Inter to **Geist**, the
@@ -35,14 +36,24 @@ export function generateStaticParams() {
   return routing.locales.map((locale) => ({ locale }));
 }
 
+const SITE = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+
 export async function generateMetadata({
   params,
 }: Omit<Props, "children">): Promise<Metadata> {
   const { locale } = await params;
   const t = await getTranslations({ locale, namespace: "brand" });
+  const name = t("name");
+  const description = t("tagline");
   return {
-    title: { default: t("name"), template: `%s · ${t("name")}` },
-    description: t("tagline"),
+    title: { default: name, template: `%s · ${name}` },
+    description,
+    // Site-wide defaults — a page with its own more specific metadata
+    // (job detail, company profile, /jobs) fully overrides these by
+    // returning its own `alternates`/`openGraph`/`twitter`, same as
+    // `title`/`description` already work via the template above.
+    alternates: localeAlternates("/", locale),
+    ...socialMeta({ title: name, description, url: `${SITE}/${locale}` }),
   };
 }
 

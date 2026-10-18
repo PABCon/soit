@@ -173,7 +173,28 @@ commit or CLAUDE.md entry anywhere suggesting either changed.
       cookie exists; the candidate/employer localStorage keys remain
       functional-only) are unchanged and still accurately described in
       the Privacy Policy's cookie section — only the GA piece is new.
-- [ ] §6.6 data-retention purge job — specified, not built
+- [x] §6.6 data-retention purge job — **built 2026-10-18**. Per the
+      spec's exact text: applications + their CV snapshots are deleted
+      12 months after `status_updated_at`; unclaimed `candidates` rows
+      (no live applications) are deleted after 12 months (the spec
+      doesn't name a trigger column for this half — `created_at` is
+      used, a judgment call). New `src/lib/db/retention-purge.ts` +
+      `src/app/api/cron/retention-purge/route.ts`, same
+      `CRON_SECRET`-gated pattern as the saved-search digest cron, a new
+      daily entry in `vercel.json`. Verified against the live database
+      with real disposable fixtures (a backdated application + a real
+      CV file in the `cvs` bucket, a backdated unclaimed candidate with
+      zero applications, plus three negative controls — a recent
+      application, a recent unclaimed candidate, and an old-but-still-
+      has-a-live-application candidate) — all 7 checks passed: the old
+      application and its storage file were removed, the old
+      zero-application candidate was removed, and all three negative
+      controls correctly survived. Also confirmed live against
+      production data directly: nothing in the real database is
+      currently older than ~3 weeks, so the real cron route (hit
+      directly with the real `CRON_SECRET`) correctly reported zero
+      purged — safe to run today, will start doing real work once data
+      actually ages past 12 months.
 - [ ] Decide whether to show a verified employer's NIF publicly on
       their company page (opt-in only, per the spec) — real trust
       signal consistent with the product's transparency thesis, but
@@ -182,7 +203,18 @@ commit or CLAUDE.md entry anywhere suggesting either changed.
 
 ## Observability
 
-- [ ] Error monitoring (e.g. Sentry) — none configured
+- [ ] Error monitoring (e.g. Sentry) — **install attempted 2026-10-18,
+      blocked on a real one-time account step, not a code gap**:
+      `vercel integration add sentry` (the same Vercel-Marketplace-first
+      pattern the Stripe integration used) returned
+      `action_required: integration_terms_acceptance_required` — Sentry's
+      own marketplace terms need accepting in a browser
+      (`https://vercel.com/soit/~/integrations/accept-terms/sentry?source=cli`)
+      before the install can finish; this can't be done from here (no
+      browser session). Once accepted, re-run `vercel integration add
+      sentry` to actually provision it, then wire up `@sentry/nextjs`
+      for both client and server error capture — not done yet, since
+      there's no real DSN to configure until the integration exists.
 - [x] Basic analytics — **Google Analytics (GA4) added 2026-10-18**,
       gated behind a real consent banner (see Compliance/legal above) —
       the spec's own original suggestion was a cookie-free tool
@@ -197,15 +229,50 @@ commit or CLAUDE.md entry anywhere suggesting either changed.
       a DNS TXT record (2026-10-18). `sitemap.xml`/`robots.txt` re-checked
       the same day and still correctly derive from `NEXT_PUBLIC_SITE_URL`
       at runtime (`https://justit.pt` in production) — nothing to submit
-      beyond what's already live. The Rich Results Test against a real
-      job page's `JobPosting` JSON-LD is still not independently
-      confirmed from here (no browser tool was used this round to check
-      it) — worth a real spot-check before launch, not yet done.
+      beyond what's already live.
 - [x] `sitemap.xml`/`robots.txt` re-confirmed against the real host
       2026-10-17 — both derive their host from `NEXT_PUBLIC_SITE_URL`
       at runtime (no hardcoded domain), which is already
       `https://justit.pt` in production, so both are correct with zero
       further action needed
+- [x] Real SEO audit, 2026-10-18 — checked the actual technical surface
+      (not Google's live Rich Results tool, unreachable from here — the
+      `JobPosting` JSON-LD was instead validated directly against
+      schema.org's/Google's documented required+recommended fields).
+      Found and fixed real gaps:
+      - `JobPosting` JSON-LD was missing `hiringOrganization.logo`
+        (Google's own guidance for the logo to appear in Rich Results)
+        and an `identifier` `PropertyValue` — both added, using data
+        already joined into the query (no new query).
+      - **Zero pages anywhere in the app set Open Graph or Twitter Card
+        metadata** (confirmed via a repo-wide grep) — a shared job link
+        on Slack/LinkedIn/WhatsApp rendered with only the generic
+        site-level title, no description, no image. New
+        `src/lib/seo.ts` (`socialMeta()`) now sets real `openGraph`/
+        `twitter` on the root layout, `/jobs`, `/companies`, every job
+        detail page (with a real per-job description, previously
+        missing entirely, and the real company logo as the image), and
+        every company profile page (the company's own logo).
+      - **Canonical + hreflang existed on exactly one route** (the job
+        detail page) before this — confirmed absent on the root layout,
+        `/jobs` (which carries all its filter state in query params,
+        a real duplicate-content risk with zero canonical pointing
+        back), `/companies`, and `/companies/[slug]`. New
+        `localeAlternates()` helper (same `src/lib/seo.ts`) replicates
+        the job detail page's own correct pattern (`x-default` +
+        per-locale pairing) everywhere else.
+      - Verified live against the real dev server + real published
+        jobs/companies: canonical/hreflang/OG/Twitter all render
+        correctly on the homepage, `/jobs`, `/companies`, a real job
+        detail page (using that job's real company logo as the OG
+        image), and a real company page (its own logo + real
+        description) — and the noindex preview route's
+        `robots: noindex` still correctly overrides the shared
+        metadata, unaffected by this change.
+      - Not done this round, still worth a spot-check before launch:
+        running the actual job page through Google's live Rich Results
+        Test tool once a browser is available — this round validated
+        against the documented spec, not Google's own live validator.
 
 ## Admin panel
 
@@ -277,46 +344,50 @@ commit or CLAUDE.md entry anywhere suggesting either changed.
       not a code one. The two real subscriptions:
       - **ITDS** (`company_id 7c056b01-...`) — correctly synced,
         `top_employer_active: true`.
-      - **"Test Company"** (`company_id 01f26edb-...`) — Stripe shows
-        this subscription `status: active` (renews 2027-09-30), but
-        `companies.top_employer_active` reads **false**. This is a
-        real, previously-undocumented desync, found by this audit
-        cross-referencing Stripe directly against the database (not
-        just the app's own UI). The `company_subscriptions` row itself
-        is correct (`status: active`, last written 2026-09-30, never
-        updated since) — only the denormalized `companies.
-        top_employer_active` cache column is wrong. The exact cause
-        wasn't recoverable from here (Postgres/Supabase keeps no
-        row-level history to inspect); most likely a stray manual/
-        test write against this specific company at some point rather
-        than a reproducible app bug — but it means this company is
-        currently being under-served relative to what it's paying for
-        (no badge, no site placement, console shows it as not
-        subscribed) and should be corrected directly (a one-line
-        `update companies set top_employer_active = true where id =
-        '01f26edb-87d5-4962-a331-ebbdf9698cb8'` would fix the visible
-        symptom; worth doing once someone's looking at this row anyway).
-- [ ] **A related, more serious gap found during this same audit, not
-      previously known**: the live Stripe webhook endpoint is still
-      registered at `https://soit.vercel.app/api/stripe/webhook` — the
-      **old** domain, never moved to `justit.pt`. Since 2026-10-09 (the
-      "canonical domain" fix, commit `f3b5946`), `soit.vercel.app`
-      308-redirects **every single path** — including this webhook
-      route — to `justit.pt`, and Stripe does not follow redirects when
-      delivering a webhook. In effect, **any real subscription-
-      lifecycle event since 2026-10-09 (renewals, payment failures,
-      cancellations) for this endpoint has likely been silently failing
-      to deliver** — this is now a live, currently-broken piece of
-      billing infra, not just the "hasn't been registered for prod yet"
-      gap this line originally described. (It doesn't explain the Test
-      Company desync above, which predates the redirect — but it does
-      mean a real Stripe-side event can't naturally self-correct that
-      desync either, so both need fixing together.) Fix: register a
-      fresh webhook endpoint at `https://justit.pt/api/stripe/webhook`
-      with its own signing secret set in Vercel's production env, move
-      the same event subscriptions over, and retire the old
-      `soit.vercel.app` endpoint in Stripe's dashboard once the new one
-      is confirmed receiving events.
+      - **"Test Company"** (`company_id 01f26edb-...`) — **fixed
+        2026-10-18**: Stripe showed this subscription `status: active`
+        (renews 2027-09-30), but `companies.top_employer_active` read
+        **false** — a real, previously-undocumented desync. Corrected
+        directly (`update companies set top_employer_active = true
+        where id = '01f26edb-87d5-4962-a331-ebbdf9698cb8'`), confirmed
+        before/after via a direct read. The root cause was never
+        recoverable (Postgres/Supabase keeps no row-level history to
+        inspect) — most likely a stray manual/test write against this
+        specific company at some point, not a reproducible app bug;
+        flagging that this was a one-time correction, not a fix to an
+        underlying mechanism, in case it recurs.
+- [x] **The Stripe webhook domain gap — fixed 2026-10-18, but needs a
+      production redeploy before it's actually live.** The old webhook
+      endpoint (`we_1ULLehEfmibRYZh3Dw0cZ06p`) was registered at
+      `https://soit.vercel.app/api/stripe/webhook` — since 2026-10-09's
+      canonical-domain redirect, `soit.vercel.app` 308-redirects every
+      path (webhook included) to `justit.pt`, and Stripe doesn't follow
+      redirects for webhook delivery, so real subscription-lifecycle
+      events had likely been silently failing since then. Registered a
+      new endpoint (`we_1URtMFEfmibRYZh34RIpX4G7`) at the real
+      `https://justit.pt/api/stripe/webhook`, subscribed to the same 5
+      events (`checkout.session.completed`,
+      `checkout.session.async_payment_succeeded`,
+      `checkout.session.async_payment_failed`,
+      `customer.subscription.updated`, `customer.subscription.deleted`),
+      and set its real signing secret as `STRIPE_WEBHOOK_SECRET` in
+      Vercel's **production** environment only (preview/development
+      untouched — they still need the local `stripe listen` secret).
+      **Could not fully verify end-to-end this round**: a real signed
+      test event (`stripe.webhooks.generateTestHeaderString`, same
+      method used in earlier rounds) sent to the live production URL
+      came back `400 Signature verification failed` — consistent with
+      this project's own documented gotcha that a Vercel env var change
+      needs a redeploy before a running deployment picks it up, which
+      is outside what I can trigger myself. **The old `soit.vercel.app`
+      endpoint was deliberately left enabled, not disabled** — disabling
+      it now, before the new one is confirmed working, would leave zero
+      functioning webhook endpoints. Next step: trigger a production
+      redeploy, then re-run the same signed-test-event check against
+      `https://justit.pt/api/stripe/webhook` to confirm it actually
+      processes an event (grants a credit on a disposable test company,
+      cleaned up after) — only then disable the old endpoint in
+      Stripe's dashboard.
 - [ ] The "6+ ads" tier is deliberately not self-serve (a "talk to
       sales" contact link only) — when a real deal happens, the Stripe
       Checkout Session/invoice for it is created manually via the

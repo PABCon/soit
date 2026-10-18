@@ -16,11 +16,25 @@ import { getVideoEmbedUrl } from "@/lib/video-embed";
 import { Badge } from "@/components/Badge";
 import { MapPin, Users, Building2 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import { localeAlternates, socialMeta } from "@/lib/seo";
 
-export async function getCompanyPageMetadata(slug: string) {
+const SITE = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+
+export async function getCompanyPageMetadata(slug: string, locale: string) {
   const company = await getCompanyBySlug(slug);
   if (!company) return {};
-  return { title: company.name, description: company.description ?? undefined };
+  const description = company.description ?? undefined;
+  return {
+    title: company.name,
+    description,
+    alternates: localeAlternates(`/companies/${slug}`, locale),
+    ...socialMeta({
+      title: company.name,
+      description,
+      url: `${SITE}/${locale}/companies/${slug}`,
+      image: company.logoUrl,
+    }),
+  };
 }
 
 const SOCIAL_ICONS: { key: "facebookUrl" | "linkedinUrl" | "instagramUrl" | "youtubeUrl" | "tiktokUrl" | "xUrl"; path: string }[] = [

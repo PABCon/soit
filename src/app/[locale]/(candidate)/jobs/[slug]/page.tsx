@@ -21,7 +21,7 @@ import { getLiveJobBySlug, getSimilarJobs, type JobDetail } from "@/lib/db/jobs"
 import { getApplyStatus } from "@/lib/db/applications";
 import { getMyFavoriteJobIds } from "@/lib/db/favorites";
 import { getCompanyBySlug } from "@/lib/db/companies";
-import { routing } from "@/i18n/routing";
+import { localeAlternates, socialMeta } from "@/lib/seo";
 
 type Props = { params: Promise<{ locale: string; slug: string }> };
 
@@ -32,18 +32,25 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const job = await getLiveJobBySlug(slug);
   if (!job) return {};
 
+  const title = `${job.title} — ${job.company.name}`;
+  // A per-job description was entirely missing before this (SEO audit
+  // finding) — the single highest-value page in the app for social-share
+  // CTR had no description and fell back to the generic site-level
+  // tagline. Truncated: job descriptions can run long, and OG/Twitter
+  // consumers (and search snippets) clip anyway — better to clip on a
+  // word boundary ourselves than mid-word.
+  const description = job.description.length > 200 ? `${job.description.slice(0, 197).trimEnd()}…` : job.description;
+
   return {
-    title: `${job.title} — ${job.company.name}`,
-    alternates: {
-      canonical: `${SITE}/${locale}/jobs/${slug}`,
-      // hreflang pairs, plus x-default pointing at the language redirect (§4.4).
-      languages: {
-        ...Object.fromEntries(
-          routing.locales.map((l) => [l, `${SITE}/${l}/jobs/${slug}`]),
-        ),
-        "x-default": `${SITE}/`,
-      },
-    },
+    title,
+    description,
+    alternates: localeAlternates(`/jobs/${slug}`, locale),
+    ...socialMeta({
+      title,
+      description,
+      url: `${SITE}/${locale}/jobs/${slug}`,
+      image: job.company.logoUrl,
+    }),
   };
 }
 
@@ -63,6 +70,13 @@ function jobPostingJsonLd(job: JobDetail, locale: string) {
     "@type": "JobPosting",
     title: job.title,
     description: job.description,
+    // Google's Rich Results guidance for JobPosting recommends this for
+    // applicant-tracking/dedup — SEO audit finding, was missing entirely.
+    identifier: {
+      "@type": "PropertyValue",
+      name: job.company.name,
+      value: job.id,
+    },
     datePosted: job.publishedAt.slice(0, 10),
     validThrough: job.expiresAt.slice(0, 10),
     // schema.org's employmentType accepts an array — real-usage QA item
@@ -79,6 +93,11 @@ function jobPostingJsonLd(job: JobDetail, locale: string) {
       "@type": "Organization",
       name: job.company.name,
       sameAs: `${SITE}/${locale}/companies/${job.company.slug}`,
+      // Google's Rich Results guidance recommends this for the logo to
+      // actually appear in search results — was missing entirely (SEO
+      // audit finding), even though it's a free read off the job's own
+      // already-joined `companies` row.
+      ...(job.company.logoUrl ? { logo: job.company.logoUrl } : {}),
     },
     ...(job.workModel === "remote"
       ? {
