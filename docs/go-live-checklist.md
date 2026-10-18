@@ -203,18 +203,55 @@ commit or CLAUDE.md entry anywhere suggesting either changed.
 
 ## Observability
 
-- [ ] Error monitoring (e.g. Sentry) — **install attempted 2026-10-18,
-      blocked on a real one-time account step, not a code gap**:
-      `vercel integration add sentry` (the same Vercel-Marketplace-first
-      pattern the Stripe integration used) returned
-      `action_required: integration_terms_acceptance_required` — Sentry's
-      own marketplace terms need accepting in a browser
-      (`https://vercel.com/soit/~/integrations/accept-terms/sentry?source=cli`)
-      before the install can finish; this can't be done from here (no
-      browser session). Once accepted, re-run `vercel integration add
-      sentry` to actually provision it, then wire up `@sentry/nextjs`
-      for both client and server error capture — not done yet, since
-      there's no real DSN to configure until the integration exists.
+- [x] Error monitoring — **done 2026-10-18**, via the user's own
+      pre-existing Sentry project (org `justit-ol`, project `justit`,
+      created directly — not the Vercel Marketplace integration, which
+      stayed blocked on marketplace-terms acceptance and was abandoned
+      in favor of this). `@sentry/nextjs@11.8.0` added as a real,
+      permanent dependency (not a temporary install). Standard App
+      Router wiring: `src/instrumentation-client.ts` (client init),
+      `src/sentry.server.config.ts`/`src/sentry.edge.config.ts` (server/
+      edge init, registered via `src/instrumentation.ts`'s `register()`),
+      `src/app/global-error.tsx` (new — no root-level error boundary
+      existed at all before this), and `next.config.ts` wrapped with
+      `withSentryConfig` for build-time source-map upload. One real SDK
+      surprise, caught by inspecting the installed package rather than
+      trusting docs/memory: `withSentryConfig` isn't exported from the
+      main `@sentry/nextjs` entry point in this version — it moved to a
+      `@sentry/nextjs/config` subpath. All 7 provided env vars
+      (`NEXT_PUBLIC_SENTRY_DSN`, `SENTRY_ORG`, `SENTRY_PROJECT`,
+      `SENTRY_PUBLIC_KEY`, `SENTRY_OTLP_TRACES_URL`,
+      `SENTRY_VERCEL_LOG_DRAIN_URL` as Config; `SENTRY_AUTH_TOKEN` as
+      Secret) added to `.env.local` and to all three Vercel
+      environments.
+
+      **Verified live, not just "it compiles"**: a real `npm run build`
+      genuinely created a new release in the live Sentry project
+      (confirmed via Sentry's own Releases API — the release version
+      matched the current git commit hash, `dateCreated` matched the
+      exact moment of the build), proving source-map upload actually
+      works end-to-end. Separately triggered a real server-side error
+      (a temporary route calling `Sentry.captureException` +
+      `Sentry.flush()`, which returned `flushed: true` — the SDK's own
+      confirmation that the event was handed off to Sentry's transport)
+      and a real client-side error (via a temporary page + a real
+      Playwright click, installed `--no-save` and fully uninstalled
+      after), with the client case network-captured directly: a real
+      `POST` to `https://o4512277372338176.ingest.de.sentry.io/.../envelope/`
+      came back `200`. **One real limitation, reported honestly rather
+      than overclaimed**: the provided `SENTRY_AUTH_TOKEN` turned out to
+      be a Vercel-integration-scoped proxy credential (confirmed via
+      Sentry's own `/api/0/auth/` endpoint, which identified it as
+      `vercel-integration-key-...@proxy-user.sentry.io`) — correctly
+      privileged for the release/source-map job it's actually used for,
+      but it returns `403` on the Issues API, so this round could not
+      independently confirm via the API that either test event actually
+      *landed* as a visible issue in the dashboard (only that it was
+      genuinely transmitted and accepted at the transport layer, which
+      is strong evidence but not the same thing). Worth a quick manual
+      glance at the Sentry dashboard to see both test issues, or a
+      token with `event:read` scope if this needs to be re-confirmed
+      programmatically. All temporary test files were removed after.
 - [x] Basic analytics — **Google Analytics (GA4) added 2026-10-18**,
       gated behind a real consent banner (see Compliance/legal above) —
       the spec's own original suggestion was a cookie-free tool

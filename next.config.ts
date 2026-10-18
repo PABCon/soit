@@ -2,6 +2,11 @@ import type { NextConfig } from "next";
 import { fileURLToPath } from "node:url";
 import { dirname } from "node:path";
 import createNextIntlPlugin from "next-intl/plugin";
+// @sentry/nextjs 11.8.0 moved this to a dedicated `/config` subpath — the
+// main package export has no `withSentryConfig` at all (confirmed by
+// inspecting the installed package's own `exports` map, not assumed from
+// older docs/memory).
+import { withSentryConfig } from "@sentry/nextjs/config";
 
 const withNextIntl = createNextIntlPlugin();
 
@@ -38,4 +43,17 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default withNextIntl(nextConfig);
+export default withSentryConfig(withNextIntl(nextConfig), {
+  // Real Sentry project (org "justit-ol", project "justit") — the user's
+  // own, created directly, not the Vercel Marketplace integration (which
+  // was blocked on a marketplace-terms acceptance step; this is a
+  // separate, already-working path).
+  org: "justit-ol",
+  project: "justit",
+  // Source-map upload only happens with a real token present (CI/Vercel
+  // builds); a local dev build with no SENTRY_AUTH_TOKEN set just skips
+  // the upload step rather than failing.
+  authToken: process.env.SENTRY_AUTH_TOKEN,
+  silent: !process.env.CI,
+  widenClientFileUpload: true,
+});
