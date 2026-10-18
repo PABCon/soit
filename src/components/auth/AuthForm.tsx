@@ -10,6 +10,8 @@ import { validateNif } from "@/lib/nif";
 import { passwordMeetsRequirements } from "@/lib/password";
 import { PasswordChecklist } from "@/components/auth/PasswordChecklist";
 import { FacebookIcon } from "@/components/icons/FacebookIcon";
+import { GoogleIcon } from "@/components/icons/GoogleIcon";
+import { GithubIcon } from "@/components/icons/GithubIcon";
 
 /** Only ever honour a same-origin relative path — never redirect based on
  *  an attacker-controlled `next` value (open-redirect). */
@@ -352,12 +354,21 @@ export function AuthForm({ role, mode }: { role: Role; mode: Mode }) {
                 onClick={() => handleOAuth(provider)}
                 className="flex h-11 flex-1 items-center justify-center gap-2 rounded-lg border border-line bg-white text-sm hover:bg-paper"
               >
-                {/* No icon set exists for Google/GitHub/LinkedIn here (text-only
-                 *  buttons) — Facebook gets one since a real brand mark was
-                 *  specifically asked for; lucide-react has no Facebook glyph,
-                 *  so this one path/hex pair was extracted once from
-                 *  simple-icons, same one-time-extraction convention as
-                 *  src/components/icons/tech-icons.tsx. */}
+                {/* Real brand marks for Google/GitHub/Facebook, each extracted
+                 *  once from simple-icons (same one-time-extraction convention
+                 *  as src/components/icons/tech-icons.tsx — not a runtime
+                 *  dependency). GitHub uses its standard single-color dark
+                 *  mark, not a colored treatment, matching GitHub's own brand
+                 *  guidelines. LinkedIn has no icon here: confirmed directly
+                 *  against simple-icons' raw data (3466 icons, zero match for
+                 *  "linkedin" in any title/slug) that it's genuinely absent
+                 *  from that source, not a lookup miss — same as this
+                 *  codebase's documented Java/C#/AWS/Azure gaps in
+                 *  tech-icons.tsx. Hand-drawing an approximation of a real
+                 *  trademarked logo is exactly what that precedent avoids, so
+                 *  this stays text-only rather than inventing one. */}
+                {provider === "google" && <GoogleIcon className="h-4 w-4" />}
+                {provider === "github" && <GithubIcon className="h-4 w-4" />}
                 {provider === "facebook" && <FacebookIcon className="h-4 w-4" />}
                 {t(`provider.${provider}`)}
               </button>
