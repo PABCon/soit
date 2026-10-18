@@ -153,7 +153,7 @@ export function JobMap({ jobs }: { jobs: Job[] }) {
       // of silently hiding all but one.
       const icon = L.divIcon({
         className: "",
-        html: `<span class="inline-flex h-7 w-7 items-center justify-center rounded-full bg-[#0C6B58] text-xs font-bold text-white shadow-sm ring-2 ring-white">${group.length}</span>`,
+        html: `<span class="inline-flex h-7 w-7 items-center justify-center rounded-full bg-pine text-xs font-bold text-white shadow-sm ring-2 ring-white">${group.length}</span>`,
         iconSize: [0, 0],
         iconAnchor: [14, 14],
       });
