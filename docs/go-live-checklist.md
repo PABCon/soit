@@ -128,10 +128,39 @@ commit or CLAUDE.md entry anywhere suggesting either changed.
 
 ## Compliance / legal
 
-- [ ] Real privacy policy + terms content — `/privacy` and `/terms`
-      are still placeholder pages ("this page is being prepared")
-- [ ] Cookie/consent banner — not built; blocked on picking an
-      analytics tool first (below)
+- [x] Real privacy policy + terms content shipped 2026-10-18 — `/privacy`
+      and `/terms` now have real, codebase-audited content (controller
+      identity, lawful bases, actual data collected, actual cookies/
+      localStorage, actual third-party processors, retention, data-subject
+      rights with real links to `/settings`) instead of the old "this page
+      is being prepared" placeholder. **Still explicitly marked as an
+      AI-drafted document pending a qualified lawyer's review** (a visible
+      notice at both the top and bottom of each page) — not launch-ready
+      until that review happens. One real open item the policy itself
+      flags honestly rather than silently resolving: whether EU Standard
+      Contractual Clauses (or an equivalent safeguard) are formally in
+      place with Stripe/Resend/Vercel/Anthropic — grepped the whole repo/
+      docs, found nothing documenting this, so it's disclosed as unverified
+      rather than assumed fine.
+- [x] Cookie/consent banner — **investigated and found not currently
+      required, not simply deferred.** Audited every cookie/localStorage
+      site in `src/` directly (not from memory): the only cookie this app
+      sets is Supabase Auth's own session cookie (strictly necessary —
+      exempt under GDPR/ePrivacy); there is no separate locale cookie at
+      all (locale is resolved from the URL path, confirmed via grep: zero
+      `NEXT_LOCALE` references, no `middleware.ts` anywhere). Three
+      localStorage keys exist (`soit_viewed_jobs`/
+      `soit_engagement_popup_dismissed` for the candidate growth-nudge
+      popup, `soit_new_applicants_banner_dismissed_count` for a console
+      banner dismiss flag) — functional/preference state, never shared
+      with a third party, never used for tracking or advertising. No
+      analytics or advertising script of any kind is installed (grepped
+      `package.json` for every common vendor — zero matches). On that
+      basis, a mandatory consent banner isn't currently triggered — revisit
+      the moment analytics, ads, or any other non-essential tracking
+      technology is added (the old blocker, "picking an analytics tool
+      first," still applies to *that* future decision, not to today's
+      cookie posture).
 - [ ] §6.6 data-retention purge job — specified, not built
 - [ ] Decide whether to show a verified employer's NIF publicly on
       their company page (opt-in only, per the spec) — real trust

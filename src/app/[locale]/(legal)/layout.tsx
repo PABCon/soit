@@ -10,8 +10,9 @@ function LegalHeader() {
   const brand = useTranslations("brand");
   return (
     <header className="flex h-14 items-center gap-4 border-b border-line px-4">
-      <Link href="/jobs" className="font-display text-lg font-bold text-pine">
-        {brand("name")}
+      <Link href="/jobs" className="leading-tight">
+        {/* eslint-disable-next-line @next/next/no-img-element -- small local brand asset, not a remote/optimizable photo */}
+        <img src="/logo-justit.png" alt={brand("name")} className="h-6 w-auto" />
       </Link>
       <div className="ml-auto">
         <LanguageSwitcher />

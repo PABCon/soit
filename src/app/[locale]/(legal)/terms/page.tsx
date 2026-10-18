@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { getTranslations, setRequestLocale } from "next-intl/server";
+import { JobDescriptionBody } from "@/components/JobDescriptionBody";
 
 type Props = { params: Promise<{ locale: string }> };
 
@@ -9,9 +10,30 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return { title: t("termsTitle") };
 }
 
-/** Placeholder — real terms content is separate, tracked backlog (§9
- *  compliance pass in CLAUDE.md), not written here. Deliberately not real
- *  legal copy. */
+const h2Class = "font-display mt-8 text-lg font-semibold text-ink";
+const draftNoticeClass = "rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-800";
+
+const SECTIONS = [
+  "platform",
+  "accounts",
+  "rules",
+  "obligations",
+  "content",
+  "payments",
+  "ip",
+  "termination",
+  "disclaimer",
+  "law",
+  "changes",
+  "contact",
+] as const;
+
+/** Real terms content, grounded in what this platform's two core rules (§1)
+ *  and actually-built mechanisms (billing via Stripe, NIF verification, the
+ *  candidate anonymize-on-delete flow) really are — replaces the old
+ *  "this page is being prepared" placeholder. Still explicitly flagged (top
+ *  and bottom) as AI-drafted and pending a lawyer's review — not presented
+ *  as finalized legal text. */
 export default async function TermsPage({ params }: Props) {
   const { locale } = await params;
   setRequestLocale(locale);
@@ -20,7 +42,18 @@ export default async function TermsPage({ params }: Props) {
   return (
     <>
       <h1 className="text-3xl font-bold lg:text-4xl">{t("termsTitle")}</h1>
-      <p className="mt-4 text-sm text-muted">{t("placeholderBody")}</p>
+      <p className="mt-2 text-xs text-muted">{t("lastUpdated")}</p>
+      <div className={`mt-4 ${draftNoticeClass}`}>{t("draftNotice")}</div>
+      <p className="mt-6 text-sm leading-relaxed text-muted">{t("terms.intro")}</p>
+      {SECTIONS.map((key) => (
+        <section key={key}>
+          <h2 className={h2Class}>{t(`terms.${key}Heading`)}</h2>
+          <div className="mt-2">
+            <JobDescriptionBody description={t(`terms.${key}Body`)} />
+          </div>
+        </section>
+      ))}
+      <div className={`mt-8 ${draftNoticeClass}`}>{t("draftNotice")}</div>
     </>
   );
 }
