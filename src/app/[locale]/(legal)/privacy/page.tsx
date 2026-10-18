@@ -11,7 +11,6 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 const h2Class = "font-display mt-8 text-lg font-semibold text-ink";
-const draftNoticeClass = "rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-800";
 
 const SECTIONS = [
   "controller",
@@ -29,9 +28,9 @@ const SECTIONS = [
 
 /** Real policy content, grounded in a direct codebase audit of what this app
  *  actually collects/stores/sends to third parties — replaces the old
- *  "this page is being prepared" placeholder. Still explicitly flagged (top
- *  and bottom) as AI-drafted and pending a lawyer's review — not presented
- *  as finalized legal text. */
+ *  "this page is being prepared" placeholder. Per explicit instruction
+ *  (follow-up round), no "AI-drafted/pending review" banner is shown here —
+ *  that caveat is communicated to the coordinator/user directly instead. */
 export default async function PrivacyPage({ params }: Props) {
   const { locale } = await params;
   setRequestLocale(locale);
@@ -41,7 +40,6 @@ export default async function PrivacyPage({ params }: Props) {
     <>
       <h1 className="text-3xl font-bold lg:text-4xl">{t("privacyTitle")}</h1>
       <p className="mt-2 text-xs text-muted">{t("lastUpdated")}</p>
-      <div className={`mt-4 ${draftNoticeClass}`}>{t("draftNotice")}</div>
       <p className="mt-6 text-sm leading-relaxed text-muted">{t("privacy.intro")}</p>
       {SECTIONS.map((key) => (
         <section key={key}>
@@ -51,7 +49,6 @@ export default async function PrivacyPage({ params }: Props) {
           </div>
         </section>
       ))}
-      <div className={`mt-8 ${draftNoticeClass}`}>{t("draftNotice")}</div>
     </>
   );
 }

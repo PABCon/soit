@@ -128,39 +128,51 @@ commit or CLAUDE.md entry anywhere suggesting either changed.
 
 ## Compliance / legal
 
-- [x] Real privacy policy + terms content shipped 2026-10-18 — `/privacy`
-      and `/terms` now have real, codebase-audited content (controller
-      identity, lawful bases, actual data collected, actual cookies/
-      localStorage, actual third-party processors, retention, data-subject
-      rights with real links to `/settings`) instead of the old "this page
-      is being prepared" placeholder. **Still explicitly marked as an
-      AI-drafted document pending a qualified lawyer's review** (a visible
-      notice at both the top and bottom of each page) — not launch-ready
-      until that review happens. One real open item the policy itself
-      flags honestly rather than silently resolving: whether EU Standard
-      Contractual Clauses (or an equivalent safeguard) are formally in
-      place with Stripe/Resend/Vercel/Anthropic — grepped the whole repo/
-      docs, found nothing documenting this, so it's disclosed as unverified
-      rather than assumed fine.
-- [x] Cookie/consent banner — **investigated and found not currently
-      required, not simply deferred.** Audited every cookie/localStorage
-      site in `src/` directly (not from memory): the only cookie this app
-      sets is Supabase Auth's own session cookie (strictly necessary —
-      exempt under GDPR/ePrivacy); there is no separate locale cookie at
-      all (locale is resolved from the URL path, confirmed via grep: zero
-      `NEXT_LOCALE` references, no `middleware.ts` anywhere). Three
-      localStorage keys exist (`soit_viewed_jobs`/
-      `soit_engagement_popup_dismissed` for the candidate growth-nudge
-      popup, `soit_new_applicants_banner_dismissed_count` for a console
-      banner dismiss flag) — functional/preference state, never shared
-      with a third party, never used for tracking or advertising. No
-      analytics or advertising script of any kind is installed (grepped
-      `package.json` for every common vendor — zero matches). On that
-      basis, a mandatory consent banner isn't currently triggered — revisit
-      the moment analytics, ads, or any other non-essential tracking
-      technology is added (the old blocker, "picking an analytics tool
-      first," still applies to *that* future decision, not to today's
-      cookie posture).
+- [x] Real privacy policy + terms content shipped 2026-10-18, revised the
+      same day with real operating-entity details (round 2) — `/privacy`
+      and `/terms` have real, codebase-audited content: controller
+      identity (**PABC** — full legal name Paulo Adrega Brás Consulting, a
+      Polish sole proprietorship, NIP `5242876773`, REGON `381799982`,
+      verified against Poland's CEIDG registry — operating a
+      Portuguese-market platform; this cross-border structure is stated
+      plainly in both documents, not papered over), real GDPR article
+      citations (Art. 6 lawful bases, Art. 15-21/77 rights, Art. 46(2)(c)
+      transfers), actual data collected, actual cookies/localStorage
+      (including Google Analytics now that it's real — see the
+      cookie-banner item below), actual third-party processors, retention,
+      and data-subject rights with real links to `/settings`. **The
+      "AI-drafted, pending lawyer review" page banner was removed per
+      explicit instruction** — that caveat is now communicated to the
+      user directly rather than displayed on the page; the content itself
+      was written to be as legally rigorous as possible, but it is still
+      AI-drafted and a real lawyer should review it before it's relied on
+      in an actual dispute. **Open item, flagged rather than resolved
+      unilaterally**: the governing-law clause (Portugal, for the
+      PT-focused service, with a note preserving the consumer's own
+      mandatory-protection rights) is a reasonable default for a Polish
+      entity serving a Portuguese consumer market, but the real
+      cross-border consumer-protection interaction (Rome I Regulation
+      Art. 6) deserves a lawyer's actual sign-off, not an AI's best
+      guess — flagged back to the coordinator, not silently decided as
+      final.
+- [x] Cookie/consent banner — **now genuinely required and built**,
+      reversing the prior round's "not currently required" finding now
+      that the premise changed: Google Analytics (GA4, measurement ID
+      `G-T7HJBP9W8L`) was added 2026-10-18, and GA's own cookies are not
+      strictly necessary, so Art. 5(3) ePrivacy requires real prior
+      consent. New `src/components/CookieConsentBanner.tsx` (mounted once
+      in the true root `[locale]/layout.tsx`, the only layout wrapping
+      every route group) shows Accept/Reject, remembers the choice in
+      localStorage (`soit_cookie_consent`), and `gtag.js` is only rendered
+      via `next/script` after an explicit "accept" — confirmed live via a
+      real network-request check (not just code review) that zero
+      requests to `googletagmanager.com`/`google-analytics.com` fire
+      before consent, and that they do fire immediately after. The
+      underlying facts from the prior audit (Supabase's own session
+      cookie remains strictly necessary and consent-exempt; no locale
+      cookie exists; the candidate/employer localStorage keys remain
+      functional-only) are unchanged and still accurately described in
+      the Privacy Policy's cookie section — only the GA piece is new.
 - [ ] §6.6 data-retention purge job — specified, not built
 - [ ] Decide whether to show a verified employer's NIF publicly on
       their company page (opt-in only, per the spec) — real trust
@@ -171,16 +183,24 @@ commit or CLAUDE.md entry anywhere suggesting either changed.
 ## Observability
 
 - [ ] Error monitoring (e.g. Sentry) — none configured
-- [ ] Basic analytics — none configured. Spec's own recommendation:
-      Plausible or Umami (cookie-free), which keeps the consent banner
-      above trivial rather than a full GA4-style consent flow
+- [x] Basic analytics — **Google Analytics (GA4) added 2026-10-18**,
+      gated behind a real consent banner (see Compliance/legal above) —
+      the spec's own original suggestion was a cookie-free tool
+      (Plausible/Umami) specifically to avoid needing a consent flow at
+      all; GA was the user's explicit choice instead, so the consent
+      banner this requires is a real, deliberate trade-off, not an
+      oversight.
 
 ## SEO
 
-- [ ] Submit the real domain to Google Search Console; run the Rich
-      Results Test against a real job page's `JobPosting` JSON-LD —
-      still not confirmed done (can't verify Search Console submission
-      from here either way)
+- [x] Google Search Console — **done, verified by the user directly** via
+      a DNS TXT record (2026-10-18). `sitemap.xml`/`robots.txt` re-checked
+      the same day and still correctly derive from `NEXT_PUBLIC_SITE_URL`
+      at runtime (`https://justit.pt` in production) — nothing to submit
+      beyond what's already live. The Rich Results Test against a real
+      job page's `JobPosting` JSON-LD is still not independently
+      confirmed from here (no browser tool was used this round to check
+      it) — worth a real spot-check before launch, not yet done.
 - [x] `sitemap.xml`/`robots.txt` re-confirmed against the real host
       2026-10-17 — both derive their host from `NEXT_PUBLIC_SITE_URL`
       at runtime (no hardcoded domain), which is already

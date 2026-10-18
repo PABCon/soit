@@ -4,6 +4,7 @@ import { NextIntlClientProvider, hasLocale } from "next-intl";
 import { setRequestLocale, getTranslations } from "next-intl/server";
 import { Geist } from "next/font/google";
 import { routing } from "@/i18n/routing";
+import { CookieConsentBanner } from "@/components/CookieConsentBanner";
 import "../globals.css";
 
 // Corrective landing-page redesign: switched from Inter to **Geist**, the
@@ -58,7 +59,10 @@ export default async function LocaleLayout({ children, params }: Props) {
   return (
     <html lang={locale} className={geist.variable}>
       <body className="bg-paper text-ink antialiased">
-        <NextIntlClientProvider>{children}</NextIntlClientProvider>
+        <NextIntlClientProvider>
+          {children}
+          <CookieConsentBanner />
+        </NextIntlClientProvider>
       </body>
     </html>
   );
