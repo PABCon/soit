@@ -354,22 +354,28 @@ export function AuthForm({ role, mode }: { role: Role; mode: Mode }) {
                 onClick={() => handleOAuth(provider)}
                 className="flex h-11 flex-1 items-center justify-center gap-2 rounded-lg border border-line bg-white text-sm hover:bg-paper"
               >
-                {/* Real brand marks for Google/GitHub/Facebook, each extracted
-                 *  once from simple-icons (same one-time-extraction convention
-                 *  as src/components/icons/tech-icons.tsx — not a runtime
-                 *  dependency). GitHub uses its standard single-color dark
-                 *  mark, not a colored treatment, matching GitHub's own brand
-                 *  guidelines. LinkedIn has no icon here: confirmed directly
-                 *  against simple-icons' raw data (3466 icons, zero match for
-                 *  "linkedin" in any title/slug) that it's genuinely absent
-                 *  from that source, not a lookup miss — same as this
-                 *  codebase's documented Java/C#/AWS/Azure gaps in
-                 *  tech-icons.tsx. Hand-drawing an approximation of a real
-                 *  trademarked logo is exactly what that precedent avoids, so
-                 *  this stays text-only rather than inventing one. */}
-                {provider === "google" && <GoogleIcon className="h-4 w-4" />}
-                {provider === "github" && <GithubIcon className="h-4 w-4" />}
-                {provider === "facebook" && <FacebookIcon className="h-4 w-4" />}
+                {/* Real brand marks for all four providers, standardized to the
+                 *  same 20px (h-5 w-5) box regardless of source, so they read
+                 *  as visually uniform next to each other — Google/GitHub/
+                 *  Facebook are inline SVGs (path/hex extracted once from
+                 *  simple-icons, same one-time-extraction convention as
+                 *  src/components/icons/tech-icons.tsx, not a runtime
+                 *  dependency), LinkedIn is a real raster asset the user
+                 *  supplied directly (public/linkedin-icon.png — simple-icons
+                 *  genuinely has no LinkedIn entry at all, confirmed against
+                 *  its raw data, 3466 icons, zero title/slug match; same gap
+                 *  as this codebase's documented Java/C#/AWS/Azure misses in
+                 *  tech-icons.tsx, where hand-drawing an approximation of a
+                 *  real trademarked logo is deliberately avoided). GitHub
+                 *  uses its standard single-color dark mark, not a colored
+                 *  treatment, matching GitHub's own brand guidelines. */}
+                {provider === "google" && <GoogleIcon className="h-5 w-5" />}
+                {provider === "github" && <GithubIcon className="h-5 w-5" />}
+                {provider === "linkedin_oidc" && (
+                  // eslint-disable-next-line @next/next/no-img-element -- tiny (603B), fixed decorative icon, not worth next/image's overhead here
+                  <img src="/linkedin-icon.png" alt="" className="h-5 w-5" />
+                )}
+                {provider === "facebook" && <FacebookIcon className="h-5 w-5" />}
                 {t(`provider.${provider}`)}
               </button>
             ))}
