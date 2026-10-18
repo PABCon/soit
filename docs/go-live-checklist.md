@@ -356,9 +356,9 @@ commit or CLAUDE.md entry anywhere suggesting either changed.
         specific company at some point, not a reproducible app bug;
         flagging that this was a one-time correction, not a fix to an
         underlying mechanism, in case it recurs.
-- [x] **The Stripe webhook domain gap — fixed 2026-10-18, but needs a
-      production redeploy before it's actually live.** The old webhook
-      endpoint (`we_1ULLehEfmibRYZh3Dw0cZ06p`) was registered at
+- [x] **The Stripe webhook domain gap — fixed and fully verified
+      2026-10-18.** The old webhook endpoint
+      (`we_1ULLehEfmibRYZh3Dw0cZ06p`) was registered at
       `https://soit.vercel.app/api/stripe/webhook` — since 2026-10-09's
       canonical-domain redirect, `soit.vercel.app` 308-redirects every
       path (webhook included) to `justit.pt`, and Stripe doesn't follow
@@ -373,21 +373,21 @@ commit or CLAUDE.md entry anywhere suggesting either changed.
       and set its real signing secret as `STRIPE_WEBHOOK_SECRET` in
       Vercel's **production** environment only (preview/development
       untouched — they still need the local `stripe listen` secret).
-      **Could not fully verify end-to-end this round**: a real signed
-      test event (`stripe.webhooks.generateTestHeaderString`, same
-      method used in earlier rounds) sent to the live production URL
-      came back `400 Signature verification failed` — consistent with
-      this project's own documented gotcha that a Vercel env var change
-      needs a redeploy before a running deployment picks it up, which
-      is outside what I can trigger myself. **The old `soit.vercel.app`
-      endpoint was deliberately left enabled, not disabled** — disabling
-      it now, before the new one is confirmed working, would leave zero
-      functioning webhook endpoints. Next step: trigger a production
-      redeploy, then re-run the same signed-test-event check against
-      `https://justit.pt/api/stripe/webhook` to confirm it actually
-      processes an event (grants a credit on a disposable test company,
-      cleaned up after) — only then disable the old endpoint in
-      Stripe's dashboard.
+      A first verification attempt (same session, before the next
+      production deploy) correctly came back `400 signature verification
+      failed` — the env var hadn't taken effect yet, per this project's
+      own documented redeploy gotcha. **After the user's production
+      deploy, re-verified end-to-end**: a real signed test event
+      (`stripe.webhooks.generateTestHeaderString`) against the live
+      `https://justit.pt/api/stripe/webhook` returned a real `200`,
+      correctly granted an ad credit and logged a `job_ad_purchases`
+      row on a disposable test company, and a replay of the identical
+      event confirmed idempotency (credit stayed at 1, not 2) — fixture
+      cleaned up after. **The old `soit.vercel.app` endpoint has now
+      been disabled** (not deleted — kept for audit/history) via the
+      Stripe API; confirmed via a follow-up list call that exactly one
+      endpoint is enabled (`justit.pt`) and the old one shows
+      `status: disabled`.
 - [ ] The "6+ ads" tier is deliberately not self-serve (a "talk to
       sales" contact link only) — when a real deal happens, the Stripe
       Checkout Session/invoice for it is created manually via the
