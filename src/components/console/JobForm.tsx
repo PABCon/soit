@@ -27,7 +27,7 @@ import type { ExtractedJob } from "@/lib/ai/extract-job";
 import { buttonClassName } from "@/components/Button";
 
 type TechTagOption = { id: string; label: string; aliases: string[] };
-type LocationOption = { id: string; slug: string; name: string };
+type LocationOption = { id: string; slug: string; name: string; country: string };
 type JobCategoryOption = { id: string; slug: string; label: string };
 type SpokenLanguageOption = { id: string; slug: string; label: string };
 
@@ -520,11 +520,31 @@ export function JobForm({
                     <option value="">
                       {workModel === "remote" ? t("locationRemote") : t("locationPlaceholder")}
                     </option>
-                    {locations.map((loc) => (
-                      <option key={loc.id} value={loc.id}>
-                        {loc.name}
-                      </option>
-                    ))}
+                    {/* Job-location expansion: a company hiring for a
+                     *  Portugal-based role may also have European offices —
+                     *  optgroups keep the original 14+ Portuguese cities
+                     *  visually separate from the newer European hub set,
+                     *  rather than one long undifferentiated list. */}
+                    <optgroup label={t("locationGroupPortugal")}>
+                      {locations
+                        .filter((loc) => loc.country === "Portugal")
+                        .map((loc) => (
+                          <option key={loc.id} value={loc.id}>
+                            {loc.name}
+                          </option>
+                        ))}
+                    </optgroup>
+                    {locations.some((loc) => loc.country !== "Portugal") && (
+                      <optgroup label={t("locationGroupOtherEurope")}>
+                        {locations
+                          .filter((loc) => loc.country !== "Portugal")
+                          .map((loc) => (
+                            <option key={loc.id} value={loc.id}>
+                              {loc.name} ({loc.country})
+                            </option>
+                          ))}
+                      </optgroup>
+                    )}
                   </select>
                 </label>
               </div>

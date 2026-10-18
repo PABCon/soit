@@ -21,7 +21,7 @@ export async function GET(request: Request) {
 
   return Response.json({
     categories: categories.map((c) => ({ slug: c.slug, label: c.label })),
-    locations: locations.map((l) => ({ slug: l.slug, name: l.name })),
+    locations: locations.map((l) => ({ slug: l.slug, name: l.name, country: l.country })),
     techTags: techTags.map((t) => ({ slug: t.slug, label: t.label })),
     languages: languages.map((l) => ({ slug: l.slug, label: l.label })),
     enums: {

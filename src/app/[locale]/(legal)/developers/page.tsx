@@ -124,7 +124,7 @@ export default async function DevelopersPage({ params }: Props) {
       <pre className={`mt-2 ${codeClass}`}>
 {`{
   "categories": [{ "slug": "backend-development", "label": "Backend Development" }, ...],
-  "locations": [{ "slug": "lisboa", "name": "Lisboa" }, ...],
+  "locations": [{ "slug": "lisboa", "name": "Lisboa", "country": "Portugal" }, ...],
   "techTags": [{ "slug": "typescript", "label": "TypeScript" }, ...],
   "languages": [{ "slug": "english", "label": "English" }, ...],
   "enums": {

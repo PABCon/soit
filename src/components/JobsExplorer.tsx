@@ -663,20 +663,30 @@ export function JobsExplorer({
           </div>
 
           {mapVisible && (
-            <div className="relative order-1 hidden h-[420px] overflow-hidden rounded-[10px] border border-line lg:sticky lg:top-20 lg:order-2 lg:block lg:h-[calc(100dvh-8rem)]">
-              <button
-                type="button"
-                onClick={() => setMapVisible(false)}
-                title={t("hideMap")}
-                // Leaflet's own zoom control sits at the same top-left
-                // corner with z-index 1000 — this has to clear that or a
-                // click here just hits "+" instead.
-                className="absolute top-2 left-2 z-[1100] flex h-8 w-8 items-center justify-center rounded-full bg-white text-ink shadow-sm hover:text-pine"
-              >
-                {CROSS_ICON}
-                <span className="sr-only">{t("hideMap")}</span>
-              </button>
-              <JobMap jobs={pinned} />
+            // Column wrapper so the "remote jobs have no pin" disclaimer
+            // (reference-image comparison round) sits as its own line
+            // directly below the map frame, not overlaid on top of it —
+            // flex-col + the map box's own flex-1/min-h-0 keeps the whole
+            // column's total height at the existing sticky box's
+            // calc(100dvh-8rem), split between the map and this one text
+            // row, rather than growing past it.
+            <div className="order-1 hidden flex-col gap-2 lg:sticky lg:top-20 lg:order-2 lg:flex lg:h-[calc(100dvh-8rem)]">
+              <div className="relative min-h-0 flex-1 overflow-hidden rounded-[10px] border border-line">
+                <button
+                  type="button"
+                  onClick={() => setMapVisible(false)}
+                  title={t("hideMap")}
+                  // Leaflet's own zoom control sits at the same top-left
+                  // corner with z-index 1000 — this has to clear that or a
+                  // click here just hits "+" instead.
+                  className="absolute top-2 left-2 z-[1100] flex h-8 w-8 items-center justify-center rounded-full bg-white text-ink shadow-sm hover:text-pine"
+                >
+                  {CROSS_ICON}
+                  <span className="sr-only">{t("hideMap")}</span>
+                </button>
+                <JobMap jobs={pinned} />
+              </div>
+              <p className="shrink-0 text-xs text-muted">{t("mapHint")}</p>
             </div>
           )}
         </div>

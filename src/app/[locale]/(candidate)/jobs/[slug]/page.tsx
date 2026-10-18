@@ -64,6 +64,30 @@ const EMPLOYMENT = {
   internship: "INTERN",
 } as const;
 
+/** ISO 3166-1 alpha-2, keyed by `locations.country`'s real country name
+ *  (§ job-location expansion) — JobPosting's `addressCountry` wants the
+ *  code, not the name. A hardcoded "PT" here used to be correct for every
+ *  job by construction (only Portuguese cities existed); now that a job's
+ *  location can be any of the curated European hubs, the real country has
+ *  to drive this. "PT" stays the fallback for a remote job (no
+ *  `location_id` at all) or a legacy row that predates the locations
+ *  taxonomy — both genuinely unknown-or-Portugal cases, not a guess. */
+const COUNTRY_ISO: Record<string, string> = {
+  Portugal: "PT",
+  "United Kingdom": "GB",
+  Germany: "DE",
+  Netherlands: "NL",
+  Ireland: "IE",
+  France: "FR",
+  Spain: "ES",
+  Poland: "PL",
+  "Czech Republic": "CZ",
+  Austria: "AT",
+  Switzerland: "CH",
+  Sweden: "SE",
+  Belgium: "BE",
+};
+
 function jobPostingJsonLd(job: JobDetail, locale: string) {
   return {
     "@context": "https://schema.org",
@@ -113,7 +137,7 @@ function jobPostingJsonLd(job: JobDetail, locale: string) {
             address: {
               "@type": "PostalAddress",
               addressLocality: job.location,
-              addressCountry: "PT",
+              addressCountry: COUNTRY_ISO[job.locationCountry ?? "Portugal"] ?? "PT",
             },
           },
         }),

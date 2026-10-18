@@ -23,7 +23,7 @@ const RECS_SELECT = `
   companies!inner ( slug, company_name, company_logo_url, top_employer_active ),
   job_tech_tags ( tech_tag_id, level, required, tech_tags ( slug, label ) ),
   job_categories ( slug ),
-  locations ( slug ),
+  locations ( slug, country ),
   job_languages ( level, spoken_languages ( slug, label ) ),
   job_employment_types ( employment_type )
 `;

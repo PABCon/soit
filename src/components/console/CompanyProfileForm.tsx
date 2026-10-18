@@ -284,11 +284,26 @@ export function CompanyProfileForm({
             <span className="font-medium text-ink">{t("location")}</span>
             <select value={locationId} onChange={(e) => setLocationId(e.target.value)} className={inputClass}>
               <option value="">{t("locationPlaceholder")}</option>
-              {locations.map((l) => (
-                <option key={l.id} value={l.id}>
-                  {l.name}
-                </option>
-              ))}
+              <optgroup label={t("locationGroupPortugal")}>
+                {locations
+                  .filter((l) => l.country === "Portugal")
+                  .map((l) => (
+                    <option key={l.id} value={l.id}>
+                      {l.name}
+                    </option>
+                  ))}
+              </optgroup>
+              {locations.some((l) => l.country !== "Portugal") && (
+                <optgroup label={t("locationGroupOtherEurope")}>
+                  {locations
+                    .filter((l) => l.country !== "Portugal")
+                    .map((l) => (
+                      <option key={l.id} value={l.id}>
+                        {l.name} ({l.country})
+                      </option>
+                    ))}
+                </optgroup>
+              )}
             </select>
           </label>
           <label className={labelClass}>

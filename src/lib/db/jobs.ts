@@ -38,7 +38,7 @@ export const SELECT = `
   companies!inner ( slug, company_name, company_logo_url, company_description, top_employer_active ),
   job_tech_tags ( level, required, tech_tags ( slug, label ) ),
   job_categories ( slug ),
-  locations ( slug ),
+  locations ( slug, country ),
   job_languages ( level, spoken_languages ( slug, label ) ),
   job_employment_types ( employment_type )
 `;
@@ -78,7 +78,7 @@ export type JobRow = {
   };
   job_tech_tags: { level: SkillLevel | null; required: boolean; tech_tags: { slug: string; label: string } }[];
   job_categories: { slug: string } | null;
-  locations: { slug: string } | null;
+  locations: { slug: string; country: string } | null;
   job_languages: { level: SkillLevel | null; spoken_languages: { slug: string; label: string } }[];
   job_employment_types: { employment_type: Job["employmentType"] }[];
 };
@@ -103,6 +103,7 @@ export function toJob(row: JobRow): Job {
     },
     location: row.location,
     locationSlug: row.locations?.slug ?? null,
+    locationCountry: row.locations?.country ?? null,
     lat: row.latitude,
     lng: row.longitude,
     workModel: row.work_model,

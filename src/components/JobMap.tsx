@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useRef } from "react";
-import { useFormatter, useLocale, useTranslations } from "next-intl";
-import { useRouter } from "@/i18n/navigation";
+import { useEffect, useRef, useState } from "react";
+import { useFormatter, useTranslations } from "next-intl";
+import { Link, useRouter } from "@/i18n/navigation";
+import { CompanyLogo } from "@/components/CompanyLogo";
 import type { Job } from "@/lib/types";
 import "leaflet/dist/leaflet.css";
 
@@ -32,13 +33,16 @@ import "leaflet/dist/leaflet.css";
  * coordinates at a handful of job count, not visual crowding that shifts
  * with zoom level, so a simple "same point → one marker" grouping is both
  * simpler and more directly correct than zoom-aware distance clustering.
- * A single-job point renders exactly as before; a 2+ point renders a
- * count-badge marker whose popup lists every job there (title/company/
- * salary, each a real link) — built as raw HTML/Tailwind matching
- * `CompactJobRow`'s visual recipe (Leaflet popups are plain DOM, not
- * React, so the component itself can't be mounted directly), with clicks
- * on the popup's job links intercepted to use the same client-side router
- * navigation the existing single-job marker click already uses.
+ * A single-job point renders exactly as before (Leaflet's own default
+ * popup bubble + click-to-navigate). A 2+ point renders a count-badge
+ * marker; clicking it opens a real React-rendered panel docked to the
+ * map's own top-right corner (`activeGroup` state below) — a reference
+ * image comparison round found Leaflet's default speech-bubble popup
+ * chrome (rounded white bubble + pointer tail, anchored to the marker)
+ * didn't match the "clean docked card" look the reference actually wants,
+ * so this is a real overlay div, not `L.popup()` — which also means the
+ * row list can use real `CompanyLogo`/`Link` components instead of the
+ * raw HTML strings a Leaflet popup would otherwise require.
  *
  * The Leaflet map instance is created exactly once and only ever torn down
  * on real unmount — a real-usage QA round (phase 5, search) surfaced a
@@ -60,7 +64,11 @@ export function JobMap({ jobs }: { jobs: Job[] }) {
   const router = useRouter();
   const format = useFormatter();
   const t = useTranslations("feed");
-  const locale = useLocale();
+
+  // The docked "N jobs in this area" panel — a real React overlay, not a
+  // Leaflet popup (see the file's own doc comment for why). `null` means
+  // closed.
+  const [activeGroup, setActiveGroup] = useState<Job[] | null>(null);
 
   // Refs keep the effects below from needing to re-run when these
   // identities change — updated in their own effects rather than during
@@ -71,37 +79,25 @@ export function JobMap({ jobs }: { jobs: Job[] }) {
     routerRef.current = router;
   }, [router]);
 
-  const localeRef = useRef(locale);
-  useEffect(() => {
-    localeRef.current = locale;
-  }, [locale]);
+  // Plain render-time helper for the docked panel's JSX below (real React
+  // render, safe to call `t`/`format` directly) — kept separate from
+  // `labelRef`, which exists only for the imperative Leaflet callbacks in
+  // `drawMarkers()`, outside React's own render pass.
+  function salaryLabel(job: Job): string {
+    return job.salaryMin == null
+      ? t("salaryHidden")
+      : format.number(job.salaryMin, {
+          style: "currency",
+          currency: "EUR",
+          maximumFractionDigits: 1,
+          notation: "compact",
+        });
+  }
 
   const labelRef = useRef<(job: Job) => string>(() => "");
   useEffect(() => {
-    labelRef.current = (job: Job) =>
-      job.salaryMin == null
-        ? t("salaryHidden")
-        : format.number(job.salaryMin, {
-            style: "currency",
-            currency: "EUR",
-            maximumFractionDigits: 1,
-            notation: "compact",
-          });
-  }, [format, t]);
-
-  // Builds one <a> row inside a multi-job marker's popup, mirroring
-  // CompactJobRow.tsx's own visual recipe (title / company · location ·
-  // work model / salary) as raw HTML — a Leaflet popup is plain DOM, not a
-  // React tree, so the real component can't be mounted into it directly.
-  const popupRowRef = useRef<(job: Job) => string>(() => "");
-  useEffect(() => {
-    popupRowRef.current = (job: Job) => `
-      <a href="/${localeRef.current}/jobs/${job.slug}" data-slug="${job.slug}" class="map-job-link block border-b border-line py-2 last:border-0 hover:bg-subtle">
-        <p class="truncate text-sm font-semibold text-ink">${job.title}</p>
-        <p class="truncate text-xs text-muted">${job.company.name} · ${job.location ?? t("remote")} · ${t(`workModel.${job.workModel}`)}</p>
-        <p class="mt-0.5 text-xs font-semibold text-[#0C6B58]">${labelRef.current(job)}</p>
-      </a>`;
-  }, [t]);
+    labelRef.current = salaryLabel;
+  });
 
   const jobsRef = useRef(jobs);
   useEffect(() => {
@@ -113,6 +109,11 @@ export function JobMap({ jobs }: { jobs: Job[] }) {
     const map = mapRef.current;
     const markers = markersRef.current;
     if (!map || !markers) return;
+
+    // Jobs changed out from under any open panel (a new filter/search) —
+    // its job list could be stale, so close it rather than risk a link
+    // pointing at a job that's no longer even on the map.
+    setActiveGroup(null);
 
     markers.clearLayers();
     const pinned = jobsRef.current.filter((j) => j.lat !== null && j.lng !== null);
@@ -147,11 +148,9 @@ export function JobMap({ jobs }: { jobs: Job[] }) {
         continue;
       }
 
-      // 2+ jobs stacked on the same point — a count-badge marker whose
-      // popup lists every job there instead of silently hiding all but
-      // one. No "navigate on click" handler here (unlike the single-job
-      // case above) — clicking just opens the popup, same as Leaflet's
-      // own default marker behavior, so the visitor can pick one.
+      // 2+ jobs stacked on the same point — a count-badge marker that
+      // opens the docked panel (React state, not a Leaflet popup) instead
+      // of silently hiding all but one.
       const icon = L.divIcon({
         className: "",
         html: `<span class="inline-flex h-7 w-7 items-center justify-center rounded-full bg-[#0C6B58] text-xs font-bold text-white shadow-sm ring-2 ring-white">${group.length}</span>`,
@@ -159,27 +158,7 @@ export function JobMap({ jobs }: { jobs: Job[] }) {
         iconAnchor: [14, 14],
       });
 
-      const popupHtml = `<div class="max-h-72 w-64 overflow-y-auto">${group
-        .map((job) => popupRowRef.current(job))
-        .join("")}</div>`;
-
-      const marker = L.marker([lat, lng], { icon })
-        .addTo(markers)
-        .bindPopup(popupHtml, { maxWidth: 280 });
-
-      marker.on("popupopen", (e) => {
-        const container = e.popup.getElement();
-        container?.querySelectorAll<HTMLAnchorElement>(".map-job-link").forEach((a) => {
-          a.addEventListener("click", (ev) => {
-            ev.preventDefault();
-            const slug = a.dataset.slug;
-            if (slug) {
-              marker.closePopup();
-              routerRef.current.push(`/jobs/${slug}`);
-            }
-          });
-        });
-      });
+      L.marker([lat, lng], { icon }).addTo(markers).on("click", () => setActiveGroup(group));
     }
 
     if (pinned.length > 0) {
@@ -243,9 +222,56 @@ export function JobMap({ jobs }: { jobs: Job[] }) {
   return (
     <div className="relative h-full w-full">
       <div ref={containerRef} className="h-full w-full rounded-[10px]" />
-      <p className="pointer-events-none absolute bottom-2 left-2 z-[400] rounded bg-white/85 px-2 py-1 text-[10px] text-muted">
-        {t("mapHint")}
-      </p>
+
+      {activeGroup && (
+        <div className="absolute top-4 right-4 z-[1150] flex max-h-[calc(100%-2rem)] w-[340px] max-w-[calc(100%-2rem)] flex-col overflow-hidden rounded-xl border border-line bg-white shadow-lg">
+          <div className="flex shrink-0 items-center justify-between border-b border-line px-4 py-3">
+            <p className="text-sm font-semibold text-ink">{t("jobsInThisArea", { count: activeGroup.length })}</p>
+            <button
+              type="button"
+              onClick={() => setActiveGroup(null)}
+              className="flex h-6 w-6 items-center justify-center rounded-full text-muted hover:bg-subtle hover:text-ink"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="h-3.5 w-3.5">
+                <path d="M6 6l12 12M18 6L6 18" />
+              </svg>
+              <span className="sr-only">{t("hideMap")}</span>
+            </button>
+          </div>
+
+          <ul className="overflow-y-auto">
+            {activeGroup.map((job) => (
+              <li key={job.slug} className="border-b border-line last:border-0">
+                <Link
+                  href={`/jobs/${job.slug}`}
+                  onClick={() => setActiveGroup(null)}
+                  className="flex items-center gap-2.5 px-4 py-2.5 hover:bg-subtle"
+                >
+                  <CompanyLogo company={job.company} size="sm" />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-semibold text-ink">{job.title}</p>
+                    <p className="truncate text-xs text-muted">
+                      {job.company.name} · {job.location ?? t("remote")} · {t(`workModel.${job.workModel}`)}
+                    </p>
+                  </div>
+                  <p className="shrink-0 text-sm font-semibold text-pine">{salaryLabel(job)}</p>
+                  <svg
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className="h-4 w-4 shrink-0 text-muted"
+                  >
+                    <path d="M9 6l6 6-6 6" />
+                  </svg>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </div>
   );
 }

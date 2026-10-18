@@ -20,6 +20,12 @@ export type Job = {
   company: Company;
   location: string | null;
   locationSlug: string | null;
+  /** "Portugal" for the original seeded cities, a real country name for the
+   *  European-hub expansion — null for a remote job (no location_id at
+   *  all) or a legacy row predating the locations taxonomy. Lets the job
+   *  detail page's JobPosting JSON-LD state the correct country instead of
+   *  assuming Portugal. */
+  locationCountry: string | null;
   lat: number | null;
   lng: number | null;
   workModel: WorkModel;
