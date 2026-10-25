@@ -1,7 +1,6 @@
 import type { EmailMessage } from "../types";
 import { emailLayout, renderEntityCard, entityCardText } from "../layout";
-
-const SITE = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+import { SITE_URL as SITE } from "../site-url";
 
 const WORK_MODEL_LABEL: Record<string, string> = { remote: "Remote", hybrid: "Hybrid", office: "On-site" };
 

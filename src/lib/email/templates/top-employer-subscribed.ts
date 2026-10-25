@@ -1,7 +1,6 @@
 import type { EmailMessage } from "../types";
 import { emailLayout } from "../layout";
-
-const SITE = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+import { SITE_URL as SITE } from "../site-url";
 
 const BENEFITS = [
   "A verified Top Employer badge",

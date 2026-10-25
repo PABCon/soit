@@ -7,7 +7,8 @@
  *  (contact-message, tech-tag-requested) deliberately don't use this: the
  *  user asked for those to stay plain, not branded. */
 
-const SITE = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+import { SITE_URL as SITE } from "./site-url";
+
 const LOGO_URL = `${SITE}/logo-justit.png`;
 
 const COLOR = {

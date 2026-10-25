@@ -3,9 +3,10 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import { Coins, Crown, HelpCircle } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { getMyEmployerContext } from "@/lib/db/companies";
+import { getCompanyInvoices } from "@/lib/stripe";
 import { AdCreditPacks } from "@/components/console/AdCreditPacks";
 import { TopEmployerCard } from "@/components/console/TopEmployerCard";
-import { BillingHistory, type AdCreditPurchaseRow } from "@/components/console/BillingHistory";
+import { BillingHistory } from "@/components/console/BillingHistory";
 import { buttonClassName } from "@/components/Button";
 
 type Props = {
@@ -23,11 +24,7 @@ export default async function JobAdsPricingPage({ params, searchParams }: Props)
   if (!ctx) return redirect({ href: "/employer/login", locale });
 
   const supabase = await createClient();
-  const { data: purchases } = await supabase
-    .from("job_ad_purchases")
-    .select("id, quantity, total_cents, currency, created_at, receipt_url")
-    .eq("company_id", ctx.company.id)
-    .order("created_at", { ascending: false });
+  const invoices = await getCompanyInvoices(ctx.company.stripe_customer_id);
 
   // Which plan an active Top Employer is actually billed on — surfaced
   // alongside the Active/Renews badge so a real subscriber (possibly still
@@ -133,7 +130,7 @@ export default async function JobAdsPricingPage({ params, searchParams }: Props)
         <p className="mt-1 text-sm text-muted">{t("billingHistorySubtitle")}</p>
         <div className="mt-4">
           <BillingHistory
-            purchases={(purchases ?? []) as AdCreditPurchaseRow[]}
+            invoices={invoices}
             locale={locale}
             canManageBilling={!!ctx.company.stripe_customer_id}
           />

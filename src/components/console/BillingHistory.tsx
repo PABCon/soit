@@ -1,37 +1,39 @@
 import { getTranslations } from "next-intl/server";
 import { Download } from "lucide-react";
 import { DownloadInvoicesButton } from "@/components/console/DownloadInvoicesButton";
+import type { CompanyInvoice } from "@/lib/stripe";
 
-export type AdCreditPurchaseRow = {
-  id: string;
-  quantity: number;
-  total_cents: number;
-  currency: string;
-  created_at: string;
-  receipt_url?: string | null;
+const STATUS_STYLES: Record<CompanyInvoice["status"], string> = {
+  paid: "bg-mint/25 text-pine",
+  open: "bg-amber-100 text-amber-700",
+  draft: "bg-paper text-muted",
+  uncollectible: "bg-red-100 text-red-700",
+  void: "bg-paper text-muted",
 };
 
-/** Billing dashboard — critical-bugs QA item: employers had no way to see
- *  past purchases at all. Ad-credit purchases are one-time Stripe
- *  Checkout (no recurring invoice, no Stripe Customer object), so this is
- *  a direct read of `job_ad_purchases` rather than a Stripe API call —
- *  the ledger this project already writes on every fulfilled purchase is
- *  itself the invoice history, nothing to fetch from Stripe for it. Top
- *  Employer's own recurring invoices live in Stripe's hosted Customer
- *  Portal instead (see "Manage billing" in TopEmployerCard) — that's
- *  where real multi-invoice history with PDFs belongs, not reimplemented
- *  here. Per-row `Download` uses the real Stripe charge receipt_url
- *  (`job_ad_purchases.receipt_url`, migration 20261016120000), captured
- *  once by the webhook at fulfillment time (see `fetchReceiptUrl` in
- *  `api/stripe/webhook/route.ts`) rather than calling the Stripe API on
- *  every page render. A row purchased before that column existed just
- *  shows "—". */
+const STATUS_KEYS: Record<CompanyInvoice["status"], string> = {
+  paid: "billingHistoryPaid",
+  open: "billingHistoryStatusOpen",
+  draft: "billingHistoryStatusDraft",
+  uncollectible: "billingHistoryStatusUncollectible",
+  void: "billingHistoryStatusVoid",
+};
+
+/** Billing dashboard — real invoice history read straight from Stripe
+ *  (`getCompanyInvoices`, src/lib/stripe.ts), not a local ledger: every
+ *  product (job-ad plans, Top Employer, any future custom deal) bills
+ *  through the same Stripe Customer, so there's one correct source
+ *  regardless of which product produced a given invoice — nothing here to
+ *  keep in sync with a separate table. "Download invoices" above the
+ *  table still opens the full Stripe Customer Portal for managing the
+ *  subscription itself (cancel, update card) — this table is for seeing
+ *  and downloading what's already been invoiced. */
 export async function BillingHistory({
-  purchases,
+  invoices,
   locale,
   canManageBilling,
 }: {
-  purchases: AdCreditPurchaseRow[];
+  invoices: CompanyInvoice[];
   locale: string;
   canManageBilling?: boolean;
 }) {
@@ -44,58 +46,58 @@ export async function BillingHistory({
           <DownloadInvoicesButton />
         </div>
       )}
-      {purchases.length === 0 ? (
+      {invoices.length === 0 ? (
         <p className="text-sm text-muted">{t("billingHistoryEmpty")}</p>
       ) : (
-      <div className="overflow-x-auto rounded-xl border border-line bg-white">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-line text-left text-xs font-semibold tracking-wide text-muted uppercase">
-              <th className="px-4 py-3">{t("billingHistoryDate")}</th>
-              <th className="px-4 py-3">{t("billingHistoryItem")}</th>
-              <th className="px-4 py-3">{t("billingHistoryAmount")}</th>
-              <th className="px-4 py-3">{t("billingHistoryStatus")}</th>
-              <th className="px-4 py-3">{t("billingHistoryInvoice")}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {purchases.map((purchase) => (
-              <tr key={purchase.id} className="border-b border-line last:border-0">
-                <td className="px-4 py-3 text-ink">
-                  {new Date(purchase.created_at).toLocaleDateString(locale === "pt" ? "pt-PT" : "en-GB")}
-                </td>
-                <td className="px-4 py-3 text-ink">
-                  {t("billingHistoryAdCredits", { count: purchase.quantity })}
-                </td>
-                <td className="px-4 py-3 text-ink">
-                  {(purchase.total_cents / 100).toLocaleString("en-IE", {
-                    style: "currency",
-                    currency: purchase.currency.toUpperCase(),
-                  })}
-                </td>
-                <td className="px-4 py-3">
-                  <span className="rounded bg-mint/25 px-2 py-0.5 text-xs font-semibold text-pine">{t("billingHistoryPaid")}</span>
-                </td>
-                <td className="px-4 py-3">
-                  {purchase.receipt_url ? (
-                    <a
-                      href={purchase.receipt_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 font-medium text-pine hover:underline"
-                    >
-                      <Download className="h-3.5 w-3.5" />
-                      {t("billingHistoryDownload")}
-                    </a>
-                  ) : (
-                    <span className="text-muted">—</span>
-                  )}
-                </td>
+        <div className="overflow-x-auto rounded-xl border border-line bg-white">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-line text-left text-xs font-semibold tracking-wide text-muted uppercase">
+                <th className="px-4 py-3">{t("billingHistoryDate")}</th>
+                <th className="px-4 py-3">{t("billingHistoryItem")}</th>
+                <th className="px-4 py-3">{t("billingHistoryAmount")}</th>
+                <th className="px-4 py-3">{t("billingHistoryStatus")}</th>
+                <th className="px-4 py-3">{t("billingHistoryInvoice")}</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody>
+              {invoices.map((invoice) => (
+                <tr key={invoice.id} className="border-b border-line last:border-0">
+                  <td className="px-4 py-3 text-ink">
+                    {new Date(invoice.date).toLocaleDateString(locale === "pt" ? "pt-PT" : "en-GB")}
+                  </td>
+                  <td className="px-4 py-3 text-ink">{invoice.description}</td>
+                  <td className="px-4 py-3 text-ink">
+                    {(invoice.amountCents / 100).toLocaleString("en-IE", {
+                      style: "currency",
+                      currency: invoice.currency.toUpperCase(),
+                    })}
+                  </td>
+                  <td className="px-4 py-3">
+                    <span className={`rounded px-2 py-0.5 text-xs font-semibold ${STATUS_STYLES[invoice.status]}`}>
+                      {t(STATUS_KEYS[invoice.status])}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3">
+                    {invoice.pdfUrl ? (
+                      <a
+                        href={invoice.pdfUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 font-medium text-pine hover:underline"
+                      >
+                        <Download className="h-3.5 w-3.5" />
+                        {t("billingHistoryDownload")}
+                      </a>
+                    ) : (
+                      <span className="text-muted">—</span>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
     </div>
   );

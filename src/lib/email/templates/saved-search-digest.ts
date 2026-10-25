@@ -1,7 +1,6 @@
 import type { EmailMessage } from "../types";
 import { emailLayout, renderEntityCard, entityCardText } from "../layout";
-
-const SITE = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+import { SITE_URL as SITE } from "../site-url";
 
 function initialsOf(name: string): string {
   return name.trim().slice(0, 1).toUpperCase() || "?";
