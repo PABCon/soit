@@ -59,6 +59,7 @@ export async function createAdCreditCheckoutAction(
       client_reference_id: ctx.company.id,
       subscription_data: { metadata: { company_id: ctx.company.id } },
       integration_identifier: newIntegrationIdentifier("job_ads"),
+      allow_promotion_codes: true,
       success_url: `${SITE}/${locale}/recruit/jobs/ads?purchase=success`,
       cancel_url: `${SITE}/${locale}/recruit/jobs/ads?purchase=canceled`,
     });
@@ -108,6 +109,7 @@ export async function createTopEmployerCheckoutAction(
       client_reference_id: ctx.company.id,
       subscription_data: { metadata: { company_id: ctx.company.id, billing_interval: interval } },
       integration_identifier: newIntegrationIdentifier("top_employer"),
+      allow_promotion_codes: true,
       success_url: `${SITE}/${locale}/recruit/jobs/ads?subscription=success`,
       cancel_url: `${SITE}/${locale}/recruit/jobs/ads?subscription=canceled`,
     });

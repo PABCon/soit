@@ -13,7 +13,22 @@ const env = Object.fromEntries(
     }),
 );
 
-const stripe = new Stripe(env.STRIPE_SECRET_KEY);
+// A real production incident (2026-10-25) this guard prevents from
+// repeating: .env.local's STRIPE_SECRET_KEY is deliberately the sandbox
+// key for safe local dev — running this script unmodified would silently
+// create Customers nobody in the real account can ever see, against
+// companies whose stripe_customer_id then points at a sandbox record. Pass
+// the real live key explicitly: `STRIPE_SECRET_KEY=sk_live_... node
+// scripts/backfill-stripe-customers.mjs`.
+const stripeKey = process.env.STRIPE_SECRET_KEY;
+if (!stripeKey?.startsWith("sk_live_")) {
+  console.error(
+    "Refusing to run: pass the real live secret key explicitly, e.g.\n  STRIPE_SECRET_KEY=sk_live_... node scripts/backfill-stripe-customers.mjs\n(.env.local's own key is the sandbox one, not the real account.)",
+  );
+  process.exit(1);
+}
+
+const stripe = new Stripe(stripeKey);
 const admin = createClient(env.NEXT_PUBLIC_SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY);
 
 // One-off backfill for any company created before ensureStripeCustomer
