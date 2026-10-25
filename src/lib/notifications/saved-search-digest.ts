@@ -24,7 +24,7 @@ type DigestJobRow = {
   latitude: number | null;
   longitude: number | null;
   location_id: string | null;
-  companies: { company_name: string };
+  companies: { company_name: string; company_logo_url: string | null };
 };
 
 type LocationRow = { id: string; slug: string; latitude: number; longitude: number };
@@ -77,7 +77,9 @@ export async function runSavedSearchDigest(): Promise<{ searchesChecked: number;
   const [{ data: jobs }, { data: locations }, { data: candidates }] = await Promise.all([
     admin
       .from("jobs")
-      .select("id, slug, title, published_at, created_at, latitude, longitude, location_id, companies!inner(company_name)")
+      .select(
+        "id, slug, title, published_at, created_at, latitude, longitude, location_id, companies!inner(company_name, company_logo_url)",
+      )
       .eq("status", "published")
       .gt("expires_at", new Date().toISOString()),
     admin.from("locations").select("id, slug, latitude, longitude"),
@@ -104,7 +106,12 @@ export async function runSavedSearchDigest(): Promise<{ searchesChecked: number;
         savedSearchDigestEmail({
           to: email,
           searchLabel: search.label,
-          jobs: matches.map((j) => ({ title: j.title, companyName: j.companies.company_name, url: `${SITE}/pt/jobs/${j.slug}` })),
+          jobs: matches.map((j) => ({
+            title: j.title,
+            companyName: j.companies.company_name,
+            companyLogoUrl: j.companies.company_logo_url,
+            url: `${SITE}/pt/jobs/${j.slug}`,
+          })),
           searchUrl: `${SITE}/pt${savedSearchHref(search.query)}`,
         }),
       );

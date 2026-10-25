@@ -55,10 +55,15 @@ async function uploadCvFromStored(admin: SupabaseClient, candidateId: string, jo
 /** §9.1a — fires both application-flow emails. Never lets a failure here
  *  break the caller; sendEmail already swallows its own errors. */
 async function notifyApplicationCreated(params: {
+  applicationId: string;
   jobId: string;
+  jobSlug: string;
   jobTitle: string;
+  location: string | null;
+  workModel: "remote" | "hybrid" | "office" | null;
   companyId: string;
   companyName: string;
+  companyLogoUrl: string | null;
   candidateName: string;
   candidateEmail: string;
   /** False only for the account-free apply path (§6.7) — drives the
@@ -70,8 +75,21 @@ async function notifyApplicationCreated(params: {
    *  application automatically — no separate merge step needed. */
   candidateHasAccount: boolean;
 }) {
-  const { jobId, jobTitle, companyId, companyName, candidateName, candidateEmail, candidateHasAccount } = params;
+  const {
+    applicationId,
+    jobSlug,
+    jobTitle,
+    location,
+    workModel,
+    companyId,
+    companyName,
+    companyLogoUrl,
+    candidateName,
+    candidateEmail,
+    candidateHasAccount,
+  } = params;
   const admin = createAdminClient();
+  const jobUrl = `${SITE}/pt/jobs/${jobSlug}`;
 
   await sendEmail(
     applicationConfirmationEmail({
@@ -79,6 +97,10 @@ async function notifyApplicationCreated(params: {
       candidateName,
       jobTitle,
       companyName,
+      location,
+      workModel,
+      companyLogoUrl,
+      jobUrl,
       registerUrl: candidateHasAccount
         ? null
         : `${SITE}/pt/candidate/register?email=${encodeURIComponent(candidateEmail)}`,
@@ -86,13 +108,13 @@ async function notifyApplicationCreated(params: {
   );
 
   const { data: members } = await admin.from("employer_users").select("auth_user_id").eq("company_id", companyId);
-  const applicantsUrl = `${SITE}/pt/recruit/jobs/${jobId}/applicants`;
+  const applicantUrl = `${SITE}/pt/recruit/applicants/${applicationId}`;
   await Promise.all(
     (members ?? []).map(async (m) => {
       const { data } = await admin.auth.admin.getUserById(m.auth_user_id);
       if (!data.user?.email) return;
       await sendEmail(
-        newApplicantEmail({ to: data.user.email, candidateName, jobTitle, applicantsUrl }),
+        newApplicantEmail({ to: data.user.email, candidateName, jobTitle, applicantUrl }),
       );
     }),
   );
@@ -173,7 +195,7 @@ export async function applyToJob(jobSlug: string, cv: CvSource, coverNote: strin
 
   const { data: job } = await supabase
     .from("jobs")
-    .select("id, title, company_id, companies!inner ( company_name )")
+    .select("id, slug, title, location, work_model, company_id, companies!inner ( company_name, company_logo_url )")
     .eq("slug", jobSlug)
     .eq("status", "published")
     .gt("expires_at", new Date().toISOString())
@@ -192,12 +214,16 @@ export async function applyToJob(jobSlug: string, cv: CvSource, coverNote: strin
     cv.kind === "upload" ? await uploadCv(admin, candidateId, job.id, cv.file) : await uploadCvFromStored(admin, candidateId, job.id);
   if ("error" in uploaded) return { ok: false, reason: uploaded.error };
 
-  const { error: insertError } = await supabase.from("applications").insert({
-    job_id: job.id,
-    candidate_id: candidateId,
-    cv_url: uploaded.path,
-    cover_note: coverNote.trim() || null,
-  });
+  const { data: inserted, error: insertError } = await supabase
+    .from("applications")
+    .insert({
+      job_id: job.id,
+      candidate_id: candidateId,
+      cv_url: uploaded.path,
+      cover_note: coverNote.trim() || null,
+    })
+    .select("id")
+    .single();
   if (insertError) {
     // unique(job_id, candidate_id) — the double-submit backstop.
     if (insertError.code === "23505") return { ok: false, reason: "already_applied" };
@@ -207,12 +233,17 @@ export async function applyToJob(jobSlug: string, cv: CvSource, coverNote: strin
   await logEvent("application.created", { job_id: job.id, candidate_id: candidateId });
 
   const { data: candidate } = await supabase.from("candidates").select("full_name, email").eq("id", candidateId).single();
-  const companies = job.companies as unknown as { company_name: string };
+  const companies = job.companies as unknown as { company_name: string; company_logo_url: string | null };
   scheduleApplicationCreatedNotification({
+    applicationId: inserted.id,
     jobId: job.id,
+    jobSlug: job.slug,
     jobTitle: job.title,
+    location: job.location,
+    workModel: job.work_model,
     companyId: job.company_id,
     companyName: companies.company_name,
+    companyLogoUrl: companies.company_logo_url,
     candidateName: candidate?.full_name ?? "",
     candidateEmail: candidate?.email ?? "",
     candidateHasAccount: true,
@@ -252,13 +283,13 @@ export async function applyAnonymously(
 
   const { data: job } = await admin
     .from("jobs")
-    .select("id, title, company_id, companies!inner ( company_name )")
+    .select("id, slug, title, location, work_model, company_id, companies!inner ( company_name, company_logo_url )")
     .eq("slug", jobSlug)
     .eq("status", "published")
     .gt("expires_at", new Date().toISOString())
     .maybeSingle();
   if (!job) return { ok: false, reason: "job_not_found" };
-  const companies = job.companies as unknown as { company_name: string };
+  const companies = job.companies as unknown as { company_name: string; company_logo_url: string | null };
 
   const { count: recentCount } = await admin
     .from("applications")
@@ -289,12 +320,16 @@ export async function applyAnonymously(
   const uploaded = await uploadCv(admin, candidateId, job.id, input.file);
   if ("error" in uploaded) return { ok: false, reason: uploaded.error };
 
-  const { error: insertError } = await admin.from("applications").insert({
-    job_id: job.id,
-    candidate_id: candidateId,
-    cv_url: uploaded.path,
-    cover_note: input.coverNote.trim() || null,
-  });
+  const { data: inserted, error: insertError } = await admin
+    .from("applications")
+    .insert({
+      job_id: job.id,
+      candidate_id: candidateId,
+      cv_url: uploaded.path,
+      cover_note: input.coverNote.trim() || null,
+    })
+    .select("id")
+    .single();
   if (insertError) {
     if (insertError.code === "23505") return { ok: false, reason: "already_applied" };
     return { ok: false, reason: "db_error" };
@@ -303,10 +338,15 @@ export async function applyAnonymously(
   await logEvent("application.created", { job_id: job.id, candidate_id: candidateId });
 
   scheduleApplicationCreatedNotification({
+    applicationId: inserted.id,
     jobId: job.id,
+    jobSlug: job.slug,
     jobTitle: job.title,
+    location: job.location,
+    workModel: job.work_model,
     companyId: job.company_id,
     companyName: companies.company_name,
+    companyLogoUrl: companies.company_logo_url,
     candidateName: input.fullName.trim(),
     candidateEmail: email,
     candidateHasAccount: false,

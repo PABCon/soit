@@ -28,10 +28,10 @@ export function contactMessageEmail(params: {
 ${message}`;
 
   const html = `
-    <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto;">
-      <h1 style="color: #0C6B58;">New contact message</h1>
-      <p><strong>${escapeHtml(fromName)}</strong> (${escapeHtml(fromEmail)}) wrote:</p>
-      <p style="white-space: pre-line;">${escapeHtml(message)}</p>
+    <div style="font-family: sans-serif; max-width: 480px; margin: 0 auto; color: #182230;">
+      <h1 style="color: #0C6B58; font-size: 18px; margin: 0 0 16px;">New contact message</h1>
+      <p style="line-height: 1.6; margin: 0 0 12px;"><strong>${escapeHtml(fromName)}</strong> (${escapeHtml(fromEmail)}) wrote:</p>
+      <div style="white-space: pre-line; line-height: 1.6; background: #f5f7fb; border: 1px solid #e2e6ef; border-radius: 8px; padding: 16px;">${escapeHtml(message)}</div>
     </div>
   `.trim();
 
