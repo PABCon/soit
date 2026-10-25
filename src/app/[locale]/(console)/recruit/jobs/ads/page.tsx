@@ -44,6 +44,21 @@ export default async function JobAdsPricingPage({ params, searchParams }: Props)
         .maybeSingle()
     : { data: null };
 
+  // Same lookup for an active job-ads plan, scoped by plan_type since
+  // company_subscriptions now holds both kinds of subscription.
+  const jobAdsPlanActive = ctx.company.job_ad_slot_cap > 1;
+  const { data: activeJobAdsSubscription } = jobAdsPlanActive
+    ? await supabase
+        .from("company_subscriptions")
+        .select("current_period_end")
+        .eq("company_id", ctx.company.id)
+        .eq("plan_type", "job_ads")
+        .in("status", ["active", "trialing", "past_due"])
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle()
+    : { data: null };
+
   return (
     <>
       <h1 className="text-3xl font-bold lg:text-4xl">{t("pricing")}</h1>
@@ -71,8 +86,8 @@ export default async function JobAdsPricingPage({ params, searchParams }: Props)
             <div>
               <h2 className="text-lg font-semibold text-ink">{t("jobAdsHeading")}</h2>
               <div className="flex items-center gap-1.5 text-sm text-muted">
-                <span className={ctx.company.ad_credits_available > 0 ? "font-medium text-pine" : ""}>
-                  {t("adCreditsRemaining", { count: ctx.company.ad_credits_available })}
+                <span className={jobAdsPlanActive ? "font-medium text-pine" : ""}>
+                  {t("adCreditsRemaining", { count: ctx.company.job_ad_slot_cap })}
                 </span>
                 <span title={t("adCreditsInfo")} aria-label={t("adCreditsInfo")}>
                   <HelpCircle className="h-3.5 w-3.5" />
@@ -86,7 +101,11 @@ export default async function JobAdsPricingPage({ params, searchParams }: Props)
           </a>
         </div>
         <div className="mt-4">
-          <AdCreditPacks />
+          <AdCreditPacks
+            active={jobAdsPlanActive}
+            slotCap={ctx.company.job_ad_slot_cap}
+            periodEnd={activeJobAdsSubscription?.current_period_end ?? null}
+          />
         </div>
       </section>
 
@@ -116,7 +135,7 @@ export default async function JobAdsPricingPage({ params, searchParams }: Props)
           <BillingHistory
             purchases={(purchases ?? []) as AdCreditPurchaseRow[]}
             locale={locale}
-            canManageBilling={ctx.company.top_employer_active}
+            canManageBilling={!!ctx.company.stripe_customer_id}
           />
         </div>
       </section>

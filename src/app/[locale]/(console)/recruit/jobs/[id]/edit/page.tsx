@@ -25,7 +25,7 @@ export default async function EditJobPage({ params }: Props) {
     getMyEmployerContext(),
   ]);
   if (!job) notFound();
-  const isPayingCustomer = !!ctx && (ctx.company.ad_credits_available > 0 || ctx.company.top_employer_active);
+  const isPayingCustomer = !!ctx && (ctx.company.job_ad_slot_cap > 1 || ctx.company.top_employer_active);
 
   return (
     <>

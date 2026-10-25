@@ -3,8 +3,8 @@ import { stripe } from "@/lib/stripe";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { logEvent } from "@/lib/events";
 import { sendEmail } from "@/lib/email/send";
-import { adCreditsPurchasedEmail } from "@/lib/email/templates/ad-credits-purchased";
 import { topEmployerSubscribedEmail } from "@/lib/email/templates/top-employer-subscribed";
+import { jobAdsSubscribedEmail } from "@/lib/email/templates/job-ads-subscribed";
 import type { SupabaseClient } from "@supabase/supabase-js";
 
 // First signature-verifying route in this codebase. Reads the raw text
@@ -23,29 +23,30 @@ export async function POST(request: Request) {
     return new Response(`Signature verification failed: ${(err as Error).message}`, { status: 400 });
   }
 
+  // §pricing — every paid plan (job-ads slots, same as Top Employer) is a
+  // real recurring Stripe subscription now; one-time `mode: "payment"`
+  // checkouts are no longer created anywhere in this app.
   if (event.type === "checkout.session.completed" || event.type === "checkout.session.async_payment_succeeded") {
     const session = event.data.object as Stripe.Checkout.Session;
-    // Per the Stripe payments skill: fulfill only when payment_status
-    // isn't "unpaid" — a delayed-notification payment method can fire
-    // checkout.session.completed while still unpaid, resolved later by
-    // async_payment_succeeded (or async_payment_failed, never fulfilled).
-    if (session.mode === "payment" && session.payment_status !== "unpaid") {
-      await fulfillAdCreditPurchase(session);
-    } else if (session.mode === "subscription") {
-      await activateTopEmployerFromSession(session);
+    if (session.mode === "subscription" && session.payment_status !== "unpaid") {
+      await activateSubscriptionFromSession(session);
     }
   }
 
-  // §pricing Phase 2 — Top Employer's own lifecycle, independent of the
-  // initial checkout: renewals, payment failures, and cancellations all
-  // happen after the session that created the subscription, invisible to
-  // an integration that only reads checkout.session.completed (the
-  // Stripe billing skill's own explicit warning). Resolved through the
+  // §pricing — a subscription's own lifecycle, independent of the initial
+  // checkout: renewals, payment failures, and cancellations all happen
+  // after the session that created the subscription, invisible to an
+  // integration that only reads checkout.session.completed (the Stripe
+  // billing skill's own explicit warning). Resolved through the
   // subscription's own `metadata.company_id` (set at creation via
   // `subscription_data.metadata`) — the object-graph, not a lookup
   // through the checkout session, which isn't available on these events.
+  // Covers both Top Employer and job-ad-slot subscriptions — see
+  // `upsertCompanySubscription`'s own comment for how it tells them apart.
   if (event.type === "customer.subscription.updated" || event.type === "customer.subscription.deleted") {
-    await syncTopEmployerSubscription(event.data.object as Stripe.Subscription);
+    const subscription = event.data.object as Stripe.Subscription;
+    const companyId = subscription.metadata?.company_id;
+    if (companyId) await upsertCompanySubscription(companyId, subscription);
   }
 
   return new Response("ok", { status: 200 });
@@ -74,20 +75,36 @@ async function resolveBillingRecipient(
   return data.user?.email ?? null;
 }
 
-/** Statuses under which Top Employer perks stay active — `past_due` gets
- *  a grace period (Stripe's own default retry/dunning is still in
+/** Statuses under which a subscription's perks stay active — `past_due`
+ *  gets a grace period (Stripe's own default retry/dunning is still in
  *  progress), matching common SaaS practice rather than revoking on the
- *  very first missed payment. */
-const TOP_EMPLOYER_ACTIVE_STATUSES: Stripe.Subscription.Status[] = ["active", "trialing", "past_due"];
+ *  very first missed payment. Shared by both plan types. */
+const SUBSCRIPTION_ACTIVE_STATUSES: Stripe.Subscription.Status[] = ["active", "trialing", "past_due"];
 
-async function activateTopEmployerFromSession(session: Stripe.Checkout.Session) {
+/** Tells a job-ads subscription apart from a Top Employer one: every
+ *  job-ads Price (self-serve tiers and custom deals like a 200-slot
+ *  enterprise plan alike) carries a `job_ad_slots` metadata value set
+ *  directly on the Stripe Price — no code change needed to add a new
+ *  custom tier, just a Price with this one field set. Its absence means
+ *  Top Employer. */
+async function resolvePlan(
+  subscription: Stripe.Subscription,
+): Promise<{ planType: "job_ads"; slotCap: number } | { planType: "top_employer"; slotCap: null }> {
+  let price = subscription.items.data[0]?.price;
+  if (price && typeof price === "string") price = await stripe.prices.retrieve(price);
+  const slots = Number(price?.metadata?.job_ad_slots ?? 0);
+  if (slots > 0) return { planType: "job_ads", slotCap: slots };
+  return { planType: "top_employer", slotCap: null };
+}
+
+async function activateSubscriptionFromSession(session: Stripe.Checkout.Session) {
   const companyId = session.client_reference_id;
   const subscriptionId = typeof session.subscription === "string" ? session.subscription : session.subscription?.id;
   if (!companyId || !subscriptionId) return;
 
   const subscription = await stripe.subscriptions.retrieve(subscriptionId);
-  await upsertCompanySubscription(companyId, subscription);
-  await logEvent("company.subscribed", { companyId, subscriptionId, plan: "top_employer" }, undefined);
+  const resolved = await upsertCompanySubscription(companyId, subscription);
+  await logEvent("company.subscribed", { companyId, subscriptionId, plan: resolved.planType }, undefined);
 
   const admin = createAdminClient();
   const [{ data: company }, recipient] = await Promise.all([
@@ -96,29 +113,42 @@ async function activateTopEmployerFromSession(session: Stripe.Checkout.Session) 
   ]);
   if (recipient) {
     const billingInterval = subscription.metadata?.billing_interval === "year" ? "year" : "month";
+    const periodEndSeconds = subscription.items.data[0]?.current_period_end;
+    const renewalDate = periodEndSeconds
+      ? new Date(periodEndSeconds * 1000).toLocaleDateString("en-IE", { year: "numeric", month: "long", day: "numeric" })
+      : null;
+    const companyName = company?.company_name ?? "there";
     await sendEmail(
-      topEmployerSubscribedEmail({ to: recipient, companyName: company?.company_name ?? "there", billingInterval }),
+      resolved.planType === "job_ads"
+        ? jobAdsSubscribedEmail({ to: recipient, companyName, slotCap: resolved.slotCap, billingInterval, renewalDate })
+        : topEmployerSubscribedEmail({ to: recipient, companyName, billingInterval, renewalDate }),
     );
   }
 }
 
-async function syncTopEmployerSubscription(subscription: Stripe.Subscription) {
-  const companyId = subscription.metadata?.company_id;
-  if (!companyId) return;
-  await upsertCompanySubscription(companyId, subscription);
-}
-
-async function upsertCompanySubscription(companyId: string, subscription: Stripe.Subscription) {
+/** Shared lifecycle sync for both subscription types — creation, renewal,
+ *  and cancellation all land here. Returns what it resolved so the caller
+ *  (only the initial-activation path needs this) can pick the right
+ *  confirmation email without re-deriving the same thing twice. */
+async function upsertCompanySubscription(
+  companyId: string,
+  subscription: Stripe.Subscription,
+): Promise<{ planType: "job_ads"; slotCap: number } | { planType: "top_employer"; slotCap: null }> {
   const admin = createAdminClient();
-  const isActive = TOP_EMPLOYER_ACTIVE_STATUSES.includes(subscription.status);
+  const isActive = SUBSCRIPTION_ACTIVE_STATUSES.includes(subscription.status);
   const periodEnd = subscription.items.data[0]?.current_period_end;
+  const stripeCustomerId =
+    typeof subscription.customer === "string" ? subscription.customer : subscription.customer.id;
+  const plan = await resolvePlan(subscription);
 
   await admin.from("company_subscriptions").upsert(
     {
       company_id: companyId,
-      stripe_customer_id: typeof subscription.customer === "string" ? subscription.customer : subscription.customer.id,
+      stripe_customer_id: stripeCustomerId,
       stripe_subscription_id: subscription.id,
       status: subscription.status,
+      plan_type: plan.planType,
+      slot_cap: plan.slotCap,
       billing_interval: subscription.metadata?.billing_interval === "year" ? "year" : "month",
       current_period_end: periodEnd ? new Date(periodEnd * 1000).toISOString() : null,
       updated_at: new Date().toISOString(),
@@ -126,83 +156,28 @@ async function upsertCompanySubscription(companyId: string, subscription: Stripe
     { onConflict: "stripe_subscription_id" },
   );
 
+  // One Stripe Customer per company, reused across both subscription
+  // types — set once, on whichever subscription activates first, so a
+  // later purchase of the other product's Checkout Session can attach to
+  // the same Customer instead of Stripe minting a second one (which would
+  // split billing history across two Customers and break the portal).
   await admin
     .from("companies")
-    .update({
-      top_employer_active: isActive,
-      top_employer_period_end: periodEnd ? new Date(periodEnd * 1000).toISOString() : null,
-    })
-    .eq("id", companyId);
-}
-
-/** Stripe always generates a receipt_url on a successful Charge, no
- *  separate invoice object needed for a one-time payment — captured once
- *  here rather than calling the Stripe API on every billing-history page
- *  render. Best-effort: a failure here must never block the actual
- *  fulfillment (credits/email) above it. */
-async function fetchReceiptUrl(session: Stripe.Checkout.Session): Promise<string | null> {
-  const paymentIntentId = typeof session.payment_intent === "string" ? session.payment_intent : session.payment_intent?.id;
-  if (!paymentIntentId) return null;
-  try {
-    const pi = await stripe.paymentIntents.retrieve(paymentIntentId, { expand: ["latest_charge"] });
-    const charge = pi.latest_charge;
-    return typeof charge === "string" ? null : (charge?.receipt_url ?? null);
-  } catch (err) {
-    console.error("fetchReceiptUrl failed:", (err as Error).message);
-    return null;
-  }
-}
-
-async function fulfillAdCreditPurchase(session: Stripe.Checkout.Session) {
-  const companyId = session.client_reference_id;
-  const quantity = Number(session.metadata?.ad_credit_quantity ?? 0);
-  if (!companyId || !quantity) return;
-
-  const admin = createAdminClient();
-  const receiptUrl = await fetchReceiptUrl(session);
-
-  // Idempotent: a unique index on stripe_checkout_session_id means a
-  // retried webhook delivery for the same session is a harmless duplicate-
-  // key error, not a double credit.
-  const { error: insertError } = await admin.from("job_ad_purchases").insert({
-    company_id: companyId,
-    stripe_checkout_session_id: session.id,
-    stripe_payment_intent_id:
-      typeof session.payment_intent === "string" ? session.payment_intent : (session.payment_intent?.id ?? null),
-    quantity,
-    unit_price_cents: Math.round((session.amount_total ?? 0) / quantity),
-    total_cents: session.amount_total ?? 0,
-    currency: session.currency ?? "eur",
-    receipt_url: receiptUrl,
-  });
-  if (insertError) {
-    if (insertError.code === "23505") return; // already fulfilled
-    console.error("job_ad_purchases insert failed:", insertError.message);
-    return;
-  }
-
-  const { data: company } = await admin
-    .from("companies")
-    .select("company_name, ad_credits_available")
+    .update({ stripe_customer_id: stripeCustomerId })
     .eq("id", companyId)
-    .single();
+    .is("stripe_customer_id", null);
+
   await admin
     .from("companies")
-    .update({ ad_credits_available: (company?.ad_credits_available ?? 0) + quantity })
+    .update(
+      plan.planType === "job_ads"
+        ? { job_ad_slot_cap: isActive ? plan.slotCap : 1 }
+        : {
+            top_employer_active: isActive,
+            top_employer_period_end: periodEnd ? new Date(periodEnd * 1000).toISOString() : null,
+          },
+    )
     .eq("id", companyId);
 
-  await logEvent("job_ad.purchased", { companyId, quantity, totalCents: session.amount_total }, undefined);
-
-  const recipient = await resolveBillingRecipient(admin, companyId, session);
-  if (recipient) {
-    await sendEmail(
-      adCreditsPurchasedEmail({
-        to: recipient,
-        companyName: company?.company_name ?? "there",
-        quantity,
-        totalCents: session.amount_total ?? 0,
-        currency: session.currency ?? "eur",
-      }),
-    );
-  }
+  return plan;
 }

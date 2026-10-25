@@ -19,6 +19,14 @@ const stripe = new Stripe(env.STRIPE_SECRET_KEY);
 // Checkout/invoice line item just shows the Product name), Prices as
 // billing variants within each, referenced everywhere else by
 // `lookup_key` rather than a hardcoded Price ID.
+//
+// §pricing: recurring monthly, not one-time — paying keeps up to
+// `quantity` job ads live at once, for as long as the subscription stays
+// active (not a spend-down balance). `job_ad_slots` metadata is what the
+// webhook reads to know how many slots a given Price grants — a custom
+// enterprise deal (e.g. 200 slots) just needs its own Price with that same
+// field set, created directly in the Stripe Dashboard; no code change
+// here or in the webhook for a new custom tier.
 const JOB_AD_PRICES = [
   { lookup_key: "job_ad_credits_1", quantity: 1, unit_amount: 5900 },
   { lookup_key: "job_ad_credits_2", quantity: 2, unit_amount: 9000 },
@@ -63,10 +71,13 @@ async function findOrCreatePrice(product, spec, extra = {}) {
 
 const adProduct = await findOrCreateProduct(
   "Job Ad Credits",
-  "One-time job-ad credit packs — each credit is redeemable for one 30-day job posting.",
+  "Recurring monthly job-ads plans — keep up to N job ads live at once for as long as the subscription is active.",
 );
 for (const spec of JOB_AD_PRICES) {
-  const price = await findOrCreatePrice(adProduct, spec);
+  const price = await findOrCreatePrice(adProduct, spec, {
+    recurring: { interval: "month" },
+    metadata: { job_ad_slots: String(spec.quantity) },
+  });
   console.log(`job_ad_credits_${spec.quantity}: ${price.id} (${price.lookup_key})`);
 }
 

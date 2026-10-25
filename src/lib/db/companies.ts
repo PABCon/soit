@@ -25,6 +25,8 @@ export type MyCompany = {
   location_id: string | null;
   address: string | null;
   ad_credits_available: number;
+  job_ad_slot_cap: number;
+  stripe_customer_id: string | null;
   top_employer_active: boolean;
   top_employer_period_end: string | null;
   about_us_text: string | null;

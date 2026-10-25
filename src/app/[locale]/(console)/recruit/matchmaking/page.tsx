@@ -33,7 +33,7 @@ export default async function MatchmakingPage({ params }: Props) {
   const ctx = await getMyEmployerContext();
   if (!ctx) return <p className="text-sm text-muted">{t("notEmployer")}</p>;
 
-  const isPayingCustomer = ctx.company.ad_credits_available > 0 || ctx.company.top_employer_active;
+  const isPayingCustomer = ctx.company.job_ad_slot_cap > 1 || ctx.company.top_employer_active;
 
   if (!isPayingCustomer) {
     return (

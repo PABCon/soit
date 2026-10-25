@@ -472,12 +472,20 @@ async function countOtherLiveJobs(
  *  §pricing adds a second gate on top: every verified company may always
  *  have 1 job live for free — Top Employer gets no bump to this baseline
  *  (per the pricing round that unbundled job-ad slots from the
- *  subscription); beyond that, publishing needs a purchased ad credit.
- *  Hiding the salary publicly and getting bump credits/the auto-boost are
- *  both perks of being a paying customer in *either* form (a spent credit
- *  or an active Top Employer subscription) — not tied to which specific
- *  slot this job happens to occupy, so a paying company's "free" first
- *  job can hide its salary too, same as any of its others. */
+ *  subscription); beyond that, how many more can be live at once is set by
+ *  `job_ad_slot_cap` — kept in sync by the Stripe webhook from whichever
+ *  job-ads subscription plan is currently active (1 again the moment it
+ *  lapses). No per-publish "spend" any more: this is a plain concurrent-
+ *  slot check, not a decrementing balance, so there's nothing left to
+ *  atomically race over the way the old credit-decrement RPC had to guard
+ *  against — the worst case of two near-simultaneous publishes is briefly
+ *  one job over the cap, self-correcting the next time either side tries
+ *  to publish again. Hiding the salary publicly and getting bump credits/
+ *  the auto-boost are both perks of being a paying customer in *either*
+ *  form (an elevated slot cap or an active Top Employer subscription) —
+ *  not tied to which specific slot this job happens to occupy, so a
+ *  paying company's "free" first job can hide its salary too, same as any
+ *  of its others. */
 export async function saveJob(
   jobId: string | null,
   input: JobFormInput,
@@ -509,36 +517,20 @@ export async function saveJob(
   const isVerified = company.verification_status === "verified";
 
   const liveCount = await countOtherLiveJobs(supabase, company.id, jobId);
-  const isPayingCustomer = company.ad_credits_available > 0 || company.top_employer_active;
-  const effectiveFreeCap = 1;
-  const canPublishFree = liveCount < effectiveFreeCap;
-  const canPublishWithCredit = company.ad_credits_available > 0;
-  const canPublish = isVerified && (canPublishFree || canPublishWithCredit);
-  let willPublish = wantsPublish && canPublish;
-  let consumesCredit = willPublish && !canPublishFree;
+  const isPayingCustomer = company.job_ad_slot_cap > 1 || company.top_employer_active;
+  const canPublishFree = liveCount < 1;
+  const canPublish = isVerified && liveCount < company.job_ad_slot_cap;
+  const willPublish = wantsPublish && canPublish;
+  // Whether this particular publish occupies a paid slot (beyond the
+  // universal free baseline) — drives the same bump-credit grant the old
+  // credit-spend path used, just keyed off slot-cap membership instead of
+  // an actual decrement.
+  const usesPaidSlot = willPublish && !canPublishFree;
 
-  // Spend the credit atomically — and *before* ever writing status=
-  // "published" — not a JS-computed "old - 1" written back under a now-
-  // stale guard (a real bug found via a real purchase: two
-  // near-simultaneous publishes could both read the same starting credit
-  // count and both pass that stale guard, so both got marked published
-  // while the column only ever reflected a single decrement). If this
-  // genuinely races with another request and loses, this save must not
-  // publish at all — falling back to a draft, not a free, uncharged
-  // publish.
-  if (consumesCredit) {
-    const admin = createAdminClient();
-    const { data: decremented } = await admin.rpc("decrement_ad_credit", { target_company_id: company.id });
-    if (!decremented) {
-      willPublish = false;
-      consumesCredit = false;
-    }
-  }
-
-  // Only a genuine draft/inactive → published transition spends a credit,
-  // resets the 30-day window and the boost/bump state — re-saving an
+  // Only a genuine draft/inactive → published transition grants bump
+  // credits, resets the 30-day window and the boost state — re-saving an
   // already-published job (editing its description, say) must not look
-  // like a fresh publish and silently re-charge or reset its clock.
+  // like a fresh publish and silently reset its clock.
   let wasAlreadyPublished = false;
   if (jobId) {
     const { data: existing } = await supabase.from("jobs").select("status").eq("id", jobId).maybeSingle();
@@ -583,7 +575,7 @@ export async function saveJob(
           expires_at: expiresAt.toISOString(),
           boost_rank_at: now.toISOString(),
           boosted_until: autoBoost ? new Date(now.getTime() + 72 * 3600e3).toISOString() : null,
-          bump_credits_remaining: consumesCredit ? 2 : 0,
+          bump_credits_remaining: usesPaidSlot ? 2 : 0,
         }
       : {}),
   };
@@ -676,21 +668,10 @@ export async function setJobStatus(
   }
 
   const liveCount = await countOtherLiveJobs(supabase, company.id, jobId);
-  const isPayingCustomer = company.ad_credits_available > 0 || company.top_employer_active;
-  const effectiveFreeCap = 1;
-  const canPublishFree = liveCount < effectiveFreeCap;
-  const canPublishWithCredit = company.ad_credits_available > 0;
-  if (!(canPublishFree || canPublishWithCredit)) return { ok: false, message: "noAdCredits" };
-  const consumesCredit = !canPublishFree;
-
-  // Same atomic-decrement-before-publish fix as saveJob (see its own
-  // comment) — reactivating a paused job spends a credit through this
-  // exact same path, so it needs the exact same race-safe guard.
-  if (consumesCredit) {
-    const admin = createAdminClient();
-    const { data: decremented } = await admin.rpc("decrement_ad_credit", { target_company_id: company.id });
-    if (!decremented) return { ok: false, message: "noAdCredits" };
-  }
+  const isPayingCustomer = company.job_ad_slot_cap > 1 || company.top_employer_active;
+  const canPublishFree = liveCount < 1;
+  if (liveCount >= company.job_ad_slot_cap) return { ok: false, message: "noAdCredits" };
+  const usesPaidSlot = !canPublishFree;
 
   const { data: job } = await supabase.from("jobs").select("salary_public").eq("id", jobId).maybeSingle();
   const salaryPublic = isPayingCustomer ? (job?.salary_public ?? true) : true;
@@ -706,7 +687,7 @@ export async function setJobStatus(
       expires_at: new Date(now.getTime() + 30 * 864e5).toISOString(),
       boost_rank_at: now.toISOString(),
       boosted_until: autoBoost ? new Date(now.getTime() + 72 * 3600e3).toISOString() : null,
-      bump_credits_remaining: consumesCredit ? 2 : 0,
+      bump_credits_remaining: usesPaidSlot ? 2 : 0,
     })
     .eq("id", jobId)
     .eq("company_id", company.id);

@@ -19,7 +19,7 @@ export default async function NewJobPage({ params }: Props) {
     getSpokenLanguages(),
     getMyEmployerContext(),
   ]);
-  const isPayingCustomer = !!ctx && (ctx.company.ad_credits_available > 0 || ctx.company.top_employer_active);
+  const isPayingCustomer = !!ctx && (ctx.company.job_ad_slot_cap > 1 || ctx.company.top_employer_active);
 
   return (
     <>

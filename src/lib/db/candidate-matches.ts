@@ -93,8 +93,8 @@ export type CandidateMatch = {
  *  already use for hiding a salary or getting bump credits: any of a
  *  paying company's jobs get the perk, not just the slot a credit
  *  happened to fund. */
-function isPayingCustomer(company: { ad_credits_available: number; top_employer_active: boolean }): boolean {
-  return company.ad_credits_available > 0 || company.top_employer_active;
+function isPayingCustomer(company: { job_ad_slot_cap: number; top_employer_active: boolean }): boolean {
+  return company.job_ad_slot_cap > 1 || company.top_employer_active;
 }
 
 async function fetchScorableCandidates(): Promise<ScorableCandidateRow[]> {

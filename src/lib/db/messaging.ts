@@ -142,7 +142,7 @@ export async function getOrCreateThreadIdForApplicant(applicationId: string): Pr
 export async function getOrCreateThreadForMatch(candidateId: string, jobId: string, firstMessageBody: string): Promise<StartThreadResult> {
   const ctx = await getMyEmployerContext();
   if (!ctx) return { ok: false, reason: "not_an_employer" };
-  const isPayingCustomer = ctx.company.ad_credits_available > 0 || ctx.company.top_employer_active;
+  const isPayingCustomer = ctx.company.job_ad_slot_cap > 1 || ctx.company.top_employer_active;
   if (!isPayingCustomer) return { ok: false, reason: "not_paying" };
 
   const supabase = await createClient();
@@ -263,11 +263,15 @@ export async function sendMessage(threadId: string, body: string, file?: File | 
   await logEvent("message.sent", { thread_id: threadId, sender_type: senderType });
   if (willUnlock) await logEvent("thread.identity_unlocked", { thread_id: threadId });
 
-  scheduleMessageNotification({ thread: row, senderType });
+  scheduleMessageNotification({ thread: row, senderType, messageExcerpt: finalBody });
   return { ok: true };
 }
 
-function scheduleMessageNotification(params: { thread: ThreadRow; senderType: "employer" | "candidate" }) {
+function scheduleMessageNotification(params: {
+  thread: ThreadRow;
+  senderType: "employer" | "candidate";
+  messageExcerpt: string;
+}) {
   try {
     after(() => notifyNewMessage(params));
   } catch {
@@ -275,7 +279,15 @@ function scheduleMessageNotification(params: { thread: ThreadRow; senderType: "e
   }
 }
 
-async function notifyNewMessage({ thread, senderType }: { thread: ThreadRow; senderType: "employer" | "candidate" }) {
+async function notifyNewMessage({
+  thread,
+  senderType,
+  messageExcerpt,
+}: {
+  thread: ThreadRow;
+  senderType: "employer" | "candidate";
+  messageExcerpt: string;
+}) {
   const admin = createAdminClient();
   const { data: job } = await admin.from("jobs").select("title").eq("id", thread.job_id).single();
   const jobTitle = job?.title ?? "";
@@ -300,6 +312,7 @@ async function notifyNewMessage({ thread, senderType }: { thread: ThreadRow; sen
           otherPartyLabel: company?.company_name ?? "An employer",
           jobTitle,
           inboxUrl: `${SITE}/pt/messages`,
+          messageExcerpt,
           registerUrl,
         }),
       );
@@ -317,6 +330,7 @@ async function notifyNewMessage({ thread, senderType }: { thread: ThreadRow; sen
             otherPartyLabel: "A candidate",
             jobTitle,
             inboxUrl: `${SITE}/pt/recruit/messages`,
+            messageExcerpt,
             registerUrl: null,
           }),
         );

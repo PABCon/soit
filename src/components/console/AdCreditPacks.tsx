@@ -4,7 +4,11 @@ import { useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
 import { CheckCircle2, Users } from "lucide-react";
-import { createAdCreditCheckoutAction, type AdCreditPackSize } from "@/app/[locale]/(console)/recruit/jobs/ads/actions";
+import {
+  createAdCreditCheckoutAction,
+  createBillingPortalSessionAction,
+  type AdCreditPackSize,
+} from "@/app/[locale]/(console)/recruit/jobs/ads/actions";
 import { buttonClassName } from "@/components/Button";
 
 // §pricing — the reverse-engineered volume curve (anchored on €59 at n=1
@@ -31,10 +35,18 @@ const INCLUDED_KEYS = [
   "adPackPerkReach",
 ] as const;
 
-export function AdCreditPacks() {
+export function AdCreditPacks({
+  active,
+  slotCap,
+  periodEnd,
+}: {
+  active: boolean;
+  slotCap: number;
+  periodEnd: string | null;
+}) {
   const t = useTranslations("console");
   const locale = useLocale();
-  const [pending, setPending] = useState<AdCreditPackSize | null>(null);
+  const [pending, setPending] = useState<AdCreditPackSize | "portal" | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   async function buy(quantity: AdCreditPackSize) {
@@ -52,6 +64,53 @@ export function AdCreditPacks() {
     } finally {
       setPending(null);
     }
+  }
+
+  async function manageBilling() {
+    setError(null);
+    setPending("portal");
+    try {
+      const result = await createBillingPortalSessionAction(locale);
+      if (result.ok) {
+        window.location.assign(result.url);
+        return;
+      }
+      setError(t("errorGeneric"));
+    } catch {
+      setError(t("errorGeneric"));
+    } finally {
+      setPending(null);
+    }
+  }
+
+  // An active plan already has a real Stripe subscription — a second
+  // purchase here would create a second, concurrent one instead of
+  // upgrading in place, so the buy grid is replaced with a status card and
+  // a link to the real place to change or cancel a plan: Stripe's own
+  // Customer Portal, same pattern TopEmployerCard already uses.
+  if (active) {
+    return (
+      <div className="flex flex-wrap items-center justify-between gap-4 rounded-xl border-2 border-pine bg-pine/5 p-5">
+        <div>
+          <span className="rounded bg-mint/25 px-2 py-1 text-xs font-semibold text-pine">{t("jobAdsPlanActiveLabel")}</span>
+          <p className="mt-2 font-display text-2xl font-bold text-ink">{t("adCreditsRemaining", { count: slotCap })}</p>
+          {periodEnd && (
+            <p className="mt-1 text-sm text-muted">
+              {t("topEmployerRenewsOn", { date: new Date(periodEnd).toLocaleDateString(locale === "pt" ? "pt-PT" : "en-GB") })}
+            </p>
+          )}
+        </div>
+        <button
+          type="button"
+          disabled={pending !== null}
+          onClick={manageBilling}
+          className={buttonClassName({ variant: "secondary", className: pending ? "opacity-50" : "" })}
+        >
+          {pending === "portal" ? t("redirecting") : t("manageBilling")}
+        </button>
+        {error && <p className="w-full text-sm text-red-700">{error}</p>}
+      </div>
+    );
   }
 
   return (
@@ -85,9 +144,12 @@ export function AdCreditPacks() {
                 </span>
               )}
               <p className="text-sm text-muted">{t("adPackLabel", { count: pack.quantity })}</p>
-              <p className="mt-2 font-display text-2xl font-bold text-ink">€{pack.totalEur}</p>
+              <p className="mt-2 font-display text-2xl font-bold text-ink">
+                €{pack.totalEur}
+                <span className="text-sm font-normal text-muted"> {t("perMonth")}</span>
+              </p>
               <p className="mt-1 text-xs text-muted">
-                €{(pack.totalEur / pack.quantity).toFixed(0)} {t("perAd")}
+                €{(pack.totalEur / pack.quantity).toFixed(0)} {t("perAd")} · {t("billedMonthly")}
               </p>
               <button
                 type="button"
