@@ -211,19 +211,24 @@ otp_expiry = 3600
 # content_path = "./supabase/templates/invite.html"
 
 # Branded to match the app's own transactional-email design system
-# (src/lib/email/layout.ts) — built 2026-10-19. NOT yet applied to the
-# live project: this file has known drift a blind `supabase config
-# push` would also apply (see the file header's Twilio warning, plus
-# `auth.additional_redirect_urls` is currently missing justit.pt here
-# vs. the live project, and `auth.sessions` declares a timebox/
-# inactivity_timeout the live Free-plan project doesn't have — confirmed
-# via `supabase config diff` on 2026-10-19). Apply these two templates
-# via the Dashboard (Authentication → Email Templates → paste the raw
-# HTML) or a scoped `PATCH /v1/projects/{ref}/config/auth` with only
-# `mailer_subjects_confirmation`/`mailer_templates_confirmation_content`/
-# `mailer_subjects_recovery`/`mailer_templates_recovery_content` — the
-# same mechanism already used for OAuth config — rather than a full
-# `config push`. No magic-link template is included: this app has no
+# (src/lib/email/layout.ts) — built 2026-10-19. This file still has known
+# drift a blind `supabase config push` would also apply (see the file
+# header's Twilio warning, plus `auth.additional_redirect_urls` is
+# currently missing justit.pt here vs. the live project, and
+# `auth.sessions` declares a timebox/inactivity_timeout the live Free-plan
+# project doesn't have — confirmed via `supabase config diff` on
+# 2026-10-19) — never run a full `config push` from this file.
+#
+# **confirmation** was applied live on 2026-10-25 via a scoped
+# `PATCH /v1/projects/{ref}/config/auth` (only
+# `mailer_subjects_confirmation`/`mailer_templates_confirmation_content` —
+# the same mechanism already used for OAuth config), and its content was
+# also changed the same day to link to `/auth/confirm?token_hash=...`
+# instead of `{{ .ConfirmationURL }}` — see that file's own comment for
+# why (a corporate email security scanner consuming the one-time link
+# before the real person clicks it, confirmed from a real incident).
+# **recovery** is NOT yet applied live — same scoped-PATCH mechanism,
+# just not done yet. No magic-link template is included: this app has no
 # magic-link auth flow (confirmed via grep, only email/password + OAuth).
 [auth.email.template.confirmation]
 subject = "Confirm your email — Just IT"
