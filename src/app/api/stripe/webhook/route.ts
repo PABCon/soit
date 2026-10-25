@@ -23,47 +23,60 @@ export async function POST(request: Request) {
     return new Response(`Signature verification failed: ${(err as Error).message}`, { status: 400 });
   }
 
-  // §pricing — every paid plan (job-ads slots, same as Top Employer) is a
-  // real recurring Stripe subscription now; one-time `mode: "payment"`
-  // checkouts are no longer created anywhere in this app.
-  if (event.type === "checkout.session.completed" || event.type === "checkout.session.async_payment_succeeded") {
-    const session = event.data.object as Stripe.Checkout.Session;
-    if (session.mode === "subscription" && session.payment_status !== "unpaid") {
-      await activateSubscriptionFromSession(session);
-    }
-  }
-
-  // §pricing — a subscription's own lifecycle, independent of the initial
-  // checkout: renewals, payment failures, and cancellations all happen
-  // after the session that created the subscription, invisible to an
-  // integration that only reads checkout.session.completed (the Stripe
-  // billing skill's own explicit warning). Resolved through the
-  // subscription's own `metadata.company_id` (set at creation via
-  // `subscription_data.metadata`) — the object-graph, not a lookup
-  // through the checkout session, which isn't available on these events.
-  // Covers both Top Employer and job-ad-slot subscriptions — see
+  // §pricing — a subscription's own lifecycle is the single source of
+  // truth for everything: `created` covers a brand-new subscription
+  // (whether it came from our own Checkout flow or was created by hand in
+  // the Stripe Dashboard against an existing Customer — see
+  // `resolveCompanyId`'s own comment), `updated`/`deleted` cover renewals,
+  // payment failures, and cancellations. Keying off the subscription's own
+  // `status` (via `SUBSCRIPTION_ACTIVE_STATUSES`) rather than a Checkout
+  // Session's one-time `payment_status` is also more correct for a slow
+  // payment method — a subscription created `incomplete` simply doesn't
+  // grant perks yet, and the later `updated` event that flips it to
+  // `active` grants them then, with no separate "was this paid" check
+  // needed. Covers both Top Employer and job-ad-slot subscriptions — see
   // `upsertCompanySubscription`'s own comment for how it tells them apart.
-  if (event.type === "customer.subscription.updated" || event.type === "customer.subscription.deleted") {
+  if (
+    event.type === "customer.subscription.created" ||
+    event.type === "customer.subscription.updated" ||
+    event.type === "customer.subscription.deleted"
+  ) {
     const subscription = event.data.object as Stripe.Subscription;
-    const companyId = subscription.metadata?.company_id;
-    if (companyId) await upsertCompanySubscription(companyId, subscription);
+    const companyId = await resolveCompanyId(subscription);
+    if (companyId) {
+      const resolved = await upsertCompanySubscription(companyId, subscription);
+      if (event.type === "customer.subscription.created" && SUBSCRIPTION_ACTIVE_STATUSES.includes(subscription.status)) {
+        await logEvent("company.subscribed", { companyId, subscriptionId: subscription.id, plan: resolved.planType }, undefined);
+        await sendSubscriptionConfirmationEmail(companyId, subscription, resolved);
+      }
+    }
   }
 
   return new Response("ok", { status: 200 });
 }
 
-/** Checkout always collects a payer email even for guest/one-time
- *  payments, so that's the first choice — it's the address the person
- *  who just paid is actually watching. Falls back to the first team
- *  member's account email (same lookup applications.ts already uses for
- *  new-applicant notifications) only if Stripe didn't capture one. */
-async function resolveBillingRecipient(
-  admin: SupabaseClient,
-  companyId: string,
-  session: Stripe.Checkout.Session,
-): Promise<string | null> {
-  if (session.customer_details?.email) return session.customer_details.email;
+/** A Checkout-created subscription already carries `metadata.company_id`
+ *  (set via `subscription_data.metadata` in both checkout actions). A
+ *  subscription created by hand in the Stripe Dashboard — picking an
+ *  existing Customer and a Price directly, no Checkout Session involved
+ *  at all — never gets that metadata, so this falls back to the
+ *  Customer's own `metadata.company_id` instead, set once at registration
+ *  by `ensureStripeCustomer`. Either path resolves to the same company. */
+async function resolveCompanyId(subscription: Stripe.Subscription): Promise<string | null> {
+  if (subscription.metadata?.company_id) return subscription.metadata.company_id;
+  const customerId = typeof subscription.customer === "string" ? subscription.customer : subscription.customer.id;
+  const customer = await stripe.customers.retrieve(customerId);
+  if (customer.deleted) return null;
+  return customer.metadata?.company_id ?? null;
+}
 
+/** The owning company's first team member — same lookup `applications.ts`
+ *  already uses for new-applicant notifications. Every company's Customer
+ *  is created with a real email (`ensureStripeCustomer`), but Stripe
+ *  doesn't guarantee a Dashboard-created Customer keeps one current, so
+ *  this app-side lookup is the one reliable source rather than trusting
+ *  whatever Stripe has on file. */
+async function resolveBillingRecipient(admin: SupabaseClient, companyId: string): Promise<string | null> {
   const { data: members } = await admin
     .from("employer_users")
     .select("auth_user_id")
@@ -86,44 +99,45 @@ const SUBSCRIPTION_ACTIVE_STATUSES: Stripe.Subscription.Status[] = ["active", "t
  *  enterprise plan alike) carries a `job_ad_slots` metadata value set
  *  directly on the Stripe Price — no code change needed to add a new
  *  custom tier, just a Price with this one field set. Its absence means
- *  Top Employer. */
-async function resolvePlan(
-  subscription: Stripe.Subscription,
-): Promise<{ planType: "job_ads"; slotCap: number } | { planType: "top_employer"; slotCap: null }> {
+ *  Top Employer. Billing interval is read straight off the Price's own
+ *  `recurring.interval` rather than a custom metadata field — correct
+ *  automatically whether the subscription came from our Checkout flow or
+ *  was created by hand in the Stripe Dashboard, neither of which needs to
+ *  separately declare it. */
+async function resolvePlan(subscription: Stripe.Subscription): Promise<
+  | { planType: "job_ads"; slotCap: number; billingInterval: "month" | "year" }
+  | { planType: "top_employer"; slotCap: null; billingInterval: "month" | "year" }
+> {
   let price = subscription.items.data[0]?.price;
   if (price && typeof price === "string") price = await stripe.prices.retrieve(price);
+  const billingInterval = price?.recurring?.interval === "year" ? "year" : "month";
   const slots = Number(price?.metadata?.job_ad_slots ?? 0);
-  if (slots > 0) return { planType: "job_ads", slotCap: slots };
-  return { planType: "top_employer", slotCap: null };
+  if (slots > 0) return { planType: "job_ads", slotCap: slots, billingInterval };
+  return { planType: "top_employer", slotCap: null, billingInterval };
 }
 
-async function activateSubscriptionFromSession(session: Stripe.Checkout.Session) {
-  const companyId = session.client_reference_id;
-  const subscriptionId = typeof session.subscription === "string" ? session.subscription : session.subscription?.id;
-  if (!companyId || !subscriptionId) return;
-
-  const subscription = await stripe.subscriptions.retrieve(subscriptionId);
-  const resolved = await upsertCompanySubscription(companyId, subscription);
-  await logEvent("company.subscribed", { companyId, subscriptionId, plan: resolved.planType }, undefined);
-
+async function sendSubscriptionConfirmationEmail(
+  companyId: string,
+  subscription: Stripe.Subscription,
+  plan: Awaited<ReturnType<typeof resolvePlan>>,
+) {
   const admin = createAdminClient();
   const [{ data: company }, recipient] = await Promise.all([
     admin.from("companies").select("company_name").eq("id", companyId).single(),
-    resolveBillingRecipient(admin, companyId, session),
+    resolveBillingRecipient(admin, companyId),
   ]);
-  if (recipient) {
-    const billingInterval = subscription.metadata?.billing_interval === "year" ? "year" : "month";
-    const periodEndSeconds = subscription.items.data[0]?.current_period_end;
-    const renewalDate = periodEndSeconds
-      ? new Date(periodEndSeconds * 1000).toLocaleDateString("en-IE", { year: "numeric", month: "long", day: "numeric" })
-      : null;
-    const companyName = company?.company_name ?? "there";
-    await sendEmail(
-      resolved.planType === "job_ads"
-        ? jobAdsSubscribedEmail({ to: recipient, companyName, slotCap: resolved.slotCap, billingInterval, renewalDate })
-        : topEmployerSubscribedEmail({ to: recipient, companyName, billingInterval, renewalDate }),
-    );
-  }
+  if (!recipient) return;
+
+  const periodEndSeconds = subscription.items.data[0]?.current_period_end;
+  const renewalDate = periodEndSeconds
+    ? new Date(periodEndSeconds * 1000).toLocaleDateString("en-IE", { year: "numeric", month: "long", day: "numeric" })
+    : null;
+  const companyName = company?.company_name ?? "there";
+  await sendEmail(
+    plan.planType === "job_ads"
+      ? jobAdsSubscribedEmail({ to: recipient, companyName, slotCap: plan.slotCap, billingInterval: plan.billingInterval, renewalDate })
+      : topEmployerSubscribedEmail({ to: recipient, companyName, billingInterval: plan.billingInterval, renewalDate }),
+  );
 }
 
 /** Shared lifecycle sync for both subscription types — creation, renewal,
@@ -133,7 +147,7 @@ async function activateSubscriptionFromSession(session: Stripe.Checkout.Session)
 async function upsertCompanySubscription(
   companyId: string,
   subscription: Stripe.Subscription,
-): Promise<{ planType: "job_ads"; slotCap: number } | { planType: "top_employer"; slotCap: null }> {
+): Promise<Awaited<ReturnType<typeof resolvePlan>>> {
   const admin = createAdminClient();
   const isActive = SUBSCRIPTION_ACTIVE_STATUSES.includes(subscription.status);
   const periodEnd = subscription.items.data[0]?.current_period_end;
@@ -149,7 +163,7 @@ async function upsertCompanySubscription(
       status: subscription.status,
       plan_type: plan.planType,
       slot_cap: plan.slotCap,
-      billing_interval: subscription.metadata?.billing_interval === "year" ? "year" : "month",
+      billing_interval: plan.billingInterval,
       current_period_end: periodEnd ? new Date(periodEnd * 1000).toISOString() : null,
       updated_at: new Date().toISOString(),
     },

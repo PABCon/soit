@@ -3,6 +3,7 @@ import type { User } from "@supabase/supabase-js";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { logEvent } from "@/lib/events";
 import { verifyCompany } from "@/lib/verification/verify-company";
+import { ensureStripeCustomer } from "@/lib/stripe";
 import { slugify } from "@/lib/slug";
 
 type Role = "employer" | "candidate";
@@ -108,10 +109,19 @@ export async function ensureEmployerProfile(
 
   // Async layer 2 (§5.7.3) — never blocks the response the user is waiting
   // on, and never lets a failure to schedule it break registration itself.
+  // The Stripe Customer creation below follows the identical pattern, for
+  // the identical reason.
   try {
     after(() => verifyCompany(company.id, opts.nif!));
   } catch {
     void verifyCompany(company.id, opts.nif!);
+  }
+
+  const companyName = opts.companyName || email.split("@")[0];
+  try {
+    after(() => ensureStripeCustomer(company.id, companyName, email || null));
+  } catch {
+    void ensureStripeCustomer(company.id, companyName, email || null);
   }
 
   return { landingPath: "/recruit" };
