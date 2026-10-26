@@ -1,0 +1,111 @@
+<!--
+  Just IT — "claim your profile" outreach email
+
+  HOW TO USE
+  1. Open this file in a browser (double-click it, or File > Open).
+  2. Fill in the {{PLACEHOLDERS}} below first (find-and-replace in a text
+     editor is fastest), OR just edit them directly in the browser view —
+     most browsers let you click into the page and type (not guaranteed,
+     depends on the browser) — safest is to edit the HTML source, then
+     reload.
+  3. Select the whole rendered email in the browser (Cmd/Ctrl+A) and copy
+     it (Cmd/Ctrl+C).
+  4. Paste directly into a new Gmail/Outlook/Apple Mail compose window.
+     Pasting (not typing) into a rich-text compose box keeps the
+     formatting, links and image intact.
+  5. Set the subject line separately (suggested subject is in the comment
+     below) — it's not part of the pasted body.
+  6. Send from hello@justit.pt.
+
+  SUGGESTED SUBJECT LINE:
+  We already built your {{ROLE_TITLE}} listing on Just IT
+
+  PLACEHOLDERS TO FILL IN PER COMPANY:
+  {{CONTACT_NAME}}   — the person's first name if you have it, else "team"
+  {{COMPANY_NAME}}   — e.g. "Acme Software"
+  {{ROLE_TITLE}}     — the specific open role, e.g. "Senior Backend Engineer"
+  {{CLAIM_LINK}}     — the claim URL for their draft profile/job
+  {{SENDER_NAME}}    — your name
+  {{SENDER_TITLE}}   — your title, e.g. "Founder" or "Co-founder"
+
+  DESIGN NOTE: the body is deliberately plain — normal text, a plain link
+  for the CTA, no big colored button, no heavy template chrome. A heavily
+  "designed" HTML email reads as mass marketing and hurts both open rates
+  and trust on a first cold outreach; a plain note that looks like it was
+  actually typed by a person converts better. All the brand polish lives
+  in the signature at the bottom instead, where it's expected and welcome.
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Just IT — claim invite email</title>
+</head>
+<body style="margin:0;padding:0;background:#ffffff;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#ffffff;">
+<tr>
+<td align="center" style="padding:24px 16px;">
+<table role="presentation" width="600" cellpadding="0" cellspacing="0" style="width:600px;max-width:100%;text-align:left;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:15px;line-height:1.6;color:#182230;">
+
+<tr><td style="padding-bottom:16px;">
+Hi {{CONTACT_NAME}},
+</td></tr>
+
+<tr><td style="padding-bottom:16px;">
+I'm {{SENDER_NAME}} from Just IT &mdash; we're building the job board where every single listing shows a real salary range, no exceptions, because that's the one thing IT candidates in Portugal keep telling us is missing everywhere else.
+</td></tr>
+
+<tr><td style="padding-bottom:16px;">
+I put together a draft of {{COMPANY_NAME}}'s {{ROLE_TITLE}} opening, already live on Just IT: <a href="{{CLAIM_LINK}}" style="color:#465bff;">{{CLAIM_LINK}}</a>
+</td></tr>
+
+<tr><td style="padding-bottom:8px;">
+A couple of reasons it might be worth two minutes:
+</td></tr>
+
+<tr><td style="padding-bottom:16px;">
+<table role="presentation" cellpadding="0" cellspacing="0" style="font-size:15px;line-height:1.6;color:#182230;">
+<tr><td style="padding:0 0 8px;vertical-align:top;width:18px;">&bull;</td><td style="padding:0 0 8px;">We surveyed 109 IT professionals in Portugal &mdash; 74% said salary transparency is the single biggest reason they'd switch where they look for jobs. Every listing here already has it.</td></tr>
+<tr><td style="padding:0 0 8px;vertical-align:top;">&bull;</td><td style="padding:0 0 8px;">Every applicant is AI-matched and scored against the role automatically &mdash; no sourcing fee, included.</td></tr>
+<tr><td style="padding:0;vertical-align:top;">&bull;</td><td style="padding:0;">It's free, permanently, for your first listing. No card.</td></tr>
+</table>
+</td></tr>
+
+<tr><td style="padding-bottom:16px;">
+Nothing's published yet &mdash; that link just shows you the draft. Takes about two minutes to make it real if you want to, or just ignore this if now isn't the time.
+</td></tr>
+
+<tr><td style="padding-bottom:28px;">
+{{SENDER_NAME}}
+</td></tr>
+
+<!-- ===================== SIGNATURE ===================== -->
+<tr><td style="padding-top:16px;border-top:1px solid #e2e6ef;">
+<table role="presentation" cellpadding="0" cellspacing="0" style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">
+<tr>
+<td style="padding-right:16px;vertical-align:top;">
+<img src="https://justit.pt/logo-justit.png" width="110" height="44" alt="Just IT" style="display:block;border:0;width:110px;height:44px;object-fit:contain;">
+</td>
+<td style="vertical-align:top;border-left:1px solid #e2e6ef;padding-left:16px;">
+<div style="font-size:14px;font-weight:700;color:#182230;">{{SENDER_NAME}}</div>
+<div style="font-size:13px;color:#667085;margin-top:1px;">{{SENDER_TITLE}}, Just IT</div>
+<div style="font-size:12px;color:#8893a8;margin-top:4px;">#1 IT Job Board in Portugal</div>
+<div style="font-size:13px;margin-top:8px;">
+<a href="https://justit.pt" style="color:#465bff;text-decoration:none;">justit.pt</a>
+<span style="color:#e2e6ef;"> &nbsp;|&nbsp; </span>
+<a href="mailto:hello@justit.pt" style="color:#465bff;text-decoration:none;">hello@justit.pt</a>
+<span style="color:#e2e6ef;"> &nbsp;|&nbsp; </span>
+<a href="https://www.linkedin.com/company/justitpt/" style="color:#465bff;text-decoration:none;">LinkedIn</a>
+</div>
+</td>
+</tr>
+</table>
+</td></tr>
+<!-- =================== /SIGNATURE ======================= -->
+
+</table>
+</td>
+</tr>
+</table>
+</body>
+</html>
