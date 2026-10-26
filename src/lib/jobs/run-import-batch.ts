@@ -11,11 +11,13 @@ import { jobImportSummaryEmail } from "@/lib/email/templates/job-import-summary"
 import { SITE_URL } from "@/lib/email/site-url";
 import {
   BATCH_SIZE,
+  acquireImportRunLock,
   advanceImportRun,
   completeImportRun,
   getImportRun,
   isSourceAlreadyImported,
   recordImportedSource,
+  releaseImportRunLock,
   remainingImportBudget,
   resolveCompanyRecipient,
 } from "@/lib/db/job-imports";
@@ -60,6 +62,22 @@ export async function runImportBatch(runId: string): Promise<{ done: boolean }> 
   const run = await getImportRun(runId);
   if (!run || run.status !== "running") return { done: true };
 
+  // Real incident, 2026-10-26: a manual resume overlapped with this run's
+  // own self-chained continuation and both processed the same link at
+  // once, creating a duplicate job. Whoever doesn't win this claim backs
+  // off immediately, doing no work at all — the run is still "running",
+  // just being handled by the invocation that already holds the lock.
+  if (!(await acquireImportRunLock(runId))) return { done: false };
+
+  try {
+    return await processBatch(run);
+  } finally {
+    await releaseImportRunLock(runId);
+  }
+}
+
+async function processBatch(run: NonNullable<Awaited<ReturnType<typeof getImportRun>>>): Promise<{ done: boolean }> {
+  const runId = run.id;
   const admin = createAdminClient();
   const { data: company } = await admin
     .from("companies")

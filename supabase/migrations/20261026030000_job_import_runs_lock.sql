@@ -1,0 +1,13 @@
+-- Real incident, 2026-10-26: a manual resume call overlapped with the
+-- run's own self-chained continuation — both invocations read the same
+-- next_index before either had written back, both processed the same
+-- link, and both created a job for it (the dedup check alone isn't
+-- enough to prevent this: it only protects against re-processing a link
+-- whose dedup row was already written, not two truly concurrent reads of
+-- the same not-yet-recorded link). This column is a real lock: whoever
+-- claims it first proceeds, the other backs off immediately rather than
+-- doing any work at all. Treated as stale (reclaimable) after a couple of
+-- minutes — comfortably longer than a single batch should ever take — so
+-- a hard-killed invocation that never released its own lock can't block
+-- the run forever.
+alter table job_import_runs add column locked_at timestamptz;

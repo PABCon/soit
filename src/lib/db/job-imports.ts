@@ -11,6 +11,10 @@ export const STALL_THRESHOLD_MINUTES = 30;
 // resuming can never fix (a dead source URL, a persistent extraction
 // failure) forever.
 export const MAX_STALLED_RESUMES = 3;
+// A lock older than this is treated as abandoned (the invocation holding
+// it was almost certainly hard-killed without releasing it) and can be
+// reclaimed — comfortably longer than a single batch should ever take.
+const LOCK_STALE_MINUTES = 2;
 
 export type JobImportRun = {
   id: string;
@@ -26,7 +30,32 @@ export type JobImportRun = {
   last_progress_at: string;
   created_at: string;
   completed_at: string | null;
+  locked_at: string | null;
 };
+
+/** Real incident, 2026-10-26: a manual resume overlapped with the run's own
+ *  self-chained continuation and both processed the same link concurrently,
+ *  creating a duplicate job — the dedup table alone doesn't prevent two
+ *  truly simultaneous reads of the same not-yet-recorded link. This is a
+ *  real claim, not just a check: the WHERE clause (no lock, or a stale
+ *  one) means only one caller's UPDATE can ever actually match a row, so
+ *  two concurrent callers can't both believe they hold it. */
+export async function acquireImportRunLock(runId: string): Promise<boolean> {
+  const admin = createAdminClient();
+  const staleCutoff = new Date(Date.now() - LOCK_STALE_MINUTES * 60_000).toISOString();
+  const { data } = await admin
+    .from("job_import_runs")
+    .update({ locked_at: new Date().toISOString() })
+    .eq("id", runId)
+    .or(`locked_at.is.null,locked_at.lt.${staleCutoff}`)
+    .select("id");
+  return (data?.length ?? 0) > 0;
+}
+
+export async function releaseImportRunLock(runId: string): Promise<void> {
+  const admin = createAdminClient();
+  await admin.from("job_import_runs").update({ locked_at: null }).eq("id", runId);
+}
 
 /** Whether this company can start a brand-new discovery scan right now —
  *  never while one is already `running` (nothing useful a second scan
