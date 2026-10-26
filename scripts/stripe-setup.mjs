@@ -52,13 +52,23 @@ const TOP_EMPLOYER_PRICES_V2 = [
   { lookup_key: "top_employer_annual_v2", unit_amount: 500000, interval: "year" },
 ];
 
-// Current pricing: €2,500/year is the real anchor now, not a monthly rate
-// discounted for paying annually — monthly is just that annual price
-// divided by 12 (€208.33), so the two billing cadences cost the same
-// total per year instead of monthly being a markup over annual.
+// Superseded by top_employer_monthly_v4/top_employer_annual_v4 below —
+// built from an initial misreading ("divide the annual price by 12" was
+// not what was asked) and never actually provisioned against the live
+// Stripe account, only test mode. Kept here, unmodified, for the same
+// "Prices are immutable, never edit the amounts below" reason as the
+// others, even though nothing was ever actually billed on it.
 const TOP_EMPLOYER_PRICES_V3 = [
   { lookup_key: "top_employer_monthly_v3", unit_amount: 20833, interval: "month" },
   { lookup_key: "top_employer_annual_v3", unit_amount: 250000, interval: "year" },
+];
+
+// Current pricing, per direct instruction: €250/month flat, €2,500/year
+// flat (12×250 = 3000, so paying annually is still a real 2-months-free
+// discount vs. monthly — same structure as v1/v2, just halved amounts).
+const TOP_EMPLOYER_PRICES_V4 = [
+  { lookup_key: "top_employer_monthly_v4", unit_amount: 25000, interval: "month" },
+  { lookup_key: "top_employer_annual_v4", unit_amount: 250000, interval: "year" },
 ];
 
 async function findOrCreateProduct(name, description) {
@@ -95,7 +105,12 @@ const topEmployerProduct = await findOrCreateProduct(
   "Top Employer",
   "Badge, site-wide sponsor placement, unlimited bumps, full rich company profile, and API access. Job-ad slots are purchased separately, same as any verified company.",
 );
-for (const spec of [...TOP_EMPLOYER_PRICES, ...TOP_EMPLOYER_PRICES_V2, ...TOP_EMPLOYER_PRICES_V3]) {
+for (const spec of [
+  ...TOP_EMPLOYER_PRICES,
+  ...TOP_EMPLOYER_PRICES_V2,
+  ...TOP_EMPLOYER_PRICES_V3,
+  ...TOP_EMPLOYER_PRICES_V4,
+]) {
   const price = await findOrCreatePrice(topEmployerProduct, spec, {
     recurring: { interval: spec.interval },
   });

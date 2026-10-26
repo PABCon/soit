@@ -142,22 +142,25 @@ export function TopEmployerCard({
             <button
               type="button"
               onClick={() => setInterval("year")}
-              className={`flex-1 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+              className={`relative flex-1 rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
                 interval === "year" ? "bg-white text-ink shadow-sm" : "text-muted"
               }`}
             >
               {t("billingAnnual")}
+              <span className="ml-1.5 rounded bg-mint/25 px-1 py-0.5 text-[10px] font-semibold text-pine">
+                {t("billingAnnualSave")}
+              </span>
             </button>
           </div>
 
           <p className="mt-4 font-display text-3xl font-bold text-ink">
-            {interval === "month" ? "€208.33" : "€2500"}
+            {interval === "month" ? "€250" : "€2500"}
             <span className="text-base font-normal text-muted">
               {" "}
               {interval === "month" ? t("perMonth") : t("perYear")}
             </span>
           </p>
-          <p className="mt-0.5 text-xs text-muted">{t("billingSameEitherWay")}</p>
+          {interval === "year" && <p className="mt-0.5 text-xs text-muted">{t("billingAnnualNote")}</p>}
 
           <button
             type="button"

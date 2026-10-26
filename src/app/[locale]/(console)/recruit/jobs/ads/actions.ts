@@ -72,15 +72,14 @@ export async function createAdCreditCheckoutAction(
   }
 }
 
-// v3 pricing: €2,500/year is the real anchor, monthly is just that
-// divided by 12 (€208.33) rather than a markup over an annual discount —
-// see scripts/stripe-setup.mjs. The superseded top_employer_monthly/
-// _annual and _v2 Prices are never referenced here anymore, but stay
-// provisioned (Prices are immutable) since real subscribers are still on
-// them until they churn or are migrated.
+// v4 pricing: flat €250/month, €2,500/year (2 months free vs. paying
+// monthly) — see scripts/stripe-setup.mjs. The superseded
+// top_employer_monthly/_annual, _v2, and _v3 Prices are never referenced
+// here anymore, but stay provisioned (Prices are immutable) since real
+// subscribers may still be on them until they churn or are migrated.
 const TOP_EMPLOYER_LOOKUP_KEYS = {
-  month: "top_employer_monthly_v3",
-  year: "top_employer_annual_v3",
+  month: "top_employer_monthly_v4",
+  year: "top_employer_annual_v4",
 } as const;
 
 export type BillingInterval = keyof typeof TOP_EMPLOYER_LOOKUP_KEYS;
