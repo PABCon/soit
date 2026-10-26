@@ -474,6 +474,12 @@
       "year": "Per year"
     },
     "salaryMonths": "Months per year",
+    "salaryBasis": "Gross or net",
+    "salaryBasisOption": {
+      "gross": "Gross",
+      "net": "Net"
+    },
+    "typeSalaryToggle": "This contract type ({type}) has its own, different salary",
     "employmentType": "Employment type",
     "employmentTypeHint": "Select every contract type you're open to for this role — most jobs only need one.",
     "employmentTypeOption": {
@@ -593,6 +599,7 @@
     "perYear": "per year",
     "months": "× {count} months",
     "gross": "gross",
+    "net": "net",
     "employmentType": {
       "permanent": "Permanent",
       "fixed_term": "Fixed term",

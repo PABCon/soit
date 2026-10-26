@@ -27,6 +27,34 @@ export default async function EditJobPage({ params }: Props) {
   if (!job) notFound();
   const isPayingCustomer = !!ctx && (ctx.company.job_ad_slot_cap > 1 || ctx.company.top_employer_active);
 
+  // `job.employment_type` (the primary) always goes first regardless of
+  // join row order, which Postgres doesn't otherwise guarantee — JobForm
+  // treats `employmentTypes[0]` as the primary, and `typeSalaries` below
+  // is only ever built for the *other* entries.
+  const employmentTypes =
+    job.job_employment_types.length > 0
+      ? [
+          job.employment_type,
+          ...job.job_employment_types.map((et) => et.employment_type).filter((et) => et !== job.employment_type),
+        ]
+      : [job.employment_type];
+
+  const typeSalaries: Record<
+    string,
+    { salaryMin: number; salaryMax: number; salaryPeriod: typeof job.salary_period; salaryMonths: number | null; salaryBasis: "gross" | "net" }
+  > = {};
+  for (const et of job.job_employment_types) {
+    if (et.employment_type === job.employment_type) continue;
+    if (et.salary_min == null || et.salary_max == null) continue;
+    typeSalaries[et.employment_type] = {
+      salaryMin: et.salary_min,
+      salaryMax: et.salary_max,
+      salaryPeriod: et.salary_period ?? "month",
+      salaryMonths: et.salary_months,
+      salaryBasis: et.salary_basis ?? "gross",
+    };
+  }
+
   return (
     <>
       <div className="flex items-center justify-between gap-4">
@@ -59,10 +87,9 @@ export default async function EditJobPage({ params }: Props) {
             salaryMax: job.salary_max,
             salaryPeriod: job.salary_period,
             salaryMonths: job.salary_months,
-            employmentTypes:
-              job.job_employment_types.length > 0
-                ? job.job_employment_types.map((et) => et.employment_type)
-                : [job.employment_type],
+            salaryBasis: job.salary_basis,
+            employmentTypes,
+            typeSalaries,
             selectedTechTags: job.job_tech_tags.map((t) => ({
               id: t.tech_tag_id,
               level: t.level,

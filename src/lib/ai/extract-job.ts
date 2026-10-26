@@ -21,6 +21,29 @@ const ExtractedJobSchema = z.object({
   salaryMin: z.number().nullable(),
   salaryMax: z.number().nullable(),
   salaryPeriod: z.enum(["hour", "day", "month", "year"]).nullable(),
+  // Real-usage finding: a source posting quoted two genuinely different
+  // ranges for the same role — a gross B2B rate and a net permanent-
+  // contract salary — and the flat fields above (designed for one
+  // contract type) silently conflated them, attributing the B2B number
+  // to "Permanent." When a posting states more than one distinct
+  // {contract type, range} pair, each gets its own entry here instead;
+  // the flat fields above are then set to match this array's first
+  // entry, so a caller that only reads them still gets a real, correctly
+  // attributed number rather than a stale/mixed-up one. Empty for the
+  // common single-contract-type case.
+  contractSalaries: z.array(
+    z.object({
+      employmentType: z.enum(["permanent", "fixed_term", "contractor", "freelance", "internship"]),
+      salaryMin: z.number(),
+      salaryMax: z.number(),
+      salaryPeriod: z.enum(["hour", "day", "month", "year"]),
+      // Never inferred as a default elsewhere in this app (the employer
+      // always confirms it) — here it's only a suggestion the form
+      // pre-fills, same "never invent, always reviewed" discipline as
+      // every other AI-assisted field.
+      salaryBasis: z.enum(["gross", "net"]),
+    }),
+  ),
   adLanguage: z.enum(["pt", "en"]).nullable(),
   // Real-usage report — "why isn't the expertise level estimated from the
   // job description?" A flat label list had nowhere to carry that.
@@ -138,6 +161,20 @@ export async function extractJobFromUrl(
         "their own lines (join with \\n), each list item starting with \"- \". " +
         "Do not merge multiple bullet points into one run-on sentence, and do " +
         "not drop items the posting lists.\n\n" +
+        "Some postings state more than one contract type with its own " +
+        "price, e.g. \"4 830 - 5 670 EUR (B2B)\" and \"2 500 - 2 850 EUR " +
+        "net (Permanent Contract)\" for the same role. If the text clearly " +
+        "states two or more distinct {contract type, salary range} pairs, " +
+        "put each one in `contractSalaries` with its own correct " +
+        "employmentType — never attribute one type's number to another " +
+        "type's label, and never merge/average separate ranges into one. " +
+        "`salaryBasis` is \"net\" only when the text says so explicitly " +
+        "(net, líquido, take-home, after tax) — \"gross\" otherwise. When " +
+        "you populate `contractSalaries`, also set the top-level " +
+        "`employmentType`/`salaryMin`/`salaryMax`/`salaryPeriod` to match " +
+        "its first entry. If the posting only states one contract type/" +
+        "range, leave `contractSalaries` empty and fill only the top-" +
+        "level fields, as before.\n\n" +
         "`techStack`: `required: true` for technologies listed under a " +
         "\"requirements\"/\"must-have\"/\"you have\" style section, " +
         "`required: false` for a \"nice to have\"/\"bonus\"/\"preferred\" " +

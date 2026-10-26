@@ -24,8 +24,9 @@ import {
   requestTechTagAction,
   resolveUnmatchedTechLabelsAction,
 } from "@/app/[locale]/(console)/recruit/jobs/actions";
-import type { JobFormInput } from "@/lib/db/jobs";
+import type { JobFormInput, TypeSalaryInput } from "@/lib/db/jobs";
 import type { SkillLevel } from "@/lib/types";
+import type { SalaryBasis } from "@/components/Salary";
 import type { ExtractedJob } from "@/lib/ai/extract-job";
 import { buttonClassName } from "@/components/Button";
 
@@ -36,6 +37,17 @@ type SpokenLanguageOption = { id: string; slug: string; label: string };
 
 type SelectedTag = { id: string; level: SkillLevel | null; required: boolean };
 type SelectedLanguage = { id: string; level: SkillLevel | null };
+/** Form-state shape (string inputs, like every other salary field here) for
+ *  an extra accepted contract type's own, distinct salary — see
+ *  `JobFormInput.typeSalaries`'s own comment for why this exists. */
+type TypeSalaryForm = {
+  min: string;
+  max: string;
+  period: JobFormInput["salaryPeriod"];
+  months: string;
+  basis: SalaryBasis;
+};
+type EmploymentTypeValue = JobFormInput["employmentTypes"][number];
 
 type Initial = {
   id: string;
@@ -55,7 +67,11 @@ type Initial = {
   salaryMax: number | null;
   salaryPeriod: JobFormInput["salaryPeriod"];
   salaryMonths: number | null;
+  salaryBasis: SalaryBasis;
   employmentTypes: JobFormInput["employmentTypes"];
+  /** An extra accepted type's own, distinct salary — see
+   *  `JobFormInput.typeSalaries`'s own comment. */
+  typeSalaries: Partial<Record<EmploymentTypeValue, TypeSalaryInput>>;
   selectedTechTags: SelectedTag[];
   selectedLanguages: SelectedLanguage[];
   externalApplyUrl: string;
@@ -181,6 +197,24 @@ export function JobForm({
   const [externalApplyUrl, setExternalApplyUrl] = useState(initial?.externalApplyUrl ?? "");
   const [expiresAt, setExpiresAt] = useState(initial?.expiresAt ?? "");
   const [salaryPublic, setSalaryPublic] = useState(initial?.salaryPublic ?? true);
+  const [salaryBasis, setSalaryBasis] = useState<SalaryBasis>(initial?.salaryBasis ?? "gross");
+  // Keyed by employment type — only ever read/written for types beyond
+  // `employmentTypes[0]` (the primary, which always uses the salary
+  // fields above). See `TypeSalaryForm`'s own comment.
+  const [typeSalaries, setTypeSalaries] = useState<Partial<Record<EmploymentTypeValue, TypeSalaryForm>>>(() => {
+    const out: Partial<Record<EmploymentTypeValue, TypeSalaryForm>> = {};
+    for (const [et, ts] of Object.entries(initial?.typeSalaries ?? {})) {
+      if (!ts) continue;
+      out[et as EmploymentTypeValue] = {
+        min: String(ts.salaryMin),
+        max: String(ts.salaryMax),
+        period: ts.salaryPeriod,
+        months: ts.salaryMonths != null ? String(ts.salaryMonths) : "14",
+        basis: ts.salaryBasis,
+      };
+    }
+    return out;
+  });
   const [tagFilter, setTagFilter] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -264,10 +298,30 @@ export function JobForm({
   /** Real-usage QA item: "multiple contract types on one job ad" —
    *  never lets the set empty out entirely, same reasoning a radio-style
    *  single select always guaranteed one selection by construction. */
-  function toggleEmploymentType(et: JobFormInput["employmentTypes"][number]) {
+  function toggleEmploymentType(et: EmploymentTypeValue) {
     setEmploymentTypes((prev) => {
       if (prev.includes(et)) return prev.length > 1 ? prev.filter((x) => x !== et) : prev;
       return [...prev, et];
+    });
+  }
+
+  /** Turns an extra accepted type's own salary block on/off — on gets
+   *  sensible defaults to fill in, off just drops the entry (that type
+   *  then has no distinct range of its own, same as today). */
+  function toggleTypeSalary(et: EmploymentTypeValue) {
+    setTypeSalaries((prev) => {
+      if (prev[et]) {
+        return Object.fromEntries(Object.entries(prev).filter(([key]) => key !== et)) as typeof prev;
+      }
+      return { ...prev, [et]: { min: "", max: "", period: "month", months: "14", basis: "gross" } };
+    });
+  }
+
+  function updateTypeSalary(et: EmploymentTypeValue, field: keyof TypeSalaryForm, value: string) {
+    setTypeSalaries((prev) => {
+      const current = prev[et];
+      if (!current) return prev;
+      return { ...prev, [et]: { ...current, [field]: value } };
     });
   }
 
@@ -289,7 +343,32 @@ export function JobForm({
     if (data.description) setDescription(data.description);
     if (data.seniority) setSeniority(data.seniority);
     if (data.workModel) setWorkModel(data.workModel);
-    if (data.employmentType) setEmploymentTypes([data.employmentType]);
+    // Real-usage finding: a source posting stated two distinct contract
+    // types, each with its own range (one gross B2B rate, one net
+    // permanent-contract rate) — `contractSalaries` carries each pair
+    // correctly attributed; the flat fields below already mirror its
+    // first entry (set by the model itself, see extract-job.ts's own
+    // prompt), so they still drive the primary type's own inputs exactly
+    // as for a single-contract-type posting.
+    if (data.contractSalaries.length > 0) {
+      setEmploymentTypes([...new Set(data.contractSalaries.map((cs) => cs.employmentType))]);
+      setSalaryBasis(data.contractSalaries[0].salaryBasis);
+      setTypeSalaries((prev) => {
+        const next = { ...prev };
+        for (const cs of data.contractSalaries.slice(1)) {
+          next[cs.employmentType] = {
+            min: String(cs.salaryMin),
+            max: String(cs.salaryMax),
+            period: cs.salaryPeriod,
+            months: "14",
+            basis: cs.salaryBasis,
+          };
+        }
+        return next;
+      });
+    } else if (data.employmentType) {
+      setEmploymentTypes([data.employmentType]);
+    }
     if (data.salaryMin !== null) setSalaryMin(String(data.salaryMin));
     if (data.salaryMax !== null) setSalaryMax(String(data.salaryMax));
     if (data.salaryPeriod) setSalaryPeriod(data.salaryPeriod);
@@ -415,6 +494,25 @@ export function JobForm({
     return null;
   }
 
+  // Only a type with both a min and a max actually entered counts as a real
+  // override — an enabled-but-half-filled block is treated the same as
+  // "no distinct range for this type" rather than sent as a broken 0-0.
+  function buildTypeSalariesPayload(): Partial<Record<EmploymentTypeValue, TypeSalaryInput>> {
+    const out: Partial<Record<EmploymentTypeValue, TypeSalaryInput>> = {};
+    for (const et of employmentTypes.slice(1)) {
+      const ts = typeSalaries[et];
+      if (!ts || !ts.min.trim() || !ts.max.trim()) continue;
+      out[et] = {
+        salaryMin: Number(ts.min),
+        salaryMax: Number(ts.max),
+        salaryPeriod: ts.period,
+        salaryMonths: ts.period === "month" ? Number(ts.months) || null : null,
+        salaryBasis: ts.basis,
+      };
+    }
+    return out;
+  }
+
   function buildJobInput(publish: boolean): JobFormInput {
     return {
       title: title.trim(),
@@ -428,7 +526,9 @@ export function JobForm({
       salaryMax: salaryMax.trim() ? Number(salaryMax) : null,
       salaryPeriod,
       salaryMonths: salaryPeriod === "month" ? Number(salaryMonths) : null,
+      salaryBasis,
       employmentTypes,
+      typeSalaries: buildTypeSalariesPayload(),
       techTags: selectedTags.map((t) => ({ techTagId: t.id, level: t.level, required: t.required })),
       languages: selectedLanguages.map((l) => ({ spokenLanguageId: l.id, level: l.level })),
       externalApplyUrl,
@@ -738,6 +838,17 @@ export function JobForm({
                   </label>
                 )}
               </div>
+              <label className={labelClass}>
+                <span>{t("salaryBasis")}</span>
+                <select
+                  value={salaryBasis}
+                  onChange={(e) => setSalaryBasis(e.target.value as SalaryBasis)}
+                  className={inputClass}
+                >
+                  <option value="gross">{t("salaryBasisOption.gross")}</option>
+                  <option value="net">{t("salaryBasisOption.net")}</option>
+                </select>
+              </label>
               {isPayingCustomer ? (
                 <label className="flex items-center gap-2 text-sm text-ink">
                   <input
@@ -770,6 +881,93 @@ export function JobForm({
                   ))}
                 </div>
               </div>
+
+              {/* Real-usage finding: some postings genuinely offer two
+               *  different contract types at two different rates (e.g. a
+               *  gross B2B day-rate alongside a net permanent salary) — the
+               *  fields above only ever cover the primary (first-picked)
+               *  type. Each additional accepted type gets an optional,
+               *  collapsed-by-default block here for its own range. */}
+              {employmentTypes.slice(1).map((et) => {
+                const ts = typeSalaries[et];
+                return (
+                  <div key={et} className="rounded-lg border border-line p-3">
+                    <label className="flex items-center gap-2 text-sm font-medium text-ink">
+                      <input type="checkbox" checked={!!ts} onChange={() => toggleTypeSalary(et)} />
+                      <span>{t("typeSalaryToggle", { type: t(`employmentTypeOption.${et}`) })}</span>
+                    </label>
+                    {ts && (
+                      <div className="mt-3 flex flex-col gap-3">
+                        <div className="grid grid-cols-2 gap-3">
+                          <label className={labelClass}>
+                            <span>{t("salaryMin")}</span>
+                            <input
+                              type="number"
+                              min={1}
+                              value={ts.min}
+                              onChange={(e) => updateTypeSalary(et, "min", e.target.value)}
+                              className={inputClass}
+                            />
+                          </label>
+                          <label className={labelClass}>
+                            <span>{t("salaryMax")}</span>
+                            <input
+                              type="number"
+                              min={1}
+                              value={ts.max}
+                              onChange={(e) => updateTypeSalary(et, "max", e.target.value)}
+                              className={inputClass}
+                            />
+                          </label>
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                          <label className={labelClass}>
+                            <span>{t("salaryPeriod")}</span>
+                            <select
+                              value={ts.period}
+                              onChange={(e) => updateTypeSalary(et, "period", e.target.value)}
+                              className={inputClass}
+                            >
+                              {(["hour", "day", "month", "year"] as const).map((p) => (
+                                <option key={p} value={p}>
+                                  {t(`salaryPeriodOption.${p}`)}
+                                </option>
+                              ))}
+                            </select>
+                          </label>
+                          {ts.period === "month" && (
+                            <label className={labelClass}>
+                              <span>{t("salaryMonths")}</span>
+                              <select
+                                value={ts.months}
+                                onChange={(e) => updateTypeSalary(et, "months", e.target.value)}
+                                className={inputClass}
+                              >
+                                {[12, 13, 14].map((m) => (
+                                  <option key={m} value={m}>
+                                    {m}
+                                  </option>
+                                ))}
+                              </select>
+                            </label>
+                          )}
+                        </div>
+                        <label className={labelClass}>
+                          <span>{t("salaryBasis")}</span>
+                          <select
+                            value={ts.basis}
+                            onChange={(e) => updateTypeSalary(et, "basis", e.target.value)}
+                            className={inputClass}
+                          >
+                            <option value="gross">{t("salaryBasisOption.gross")}</option>
+                            <option value="net">{t("salaryBasisOption.net")}</option>
+                          </select>
+                        </label>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </SectionCard>
 

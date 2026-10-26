@@ -1,5 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
-import { saveJob } from "@/lib/db/jobs";
+import { saveJob, type TypeSalaryInput } from "@/lib/db/jobs";
 import { extractJobFromUrl } from "@/lib/ai/extract-job";
 import { getTechTags } from "@/lib/db/tech-tags";
 import { getJobCategories } from "@/lib/db/job-categories";
@@ -130,6 +130,28 @@ async function processBatch(run: NonNullable<Awaited<ReturnType<typeof getImport
       } else {
         try {
           const resolved = await resolveExtractedJobVocab(extracted.data, vocab, run.company_id, company.company_name);
+          // Real-usage finding: a source posting stated two distinct
+          // contract types, each with its own range (one gross B2B rate,
+          // one net permanent-contract rate) — extraction now attributes
+          // each correctly instead of conflating them (see
+          // extract-job.ts's own prompt). `contractSalaries[0]` already
+          // mirrors the flat `salaryMin`/`salaryMax`/`employmentType`
+          // fields above when it's set, so this only adds the *extra*
+          // types' own ranges on top.
+          const employmentTypes =
+            extracted.data.contractSalaries.length > 0
+              ? [...new Set(extracted.data.contractSalaries.map((cs) => cs.employmentType))]
+              : [extracted.data.employmentType ?? "permanent"];
+          const typeSalaries: Partial<Record<(typeof employmentTypes)[number], TypeSalaryInput>> = {};
+          for (const cs of extracted.data.contractSalaries.slice(1)) {
+            typeSalaries[cs.employmentType] = {
+              salaryMin: cs.salaryMin,
+              salaryMax: cs.salaryMax,
+              salaryPeriod: cs.salaryPeriod,
+              salaryMonths: null,
+              salaryBasis: cs.salaryBasis,
+            };
+          }
           const result = await saveJob(
             null,
             {
@@ -144,7 +166,9 @@ async function processBatch(run: NonNullable<Awaited<ReturnType<typeof getImport
               salaryMax: extracted.data.salaryMax,
               salaryPeriod: extracted.data.salaryPeriod ?? "month",
               salaryMonths: null,
-              employmentTypes: [extracted.data.employmentType ?? "permanent"],
+              salaryBasis: extracted.data.contractSalaries[0]?.salaryBasis ?? "gross",
+              employmentTypes,
+              typeSalaries,
               techTags: resolved.techTags,
               languages: resolved.languages,
               // Defaults to the page it was scraped from, so a candidate

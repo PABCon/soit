@@ -140,6 +140,7 @@ export function JobRow({
             period={job.salaryPeriod}
             months={job.salaryMonths}
             employmentType={job.employmentType}
+            basis={job.salaryBasis}
           />
           <p className="mt-1 text-[13px] leading-[18px] text-muted/70">{t("postedAgo", { days: job.postedDaysAgo })}</p>
         </div>

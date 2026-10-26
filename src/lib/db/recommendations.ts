@@ -18,14 +18,14 @@ import type { Job, SkillLevel } from "@/lib/types";
 const RECS_SELECT = `
   id, slug, title, description, language, seniority, work_model, location,
   latitude, longitude, salary_min, salary_max, salary_currency, salary_period,
-  salary_months, employment_type, status, published_at, expires_at, created_at,
+  salary_months, salary_basis, employment_type, status, published_at, expires_at, created_at,
   external_apply_url, location_id, category_id, salary_public, boost_rank_at, boosted_until,
   companies!inner ( slug, company_name, company_logo_url, top_employer_active ),
   job_tech_tags ( tech_tag_id, level, required, tech_tags ( slug, label ) ),
   job_categories ( slug ),
   locations ( slug, country ),
   job_languages ( level, spoken_languages ( slug, label ) ),
-  job_employment_types ( employment_type )
+  job_employment_types ( employment_type, salary_min, salary_max, salary_period, salary_months, salary_basis )
 `;
 
 type RecsJobRow = Omit<JobRow, "job_tech_tags"> & {

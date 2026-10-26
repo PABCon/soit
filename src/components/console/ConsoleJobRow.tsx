@@ -143,6 +143,7 @@ export function ConsoleJobRow({ job, tab }: { job: ConsoleJob; tab: ConsoleTab }
           period={job.salaryPeriod}
           months={job.salaryMonths}
           employmentType={job.employmentType}
+          basis={job.salaryBasis}
         />
 
         <div className="flex flex-wrap items-center gap-2">

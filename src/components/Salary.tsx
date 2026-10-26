@@ -7,6 +7,14 @@ export type EmploymentType =
   | "contractor"
   | "freelance"
   | "internship";
+/** Real-usage finding: a source posting quoted a gross B2B rate alongside a
+ *  net permanent-contract salary for the same role — this product always
+ *  rendered every amount as "gross" (§5.2's own original invariant, true
+ *  by construction when every job had exactly one, employee-style salary).
+ *  Now an explicit, employer-set field rather than something inferred —
+ *  defaults to "gross" everywhere, preserving that invariant for every job
+ *  that never sets it otherwise. */
+export type SalaryBasis = "gross" | "net";
 
 export type SalaryProps = {
   /** null when the employer has chosen to hide the salary publicly
@@ -19,6 +27,7 @@ export type SalaryProps = {
   /** Only meaningful when period is "month". Portugal pays over 14 (§5.2). */
   months?: number;
   employmentType: EmploymentType;
+  basis?: SalaryBasis;
   size?: "feed" | "detail";
 };
 
@@ -45,6 +54,7 @@ export function Salary({
   period,
   months,
   employmentType,
+  basis = "gross",
   size = "feed",
 }: SalaryProps) {
   const t = useTranslations("salary");
@@ -77,7 +87,7 @@ export function Salary({
 
   const meta = [
     showMonths ? t("months", { count: months as number }) : null,
-    t("gross"),
+    t(basis === "net" ? "net" : "gross"),
     t(`employmentType.${employmentType}`),
   ]
     .filter(Boolean)

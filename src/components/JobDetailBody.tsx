@@ -210,15 +210,43 @@ export async function JobDetailBody({
                   </p>
                 </div>
               </div>
-              <div className="shrink-0 text-right">
+              <div className="flex shrink-0 flex-col gap-3 text-right">
+                {job.contractSalaries.length > 0 && (
+                  <p className="text-xs font-semibold tracking-wide text-muted uppercase">
+                    {tjf(`employmentTypeOption.${job.employmentType}`)}
+                  </p>
+                )}
                 <Salary
                   min={job.salaryMin}
                   max={job.salaryMax}
                   period={job.salaryPeriod}
                   months={job.salaryMonths}
                   employmentType={job.employmentType}
+                  basis={job.salaryBasis}
                   size="detail"
                 />
+                {/* Real-usage finding: some postings genuinely offer two
+                 *  different contract types at two different rates (e.g. a
+                 *  gross B2B day-rate alongside a net permanent salary) —
+                 *  each extra accepted type that has its own distinct range
+                 *  gets its own labeled block here, instead of a single
+                 *  number silently standing in for both. */}
+                {job.contractSalaries.map((cs) => (
+                  <div key={cs.employmentType} className="border-t border-line pt-3">
+                    <p className="text-xs font-semibold tracking-wide text-muted uppercase">
+                      {tjf(`employmentTypeOption.${cs.employmentType}`)}
+                    </p>
+                    <Salary
+                      min={cs.min}
+                      max={cs.max}
+                      period={cs.period}
+                      months={cs.months}
+                      employmentType={cs.employmentType}
+                      basis={cs.basis}
+                      size="detail"
+                    />
+                  </div>
+                ))}
               </div>
             </div>
 

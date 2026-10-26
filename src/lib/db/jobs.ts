@@ -1,7 +1,8 @@
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { slugify } from "@/lib/slug";
-import type { Job, SkillLevel } from "@/lib/types";
+import type { Job, SkillLevel, ContractSalary } from "@/lib/types";
+import type { SalaryBasis } from "@/components/Salary";
 import { getMyEmployerContext, type MyCompany } from "./companies";
 import { getMyEmployerUnreadThreadCount } from "./messaging";
 
@@ -33,14 +34,14 @@ async function resolveJobWriteContext(override?: JobWriteOverride): Promise<JobW
 export const SELECT = `
   id, slug, title, description, language, seniority, work_model, location,
   latitude, longitude, salary_min, salary_max, salary_currency, salary_period,
-  salary_months, employment_type, status, published_at, expires_at, created_at,
+  salary_months, salary_basis, employment_type, status, published_at, expires_at, created_at,
   external_apply_url, location_id, salary_public, boost_rank_at, boosted_until,
   companies!inner ( slug, company_name, company_logo_url, company_description, top_employer_active ),
   job_tech_tags ( level, required, tech_tags ( slug, label ) ),
   job_categories ( slug ),
   locations ( slug, country ),
   job_languages ( level, spoken_languages ( slug, label ) ),
-  job_employment_types ( employment_type )
+  job_employment_types ( employment_type, salary_min, salary_max, salary_period, salary_months, salary_basis )
 `;
 
 export type JobRow = {
@@ -59,6 +60,7 @@ export type JobRow = {
   salary_currency: string;
   salary_period: Job["salaryPeriod"];
   salary_months: number | null;
+  salary_basis: SalaryBasis;
   employment_type: Job["employmentType"];
   status: "draft" | "published" | "inactive" | "closed";
   published_at: string | null;
@@ -80,8 +82,35 @@ export type JobRow = {
   job_categories: { slug: string } | null;
   locations: { slug: string; country: string } | null;
   job_languages: { level: SkillLevel | null; spoken_languages: { slug: string; label: string } }[];
-  job_employment_types: { employment_type: Job["employmentType"] }[];
+  job_employment_types: {
+    employment_type: Job["employmentType"];
+    salary_min: number | null;
+    salary_max: number | null;
+    salary_period: Job["salaryPeriod"] | null;
+    salary_months: number | null;
+    salary_basis: SalaryBasis | null;
+  }[];
 };
+
+/** `Job.contractSalaries` — every accepted type *other* than the primary
+ *  that was given its own, distinct range (real-usage finding: a source
+ *  posting quoted a gross B2B rate and a net permanent-contract rate for
+ *  the same role — one job-level range can only ever represent one of
+ *  them). The primary type's own range always comes from the job-level
+ *  `salary_*` columns, never from its own `job_employment_types` row, even
+ *  if one happens to be set there too. */
+function buildContractSalaries(row: JobRow): ContractSalary[] {
+  return row.job_employment_types
+    .filter((et) => et.employment_type !== row.employment_type && et.salary_min != null && et.salary_max != null)
+    .map((et) => ({
+      employmentType: et.employment_type,
+      min: et.salary_min!,
+      max: et.salary_max!,
+      period: et.salary_period ?? "month",
+      months: et.salary_months ?? undefined,
+      basis: et.salary_basis ?? "gross",
+    }));
+}
 
 /** Always includes the real salary — callers on the public path (getLiveJobs
  *  etc.) null it out afterward when `salary_public` is false. Console reads
@@ -115,6 +144,8 @@ export function toJob(row: JobRow): Job {
     salaryMax: row.salary_max,
     salaryPeriod: row.salary_period,
     salaryMonths: row.salary_months ?? undefined,
+    salaryBasis: row.salary_basis,
+    contractSalaries: buildContractSalaries(row),
     employmentType: row.employment_type,
     // Defensive fallback to [employment_type] rather than an empty array —
     // every real job gets a row here via saveJob or the migration's own
@@ -140,7 +171,7 @@ export function toJob(row: JobRow): Job {
  *  JobRow-shaped data outside this file. */
 export function hideSalaryIfPrivate(row: JobRow, job: Job): Job {
   if (row.salary_public) return job;
-  return { ...job, salaryMin: null, salaryMax: null };
+  return { ...job, salaryMin: null, salaryMax: null, contractSalaries: [] };
 }
 
 /** Top-Employer jobs sort first (their own subscription perk), then by
@@ -427,6 +458,13 @@ export async function getEmployerDashboardStats(companyId: string): Promise<Empl
  *  10b) — replaces the old flat `techTagIds: string[]`. */
 export type JobTechTagInput = { techTagId: string; level: SkillLevel | null; required: boolean };
 export type JobLanguageInput = { spokenLanguageId: string; level: SkillLevel | null };
+export type TypeSalaryInput = {
+  salaryMin: number;
+  salaryMax: number;
+  salaryPeriod: Job["salaryPeriod"];
+  salaryMonths: number | null;
+  salaryBasis: SalaryBasis;
+};
 
 export type JobFormInput = {
   title: string;
@@ -445,10 +483,23 @@ export type JobFormInput = {
   salaryMax: number | null;
   salaryPeriod: Job["salaryPeriod"];
   salaryMonths: number | null;
+  /** Explicit, employer-set choice — never inferred (§pricing / "two
+   *  contract types, two amounts" finding). Defaults to "gross" via the
+   *  DB column when omitted by an older caller (bulk import, the public
+   *  API). */
+  salaryBasis?: SalaryBasis;
   /** Non-empty — the first entry is persisted as `jobs.employment_type`
    *  (the "primary" type), the full array as `job_employment_types`
    *  (real-usage QA item: "multiple contract types on one job ad"). */
   employmentTypes: Job["employmentType"][];
+  /** An extra accepted type's own, distinct salary range (real-usage
+   *  finding: a source posting quoted a gross B2B rate and a net
+   *  permanent-contract rate for the same role) — keyed by employment
+   *  type, only ever read for types other than `employmentTypes[0]`
+   *  (the primary always uses this input's own top-level salary fields
+   *  above). Omitted or missing for a type means that type has no range
+   *  of its own. */
+  typeSalaries?: Partial<Record<Job["employmentType"], TypeSalaryInput>>;
   techTags: JobTechTagInput[];
   languages: JobLanguageInput[];
   externalApplyUrl: string;
@@ -590,6 +641,7 @@ export async function saveJob(
     salary_max: input.salaryMax,
     salary_period: input.salaryPeriod,
     salary_months: input.salaryPeriod === "month" ? input.salaryMonths : null,
+    salary_basis: input.salaryBasis ?? "gross",
     employment_type: input.employmentTypes[0],
     external_apply_url: input.externalApplyUrl.trim() || null,
     salary_public: salaryPublic,
@@ -645,9 +697,23 @@ export async function saveJob(
   // Dedupe: the UI shouldn't ever send the same type twice, but a direct
   // API caller could, and the table's own primary key would reject a
   // duplicate insert outright.
+  const primaryType = input.employmentTypes[0];
   await supabase.from("job_employment_types").delete().eq("job_id", id);
   await supabase.from("job_employment_types").insert(
-    [...new Set(input.employmentTypes)].map((employmentType) => ({ job_id: id, employment_type: employmentType })),
+    [...new Set(input.employmentTypes)].map((employmentType) => {
+      // The primary type's range always lives on `jobs` itself (above) —
+      // never duplicated here, even if a caller somehow also set one.
+      const override = employmentType === primaryType ? undefined : input.typeSalaries?.[employmentType];
+      return {
+        job_id: id,
+        employment_type: employmentType,
+        salary_min: override?.salaryMin ?? null,
+        salary_max: override?.salaryMax ?? null,
+        salary_period: override?.salaryPeriod ?? null,
+        salary_months: override && override.salaryPeriod === "month" ? override.salaryMonths : null,
+        salary_basis: override?.salaryBasis ?? null,
+      };
+    }),
   );
 
   const { data: saved } = await supabase.from("jobs").select("slug").eq("id", id).single();
@@ -760,6 +826,7 @@ export type JobForEdit = {
   salary_max: number | null;
   salary_period: Job["salaryPeriod"];
   salary_months: number | null;
+  salary_basis: SalaryBasis;
   employment_type: Job["employmentType"];
   external_apply_url: string | null;
   status: "draft" | "published" | "inactive" | "closed";
@@ -767,7 +834,14 @@ export type JobForEdit = {
   salary_public: boolean;
   job_tech_tags: { tech_tag_id: string; level: SkillLevel | null; required: boolean }[];
   job_languages: { spoken_language_id: string; level: SkillLevel | null }[];
-  job_employment_types: { employment_type: Job["employmentType"] }[];
+  job_employment_types: {
+    employment_type: Job["employmentType"];
+    salary_min: number | null;
+    salary_max: number | null;
+    salary_period: Job["salaryPeriod"] | null;
+    salary_months: number | null;
+    salary_basis: SalaryBasis | null;
+  }[];
 };
 
 export async function getJobForEdit(jobId: string): Promise<JobForEdit | null> {
@@ -775,7 +849,7 @@ export async function getJobForEdit(jobId: string): Promise<JobForEdit | null> {
   const { data } = await supabase
     .from("jobs")
     .select(
-      "id, company_id, title, description, language, seniority, work_model, location, location_id, category_id, salary_min, salary_max, salary_period, salary_months, employment_type, external_apply_url, status, expires_at, salary_public, job_tech_tags(tech_tag_id, level, required), job_languages(spoken_language_id, level), job_employment_types(employment_type)",
+      "id, company_id, title, description, language, seniority, work_model, location, location_id, category_id, salary_min, salary_max, salary_period, salary_months, salary_basis, employment_type, external_apply_url, status, expires_at, salary_public, job_tech_tags(tech_tag_id, level, required), job_languages(spoken_language_id, level), job_employment_types(employment_type, salary_min, salary_max, salary_period, salary_months, salary_basis)",
     )
     .eq("id", jobId)
     .maybeSingle();

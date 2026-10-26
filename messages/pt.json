@@ -474,6 +474,12 @@
       "year": "Por ano"
     },
     "salaryMonths": "Meses por ano",
+    "salaryBasis": "Bruto ou líquido",
+    "salaryBasisOption": {
+      "gross": "Bruto",
+      "net": "Líquido"
+    },
+    "typeSalaryToggle": "Este tipo de contrato ({type}) tem um salário próprio, diferente",
     "employmentType": "Tipo de contrato",
     "employmentTypeHint": "Selecione todos os tipos de contrato aceitáveis para esta vaga — a maioria das vagas só precisa de um.",
     "employmentTypeOption": {
@@ -593,6 +599,7 @@
     "perYear": "por ano",
     "months": "× {count} meses",
     "gross": "bruto",
+    "net": "líquido",
     "employmentType": {
       "permanent": "Contrato sem termo",
       "fixed_term": "Contrato a termo",

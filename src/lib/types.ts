@@ -1,4 +1,4 @@
-import type { EmploymentType, SalaryPeriod } from "@/components/Salary";
+import type { EmploymentType, SalaryBasis, SalaryPeriod } from "@/components/Salary";
 
 export type Seniority = "junior" | "mid" | "senior" | "lead";
 export type WorkModel = "remote" | "hybrid" | "office";
@@ -11,6 +11,17 @@ export type Company = {
   slug: string;
   name: string;
   logoUrl?: string | null;
+};
+
+/** An extra accepted contract type's own, distinct salary — see
+ *  `Job.contractSalaries`'s own comment for why this exists. */
+export type ContractSalary = {
+  employmentType: EmploymentType;
+  min: number;
+  max: number;
+  period: SalaryPeriod;
+  months?: number;
+  basis: SalaryBasis;
 };
 
 export type Job = {
@@ -43,6 +54,19 @@ export type Job = {
   salaryMax: number | null;
   salaryPeriod: SalaryPeriod;
   salaryMonths?: number;
+  /** Explicit, employer-set — never inferred by extraction (§pricing /
+   *  "two contract types, two amounts" finding). Defaults to "gross"
+   *  everywhere, preserving the original always-gross invariant. */
+  salaryBasis: SalaryBasis;
+  /** Extra accepted contract types that have their own, distinct salary
+   *  range (as opposed to `employmentTypes`, which just lists every type
+   *  accepted regardless of whether it has its own numbers) — real-usage
+   *  finding: a source posting quoted a gross B2B rate *and* a net
+   *  permanent-contract rate for the same role, which this job's own
+   *  primary salary (above) can only ever represent one of. Empty for the
+   *  common case of a job with only one contract type, or where every
+   *  extra type shares the primary's own range. */
+  contractSalaries: ContractSalary[];
   /** The "primary" type — the first one the employer picked, still a
    *  single value for every consumer that only ever needs one (the
    *  public API's existing field, JSON-LD's single-value fallback,
