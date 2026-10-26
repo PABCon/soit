@@ -56,6 +56,7 @@ export function CompactJobRow({ job }: { job: Job }) {
           months={job.salaryMonths}
           employmentType={job.employmentType}
           basis={job.salaryBasis}
+          alternates={job.contractSalaries}
           size="feed"
         />
       </div>

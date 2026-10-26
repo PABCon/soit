@@ -1,3 +1,6 @@
+"use client";
+
+import { useState } from "react";
 import { useFormatter, useTranslations } from "next-intl";
 
 export type SalaryPeriod = "hour" | "day" | "month" | "year";
@@ -16,19 +19,31 @@ export type EmploymentType =
  *  that never sets it otherwise. */
 export type SalaryBasis = "gross" | "net";
 
-export type SalaryProps = {
+export type SalaryOption = {
   /** null when the employer has chosen to hide the salary publicly
    *  (§pricing, paid-tier-only) — renders a "not disclosed" fallback
    *  instead of the amount. Never null for a free-tier job. */
   min: number | null;
   max: number | null;
-  currency?: string;
   period: SalaryPeriod;
   /** Only meaningful when period is "month". Portugal pays over 14 (§5.2). */
   months?: number;
   employmentType: EmploymentType;
   basis?: SalaryBasis;
+};
+
+export type SalaryProps = SalaryOption & {
+  currency?: string;
   size?: "feed" | "detail";
+  /** Real-usage finding: some jobs genuinely offer more than one contract
+   *  type at a different rate each (e.g. a gross B2B day-rate alongside a
+   *  net permanent salary) — when given, the employment-type text becomes
+   *  a small set of toggle labels switching the whole amount shown between
+   *  this job's primary range (this component's own top-level props) and
+   *  each of these. Same two-line footprint either way — a job with two
+   *  rates never grows taller than one with a single rate, so a feed/list
+   *  of cards stays evenly sized regardless of how many a given job has. */
+  alternates?: SalaryOption[];
 };
 
 const PERIOD_KEY = {
@@ -56,9 +71,14 @@ export function Salary({
   employmentType,
   basis = "gross",
   size = "feed",
+  alternates,
 }: SalaryProps) {
   const t = useTranslations("salary");
   const format = useFormatter();
+  const [selected, setSelected] = useState(0);
+
+  const options: SalaryOption[] = [{ min, max, period, months, employmentType, basis }, ...(alternates ?? [])];
+  const active = options[selected] ?? options[0];
 
   const money = (value: number) =>
     format.number(value, {
@@ -67,7 +87,7 @@ export function Salary({
       maximumFractionDigits: 0,
     });
 
-  if (min == null || max == null) {
+  if (active.min == null || active.max == null) {
     return (
       <div>
         <p
@@ -83,12 +103,11 @@ export function Salary({
     );
   }
 
-  const showMonths = period === "month" && typeof months === "number";
+  const showMonths = active.period === "month" && typeof active.months === "number";
 
   const meta = [
-    showMonths ? t("months", { count: months as number }) : null,
-    t(basis === "net" ? "net" : "gross"),
-    t(`employmentType.${employmentType}`),
+    showMonths ? t("months", { count: active.months as number }) : null,
+    t((active.basis ?? "gross") === "net" ? "net" : "gross"),
   ]
     .filter(Boolean)
     .join(" · ");
@@ -102,7 +121,7 @@ export function Salary({
             : "font-display text-base font-bold text-pine tabular-nums"
         }
       >
-        {money(min)}–{money(max)}
+        {money(active.min)}–{money(active.max)}
       </p>
       <p
         className={
@@ -111,7 +130,27 @@ export function Salary({
             : "mt-0.5 text-xs text-muted"
         }
       >
-        {t(PERIOD_KEY[period])} · {meta}
+        {t(PERIOD_KEY[active.period])} · {meta} ·{" "}
+        {options.length > 1 ? (
+          options.map((opt, i) => (
+            <span key={opt.employmentType}>
+              {i > 0 && "/"}
+              <button
+                type="button"
+                onClick={() => setSelected(i)}
+                className={
+                  i === selected
+                    ? "font-semibold text-pine underline underline-offset-2"
+                    : "text-muted underline-offset-2 hover:text-ink hover:underline"
+                }
+              >
+                {t(`employmentType.${opt.employmentType}`)}
+              </button>
+            </span>
+          ))
+        ) : (
+          <span>{t(`employmentType.${active.employmentType}`)}</span>
+        )}
       </p>
     </div>
   );
