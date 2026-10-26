@@ -15,10 +15,14 @@ const MAX_CANDIDATES = 400;
 // Real-usage finding: many company career pages paginate ("page 2", "older
 // roles", …) and the single-page version of this function silently missed
 // every job past page 1. Bounds total latency/LLM calls regardless of how
-// many pages a site claims to have — a career page with more than this many
-// pages of open roles is already an edge case, not the common one this
-// feature needs to cover.
-const MAX_PAGES = 4;
+// many pages a site claims to have — each page is a sequential fetch + LLM
+// call (page N+1 can't be discovered before page N's response says where it
+// is), and this whole crawl runs synchronously inside one Server Action
+// call with no extended timeout, so it can't grow unbounded. A career page
+// with more than this many pages of open roles is a genuine edge case the
+// caller is told about (`truncated: true`) rather than one silently
+// swallowed.
+const MAX_PAGES = 10;
 
 type Candidate = { text: string; url: string };
 
@@ -96,7 +100,16 @@ const LinkSelectionSchema = z.object({
 export type DiscoveredJobLink = { url: string; title: string | null };
 
 export type ExtractJobLinksResult =
-  | { ok: true; links: DiscoveredJobLink[] }
+  | {
+      ok: true;
+      links: DiscoveredJobLink[];
+      /** True when the crawl stopped for a reason OTHER than the listing
+       *  itself running out of pages — hit `MAX_PAGES`, or a later page
+       *  (not the first) failed to fetch/parse. The caller should tell the
+       *  employer honestly that more jobs may exist beyond what's here,
+       *  rather than implying this is definitely the complete list. */
+      truncated: boolean;
+    }
   | { ok: false; reason: "invalid_url" | "fetch_failed" | "too_large" | "empty_content" | "extraction_failed" };
 
 type PageFetchResult = { ok: true; html: string } | { ok: false; reason: "fetch_failed" | "too_large" };
@@ -179,7 +192,10 @@ async function discoverJobsOnPage(url: string, visited: ReadonlySet<string>): Pr
  * JS-heavy. A later page failing to fetch or parse just stops the crawl
  * where it is — whatever was already found on earlier pages still stands;
  * only the very first page's failure is this whole call's own failure,
- * same contract as before pagination support existed.
+ * same contract as before pagination support existed. Either way (hitting
+ * `MAX_PAGES`, or a later page failing), the result's `truncated` flag
+ * tells the caller more jobs may genuinely exist beyond what was found,
+ * rather than silently implying this is the complete list.
  */
 export async function extractJobLinksFromUrl(url: string): Promise<ExtractJobLinksResult> {
   let parsed: URL;
@@ -197,13 +213,19 @@ export async function extractJobLinksFromUrl(url: string): Promise<ExtractJobLin
   const links: DiscoveredJobLink[] = [];
   let currentUrl: string | null = parsed.toString();
   let pageCount = 0;
+  let truncated = false;
 
-  while (currentUrl && pageCount < MAX_PAGES) {
+  while (currentUrl) {
+    if (pageCount >= MAX_PAGES) {
+      truncated = true;
+      break;
+    }
     visited.add(currentUrl);
     const page = await discoverJobsOnPage(currentUrl, visited);
     pageCount++;
     if (!page.ok) {
       if (pageCount === 1) return { ok: false, reason: page.reason };
+      truncated = true;
       break;
     }
     for (const link of page.jobs) {
@@ -214,5 +236,5 @@ export async function extractJobLinksFromUrl(url: string): Promise<ExtractJobLin
     currentUrl = page.nextPageUrl;
   }
 
-  return { ok: true, links };
+  return { ok: true, links, truncated };
 }

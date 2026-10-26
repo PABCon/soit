@@ -46,6 +46,7 @@ export async function startJobImportAction(sourceUrl: string): Promise<StartJobI
         companyName: ctx.company.company_name,
         sourceUrl,
         foundCount: discovery.links.length,
+        truncated: discovery.truncated,
       }),
     );
   }
