@@ -31,6 +31,7 @@ const JOB_FIELDS: { field: string; type: string; required: string; note: string 
   { field: "salaryMax", type: "number", required: "required", note: "≥ salaryMin" },
   { field: "salaryPeriod", type: '"hour" | "day" | "month" | "year"', required: "required", note: "" },
   { field: "salaryMonths", type: "number | null", required: "only when salaryPeriod is “month”", note: "12–14" },
+  { field: "salaryBasis", type: '"gross" | "net"', required: "optional, default gross", note: "basis of the primary contract type's own salaryMin/salaryMax above" },
   {
     field: "employmentType",
     type: '"permanent" | "fixed_term" | "contractor" | "freelance" | "internship"',
@@ -42,6 +43,12 @@ const JOB_FIELDS: { field: string; type: string; required: string; note: string 
     type: '("permanent" | "fixed_term" | "contractor" | "freelance" | "internship")[]',
     required: "required unless employmentType is given",
     note: "a job open to more than one contract type (e.g. permanent + freelance); takes priority over employmentType if both are given",
+  },
+  {
+    field: "typeSalaries",
+    type: "{ [employmentType]: { salaryMin, salaryMax, salaryPeriod, salaryMonths?, salaryBasis? } }",
+    required: "optional",
+    note: "a distinct salary for an additional accepted contract type beyond the primary one (e.g. a gross B2B day-rate next to a net permanent salary); each key must be one of the job's own employmentType(s), other than the primary (first) one, which always uses the top-level salary fields above",
   },
   { field: "techTags", type: "{ slug, level?, required? }[]", required: "optional", note: "level: basic|intermediate|advanced|expert" },
   { field: "languages", type: "{ slug, level? }[]", required: "optional", note: "spoken-language requirement, not the ad's own language" },
@@ -185,6 +192,33 @@ export default async function DevelopersPage({ params }: Props) {
       </pre>
       <pre className={`mt-2 ${codeClass}`}>
 {`{ "id": "...", "slug": "senior-backend-engineer-...", "url": "${SITE}/en/jobs/...", "status": "published" }`}
+      </pre>
+
+      <p className="mt-4 text-sm text-muted">
+        A job open to more than one contract type can give each one its own salary — the primary type
+        (the first entry in <code>employmentTypes</code>) always uses the top-level <code>salaryMin</code>/
+        <code>salaryMax</code>/<code>salaryBasis</code> above; any other accepted type&apos;s own range goes in
+        <code>typeSalaries</code>, keyed by that contract type:
+      </p>
+      <pre className={`mt-2 ${codeClass}`}>
+{`{
+    "title": "Senior Backend Engineer",
+    "description": "...",
+    "language": "en",
+    "seniority": "senior",
+    "workModel": "remote",
+    "categorySlug": "backend-development",
+    "employmentTypes": ["permanent", "freelance"],
+    "salaryMin": 3500,
+    "salaryMax": 5000,
+    "salaryPeriod": "month",
+    "salaryMonths": 14,
+    "salaryBasis": "net",
+    "typeSalaries": {
+      "freelance": { "salaryMin": 300, "salaryMax": 400, "salaryPeriod": "day", "salaryBasis": "gross" }
+    },
+    "publish": true
+  }`}
       </pre>
 
       <h3 className={h3Class}>PUT /api/v1/jobs/:id</h3>

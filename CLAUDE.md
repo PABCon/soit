@@ -5212,3 +5212,57 @@ chaining sequence above. `tsc --noEmit`, `eslint` on every changed
 file, the full test suite (114 passing), `npm run build`, and
 `check:i18n` (928 keys, in sync — the dead `feed.allFilters` key was
 removed) all pass.
+
+## Public API: per-contract-type salary + basis (closing the "two contract
+types, two amounts" gap)
+
+Follow-up to the earlier "multiple contract types on one job ad" structural
+item: that work added `employmentTypes`/`typeSalaries`/`salary_basis` to the
+data model and `saveJob`, and wired the console `JobForm` UI to them — but
+the public `POST /api/v1/jobs` surface (`src/lib/api/resolve-refs.ts`) was
+never updated to match, so an external caller could post a job with two
+accepted contract types but had no way to give the non-primary type its own
+salary range, and every API-created job silently defaulted to
+`salary_basis: "gross"` (documented at the time as a known gap in
+`jobs.ts`'s own `JobFormInput.salaryBasis` comment).
+
+Added `salaryBasis` (top-level, the primary contract type's own gross/net
+choice) and `typeSalaries` (keyed by employment type, same shape as
+`JobFormInput.typeSalaries`) to `jobBodySchema`, plus a new refine
+confirming every `typeSalaries` key is actually one of the job's own
+`employmentType`/`employmentTypes`. **A real zod v4 gotcha caught before it
+shipped, not after**: the first version keyed `typeSalaries` on the
+`employmentType` enum itself (`z.record(employmentType, typeSalarySchema)`)
+— in zod v4, `z.record` with an enum key schema models an *exhaustive*
+`Record<K, V>` (every enum key required), not a partial map the way zod v3's
+plain string-keyed records behaved. A real request body supplying a salary
+for only one of two accepted types failed validation with
+`typeSalaries.permanent: Invalid input: expected object, received
+undefined` — caught by actually constructing and parsing a realistic
+two-contract-type body, not by `tsc` (which has no opinion on zod's own
+runtime semantics) or by reading zod's docs alone. Fixed by keying on plain
+`z.string()` and checking each key's validity (both "is a real employment
+type" and "is one of this job's own accepted types") explicitly in the
+existing cross-field refine — one check does both, since `accepted` can
+only ever contain real enum values.
+
+Updated `/developers`'s job-fields table (`salaryBasis`, `typeSalaries` rows)
+and added a second worked `POST /api/v1/jobs` example showing two contract
+types each with their own range/basis — the in-console `ApiDocs.tsx` quick-
+start was left untouched since it already only shows the single-type case
+and links out to `/developers` for the full field reference, same as before.
+
+**Verified**: the DB-touching parts of `resolveJobRefs` need a real Next.js
+request scope (`cookies()` inside `getJobCategories`, confirmed by a direct
+`tsx` run throwing `cookies was called outside a request scope` the moment
+validation passed and it reached the DB lookups) — not reachable from a bare
+script outside the dev/build server in this pass. Isolated verification
+instead: reconstructed the exact schema/refine shape in a standalone script
+and confirmed all four cases — a partial `typeSalaries` (one of two accepted
+types) succeeds; a `typeSalaries` key naming a type not in
+`employmentType`/`employmentTypes` fails with the intended message; an
+entry with `salaryMax < salaryMin` fails; omitting `typeSalaries` entirely
+still succeeds (backward compatible, the pre-existing single-type case).
+`tsc --noEmit`, `eslint` on both changed files, the full test suite (114
+passing, unaffected), `npm run build`, and `check:i18n` (1274 keys, in sync)
+all pass.
