@@ -1,6 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { saveJob, type TypeSalaryInput } from "@/lib/db/jobs";
 import { extractJobFromUrl } from "@/lib/ai/extract-job";
+import { polishJobDescription } from "@/lib/ai/polish-text";
 import { getTechTags } from "@/lib/db/tech-tags";
 import { getJobCategories } from "@/lib/db/job-categories";
 import { getSpokenLanguages } from "@/lib/db/spoken-languages";
@@ -129,6 +130,15 @@ async function processBatch(run: NonNullable<Awaited<ReturnType<typeof getImport
         outcome = "failed";
       } else {
         try {
+          // Direct feedback: a bulk-imported draft's description shouldn't
+          // need its own employer to click "Polish with AI" by hand either
+          // — same automatic pass the "paste a job link" flow now does.
+          const polishedDescription = extracted.data.description
+            ? await polishJobDescription(extracted.data.description)
+            : null;
+          const description =
+            polishedDescription && polishedDescription.ok ? polishedDescription.text : (extracted.data.description ?? "");
+
           const resolved = await resolveExtractedJobVocab(extracted.data, vocab, run.company_id, company.company_name);
           // Real-usage finding: a source posting stated two distinct
           // contract types, each with its own range (one gross B2B rate,
@@ -156,7 +166,7 @@ async function processBatch(run: NonNullable<Awaited<ReturnType<typeof getImport
             null,
             {
               title: extracted.data.title ?? link.title ?? "Untitled",
-              description: extracted.data.description ?? "",
+              description,
               language: extracted.data.adLanguage ?? "pt",
               seniority: extracted.data.seniority ?? "mid",
               workModel: extracted.data.workModel ?? "office",

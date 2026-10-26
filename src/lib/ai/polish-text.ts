@@ -10,17 +10,21 @@ export type PolishResult =
   | { ok: false; reason: "empty_content" | "too_long" | "polish_failed" };
 
 /**
- * "Polish with AI" (§ real-usage QA — job-description formatting): for a
- * job description an employer typed or pasted themselves (as opposed to
- * `extractJobFromUrl`'s fetched-from-a-link path), reformats it into
- * clean, well-structured text — proper paragraphs and bullet lists where
- * the content is already list-shaped — without rewriting the employer's
- * own content. Explicitly a *formatting* pass, not a rewrite: the prompt
- * forbids adding, removing, or changing the meaning of anything, exactly
- * the same "never invent" discipline as every other LLM feature in this
- * codebase, just aimed at structure instead of new fields. Plain
- * `generateText` (not `Output.object`) since the result is a single
- * string, not structured data.
+ * "Polish with AI" (§ real-usage QA — job-description formatting): reformats
+ * a job description into clean, well-structured text — proper paragraphs
+ * and bullet lists where the content is already list-shaped — without
+ * rewriting its content. Originally scoped to only a description an
+ * employer typed or pasted themselves (an `extractJobFromUrl` fetch was
+ * already asked to preserve the source's own structure) — now also run
+ * automatically right after a fetch (both the single-link "paste a job
+ * link" autofill and the bulk importer), per direct feedback that an
+ * employer shouldn't have to click the button themselves every time.
+ * Explicitly a *formatting* pass, not a rewrite: the prompt forbids
+ * adding, removing, or changing the meaning of anything, exactly the same
+ * "never invent" discipline as every other LLM feature in this codebase,
+ * just aimed at structure instead of new fields. Plain `generateText` (not
+ * `Output.object`) since the result is a single string, not structured
+ * data.
  */
 export async function polishJobDescription(text: string): Promise<PolishResult> {
   const trimmed = text.trim();

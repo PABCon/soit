@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, type FormEvent, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
 import {
   Link2,
@@ -241,6 +241,19 @@ export function JobForm({
   // success, so this never needs to change while the form stays mounted.
   const [currentlyPublished] = useState(initial?.status === "published");
 
+  // Real-usage ask: a fixed `rows` left a big empty gap below a short
+  // description, since the right column (salary, tech stack, languages —
+  // now longer, with the per-contract-type salary blocks) is often much
+  // taller. Grows with content instead of truncating/scrolling internally,
+  // so the left column's real height actually reflects what's in it.
+  const descriptionRef = useRef<HTMLTextAreaElement>(null);
+  useEffect(() => {
+    const el = descriptionRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${el.scrollHeight}px`;
+  }, [description]);
+
   const filteredTags = useMemo(() => {
     const q = tagFilter.trim().toLowerCase();
     if (!q) return techTags;
@@ -452,6 +465,18 @@ export function JobForm({
     // turns off before the form has actually finished updating would read
     // as done when it isn't.
     await applyExtractedData(result.data);
+
+    // Direct feedback: the employer shouldn't have to click "Polish with
+    // AI" themselves right after a fetch — do it automatically, using the
+    // raw extracted text (not the `description` state, which React hasn't
+    // committed yet inside this same async function). Silently keeps the
+    // unpolished-but-faithful extraction if this fails; the fetch itself
+    // already succeeded, so a polish hiccup shouldn't read as an error.
+    if (result.data.description) {
+      const polished = await polishJobDescriptionAction(result.data.description);
+      if (polished.ok) setDescription(polished.text);
+    }
+
     setExtracting(false);
     setExtractNotice(t("extractSuccess"));
   }
@@ -656,10 +681,11 @@ export function JobForm({
                   </button>
                 </div>
                 <textarea
+                  ref={descriptionRef}
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   rows={8}
-                  className={`${inputClass} h-auto py-2`}
+                  className={`${inputClass} h-auto min-h-48 resize-none overflow-hidden py-2`}
                 />
                 <span className="text-xs text-muted">{t("descriptionHint")}</span>
                 {polishError && <span className="text-xs text-red-700">{polishError}</span>}
