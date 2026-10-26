@@ -112,7 +112,13 @@ export async function runImportBatch(runId: string): Promise<{ done: boolean }> 
           employmentTypes: [extracted.data.employmentType ?? "permanent"],
           techTags: resolved.techTags,
           languages: resolved.languages,
-          externalApplyUrl: "",
+          // Defaults to the page it was scraped from, so a candidate who
+          // applies before the employer has reviewed the draft still ends
+          // up on a real, working apply flow (the employer's own original
+          // posting). If they want applications collected through Just IT
+          // instead, clearing this field in the edit form switches it to
+          // the normal internal apply flow, same as any other job.
+          externalApplyUrl: link.url,
           expiresAt: null,
           publish: false,
           salaryPublic: true,
