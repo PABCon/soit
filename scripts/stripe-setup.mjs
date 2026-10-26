@@ -43,12 +43,22 @@ const TOP_EMPLOYER_PRICES = [
   { lookup_key: "top_employer_annual", unit_amount: 596700, interval: "year" },
 ];
 
-// Current pricing: flat €500/month; annual = 500×10 ("2 months free"),
-// no bundled job-ad slots (that perk was removed — see jobs.ts's
-// effectiveFreeCap comment).
+// Superseded by top_employer_monthly_v3/top_employer_annual_v3 below (the
+// €2,500/year repricing) — kept here, unmodified, only because real
+// subscribers are still billed on these exact Prices. Prices are immutable
+// in Stripe; never edit the amounts below.
 const TOP_EMPLOYER_PRICES_V2 = [
   { lookup_key: "top_employer_monthly_v2", unit_amount: 50000, interval: "month" },
   { lookup_key: "top_employer_annual_v2", unit_amount: 500000, interval: "year" },
+];
+
+// Current pricing: €2,500/year is the real anchor now, not a monthly rate
+// discounted for paying annually — monthly is just that annual price
+// divided by 12 (€208.33), so the two billing cadences cost the same
+// total per year instead of monthly being a markup over annual.
+const TOP_EMPLOYER_PRICES_V3 = [
+  { lookup_key: "top_employer_monthly_v3", unit_amount: 20833, interval: "month" },
+  { lookup_key: "top_employer_annual_v3", unit_amount: 250000, interval: "year" },
 ];
 
 async function findOrCreateProduct(name, description) {
@@ -85,7 +95,7 @@ const topEmployerProduct = await findOrCreateProduct(
   "Top Employer",
   "Badge, site-wide sponsor placement, unlimited bumps, full rich company profile, and API access. Job-ad slots are purchased separately, same as any verified company.",
 );
-for (const spec of [...TOP_EMPLOYER_PRICES, ...TOP_EMPLOYER_PRICES_V2]) {
+for (const spec of [...TOP_EMPLOYER_PRICES, ...TOP_EMPLOYER_PRICES_V2, ...TOP_EMPLOYER_PRICES_V3]) {
   const price = await findOrCreatePrice(topEmployerProduct, spec, {
     recurring: { interval: spec.interval },
   });
