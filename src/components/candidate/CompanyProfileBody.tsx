@@ -97,6 +97,30 @@ export async function CompanyProfileBody({
   );
   const websiteUrl = normalizeWebsiteUrl(company.website);
 
+  // Real-usage report: the right-hand column below was always rendered as
+  // part of a two-column grid even when it had nothing in it — a company
+  // with narrative text (about us/benefits/…) but no gallery photos or
+  // videos uploaded yet (the common case) got a wide, completely empty
+  // column sitting next to its text, reading as a layout bug rather than
+  // "this section is just unused." The grid only splits into two columns,
+  // and the right column only renders at all, when there's gallery content
+  // to put in it.
+  const hasNarrative = !!(
+    company.aboutUsText ||
+    company.howWeWorkText ||
+    company.benefitsText ||
+    (company.customSectionTitle && company.customSectionBody)
+  );
+  const hasGallery = company.galleryPhotos.length > 0 || company.galleryVideos.length > 0;
+  // Each narrative paragraph is independently capped for readability — but
+  // max-w-2xl (672px) was sized assuming it always sits in the narrower
+  // "3fr" track of the two-column grid. Without a gallery to fill the
+  // second column, that same cap left a wide blank strip beside the text
+  // even once the grid itself correctly stopped reserving an empty column
+  // for it — so it widens to use more of the single full-width column
+  // instead, while staying well short of an unreadably long line length.
+  const narrativeTextWidthClass = hasGallery ? "max-w-2xl" : "max-w-4xl";
+
   const statCards: { label: string; value: string | null; icon: LucideIcon }[] = [
     { label: t("officeLocations"), value: officeLocations.length ? officeLocations.join(", ") : null, icon: MapPin },
     { label: t("activeOffers"), value: String(jobs.length), icon: Users },
@@ -227,18 +251,16 @@ export async function CompanyProfileBody({
         </section>
       )}
 
-      {(company.aboutUsText ||
-        company.howWeWorkText ||
-        company.benefitsText ||
-        (company.customSectionTitle && company.customSectionBody) ||
-        company.galleryPhotos.length > 0 ||
-        company.galleryVideos.length > 0) && (
+      {(hasNarrative || hasGallery) && (
         // Round-14: pixel-measured against the reference (banner/stat-card
         // edges, column text-wrap boundaries) — its two columns split
         // ~63:37, not the ~67:33 `grid-cols-3`+`col-span-2` produced, and
         // every inter-section gap on the page measured 12-25px, nowhere
         // near the 40px (`mt-10`/`gap-10`/`space-y-10`) used throughout.
-        <div className="mt-6 grid grid-cols-1 gap-10 lg:grid-cols-[3fr_2fr]">
+        // The two-column split itself only applies when there's gallery
+        // content for the right column — narrative-only uses the full
+        // width instead of leaving an empty 2fr track beside it.
+        <div className={`mt-6 grid grid-cols-1 gap-10 ${hasGallery ? "lg:grid-cols-[3fr_2fr]" : ""}`}>
           {/* Reference layout: narrative/benefits content on the left, media on
            *  the right — same real "omit when empty" fields as before, just
            *  arranged into the two-column treatment the reference shows
@@ -247,7 +269,7 @@ export async function CompanyProfileBody({
             {company.aboutUsText && (
               <section>
                 <h2 className="font-display text-lg font-semibold">{t("aboutUs")}</h2>
-                <p className="mt-2 max-w-2xl text-sm leading-relaxed whitespace-pre-line text-muted">
+                <p className={`mt-2 text-sm leading-relaxed whitespace-pre-line text-muted ${narrativeTextWidthClass}`}>
                   {company.aboutUsText}
                 </p>
               </section>
@@ -256,7 +278,7 @@ export async function CompanyProfileBody({
             {company.howWeWorkText && (
               <section>
                 <h2 className="font-display text-lg font-semibold">{t("howWeWork")}</h2>
-                <p className="mt-2 max-w-2xl text-sm leading-relaxed whitespace-pre-line text-muted">
+                <p className={`mt-2 text-sm leading-relaxed whitespace-pre-line text-muted ${narrativeTextWidthClass}`}>
                   {company.howWeWorkText}
                 </p>
               </section>
@@ -265,7 +287,7 @@ export async function CompanyProfileBody({
             {company.benefitsText && (
               <section>
                 <h2 className="font-display text-lg font-semibold">{t("benefits")}</h2>
-                <p className="mt-2 max-w-2xl text-sm leading-relaxed whitespace-pre-line text-muted">
+                <p className={`mt-2 text-sm leading-relaxed whitespace-pre-line text-muted ${narrativeTextWidthClass}`}>
                   {company.benefitsText}
                 </p>
               </section>
@@ -274,13 +296,14 @@ export async function CompanyProfileBody({
             {company.customSectionTitle && company.customSectionBody && (
               <section>
                 <h2 className="font-display text-lg font-semibold">{company.customSectionTitle}</h2>
-                <p className="mt-2 max-w-2xl text-sm leading-relaxed whitespace-pre-line text-muted">
+                <p className={`mt-2 text-sm leading-relaxed whitespace-pre-line text-muted ${narrativeTextWidthClass}`}>
                   {company.customSectionBody}
                 </p>
               </section>
             )}
           </div>
 
+          {hasGallery && (
           <div className="space-y-6">
             {company.galleryPhotos.length > 0 && (
               <section>
@@ -337,6 +360,7 @@ export async function CompanyProfileBody({
               </section>
             )}
           </div>
+          )}
         </div>
       )}
 
