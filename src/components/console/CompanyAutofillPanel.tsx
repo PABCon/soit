@@ -13,7 +13,15 @@ export type AutofillApplyFields = {
   aboutUs?: string;
   industry?: string;
   companySize?: string;
+  benefitsText?: string;
+  howWeWorkText?: string;
+  address?: string;
   socials?: Partial<Record<"facebook_url" | "linkedin_url" | "instagram_url" | "youtube_url" | "tiktok_url" | "x_url", string>>;
+  /** Not merged into `onApply`'s other fields — these don't have a single
+   *  home to prefill (they're rows in `TeamMembersSection`'s own list, not
+   *  a scalar field), so the parent is expected to hold onto them and pass
+   *  them down as a separate "suggested additions" prop instead. */
+  teamMembers?: { name: string; role: string | null }[];
 };
 
 /** "Autofill from website" — fetches the company's own site server-side
@@ -86,6 +94,9 @@ export function CompanyAutofillPanel({
       aboutUs: result.aboutUs ?? undefined,
       industry: result.industry ?? undefined,
       companySize: result.companySize ?? undefined,
+      benefitsText: result.benefitsText ?? undefined,
+      howWeWorkText: result.howWeWorkText ?? undefined,
+      address: result.address ?? undefined,
       socials: {
         facebook_url: result.facebookUrl ?? undefined,
         linkedin_url: result.linkedinUrl ?? undefined,
@@ -94,12 +105,23 @@ export function CompanyAutofillPanel({
         tiktok_url: result.tiktokUrl ?? undefined,
         x_url: result.xUrl ?? undefined,
       },
+      teamMembers: result.teamMembers.length > 0 ? result.teamMembers : undefined,
     });
     setApplied(true);
   }
 
   const hasFieldSuggestions =
-    result && [result.tagline, result.aboutUs, result.industry, result.companySize].some((v) => v);
+    result &&
+    [
+      result.tagline,
+      result.aboutUs,
+      result.industry,
+      result.companySize,
+      result.benefitsText,
+      result.howWeWorkText,
+      result.address,
+      result.teamMembers.length > 0 ? result.teamMembers : null,
+    ].some((v) => v);
 
   return (
     <div className="rounded-xl border border-line bg-paper p-4">
@@ -144,6 +166,12 @@ export function CompanyAutofillPanel({
             {result.industry && <li>{result.industry}</li>}
             {result.companySize && <li>{result.companySize}</li>}
             {result.aboutUs && <li>{t("autofillAboutUsFound")}</li>}
+            {result.howWeWorkText && <li>{t("autofillHowWeWorkFound")}</li>}
+            {result.benefitsText && <li>{t("autofillBenefitsFound")}</li>}
+            {result.address && <li>{result.address}</li>}
+            {result.teamMembers.length > 0 && (
+              <li>{t("autofillTeamMembersFound", { count: result.teamMembers.length })}</li>
+            )}
           </ul>
           <button
             type="button"

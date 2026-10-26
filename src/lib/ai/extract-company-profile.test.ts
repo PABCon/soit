@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { findLogoCandidate, findSocialLinks, findAboutPageUrl } from "./extract-company-profile";
+import { findLogoCandidate, findSocialLinks, extractHomepageLinks, pickCandidatePages } from "./extract-company-profile";
+
+/** `findAboutPageUrl`'s old single-category tests, rewritten against the
+ *  two functions that replaced it when the crawl widened from one About
+ *  page to About/Careers/Benefits/Contact. */
+function pickOne(html: string, baseUrl: string) {
+  const links = extractHomepageLinks(html, baseUrl);
+  return pickCandidatePages(links, baseUrl);
+}
 
 describe("findLogoCandidate", () => {
   it("prefers an Open Graph image when present", () => {
@@ -94,29 +102,52 @@ describe("findSocialLinks", () => {
   });
 });
 
-describe("findAboutPageUrl", () => {
+describe("extractHomepageLinks + pickCandidatePages (replaces the old single-category findAboutPageUrl)", () => {
   it("finds a same-site about page by href", () => {
     const html = `<a href="/about-us">Learn more</a>`;
-    expect(findAboutPageUrl(html, "https://example.com")).toBe("https://example.com/about-us");
+    expect(pickOne(html, "https://example.com")).toEqual([{ url: "https://example.com/about-us", labels: ["about"] }]);
   });
 
   it("finds a same-site about page by visible link text", () => {
     const html = `<a href="/who-we-are">About <strong>Us</strong></a>`;
-    expect(findAboutPageUrl(html, "https://example.com")).toBe("https://example.com/who-we-are");
+    expect(pickOne(html, "https://example.com")).toEqual([{ url: "https://example.com/who-we-are", labels: ["about"] }]);
   });
 
   it("never follows an off-site link", () => {
     const html = `<a href="https://other-site.com/about">About</a>`;
-    expect(findAboutPageUrl(html, "https://example.com")).toBeNull();
+    expect(pickOne(html, "https://example.com")).toEqual([]);
   });
 
   it("never returns the homepage itself", () => {
     const html = `<a href="/">About</a>`;
-    expect(findAboutPageUrl(html, "https://example.com")).toBeNull();
+    expect(pickOne(html, "https://example.com")).toEqual([]);
   });
 
-  it("returns null when no about-style link exists", () => {
-    const html = `<a href="/products">Products</a><a href="/contact">Contact</a>`;
-    expect(findAboutPageUrl(html, "https://example.com")).toBeNull();
+  it("returns nothing when no page matches any category", () => {
+    const html = `<a href="/products">Products</a><a href="/pricing">Pricing</a>`;
+    expect(pickOne(html, "https://example.com")).toEqual([]);
+  });
+
+  it("finds a careers page distinct from an about page", () => {
+    const html = `<a href="/about">About</a><a href="/careers">Careers</a>`;
+    expect(pickOne(html, "https://example.com")).toEqual([
+      { url: "https://example.com/about", labels: ["about"] },
+      { url: "https://example.com/careers", labels: ["careers"] },
+    ]);
+  });
+
+  it("finds benefits and contact pages too", () => {
+    const html = `<a href="/perks">Our benefits</a><a href="/contacto">Contacto</a>`;
+    expect(pickOne(html, "https://example.com")).toEqual([
+      { url: "https://example.com/perks", labels: ["benefits"] },
+      { url: "https://example.com/contacto", labels: ["contact"] },
+    ]);
+  });
+
+  it("labels one page under both categories when it matches two (e.g. a combined About & Careers page)", () => {
+    const html = `<a href="/join-us">About &amp; careers</a>`;
+    expect(pickOne(html, "https://example.com")).toEqual([
+      { url: "https://example.com/join-us", labels: ["about", "careers"] },
+    ]);
   });
 });

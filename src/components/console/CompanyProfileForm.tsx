@@ -89,6 +89,12 @@ export function CompanyProfileForm({
   const [logoPreview, setLogoPreview] = useState(company.company_logo_url);
   const [coverPreview, setCoverPreview] = useState(company.cover_image_url);
   const [showPreview, setShowPreview] = useState(false);
+  // Not a `companies` field — these don't have a single scalar home to
+  // prefill into (they're rows `TeamMembersSection` manages itself), so
+  // they're just handed down as a one-time "here's what we found" list
+  // instead, same as every other autofill suggestion: nothing is added to
+  // the real list until the employer clicks to add it there.
+  const [suggestedTeamMembers, setSuggestedTeamMembers] = useState<{ name: string; role: string | null }[]>([]);
 
   const isTopEmployer = company.top_employer_active;
 
@@ -124,6 +130,9 @@ export function CompanyProfileForm({
     if (fields.aboutUs && !aboutUs) setAboutUs(fields.aboutUs);
     if (fields.industry && !industry) setIndustry(fields.industry);
     if (fields.companySize && !size) setSize(fields.companySize);
+    if (fields.benefitsText && !benefits) setBenefits(fields.benefitsText);
+    if (fields.howWeWorkText && !howWeWork) setHowWeWork(fields.howWeWorkText);
+    if (fields.address && !address) setAddress(fields.address);
     if (fields.socials) {
       setSocials((prev) => {
         const next = { ...prev };
@@ -134,6 +143,7 @@ export function CompanyProfileForm({
         return next;
       });
     }
+    if (fields.teamMembers) setSuggestedTeamMembers(fields.teamMembers);
   }
 
   async function handleImage(field: "logo" | "cover", file: File) {
@@ -422,7 +432,7 @@ export function CompanyProfileForm({
 
       {isTopEmployer ? (
         <div className="space-y-6">
-          <TeamMembersSection members={richProfile.teamMembers} />
+          <TeamMembersSection members={richProfile.teamMembers} suggested={suggestedTeamMembers} />
           <TestimonialsSection testimonials={richProfile.testimonials} />
           <PhotoGallerySection photos={richProfile.galleryPhotos} />
           <VideoGallerySection videos={richProfile.galleryVideos} />
