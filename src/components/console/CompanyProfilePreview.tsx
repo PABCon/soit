@@ -24,6 +24,8 @@ export function CompanyProfilePreview({
   description,
   logoUrl,
   coverUrl,
+  coverPositionX,
+  coverPositionY,
   aboutUs,
   howWeWork,
   benefits,
@@ -34,6 +36,8 @@ export function CompanyProfilePreview({
   description: string;
   logoUrl: string | null;
   coverUrl: string | null;
+  coverPositionX: number;
+  coverPositionY: number;
   aboutUs: string;
   howWeWork: string;
   benefits: string;
@@ -46,7 +50,12 @@ export function CompanyProfilePreview({
     <div className="overflow-hidden rounded-xl border border-line bg-white">
       {coverUrl && (
         // eslint-disable-next-line @next/next/no-img-element -- live unsaved preview, not an optimizable static asset
-        <img src={coverUrl} alt="" className="h-28 w-full object-cover" />
+        <img
+          src={coverUrl}
+          alt=""
+          className="h-28 w-full object-cover"
+          style={{ objectPosition: `${coverPositionX}% ${coverPositionY}%` }}
+        />
       )}
       <div className="p-4">
         <div className="flex items-center gap-3">

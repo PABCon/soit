@@ -15,6 +15,7 @@ import { PhotoGallerySection } from "@/components/console/PhotoGallerySection";
 import { VideoGallerySection } from "@/components/console/VideoGallerySection";
 import { CompanyAutofillPanel, type AutofillApplyFields } from "@/components/console/CompanyAutofillPanel";
 import { CompanyProfilePreview } from "@/components/console/CompanyProfilePreview";
+import { CoverPositionEditor } from "@/components/console/CoverPositionEditor";
 import { buttonClassName } from "@/components/Button";
 
 const inputClass = "h-11 rounded-lg border border-line bg-white px-3 text-sm";
@@ -88,6 +89,8 @@ export function CompanyProfileForm({
   const [imageSuccess, setImageSuccess] = useState<"logo" | "cover" | null>(null);
   const [logoPreview, setLogoPreview] = useState(company.company_logo_url);
   const [coverPreview, setCoverPreview] = useState(company.cover_image_url);
+  const [coverPositionX, setCoverPositionX] = useState(company.cover_position_x);
+  const [coverPositionY, setCoverPositionY] = useState(company.cover_position_y);
   const [showPreview, setShowPreview] = useState(false);
   // Not a `companies` field — these don't have a single scalar home to
   // prefill into (they're rows `TeamMembersSection` manages itself), so
@@ -117,6 +120,8 @@ export function CompanyProfileForm({
     formData.set("benefits_text", benefits);
     formData.set("custom_section_title", customTitle);
     formData.set("custom_section_body", customBody);
+    formData.set("cover_position_x", String(coverPositionX));
+    formData.set("cover_position_y", String(coverPositionY));
     await updateProfileAction(formData);
     setPending(false);
     setSaved(true);
@@ -156,6 +161,13 @@ export function CompanyProfileForm({
     // do) nothing else on the form gets reset in the meantime.
     const objectUrl = URL.createObjectURL(file);
     setPreview(objectUrl);
+    // A brand-new cover image has no sensible relationship to whatever
+    // position was set for the old one — re-center rather than risk an
+    // old offset producing a nonsensical crop on unrelated new content.
+    if (field === "cover") {
+      setCoverPositionX(50);
+      setCoverPositionY(50);
+    }
 
     const formData = new FormData();
     formData.set("file", file);
@@ -222,7 +234,12 @@ export function CompanyProfileForm({
           <div className="mt-2 flex items-center gap-4">
             {coverPreview ? (
               // eslint-disable-next-line @next/next/no-img-element -- Supabase Storage URL or a transient local object URL
-              <img src={coverPreview} alt="" className="h-16 w-28 shrink-0 rounded-lg border border-line object-cover" />
+              <img
+                src={coverPreview}
+                alt=""
+                className="h-16 w-28 shrink-0 rounded-lg border border-line object-cover"
+                style={{ objectPosition: `${coverPositionX}% ${coverPositionY}%` }}
+              />
             ) : (
               <div className="h-16 w-28 shrink-0 rounded-lg bg-gradient-to-br from-pine to-mint" aria-hidden="true" />
             )}
@@ -244,6 +261,34 @@ export function CompanyProfileForm({
           </div>
         </div>
       </div>
+
+      {coverPreview && (
+        <div>
+          <div className="mb-2 flex items-center justify-between">
+            <p className="text-sm font-medium text-ink">{t("coverPositionHeading")}</p>
+            <button
+              type="button"
+              onClick={() => {
+                setCoverPositionX(50);
+                setCoverPositionY(50);
+              }}
+              className="text-xs font-medium text-pine hover:underline"
+            >
+              {t("coverPositionReset")}
+            </button>
+          </div>
+          <CoverPositionEditor
+            src={coverPreview}
+            x={coverPositionX}
+            y={coverPositionY}
+            onChange={(nextX, nextY) => {
+              setCoverPositionX(nextX);
+              setCoverPositionY(nextY);
+            }}
+          />
+          <p className="mt-1 text-xs text-muted">{t("coverPositionHint")}</p>
+        </div>
+      )}
 
       <CompanyAutofillPanel
         defaultUrl={website}
@@ -354,6 +399,8 @@ export function CompanyProfileForm({
                 description={description}
                 logoUrl={logoPreview}
                 coverUrl={coverPreview}
+                coverPositionX={coverPositionX}
+                coverPositionY={coverPositionY}
                 aboutUs={aboutUs}
                 howWeWork={howWeWork}
                 benefits={benefits}

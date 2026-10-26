@@ -11,6 +11,8 @@ export type MyCompany = {
   verification_status: VerificationStatus;
   company_logo_url: string | null;
   cover_image_url: string | null;
+  cover_position_x: number;
+  cover_position_y: number;
   company_description: string | null;
   website: string | null;
   industry: string | null;
@@ -248,6 +250,8 @@ export async function getCompanyBySlug(slug: string): Promise<
         companySize: string | null;
         companyType: string | null;
         coverImageUrl: string | null;
+        coverPositionX: number;
+        coverPositionY: number;
         address: string | null;
         location: CompanyLocation | null;
       })
@@ -257,7 +261,7 @@ export async function getCompanyBySlug(slug: string): Promise<
   const { data } = await supabase
     .from("companies")
     .select(
-      `id, slug, company_name, company_logo_url, cover_image_url, company_description, website, industry, company_size, company_type, address, top_employer_active, about_us_text, how_we_work_text, benefits_text, custom_section_title, custom_section_body, locations ( name, latitude, longitude ), ${PUBLIC_SOCIAL_FIELDS}`,
+      `id, slug, company_name, company_logo_url, cover_image_url, cover_position_x, cover_position_y, company_description, website, industry, company_size, company_type, address, top_employer_active, about_us_text, how_we_work_text, benefits_text, custom_section_title, custom_section_body, locations ( name, latitude, longitude ), ${PUBLIC_SOCIAL_FIELDS}`,
     )
     .eq("slug", slug)
     .maybeSingle();
@@ -280,6 +284,8 @@ export async function getCompanyBySlug(slug: string): Promise<
     name: data.company_name,
     logoUrl: data.company_logo_url,
     coverImageUrl: data.cover_image_url,
+    coverPositionX: data.cover_position_x,
+    coverPositionY: data.cover_position_y,
     description: data.company_description,
     website: data.website,
     industry: data.industry,
@@ -422,6 +428,8 @@ export async function updateCompanyProfile(fields: {
   benefits_text: string | null;
   custom_section_title: string | null;
   custom_section_body: string | null;
+  cover_position_x: number;
+  cover_position_y: number;
 }) {
   const supabase = await createClient();
   const { data: companyId } = await supabase.rpc("my_company_id");

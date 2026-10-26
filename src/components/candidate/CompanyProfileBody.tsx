@@ -131,6 +131,7 @@ export async function CompanyProfileBody({
             src={company.coverImageUrl}
             alt=""
             className="h-48 w-full rounded-xl object-cover sm:h-64"
+            style={{ objectPosition: `${company.coverPositionX}% ${company.coverPositionY}%` }}
           />
         ) : (
           <div className="h-48 w-full rounded-xl bg-gradient-to-br from-pine to-mint sm:h-64" aria-hidden="true" />

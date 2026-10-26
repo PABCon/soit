@@ -33,6 +33,15 @@ function urlOrNull(formData: FormData, key: string): string | null {
   return normalizeWebsiteUrl(formData.get(key) as string);
 }
 
+// Trusts the client's number but still clamps/defaults defensively — this
+// is the one place outside the database's own check constraint that could
+// catch a malformed value before it round-trips to Postgres and back.
+function percentOr50(formData: FormData, key: string): number {
+  const raw = Number(formData.get(key));
+  if (!Number.isFinite(raw)) return 50;
+  return Math.min(100, Math.max(0, Math.round(raw)));
+}
+
 export async function updateProfileAction(formData: FormData) {
   await updateCompanyProfile({
     company_name: String(formData.get("company_name") ?? "").trim(),
@@ -54,6 +63,8 @@ export async function updateProfileAction(formData: FormData) {
     benefits_text: trimmedOrNull(formData, "benefits_text"),
     custom_section_title: trimmedOrNull(formData, "custom_section_title"),
     custom_section_body: trimmedOrNull(formData, "custom_section_body"),
+    cover_position_x: percentOr50(formData, "cover_position_x"),
+    cover_position_y: percentOr50(formData, "cover_position_y"),
   });
   revalidatePath("/recruit/company");
 
