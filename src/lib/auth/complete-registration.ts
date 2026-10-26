@@ -34,7 +34,7 @@ export class DuplicateNifError extends Error {
  */
 export async function ensureEmployerProfile(
   user: User,
-  opts: { nif?: string; companyName?: string },
+  opts: { nif?: string; companyName?: string; claimToken?: string },
 ): Promise<{ landingPath: string }> {
   const admin = createAdminClient();
   const meta = user.user_metadata ?? {};
@@ -67,6 +67,74 @@ export async function ensureEmployerProfile(
       user_metadata: { ...meta, last_role: "employer" },
     });
     await logEvent("user.registered", { role: "employer", via: "invite" }, user.id);
+    return { landingPath: "/recruit" };
+  }
+
+  // "Claim your profile" outreach flow (§claim-invites): the company
+  // already exists — pre-built as an `unclaimed` shell, no NIF, no owner —
+  // so this UPDATEs that existing row instead of INSERTing a new one.
+  // Unlike a team invite, this still requires and verifies a real NIF: the
+  // claim link alone only proves someone followed an email, not that
+  // they're actually authorized to represent that specific business — the
+  // same VIES/nif.pt check every fresh registration goes through is what
+  // actually establishes that.
+  if (opts.claimToken) {
+    if (!opts.nif) throw new Error("No NIF available to claim this company");
+
+    const { data: claim } = await admin
+      .from("company_claim_invites")
+      .select("id, company_id, expires_at, claimed_at")
+      .eq("token", opts.claimToken)
+      .maybeSingle();
+    if (!claim || claim.claimed_at || new Date(claim.expires_at) < new Date()) {
+      throw new Error("This claim link is invalid or has expired");
+    }
+
+    // The `.eq("verification_status", "unclaimed")` guard is the real
+    // concurrency safety here, not `claimed_at` above (which two
+    // simultaneous requests could both still read as null) — only the
+    // request that actually flips this row out of `unclaimed` gets a row
+    // back from `.select()`; a loser sees `updated === null` and bails
+    // with a clear error instead of silently creating a second owner.
+    const { data: updated, error: updateError } = await admin
+      .from("companies")
+      .update({ nif: opts.nif, verification_status: "unverified" })
+      .eq("id", claim.company_id)
+      .eq("verification_status", "unclaimed")
+      .select("id, company_name")
+      .maybeSingle();
+    if (updateError) {
+      if (updateError.code === "23505") throw new DuplicateNifError(opts.nif);
+      throw new Error(`company claim failed: ${updateError.message}`);
+    }
+    if (!updated) throw new Error("This company has already been claimed");
+
+    await admin
+      .from("employer_users")
+      .insert({ auth_user_id: user.id, company_id: claim.company_id, role: "owner" });
+    await admin
+      .from("company_claim_invites")
+      .update({ claimed_at: new Date().toISOString(), claimed_by: user.id })
+      .eq("id", claim.id);
+
+    await admin.auth.admin.updateUserById(user.id, {
+      user_metadata: { ...meta, last_role: "employer", pending_nif: null, pending_claim_token: null },
+    });
+
+    await logEvent("user.registered", { role: "employer", via: "claim" }, user.id);
+    await logEvent("employer.nif_submitted", { company_id: claim.company_id }, user.id);
+
+    try {
+      after(() => verifyCompany(claim.company_id, opts.nif!));
+    } catch {
+      void verifyCompany(claim.company_id, opts.nif!);
+    }
+    try {
+      after(() => ensureStripeCustomer(claim.company_id, updated.company_name, email || null));
+    } catch {
+      void ensureStripeCustomer(claim.company_id, updated.company_name, email || null);
+    }
+
     return { landingPath: "/recruit" };
   }
 
@@ -211,6 +279,7 @@ export async function completeRegistration(
     const { landingPath } = await ensureEmployerProfile(user, {
       nif: meta.pending_nif,
       companyName: meta.pending_company_name,
+      claimToken: meta.pending_claim_token,
     });
     return { role: "employer", landingPath };
   }

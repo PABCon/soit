@@ -1,7 +1,13 @@
 import { createClient } from "@/lib/supabase/server";
 import type { Company } from "@/lib/types";
 
-export type VerificationStatus = "unverified" | "pending" | "verified" | "failed";
+// "unclaimed" is a pre-built company shell with no owner yet (§claim-invites)
+// — distinct from "unverified" (a real registration that submitted a NIF
+// and is waiting on VIES/nif.pt). A console-facing company can never
+// actually be "unclaimed" (nobody's logged in to see one — claiming always
+// transitions it to "unverified" first), but the type still needs to admit
+// the value since `companies.verification_status` genuinely can hold it.
+export type VerificationStatus = "unverified" | "pending" | "verified" | "failed" | "unclaimed";
 
 export type MyCompany = {
   id: string;

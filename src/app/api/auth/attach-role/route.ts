@@ -34,6 +34,7 @@ export async function POST(request: NextRequest) {
       const { landingPath } = await ensureEmployerProfile(user, {
         nif: body.nif,
         companyName: body.companyName,
+        claimToken: body.claimToken,
       });
       return NextResponse.json({ landingPath });
     }
