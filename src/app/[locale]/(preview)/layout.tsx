@@ -8,7 +8,8 @@ function PreviewHeader() {
   const t = useTranslations("company");
   return (
     <header className="flex h-14 items-center gap-3 border-b border-line px-4">
-      <span className="font-display text-lg font-bold text-pine">{brand("name")}</span>
+      {/* eslint-disable-next-line @next/next/no-img-element -- small local brand asset, not a remote/optimizable photo */}
+      <img src="/logo-justit.png" alt={brand("name")} className="h-7 w-auto" />
       <span className="rounded-full bg-paper px-2 py-0.5 text-xs font-medium text-muted">
         {t("previewBadge")}
       </span>
