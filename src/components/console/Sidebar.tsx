@@ -59,7 +59,17 @@ export function Sidebar({ unreadMessageCount = 0 }: { unreadMessageCount?: numbe
   }
 
   return (
-    <aside className="flex w-full shrink-0 flex-col border-b border-line bg-white/60 px-3 py-4 md:h-dvh md:w-60 md:border-r md:border-b-0">
+    <aside
+      className={
+        "flex w-full shrink-0 flex-col border-b border-line bg-white/60 px-3 py-4 " +
+        // Sticky below ConsoleTopNav's own sticky h-14 header (same
+        // "sticky top-<header height> + h-[calc(100dvh-<header height>)]"
+        // recipe the candidate Rail already proved out) — only the
+        // content to its right scrolls, matching the navbar never
+        // scrolling itself.
+        "md:sticky md:top-14 md:h-[calc(100dvh-3.5rem)] md:w-60 md:self-start md:overflow-y-auto md:border-r md:border-b-0"
+      }
+    >
       <nav className="flex gap-0.5 overflow-x-auto md:flex-col md:overflow-visible">
         {MVP.map(({ key, href, Icon }) => {
           const active = isActive(href);

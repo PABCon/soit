@@ -12,6 +12,7 @@ import {
   Globe2,
   Sparkles,
   Star,
+  Eye,
   X,
 } from "lucide-react";
 import { useRouter } from "@/i18n/navigation";
@@ -26,6 +27,7 @@ import type { JobFormInput } from "@/lib/db/jobs";
 import type { SkillLevel } from "@/lib/types";
 import type { ExtractedJob } from "@/lib/ai/extract-job";
 import { buttonClassName } from "@/components/Button";
+import { JobPreviewModal } from "@/components/console/JobPreviewModal";
 
 type TechTagOption = { id: string; label: string; aliases: string[] };
 type LocationOption = { id: string; slug: string; name: string; country: string };
@@ -132,6 +134,8 @@ export function JobForm({
   spokenLanguages,
   initial,
   isPayingCustomer,
+  companyName,
+  companyLogoUrl,
 }: {
   techTags: TechTagOption[];
   locations: LocationOption[];
@@ -143,6 +147,10 @@ export function JobForm({
    *  the free slot. The server re-enforces this regardless of what's
    *  submitted here; this only controls whether the toggle is shown. */
   isPayingCustomer: boolean;
+  /** For the "preview" panel only — how the job will look under the
+   *  employer's own company header, candidate-side. */
+  companyName: string;
+  companyLogoUrl: string | null;
 }) {
   const t = useTranslations("jobForm");
   const router = useRouter();
@@ -184,6 +192,7 @@ export function JobForm({
   const [polishing, setPolishing] = useState(false);
   const [polishError, setPolishError] = useState<string | null>(null);
   const [techRequestState, setTechRequestState] = useState<"idle" | "pending" | "added" | "rejected">("idle");
+  const [previewOpen, setPreviewOpen] = useState(false);
 
   const filteredTags = useMemo(() => {
     const q = tagFilter.trim().toLowerCase();
@@ -192,6 +201,32 @@ export function JobForm({
       (tag) => tag.label.toLowerCase().includes(q) || tag.aliases.some((a) => a.toLowerCase().includes(q)),
     );
   }, [techTags, tagFilter]);
+
+  const previewLocationName = useMemo(() => {
+    if (workModel === "remote") return null;
+    return locations.find((loc) => loc.id === locationId)?.name ?? null;
+  }, [locations, locationId, workModel]);
+
+  const previewTechStack = useMemo(
+    () =>
+      selectedTags.map((st) => ({
+        id: st.id,
+        label: techTags.find((tag) => tag.id === st.id)?.label ?? "?",
+        level: st.level,
+        required: st.required,
+      })),
+    [selectedTags, techTags],
+  );
+
+  const previewLanguages = useMemo(
+    () =>
+      selectedLanguages.map((sl) => ({
+        id: sl.id,
+        label: spokenLanguages.find((lang) => lang.id === sl.id)?.label ?? "?",
+        level: sl.level,
+      })),
+    [selectedLanguages, spokenLanguages],
+  );
 
   function toggleTag(id: string) {
     setSelectedTags((prev) =>
@@ -831,24 +866,56 @@ export function JobForm({
         </div>
       </div>
 
-      <div className="flex justify-end gap-3">
+      <div className="flex items-center justify-between gap-3">
         <button
           type="button"
-          disabled={pending !== null}
-          onClick={(e) => handleSubmit(e, false)}
-          className={buttonClassName({ variant: "secondary", size: "md" })}
+          onClick={() => setPreviewOpen(true)}
+          className="inline-flex items-center gap-1.5 text-sm font-medium text-pine hover:text-pine-hover"
         >
-          {t("saveDraft")}
+          <Eye className="h-4 w-4" aria-hidden="true" />
+          {t("preview")}
         </button>
-        <button
-          type="button"
-          disabled={pending !== null}
-          onClick={(e) => handleSubmit(e, true)}
-          className={buttonClassName({ size: "md" })}
-        >
-          {t("publish")}
-        </button>
+        <div className="flex gap-3">
+          <button
+            type="button"
+            disabled={pending !== null}
+            onClick={(e) => handleSubmit(e, false)}
+            className={buttonClassName({ variant: "secondary", size: "md" })}
+          >
+            {t("saveDraft")}
+          </button>
+          <button
+            type="button"
+            disabled={pending !== null}
+            onClick={(e) => handleSubmit(e, true)}
+            className={buttonClassName({ size: "md" })}
+          >
+            {t("publish")}
+          </button>
+        </div>
       </div>
+
+      {previewOpen && (
+        <JobPreviewModal
+          onClose={() => setPreviewOpen(false)}
+          title={title}
+          description={description}
+          companyName={companyName}
+          companyLogoUrl={companyLogoUrl}
+          workModel={workModel}
+          seniority={seniority}
+          language={language}
+          employmentTypes={employmentTypes}
+          locationName={previewLocationName}
+          salaryMin={salaryMin.trim() ? Number(salaryMin) : null}
+          salaryMax={salaryMax.trim() ? Number(salaryMax) : null}
+          salaryPeriod={salaryPeriod}
+          salaryMonths={salaryPeriod === "month" ? Number(salaryMonths) || null : null}
+          salaryPublic={salaryPublic}
+          techStack={previewTechStack}
+          requiredLanguages={previewLanguages}
+        />
+      )}
     </form>
   );
 }

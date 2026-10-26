@@ -45,6 +45,8 @@ export default async function EditJobPage({ params }: Props) {
           jobCategories={jobCategories}
           spokenLanguages={spokenLanguages}
           isPayingCustomer={isPayingCustomer}
+          companyName={ctx?.company.company_name ?? ""}
+          companyLogoUrl={ctx?.company.company_logo_url ?? null}
           initial={{
             id: job.id,
             title: job.title,
