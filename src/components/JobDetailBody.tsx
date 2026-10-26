@@ -24,7 +24,7 @@ import type { getCompanyBySlug } from "@/lib/db/companies";
 type CompanyProfile = Awaited<ReturnType<typeof getCompanyBySlug>>;
 
 /** The real job detail page's own content — extracted so the employer-side
- *  "preview" route (`/recruit/jobs/[id]/preview`) can render a job exactly
+ *  "preview" route (`/jobs/preview/[id]`) can render a job exactly
  *  the way candidates will actually see it, rather than a second,
  *  independently-maintained simplified mock (the earlier `JobForm`-embedded
  *  preview modal's own approach, replaced per direct feedback: "it should

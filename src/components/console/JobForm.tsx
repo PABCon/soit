@@ -228,7 +228,7 @@ export function JobForm({
   const [techRequestState, setTechRequestState] = useState<"idle" | "pending" | "added" | "rejected">("idle");
   // Tracks the real, saved job id across "Preview" clicks — `initial?.id`
   // alone only covers the edit-an-existing-job case; a brand-new job has
-  // none yet, and the preview route (`(preview)/jobs/[id]/preview`, same
+  // none yet, and the preview route (`(preview)/jobs/preview/[id]`, same
   // "real page, not a mock" precedent as the company-profile preview)
   // needs one to open. The first Preview click on a new job silently
   // creates the draft; later clicks update that same row instead of
@@ -621,7 +621,7 @@ export function JobForm({
     try {
       const result = await saveJobAction(savedJobId, buildJobInput(currentlyPublished));
       setSavedJobId(result.id);
-      window.open(`/${locale}/jobs/${result.id}/preview`, "_blank", "noopener,noreferrer");
+      window.open(`/${locale}/jobs/preview/${result.id}`, "_blank", "noopener,noreferrer");
     } catch {
       setError(t("errorGeneric"));
     } finally {

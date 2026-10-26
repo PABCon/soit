@@ -20,7 +20,17 @@ export async function generateMetadata(): Promise<Metadata> {
  *  (`getJobForOwnerPreview`) — a draft genuinely has no public slug route
  *  to open yet, and RLS (not this page) is what keeps someone else's job
  *  from being previewable: the owning employer's own session is what makes
- *  a draft resolve here at all. */
+ *  a draft resolve here at all.
+ *
+ *  Lives at `jobs/preview/[id]`, not `jobs/[id]/preview` — the latter put
+ *  a bare `[id]` folder at the exact same route-tree position as the real
+ *  candidate-facing `(candidate)/jobs/[slug]`, and Next.js treats two
+ *  routes sharing a position with differently-named dynamic segments as a
+ *  hard conflict ("You cannot use different slug names for the same
+ *  dynamic path"), crashing `next dev` on startup. Nesting the dynamic
+ *  segment under a literal `preview` segment instead avoids the collision
+ *  without renaming this one to `slug` (which would be actively
+ *  misleading — see "By id, not slug" above). */
 export default async function JobPreviewPage({ params }: Props) {
   const { locale, id } = await params;
   setRequestLocale(locale);
