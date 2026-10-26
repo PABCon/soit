@@ -419,9 +419,14 @@ export type JobFormInput = {
   seniority: Job["seniority"];
   workModel: Job["workModel"];
   locationId: string | null;
-  categoryId: string;
-  salaryMin: number;
-  salaryMax: number;
+  /** Null only ever comes from the bulk job-importer (§job-import) — the
+   *  human-facing form always requires these two before it will even let
+   *  you submit. Saving with either null is fine for a draft; publishing
+   *  without them is blocked below, same spirit as the free-slot/verified
+   *  checks this gate already has. */
+  categoryId: string | null;
+  salaryMin: number | null;
+  salaryMax: number | null;
   salaryPeriod: Job["salaryPeriod"];
   salaryMonths: number | null;
   /** Non-empty — the first entry is persisted as `jobs.employment_type`
@@ -519,7 +524,11 @@ export async function saveJob(
   const liveCount = await countOtherLiveJobs(supabase, company.id, jobId);
   const isPayingCustomer = company.job_ad_slot_cap > 1 || company.top_employer_active;
   const canPublishFree = liveCount < 1;
-  const canPublish = isVerified && liveCount < company.job_ad_slot_cap;
+  // §job-import: a bulk-imported draft can be missing category/salary —
+  // fine to save, never fine to publish, same DB-level guarantee
+  // `jobs_published_requires_salary` enforces independently.
+  const hasRequiredFields = input.categoryId != null && input.salaryMin != null && input.salaryMax != null;
+  const canPublish = isVerified && liveCount < company.job_ad_slot_cap && hasRequiredFields;
   const willPublish = wantsPublish && canPublish;
   // Whether this particular publish occupies a paid slot (beyond the
   // universal free baseline) — drives the same bump-credit grant the old
@@ -631,7 +640,14 @@ export async function saveJob(
     id: id!,
     slug: saved!.slug,
     published: willPublish,
-    message: wantsPublish && !willPublish ? (isVerified ? "noAdCredits" : "notVerified") : undefined,
+    message:
+      wantsPublish && !willPublish
+        ? !isVerified
+          ? "notVerified"
+          : !hasRequiredFields
+            ? "missingRequiredFields"
+            : "noAdCredits"
+        : undefined,
   };
 }
 
@@ -723,9 +739,9 @@ export type JobForEdit = {
   work_model: Job["workModel"];
   location: string | null;
   location_id: string | null;
-  category_id: string;
-  salary_min: number;
-  salary_max: number;
+  category_id: string | null;
+  salary_min: number | null;
+  salary_max: number | null;
   salary_period: Job["salaryPeriod"];
   salary_months: number | null;
   employment_type: Job["employmentType"];

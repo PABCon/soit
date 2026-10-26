@@ -20,6 +20,7 @@ import {
   extractJobFromUrlAction,
   polishJobDescriptionAction,
   requestTechTagAction,
+  resolveUnmatchedTechLabelsAction,
 } from "@/app/[locale]/(console)/recruit/jobs/actions";
 import type { JobFormInput } from "@/lib/db/jobs";
 import type { SkillLevel } from "@/lib/types";
@@ -43,8 +44,8 @@ type Initial = {
   workModel: JobFormInput["workModel"];
   locationId: string | null;
   categoryId: string | null;
-  salaryMin: number;
-  salaryMax: number;
+  salaryMin: number | null;
+  salaryMax: number | null;
   salaryPeriod: JobFormInput["salaryPeriod"];
   salaryMonths: number | null;
   employmentTypes: JobFormInput["employmentTypes"];
@@ -125,7 +126,7 @@ function LevelSelect({
 }
 
 export function JobForm({
-  techTags,
+  techTags: techTagsProp,
   locations,
   jobCategories,
   spokenLanguages,
@@ -145,6 +146,11 @@ export function JobForm({
 }) {
   const t = useTranslations("jobForm");
   const router = useRouter();
+
+  // Local copy, not just the prop directly — a newly auto-resolved tech
+  // tag (requestMissingTechTag, applyExtractedData's unmatched-label pass)
+  // needs to show up and be selectable immediately, without a page reload.
+  const [techTags, setTechTags] = useState<TechTagOption[]>(techTagsProp);
 
   const [title, setTitle] = useState(initial?.title ?? "");
   const [description, setDescription] = useState(initial?.description ?? "");
@@ -177,7 +183,7 @@ export function JobForm({
   const [extractNotice, setExtractNotice] = useState<string | null>(null);
   const [polishing, setPolishing] = useState(false);
   const [polishError, setPolishError] = useState<string | null>(null);
-  const [techRequestState, setTechRequestState] = useState<"idle" | "pending" | "sent" | "exists">("idle");
+  const [techRequestState, setTechRequestState] = useState<"idle" | "pending" | "added" | "rejected">("idle");
 
   const filteredTags = useMemo(() => {
     const q = tagFilter.trim().toLowerCase();
@@ -201,14 +207,26 @@ export function JobForm({
     setSelectedTags((prev) => prev.map((t) => (t.id === id ? { ...t, required } : t)));
   }
 
+  /** §job-import — resolves immediately now (no more "sent, wait for
+   *  review"): a genuinely new or equivalent-to-existing label is created/
+   *  aliased on the spot, and this adds it to the local tag list and
+   *  selects it right away so the employer never has to come back later. */
   async function requestMissingTechTag() {
     setTechRequestState("pending");
     const result = await requestTechTagAction(tagFilter);
     if (!result.ok) {
-      setTechRequestState(result.reason === "already_exists" ? "exists" : "idle");
+      setTechRequestState("rejected");
       return;
     }
-    setTechRequestState("sent");
+    const tag = { id: result.tag.id, label: result.tag.label, aliases: result.tag.aliases };
+    setTechTags((prev) => (prev.some((t) => t.id === tag.id) ? prev.map((t) => (t.id === tag.id ? tag : t)) : [...prev, tag]));
+    setSelectedTags((prev) => (prev.some((t) => t.id === tag.id) ? prev : [...prev, { id: tag.id, level: null, required: true }]));
+    // Deliberately NOT clearing tagFilter — the newly added tag now
+    // matches it and reappears in the real filtered list right above,
+    // already selected/highlighted, which is the actual success feedback.
+    // Resetting to "idle" rather than a transient "added" state since
+    // there's no stable place left to show one once that happens.
+    setTechRequestState("idle");
   }
 
   function toggleLanguage(id: string) {
@@ -235,12 +253,16 @@ export function JobForm({
    *  the model left null/empty is left completely untouched, never blanked
    *  out. Tech/language/category/location labels are matched against the
    *  real vocab here (not on the server) since this component already has
-   *  all four lists as props; a label with no real match is silently
-   *  dropped rather than invented. categoryLabel/locationLabel are exact-
+   *  all four lists as props. categoryLabel/locationLabel are exact-
    *  matched against the same `label`/`name` text the server action gave
    *  the model as its allowed vocabulary (extractJobFromUrlAction),
-   *  independent of whatever this UI's own translated option text shows. */
-  function applyExtractedData(data: ExtractedJob) {
+   *  independent of whatever this UI's own translated option text shows.
+   *  §job-import: a tech-stack label with no match used to be silently
+   *  dropped — it now goes through the same auto-approve-or-reject
+   *  pipeline the bulk importer uses (resolveUnmatchedTechLabelsAction),
+   *  so a real, common skill like "VBA" gets added to the real
+   *  vocabulary on the spot instead of just disappearing. */
+  async function applyExtractedData(data: ExtractedJob) {
     if (data.title) setTitle(data.title);
     if (data.description) setDescription(data.description);
     if (data.seniority) setSeniority(data.seniority);
@@ -253,16 +275,39 @@ export function JobForm({
 
     if (data.techStack.length > 0) {
       const matched: SelectedTag[] = [];
+      const unmatched: typeof data.techStack = [];
       for (const entry of data.techStack) {
         const norm = entry.label.trim().toLowerCase();
         const tag = techTags.find(
           (tg) => tg.label.toLowerCase() === norm || tg.aliases.some((a) => a.toLowerCase() === norm),
         );
-        if (tag && !matched.some((m) => m.id === tag.id)) {
-          matched.push({ id: tag.id, level: entry.level, required: entry.required });
+        if (tag) {
+          if (!matched.some((m) => m.id === tag.id)) matched.push({ id: tag.id, level: entry.level, required: entry.required });
+        } else {
+          unmatched.push(entry);
         }
       }
       if (matched.length > 0) setSelectedTags(matched);
+
+      if (unmatched.length > 0) {
+        const resolved = await resolveUnmatchedTechLabelsAction(unmatched.map((u) => u.label));
+        const newlyUsable = resolved.filter((r) => r.tag !== null) as { label: string; tag: { id: string; label: string; aliases: string[] } }[];
+        if (newlyUsable.length > 0) {
+          setTechTags((prev) => {
+            const additions = newlyUsable.map((r) => r.tag).filter((nt) => !prev.some((p) => p.id === nt.id));
+            return [...prev, ...additions];
+          });
+          setSelectedTags((prev) => {
+            const additions = newlyUsable
+              .map((r) => {
+                const source = unmatched.find((u) => u.label === r.label);
+                return source ? { id: r.tag.id, level: source.level, required: source.required } : null;
+              })
+              .filter((x): x is SelectedTag => x !== null && !prev.some((p) => p.id === x.id));
+            return [...prev, ...additions];
+          });
+        }
+      }
     }
 
     if (data.requiredLanguages.length > 0) {
@@ -296,12 +341,17 @@ export function JobForm({
     setExtractError(null);
     setExtractNotice(null);
     const result = await extractJobFromUrlAction(extractUrl.trim());
-    setExtracting(false);
     if (!result.ok) {
+      setExtracting(false);
       setExtractError(t(`extractError.${result.reason}`));
       return;
     }
-    applyExtractedData(result.data);
+    // Stays "extracting" through the tech-tag resolution pass too (it can
+    // involve its own LLM calls for any unmatched label) — a spinner that
+    // turns off before the form has actually finished updating would read
+    // as done when it isn't.
+    await applyExtractedData(result.data);
+    setExtracting(false);
     setExtractNotice(t("extractSuccess"));
   }
 
@@ -324,15 +374,21 @@ export function JobForm({
     setDescription(result.text);
   }
 
-  function validate(): string | null {
+  // §job-import: a bulk-imported draft can land with no category/salary
+  // yet — fine to just save as a draft, same as a human leaving the form
+  // half-filled; only actually publishing requires them, enforced here to
+  // match the server-side gate (saveJob's hasRequiredFields) exactly.
+  function validate(publish: boolean): string | null {
     if (!title.trim()) return t("errorTitle");
     if (!description.trim()) return t("errorDescription");
     if (workModel !== "remote" && !locationId) return t("errorLocation");
-    if (!categoryId) return t("errorCategory");
-    const min = Number(salaryMin);
-    const max = Number(salaryMax);
-    if (!min || min <= 0) return t("errorSalaryMin");
-    if (!max || max < min) return t("errorSalaryMax");
+    if (publish) {
+      if (!categoryId) return t("errorCategory");
+      const min = Number(salaryMin);
+      const max = Number(salaryMax);
+      if (!min || min <= 0) return t("errorSalaryMin");
+      if (!max || max < min) return t("errorSalaryMax");
+    }
     if (expiresAt && expiresAt <= new Date().toISOString().slice(0, 10)) return t("errorExpiresAt");
     return null;
   }
@@ -342,7 +398,7 @@ export function JobForm({
     setError(null);
     setNotice(null);
 
-    const validationError = validate();
+    const validationError = validate(publish);
     if (validationError) {
       setError(validationError);
       return;
@@ -357,9 +413,9 @@ export function JobForm({
         seniority,
         workModel,
         locationId: workModel === "remote" ? null : locationId,
-        categoryId,
-        salaryMin: Number(salaryMin),
-        salaryMax: Number(salaryMax),
+        categoryId: categoryId || null,
+        salaryMin: salaryMin.trim() ? Number(salaryMin) : null,
+        salaryMax: salaryMax.trim() ? Number(salaryMax) : null,
         salaryPeriod,
         salaryMonths: salaryPeriod === "month" ? Number(salaryMonths) : null,
         employmentTypes,
@@ -375,6 +431,8 @@ export function JobForm({
         setNotice(t("notVerified"));
       } else if (result.message === "noAdCredits") {
         setNotice(t("noAdCredits"));
+      } else if (result.message === "missingRequiredFields") {
+        setNotice(t("missingRequiredFields"));
       } else {
         router.push("/recruit");
         router.refresh();
@@ -735,10 +793,8 @@ export function JobForm({
               </div>
               {tagFilter.trim().length >= 2 && filteredTags.length === 0 && (
                 <div className="mt-2 text-xs text-muted">
-                  {techRequestState === "sent" ? (
-                    <p className="text-pine">{t("techTagRequestSent")}</p>
-                  ) : techRequestState === "exists" ? (
-                    <p>{t("techTagRequestExists")}</p>
+                  {techRequestState === "rejected" ? (
+                    <p>{t("techTagRequestRejected")}</p>
                   ) : (
                     <button
                       type="button"

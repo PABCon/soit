@@ -20,8 +20,13 @@ export type JobFactsForScoring = {
   locationId: string | null;
   workModel: string;
   employmentType: string;
-  salaryMin: number;
-  salaryMax: number;
+  /** Null for a bulk-imported draft still missing it (§job-import) — can
+   *  only ever reach this scoring function for a published job in
+   *  practice (the DB itself requires a published job to have both), but
+   *  typed honestly rather than asserted, same as categoryId/locationId
+   *  above. */
+  salaryMin: number | null;
+  salaryMax: number | null;
   salaryPeriod: string;
 };
 
@@ -89,7 +94,7 @@ export function scoreJobMatch(
     }
     if (candidatePrefs.salaryMin != null || candidatePrefs.salaryMax != null) {
       prefWeight += 5;
-      if (candidatePrefs.salaryPeriod && candidatePrefs.salaryPeriod === job.salaryPeriod) {
+      if (job.salaryMin != null && job.salaryMax != null && candidatePrefs.salaryPeriod === job.salaryPeriod) {
         const prefMin = candidatePrefs.salaryMin ?? 0;
         const prefMax = candidatePrefs.salaryMax ?? Number.POSITIVE_INFINITY;
         if (job.salaryMax >= prefMin && job.salaryMin <= prefMax) prefPoints += 5;

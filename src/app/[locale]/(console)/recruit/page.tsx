@@ -2,9 +2,11 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
 import { getMyEmployerContext } from "@/lib/db/companies";
 import { getCompanyJobs, getEmployerDashboardStats, getJobTabCounts, type ConsoleTab } from "@/lib/db/jobs";
+import { canStartJobImport, getActiveImportRun } from "@/lib/db/job-imports";
 import { DashboardStats } from "@/components/console/DashboardStats";
 import { NewApplicantsBanner } from "@/components/console/NewApplicantsBanner";
 import { ConsoleJobsExplorer } from "@/components/console/ConsoleJobsExplorer";
+import { JobImportCard } from "@/components/console/JobImportCard";
 
 type Props = {
   params: Promise<{ locale: string }>;
@@ -34,10 +36,12 @@ export default async function MyJobAdsPage({ params, searchParams }: Props) {
   }
 
   const tab: ConsoleTab = rawTab === "inactive" || rawTab === "drafts" ? rawTab : "active";
-  const [jobs, stats, tabCounts] = await Promise.all([
+  const [jobs, stats, tabCounts, activeImportRun, importEligibility] = await Promise.all([
     getCompanyJobs(ctx.company.id, tab),
     getEmployerDashboardStats(ctx.company.id),
     getJobTabCounts(ctx.company.id),
+    getActiveImportRun(ctx.company.id),
+    canStartJobImport(ctx.company.id),
   ]);
 
   return (
@@ -60,6 +64,23 @@ export default async function MyJobAdsPage({ params, searchParams }: Props) {
       </div>
 
       <NewApplicantsBanner count={stats.newApplicantsLast7Days} />
+
+      <JobImportCard
+        activeRun={
+          activeImportRun
+            ? {
+                sourceUrl: activeImportRun.source_url,
+                discoveredCount: activeImportRun.discovered_links.length,
+                importedCount: activeImportRun.imported_count,
+                skippedCount: activeImportRun.skipped_count,
+                failedCount: activeImportRun.failed_count,
+              }
+            : null
+        }
+        canStart={importEligibility.ok}
+        cooldownUntil={!importEligibility.ok && importEligibility.reason === "cooldown" ? (importEligibility.retryAfter ?? null) : null}
+        locale={locale}
+      />
 
       <ConsoleJobsExplorer jobs={jobs} tab={tab} tabCounts={tabCounts} />
     </>
