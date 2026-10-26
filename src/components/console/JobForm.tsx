@@ -12,9 +12,10 @@ import {
   Globe2,
   Sparkles,
   Star,
-  Eye,
+  ExternalLink,
   X,
 } from "lucide-react";
+import { useLocale } from "next-intl";
 import { useRouter } from "@/i18n/navigation";
 import {
   saveJobAction,
@@ -27,7 +28,6 @@ import type { JobFormInput } from "@/lib/db/jobs";
 import type { SkillLevel } from "@/lib/types";
 import type { ExtractedJob } from "@/lib/ai/extract-job";
 import { buttonClassName } from "@/components/Button";
-import { JobPreviewModal } from "@/components/console/JobPreviewModal";
 
 type TechTagOption = { id: string; label: string; aliases: string[] };
 type LocationOption = { id: string; slug: string; name: string; country: string };
@@ -39,6 +39,11 @@ type SelectedLanguage = { id: string; level: SkillLevel | null };
 
 type Initial = {
   id: string;
+  /** Whether this job is currently live — drives what "Preview" silently
+   *  saves as (see `handlePreview`'s own comment): a published job must
+   *  stay published through a preview save, never get silently pulled
+   *  back to draft the way a real "Save as draft" click would. */
+  status: "draft" | "published" | "inactive" | "closed";
   title: string;
   description: string;
   language: "pt" | "en";
@@ -134,8 +139,6 @@ export function JobForm({
   spokenLanguages,
   initial,
   isPayingCustomer,
-  companyName,
-  companyLogoUrl,
 }: {
   techTags: TechTagOption[];
   locations: LocationOption[];
@@ -147,13 +150,10 @@ export function JobForm({
    *  the free slot. The server re-enforces this regardless of what's
    *  submitted here; this only controls whether the toggle is shown. */
   isPayingCustomer: boolean;
-  /** For the "preview" panel only — how the job will look under the
-   *  employer's own company header, candidate-side. */
-  companyName: string;
-  companyLogoUrl: string | null;
 }) {
   const t = useTranslations("jobForm");
   const router = useRouter();
+  const locale = useLocale();
 
   // Local copy, not just the prop directly — a newly auto-resolved tech
   // tag (requestMissingTechTag, applyExtractedData's unmatched-label pass)
@@ -184,7 +184,7 @@ export function JobForm({
   const [tagFilter, setTagFilter] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
-  const [pending, setPending] = useState<"draft" | "publish" | null>(null);
+  const [pending, setPending] = useState<"draft" | "publish" | "preview" | null>(null);
   const [extractUrl, setExtractUrl] = useState("");
   const [extracting, setExtracting] = useState(false);
   const [extractError, setExtractError] = useState<string | null>(null);
@@ -192,7 +192,20 @@ export function JobForm({
   const [polishing, setPolishing] = useState(false);
   const [polishError, setPolishError] = useState<string | null>(null);
   const [techRequestState, setTechRequestState] = useState<"idle" | "pending" | "added" | "rejected">("idle");
-  const [previewOpen, setPreviewOpen] = useState(false);
+  // Tracks the real, saved job id across "Preview" clicks — `initial?.id`
+  // alone only covers the edit-an-existing-job case; a brand-new job has
+  // none yet, and the preview route (`(preview)/jobs/[id]/preview`, same
+  // "real page, not a mock" precedent as the company-profile preview)
+  // needs one to open. The first Preview click on a new job silently
+  // creates the draft; later clicks update that same row instead of
+  // creating a second one.
+  const [savedJobId, setSavedJobId] = useState<string | null>(initial?.id ?? null);
+  // Whether the job this form is saving is currently live — see
+  // `handlePreview`'s own comment for why this matters. Fixed for the
+  // lifetime of the form: the only paths that change a job's real publish
+  // state (handleSubmit's draft/publish buttons) always navigate away on
+  // success, so this never needs to change while the form stays mounted.
+  const [currentlyPublished] = useState(initial?.status === "published");
 
   const filteredTags = useMemo(() => {
     const q = tagFilter.trim().toLowerCase();
@@ -201,32 +214,6 @@ export function JobForm({
       (tag) => tag.label.toLowerCase().includes(q) || tag.aliases.some((a) => a.toLowerCase().includes(q)),
     );
   }, [techTags, tagFilter]);
-
-  const previewLocationName = useMemo(() => {
-    if (workModel === "remote") return null;
-    return locations.find((loc) => loc.id === locationId)?.name ?? null;
-  }, [locations, locationId, workModel]);
-
-  const previewTechStack = useMemo(
-    () =>
-      selectedTags.map((st) => ({
-        id: st.id,
-        label: techTags.find((tag) => tag.id === st.id)?.label ?? "?",
-        level: st.level,
-        required: st.required,
-      })),
-    [selectedTags, techTags],
-  );
-
-  const previewLanguages = useMemo(
-    () =>
-      selectedLanguages.map((sl) => ({
-        id: sl.id,
-        label: spokenLanguages.find((lang) => lang.id === sl.id)?.label ?? "?",
-        level: sl.level,
-      })),
-    [selectedLanguages, spokenLanguages],
-  );
 
   function toggleTag(id: string) {
     setSelectedTags((prev) =>
@@ -428,6 +415,29 @@ export function JobForm({
     return null;
   }
 
+  function buildJobInput(publish: boolean): JobFormInput {
+    return {
+      title: title.trim(),
+      description: description.trim(),
+      language,
+      seniority,
+      workModel,
+      locationId: workModel === "remote" ? null : locationId,
+      categoryId: categoryId || null,
+      salaryMin: salaryMin.trim() ? Number(salaryMin) : null,
+      salaryMax: salaryMax.trim() ? Number(salaryMax) : null,
+      salaryPeriod,
+      salaryMonths: salaryPeriod === "month" ? Number(salaryMonths) : null,
+      employmentTypes,
+      techTags: selectedTags.map((t) => ({ techTagId: t.id, level: t.level, required: t.required })),
+      languages: selectedLanguages.map((l) => ({ spokenLanguageId: l.id, level: l.level })),
+      externalApplyUrl,
+      expiresAt: expiresAt || null,
+      publish,
+      salaryPublic,
+    };
+  }
+
   async function handleSubmit(e: FormEvent, publish: boolean) {
     e.preventDefault();
     setError(null);
@@ -441,26 +451,7 @@ export function JobForm({
 
     setPending(publish ? "publish" : "draft");
     try {
-      const result = await saveJobAction(initial?.id ?? null, {
-        title: title.trim(),
-        description: description.trim(),
-        language,
-        seniority,
-        workModel,
-        locationId: workModel === "remote" ? null : locationId,
-        categoryId: categoryId || null,
-        salaryMin: salaryMin.trim() ? Number(salaryMin) : null,
-        salaryMax: salaryMax.trim() ? Number(salaryMax) : null,
-        salaryPeriod,
-        salaryMonths: salaryPeriod === "month" ? Number(salaryMonths) : null,
-        employmentTypes,
-        techTags: selectedTags.map((t) => ({ techTagId: t.id, level: t.level, required: t.required })),
-        languages: selectedLanguages.map((l) => ({ spokenLanguageId: l.id, level: l.level })),
-        externalApplyUrl,
-        expiresAt: expiresAt || null,
-        publish,
-        salaryPublic,
-      });
+      const result = await saveJobAction(savedJobId, buildJobInput(publish));
 
       if (result.message === "notVerified") {
         setNotice(t("notVerified"));
@@ -473,6 +464,39 @@ export function JobForm({
         router.refresh();
         return;
       }
+    } catch {
+      setError(t("errorGeneric"));
+    } finally {
+      setPending(null);
+    }
+  }
+
+  /** "Preview" (real-usage ask: open the real page in a new tab, not a
+   *  simplified in-page mock). The real job detail page only renders a
+   *  genuinely saved row, so this silently saves the current edits first
+   *  before opening the preview tab — but it must never change the job's
+   *  actual publish state as a side effect of previewing it: a currently
+   *  live job has to stay live (saving with `publish: false` here would
+   *  silently pull it back to draft, exactly what a real "Save as draft"
+   *  click would do, but nobody asked for that). `currentlyPublished`
+   *  carries that forward so this is a true "save in place," and never
+   *  navigates this tab away, unlike a real Save click. */
+  async function handlePreview(e: FormEvent) {
+    e.preventDefault();
+    setError(null);
+    setNotice(null);
+
+    const validationError = validate(currentlyPublished);
+    if (validationError) {
+      setError(validationError);
+      return;
+    }
+
+    setPending("preview");
+    try {
+      const result = await saveJobAction(savedJobId, buildJobInput(currentlyPublished));
+      setSavedJobId(result.id);
+      window.open(`/${locale}/jobs/${result.id}/preview`, "_blank", "noopener,noreferrer");
     } catch {
       setError(t("errorGeneric"));
     } finally {
@@ -866,56 +890,33 @@ export function JobForm({
         </div>
       </div>
 
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex justify-end gap-3">
         <button
           type="button"
-          onClick={() => setPreviewOpen(true)}
-          className="inline-flex items-center gap-1.5 text-sm font-medium text-pine hover:text-pine-hover"
+          disabled={pending !== null}
+          onClick={handlePreview}
+          className={buttonClassName({ variant: "secondary", size: "md" })}
         >
-          <Eye className="h-4 w-4" aria-hidden="true" />
-          {t("preview")}
+          <ExternalLink className="h-4 w-4" aria-hidden="true" />
+          {pending === "preview" ? t("previewing") : t("preview")}
         </button>
-        <div className="flex gap-3">
-          <button
-            type="button"
-            disabled={pending !== null}
-            onClick={(e) => handleSubmit(e, false)}
-            className={buttonClassName({ variant: "secondary", size: "md" })}
-          >
-            {t("saveDraft")}
-          </button>
-          <button
-            type="button"
-            disabled={pending !== null}
-            onClick={(e) => handleSubmit(e, true)}
-            className={buttonClassName({ size: "md" })}
-          >
-            {t("publish")}
-          </button>
-        </div>
+        <button
+          type="button"
+          disabled={pending !== null}
+          onClick={(e) => handleSubmit(e, false)}
+          className={buttonClassName({ variant: "secondary", size: "md" })}
+        >
+          {t("saveDraft")}
+        </button>
+        <button
+          type="button"
+          disabled={pending !== null}
+          onClick={(e) => handleSubmit(e, true)}
+          className={buttonClassName({ size: "md" })}
+        >
+          {t("publish")}
+        </button>
       </div>
-
-      {previewOpen && (
-        <JobPreviewModal
-          onClose={() => setPreviewOpen(false)}
-          title={title}
-          description={description}
-          companyName={companyName}
-          companyLogoUrl={companyLogoUrl}
-          workModel={workModel}
-          seniority={seniority}
-          language={language}
-          employmentTypes={employmentTypes}
-          locationName={previewLocationName}
-          salaryMin={salaryMin.trim() ? Number(salaryMin) : null}
-          salaryMax={salaryMax.trim() ? Number(salaryMax) : null}
-          salaryPeriod={salaryPeriod}
-          salaryMonths={salaryPeriod === "month" ? Number(salaryMonths) || null : null}
-          salaryPublic={salaryPublic}
-          techStack={previewTechStack}
-          requiredLanguages={previewLanguages}
-        />
-      )}
     </form>
   );
 }

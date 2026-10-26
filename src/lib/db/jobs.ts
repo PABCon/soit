@@ -234,6 +234,22 @@ export async function getLiveJobBySlug(slug: string): Promise<JobDetail | null> 
   return toJobDetail(data as unknown as JobRow);
 }
 
+/** "Preview" (real-usage ask: "it should open another tab and display as
+ *  if it was like the real page") — same shape as `getLiveJobBySlug`, but
+ *  by id and with no `status`/`expires_at` filter at all, so a draft the
+ *  employer hasn't published yet can still be previewed. Session-bound
+ *  client, not the admin client: the existing "employers see their own
+ *  company's full job list" RLS policy already scopes this correctly (a
+ *  job belonging to a different company simply doesn't come back), the
+ *  same guarantee every other owner-only read in this file relies on. */
+export async function getJobForOwnerPreview(jobId: string): Promise<JobDetail | null> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("jobs").select(SELECT).eq("id", jobId).maybeSingle();
+
+  if (error || !data) return null;
+  return toJobDetail(data as unknown as JobRow);
+}
+
 /** Job detail page's "similar roles" rail (real-usage QA item) — same
  *  category first (what a candidate actually means by "similar"); when the
  *  job has no category at all, falls back to other live roles at the same
