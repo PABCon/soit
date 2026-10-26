@@ -64,7 +64,17 @@ export default async function CandidateLayout({
       <div className="flex min-w-0 flex-1 flex-col">
         <TopNav />
         <CvOnboardingPrompt />
-        <main className="mx-auto w-full max-w-[1600px] flex-1 px-4 py-8 sm:px-6">
+        {/* Real-usage report, confirmed via a real 3420px-wide screenshot:
+         *  the prior 1600px cap left a ~900px dead gap on each side on a
+         *  genuinely wide/ultrawide monitor. Widened to 2200px — every
+         *  paragraph of body text already has its own narrower max-w-2xl
+         *  constraint (CompanyProfileBody, job descriptions, …) completely
+         *  independent of this outer cap, so widening it only gives more
+         *  room to things that actually benefit from it (banners, grids,
+         *  card rows), never stretches a paragraph into an unreadable line
+         *  length. Still capped, not full-bleed — a truly uncapped banner/
+         *  grid would look just as broken, differently, on a 5K+ display. */}
+        <main className="mx-auto w-full max-w-[2200px] flex-1 px-4 py-8 sm:px-6">
           {children}
         </main>
         <Footer />

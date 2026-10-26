@@ -26,7 +26,7 @@ export async function Footer() {
 
   return (
     <footer className="mt-16 border-t border-line px-4 py-8 text-sm text-muted sm:px-6">
-      <div className="mx-auto flex max-w-[1600px] flex-col gap-6">
+      <div className="mx-auto flex max-w-[2200px] flex-col gap-6">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <nav className="flex flex-wrap gap-x-6 gap-y-2" aria-label={t("pagesNav")}>
             <Link href="/jobs" prefetch={false} className="hover:text-ink">

@@ -48,7 +48,7 @@ export async function TopNav() {
        *  header, not a deliberately oversized one. `grid-cols-[1fr_auto_
        *  1fr]` still makes the search bar genuinely centered regardless
        *  of how wide the logo or the right-side group happen to be. */}
-      <div className="mx-auto grid h-16 w-full max-w-[1600px] grid-cols-[1fr_auto_1fr] items-center gap-4 px-4 sm:px-6">
+      <div className="mx-auto grid h-16 w-full max-w-[2200px] grid-cols-[1fr_auto_1fr] items-center gap-4 px-4 sm:px-6">
         <Link href="/jobs" className="justify-self-start leading-tight">
           {/* eslint-disable-next-line @next/next/no-img-element -- small local brand asset, not a remote/optimizable photo */}
           <img src="/logo-justit.png" alt={brand("name")} className="h-7 w-auto" />

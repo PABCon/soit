@@ -27,7 +27,7 @@ export async function ConsoleTopNav({
     // with it (see TopNav.tsx's own comment for the full stacking-context
     // explanation).
     <header className="sticky top-0 z-30 border-b border-line bg-paper/90 backdrop-blur">
-      <div className="mx-auto flex h-14 max-w-[1600px] items-center gap-4 px-4 sm:px-6">
+      <div className="mx-auto flex h-14 max-w-[2200px] items-center gap-4 px-4 sm:px-6">
         <Link href="/recruit" className="shrink-0 leading-tight">
           {/* eslint-disable-next-line @next/next/no-img-element -- small local brand asset, not a remote/optimizable photo */}
           <img src="/logo-justit.png" alt={brand("name")} className="h-7 w-auto" />
