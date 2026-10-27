@@ -1,11 +1,13 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 
 const TWELVE_MONTHS_MS = 365 * 24 * 60 * 60 * 1000;
+const UNCLAIMED_COMPANY_GRACE_MS = 30 * 24 * 60 * 60 * 1000;
 
 type PurgeResult = {
   applicationsPurged: number;
   applicationCvFilesRemoved: number;
   unclaimedCandidatesPurged: number;
+  unclaimedCompaniesPurged: number;
 };
 
 /**
@@ -95,5 +97,49 @@ export async function runRetentionPurge(): Promise<PurgeResult> {
     unclaimedCandidatesPurged++;
   }
 
-  return { applicationsPurged, applicationCvFilesRemoved, unclaimedCandidatesPurged };
+  // Pass 3: unclaimed companies (§claim-invites outreach shells) whose
+  // claim invite expired and was never claimed. A claim invite already
+  // carries its own 60-day TTL (CLAIM_INVITE_TTL_DAYS in claim-invites.ts)
+  // — once expired, the claim link 404s permanently (getClaimPreview
+  // rejects an expired/claimed token outright) and there's no "resend"
+  // mechanism for this flow the way team invites have, so the shell is
+  // unrecoverable through the product from that point on. A 30-day grace
+  // period past expiry (not an immediate purge) leaves room to manually
+  // follow up with a promising prospect — e.g. regenerate a fresh invite
+  // by hand — before the scraped profile and its draft jobs are gone for
+  // good. `verification_status = 'unclaimed'` is itself the concurrency
+  // guard: the moment someone actually claims it, complete-registration.ts
+  // flips this to 'unverified' as part of the same update that marks the
+  // invite claimed, so a company that gets claimed in the gap between
+  // this query and its delete is already excluded, not raced.
+  const unclaimedCutoff = new Date(Date.now() - UNCLAIMED_COMPANY_GRACE_MS).toISOString();
+  const { data: expiredInvites, error: invitesFetchError } = await admin
+    .from("company_claim_invites")
+    .select("company_id, companies!inner(verification_status)")
+    .is("claimed_at", null)
+    .lt("expires_at", unclaimedCutoff)
+    .eq("companies.verification_status", "unclaimed");
+  if (invitesFetchError) throw invitesFetchError;
+
+  let unclaimedCompaniesPurged = 0;
+  for (const invite of expiredInvites ?? []) {
+    // Unclaimed companies only ever hold draft jobs (createUnclaimedCompanyWithJobs
+    // always saves with publish: false, and nothing can publish a job for a
+    // company nobody has claimed yet) — jobs.company_id is `on delete
+    // restrict`, so these must go first. No applications can exist against
+    // a job that was never published, so this is always safe.
+    const { error: deleteJobsError } = await admin.from("jobs").delete().eq("company_id", invite.company_id);
+    if (deleteJobsError) throw deleteJobsError;
+
+    // employer_users.company_id is also `on delete restrict`, but an
+    // unclaimed company (by definition) has never had a real employer
+    // attach to it — claiming is exactly what would have flipped
+    // verification_status away from 'unclaimed' in the same transaction
+    // that created the employer_users row.
+    const { error: deleteCompanyError } = await admin.from("companies").delete().eq("id", invite.company_id);
+    if (deleteCompanyError) throw deleteCompanyError;
+    unclaimedCompaniesPurged++;
+  }
+
+  return { applicationsPurged, applicationCvFilesRemoved, unclaimedCandidatesPurged, unclaimedCompaniesPurged };
 }
