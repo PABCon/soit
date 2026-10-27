@@ -2,11 +2,12 @@
 
 import { useState, type FormEvent } from "react";
 import { useLocale, useTranslations } from "next-intl";
-import { useRouter } from "@/i18n/navigation";
+import { Link, useRouter } from "@/i18n/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { validateNif } from "@/lib/nif";
 import { passwordMeetsRequirements } from "@/lib/password";
 import { PasswordChecklist } from "@/components/auth/PasswordChecklist";
+import { CURRENT_TERMS_VERSION } from "@/lib/legal";
 
 const inputClass = "h-11 rounded-lg border border-line bg-white px-3 text-sm";
 const labelClass = "flex flex-col gap-1 text-sm";
@@ -32,12 +33,21 @@ export function ClaimForm({ token, email: fixedEmail }: { token: string; email?:
   const [error, setError] = useState<string | null>(null);
   const [checkEmail, setCheckEmail] = useState(false);
   const [pending, setPending] = useState(false);
+  // GDPR/compliance audit finding: claiming a pre-built profile created a
+  // real employer_users row with no terms/privacy acceptance recorded
+  // anywhere — required in both modes, same reasoning as InviteAcceptForm.
+  const [termsAccepted, setTermsAccepted] = useState(false);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setError(null);
+    if (!termsAccepted) {
+      setError(t("termsRequired"));
+      return;
+    }
     setPending(true);
     const supabase = createClient();
+    const termsAcceptedAt = new Date().toISOString();
 
     // No unconditional finally resetting `pending` — same reasoning as
     // AuthForm/InviteAcceptForm: once router.push() is about to swap the
@@ -61,7 +71,13 @@ export function ClaimForm({ token, email: fixedEmail }: { token: string; email?:
         password,
         options: {
           emailRedirectTo: `${window.location.origin}/auth/callback?next=/${locale}/recruit`,
-          data: { last_role: "employer", pending_nif: validation.nif, pending_claim_token: token },
+          data: {
+            last_role: "employer",
+            pending_nif: validation.nif,
+            pending_claim_token: token,
+            pending_terms_accepted_at: termsAcceptedAt,
+            pending_terms_version: CURRENT_TERMS_VERSION,
+          },
         },
       });
       if (signUpError) {
@@ -88,7 +104,13 @@ export function ClaimForm({ token, email: fixedEmail }: { token: string; email?:
       const res = await fetch("/api/auth/attach-role", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ role: "employer", nif: validation.nif, claimToken: token }),
+        body: JSON.stringify({
+          role: "employer",
+          nif: validation.nif,
+          claimToken: token,
+          termsAcceptedAt,
+          termsVersion: CURRENT_TERMS_VERSION,
+        }),
       });
       const json = await res.json();
       if (!res.ok) {
@@ -149,9 +171,30 @@ export function ClaimForm({ token, email: fixedEmail }: { token: string; email?:
         />
       </label>
 
+      <label className="flex items-start gap-2 text-xs text-muted">
+        <input
+          type="checkbox"
+          required
+          checked={termsAccepted}
+          onChange={(e) => setTermsAccepted(e.target.checked)}
+          className="mt-0.5"
+        />
+        <span>
+          {t("termsConsent")}{" "}
+          <Link href="/terms" target="_blank" className="underline hover:text-ink">
+            {t("termsLink")}
+          </Link>{" "}
+          {t("and")}{" "}
+          <Link href="/privacy" target="_blank" className="underline hover:text-ink">
+            {t("privacyPolicyLink")}
+          </Link>
+          .
+        </span>
+      </label>
+
       <button
         type="submit"
-        disabled={pending}
+        disabled={pending || !termsAccepted}
         className="flex h-11 items-center justify-center gap-2 rounded-lg bg-pine px-3 text-sm font-medium text-white hover:bg-pine/90 disabled:opacity-50"
       >
         {pending && (

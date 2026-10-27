@@ -8,6 +8,7 @@ import { Link, useRouter } from "@/i18n/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { validateNif } from "@/lib/nif";
 import { passwordMeetsRequirements } from "@/lib/password";
+import { CURRENT_TERMS_VERSION } from "@/lib/legal";
 import { PasswordChecklist } from "@/components/auth/PasswordChecklist";
 import { FacebookIcon } from "@/components/icons/FacebookIcon";
 import { GoogleIcon } from "@/components/icons/GoogleIcon";
@@ -55,6 +56,11 @@ export function AuthForm({ role, mode }: { role: Role; mode: Mode }) {
   const [checkEmail, setCheckEmail] = useState(false);
   const [pending, setPending] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  // GDPR/compliance audit finding: registration never asked for or
+  // recorded terms/privacy acceptance anywhere — controlled (not just a
+  // native `required` checkbox) because the OAuth buttons below also need
+  // to be gated on it, not just the form's own submit button.
+  const [termsAccepted, setTermsAccepted] = useState(false);
   // §6.4a — same-email dual-role: set once signInWithPassword confirms this
   // really is the account's owner, before anything is attached.
   const [attachOffer, setAttachOffer] = useState<{ nif?: string; companyName?: string } | null>(null);
@@ -94,6 +100,13 @@ export function AuthForm({ role, mode }: { role: Role; mode: Mode }) {
         pendingNif = validation.nif;
       }
 
+      if (!termsAccepted) {
+        setError(t("termsRequired"));
+        setPending(false);
+        return;
+      }
+      const termsAcceptedAt = new Date().toISOString();
+
       const { data, error: signUpError } = await supabase.auth.signUp({
         email,
         password,
@@ -101,6 +114,8 @@ export function AuthForm({ role, mode }: { role: Role; mode: Mode }) {
           emailRedirectTo: `${window.location.origin}/auth/callback?next=/${locale}${next ?? landingPath}`,
           data: {
             last_role: role,
+            pending_terms_accepted_at: termsAcceptedAt,
+            pending_terms_version: CURRENT_TERMS_VERSION,
             ...(role === "employer"
               ? { pending_nif: pendingNif, pending_company_name: companyName }
               : {}),
@@ -140,6 +155,11 @@ export function AuthForm({ role, mode }: { role: Role; mode: Mode }) {
         }
         // Correct password — this really is the account's owner. Don't
         // attach automatically; offer it explicitly, per your call.
+        // Terms acceptance resets here deliberately: attaching a second
+        // role is its own distinct consent moment, not inherited from
+        // whatever was checked a moment ago during the register attempt
+        // that led here.
+        setTermsAccepted(false);
         setAttachOffer({ nif: pendingNif, companyName });
         setPending(false);
         return;
@@ -185,24 +205,41 @@ export function AuthForm({ role, mode }: { role: Role; mode: Mode }) {
 
   async function handleOAuth(provider: (typeof OAUTH_PROVIDERS)[number]) {
     const supabase = createClient();
+    // Only register mode requires (and gates its button on, in the JSX
+    // below) terms acceptance — login-mode OAuth is an existing-user
+    // sign-in, not a new consent moment. Supabase's own OAuth flow doesn't
+    // distinguish "this click will create a new account" from "this click
+    // logs into an existing one" ahead of time, so a login-mode OAuth
+    // click that happens to be a stranger's first visit is a known,
+    // pre-existing gap this doesn't attempt to close.
+    const termsParams =
+      mode === "register"
+        ? `&termsAcceptedAt=${encodeURIComponent(new Date().toISOString())}&termsVersion=${encodeURIComponent(CURRENT_TERMS_VERSION)}`
+        : "";
     await supabase.auth.signInWithOAuth({
       provider,
       options: {
         // §6.4a — OAuth has no metadata channel at sign-in time, unlike
         // signUp()'s `data` option, so intended role has to travel as an
         // explicit query param for /auth/callback to read.
-        redirectTo: `${window.location.origin}/auth/callback?next=/${locale}${next ?? landingPath}&role=${role}`,
+        redirectTo: `${window.location.origin}/auth/callback?next=/${locale}${next ?? landingPath}&role=${role}${termsParams}`,
       },
     });
   }
 
   async function handleAttachConfirm() {
-    if (!attachOffer) return;
+    if (!attachOffer || !termsAccepted) return;
     setPending(true);
     const res = await fetch("/api/auth/attach-role", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ role, nif: attachOffer.nif, companyName: attachOffer.companyName }),
+      body: JSON.stringify({
+        role,
+        nif: attachOffer.nif,
+        companyName: attachOffer.companyName,
+        termsAcceptedAt: new Date().toISOString(),
+        termsVersion: CURRENT_TERMS_VERSION,
+      }),
     });
     const json = await res.json();
     if (!res.ok) {
@@ -233,10 +270,32 @@ export function AuthForm({ role, mode }: { role: Role; mode: Mode }) {
     return (
       <div className="flex flex-col gap-4">
         <p className="text-sm text-ink">{t("attachOfferBody", { otherRole: t(`roleName.${otherRole}`), role: t(`roleName.${role}`) })}</p>
+
+        <label className="flex items-start gap-2 text-xs text-muted">
+          <input
+            type="checkbox"
+            required
+            checked={termsAccepted}
+            onChange={(e) => setTermsAccepted(e.target.checked)}
+            className="mt-0.5"
+          />
+          <span>
+            {t("termsConsent")}{" "}
+            <Link href="/terms" target="_blank" className="underline hover:text-ink">
+              {t("termsLink")}
+            </Link>{" "}
+            {t("and")}{" "}
+            <Link href="/privacy" target="_blank" className="underline hover:text-ink">
+              {t("privacyPolicyLink")}
+            </Link>
+            .
+          </span>
+        </label>
+
         <div className="flex gap-2">
           <button
             type="button"
-            disabled={pending}
+            disabled={pending || !termsAccepted}
             onClick={handleAttachConfirm}
             className="flex h-9 items-center justify-center gap-2 rounded-lg bg-pine px-3 text-sm font-medium text-white hover:bg-pine/90 disabled:opacity-50"
           >
@@ -324,9 +383,32 @@ export function AuthForm({ role, mode }: { role: Role; mode: Mode }) {
         </>
       )}
 
+      {mode === "register" && (
+        <label className="flex items-start gap-2 text-xs text-muted">
+          <input
+            type="checkbox"
+            required
+            checked={termsAccepted}
+            onChange={(e) => setTermsAccepted(e.target.checked)}
+            className="mt-0.5"
+          />
+          <span>
+            {t("termsConsent")}{" "}
+            <Link href="/terms" target="_blank" className="underline hover:text-ink">
+              {t("termsLink")}
+            </Link>{" "}
+            {t("and")}{" "}
+            <Link href="/privacy" target="_blank" className="underline hover:text-ink">
+              {t("privacyPolicyLink")}
+            </Link>
+            .
+          </span>
+        </label>
+      )}
+
       <button
         type="submit"
-        disabled={pending}
+        disabled={pending || (mode === "register" && !termsAccepted)}
         className="flex h-11 items-center justify-center gap-2 rounded-lg bg-pine px-3 text-sm font-medium text-white hover:bg-pine/90 disabled:opacity-50"
       >
         {pending && (
@@ -351,8 +433,9 @@ export function AuthForm({ role, mode }: { role: Role; mode: Mode }) {
               <button
                 key={provider}
                 type="button"
+                disabled={mode === "register" && !termsAccepted}
                 onClick={() => handleOAuth(provider)}
-                className="flex h-11 flex-1 items-center justify-center gap-2 rounded-lg border border-line bg-white text-sm hover:bg-paper"
+                className="flex h-11 flex-1 items-center justify-center gap-2 rounded-lg border border-line bg-white text-sm hover:bg-paper disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {/* Real brand marks for all four providers, standardized to the
                  *  same 20px (h-5 w-5) box regardless of source, so they read

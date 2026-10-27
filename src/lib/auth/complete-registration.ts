@@ -8,6 +8,14 @@ import { slugify } from "@/lib/slug";
 
 type Role = "employer" | "candidate";
 
+/** GDPR/compliance audit finding: no entry point ever recorded terms/
+ *  privacy acceptance anywhere — a UI checkbox alone isn't a defensible
+ *  record once the request completes. Threaded through every path below
+ *  that creates a new candidates/employer_users row, from whichever
+ *  acceptance info the caller has (signUp() metadata for email/password,
+ *  an explicit override for OAuth — see completeRegistration). */
+type TermsAcceptance = { termsAcceptedAt: string; termsVersion: string };
+
 /** Thrown when `companies.nif`'s unique constraint rejects a registration —
  *  a real gap found in production: this used to surface as a raw "company
  *  creation failed: duplicate key value..." error with no graceful handling
@@ -34,7 +42,7 @@ export class DuplicateNifError extends Error {
  */
 export async function ensureEmployerProfile(
   user: User,
-  opts: { nif?: string; companyName?: string; claimToken?: string },
+  opts: { nif?: string; companyName?: string; claimToken?: string } & Partial<TermsAcceptance>,
 ): Promise<{ landingPath: string }> {
   const admin = createAdminClient();
   const meta = user.user_metadata ?? {};
@@ -56,15 +64,19 @@ export async function ensureEmployerProfile(
     .maybeSingle();
 
   if (invite) {
-    await admin
-      .from("employer_users")
-      .insert({ auth_user_id: user.id, company_id: invite.company_id, role: invite.role });
+    await admin.from("employer_users").insert({
+      auth_user_id: user.id,
+      company_id: invite.company_id,
+      role: invite.role,
+      terms_accepted_at: opts.termsAcceptedAt ?? null,
+      terms_version: opts.termsVersion ?? null,
+    });
     await admin
       .from("employer_invites")
       .update({ accepted_at: new Date().toISOString() })
       .eq("id", invite.id);
     await admin.auth.admin.updateUserById(user.id, {
-      user_metadata: { ...meta, last_role: "employer" },
+      user_metadata: { ...meta, last_role: "employer", pending_terms_accepted_at: null, pending_terms_version: null },
     });
     await logEvent("user.registered", { role: "employer", via: "invite" }, user.id);
     return { landingPath: "/recruit" };
@@ -109,16 +121,27 @@ export async function ensureEmployerProfile(
     }
     if (!updated) throw new Error("This company has already been claimed");
 
-    await admin
-      .from("employer_users")
-      .insert({ auth_user_id: user.id, company_id: claim.company_id, role: "owner" });
+    await admin.from("employer_users").insert({
+      auth_user_id: user.id,
+      company_id: claim.company_id,
+      role: "owner",
+      terms_accepted_at: opts.termsAcceptedAt ?? null,
+      terms_version: opts.termsVersion ?? null,
+    });
     await admin
       .from("company_claim_invites")
       .update({ claimed_at: new Date().toISOString(), claimed_by: user.id })
       .eq("id", claim.id);
 
     await admin.auth.admin.updateUserById(user.id, {
-      user_metadata: { ...meta, last_role: "employer", pending_nif: null, pending_claim_token: null },
+      user_metadata: {
+        ...meta,
+        last_role: "employer",
+        pending_nif: null,
+        pending_claim_token: null,
+        pending_terms_accepted_at: null,
+        pending_terms_version: null,
+      },
     });
 
     await logEvent("user.registered", { role: "employer", via: "claim" }, user.id);
@@ -164,12 +187,23 @@ export async function ensureEmployerProfile(
     throw new Error(`company creation failed: ${companyError.message}`);
   }
 
-  await admin
-    .from("employer_users")
-    .insert({ auth_user_id: user.id, company_id: company.id, role: "owner" });
+  await admin.from("employer_users").insert({
+    auth_user_id: user.id,
+    company_id: company.id,
+    role: "owner",
+    terms_accepted_at: opts.termsAcceptedAt ?? null,
+    terms_version: opts.termsVersion ?? null,
+  });
 
   await admin.auth.admin.updateUserById(user.id, {
-    user_metadata: { ...meta, last_role: "employer", pending_nif: null, pending_company_name: null },
+    user_metadata: {
+      ...meta,
+      last_role: "employer",
+      pending_nif: null,
+      pending_company_name: null,
+      pending_terms_accepted_at: null,
+      pending_terms_version: null,
+    },
   });
 
   await logEvent("user.registered", { role: "employer" }, user.id);
@@ -202,7 +236,10 @@ export async function ensureEmployerProfile(
  * freshly-claimed one. Used both by the normal registration confirmation
  * flow and by the same-email dual-role "attach" flow.
  */
-export async function ensureCandidateProfile(user: User): Promise<{ landingPath: string }> {
+export async function ensureCandidateProfile(
+  user: User,
+  opts: Partial<TermsAcceptance> = {},
+): Promise<{ landingPath: string }> {
   const admin = createAdminClient();
   const meta = user.user_metadata ?? {};
   const email = (user.email ?? "").toLowerCase();
@@ -239,7 +276,12 @@ export async function ensureCandidateProfile(user: User): Promise<{ landingPath:
   if (unclaimed) {
     await admin
       .from("candidates")
-      .update({ auth_user_id: user.id, email_verified: true })
+      .update({
+        auth_user_id: user.id,
+        email_verified: true,
+        terms_accepted_at: opts.termsAcceptedAt ?? null,
+        terms_version: opts.termsVersion ?? null,
+      })
       .eq("id", unclaimed.id);
   } else {
     await admin.from("candidates").insert({
@@ -249,11 +291,13 @@ export async function ensureCandidateProfile(user: User): Promise<{ landingPath:
       avatar_url: oauthAvatar || null,
       email_verified: true,
       auth_provider: authProvider,
+      terms_accepted_at: opts.termsAcceptedAt ?? null,
+      terms_version: opts.termsVersion ?? null,
     });
   }
 
   await admin.auth.admin.updateUserById(user.id, {
-    user_metadata: { ...meta, last_role: "candidate" },
+    user_metadata: { ...meta, last_role: "candidate", pending_terms_accepted_at: null, pending_terms_version: null },
   });
 
   await logEvent("user.registered", { role: "candidate" }, user.id);
@@ -273,17 +317,30 @@ export async function ensureCandidateProfile(user: User): Promise<{ landingPath:
 export async function completeRegistration(
   user: User,
   intendedRole: Role,
+  // Only ever needed for OAuth: signUp()'s `data` metadata already carries
+  // pending_terms_accepted_at/pending_terms_version for the email/password
+  // path, but OAuth has no metadata channel at sign-in time (same gap
+  // `role` already has to work around) — AuthForm's handleOAuth threads
+  // these through as query params instead, and /auth/callback passes them
+  // here explicitly.
+  termsOverride?: TermsAcceptance,
 ): Promise<{ role: Role; landingPath: string }> {
+  const meta = user.user_metadata ?? {};
+  const terms: Partial<TermsAcceptance> = termsOverride ?? {
+    termsAcceptedAt: meta.pending_terms_accepted_at,
+    termsVersion: meta.pending_terms_version,
+  };
+
   if (intendedRole === "employer") {
-    const meta = user.user_metadata ?? {};
     const { landingPath } = await ensureEmployerProfile(user, {
       nif: meta.pending_nif,
       companyName: meta.pending_company_name,
       claimToken: meta.pending_claim_token,
+      ...terms,
     });
     return { role: "employer", landingPath };
   }
 
-  const { landingPath } = await ensureCandidateProfile(user);
+  const { landingPath } = await ensureCandidateProfile(user, terms);
   return { role: "candidate", landingPath };
 }

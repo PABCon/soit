@@ -35,11 +35,16 @@ export async function POST(request: NextRequest) {
         nif: body.nif,
         companyName: body.companyName,
         claimToken: body.claimToken,
+        termsAcceptedAt: body.termsAcceptedAt,
+        termsVersion: body.termsVersion,
       });
       return NextResponse.json({ landingPath });
     }
 
-    const { landingPath } = await ensureCandidateProfile(user);
+    const { landingPath } = await ensureCandidateProfile(user, {
+      termsAcceptedAt: body.termsAcceptedAt,
+      termsVersion: body.termsVersion,
+    });
     return NextResponse.json({ landingPath });
   } catch (e) {
     return NextResponse.json({ error: e instanceof Error ? e.message : "attach failed" }, { status: 400 });

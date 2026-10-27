@@ -2,10 +2,11 @@
 
 import { useState, type FormEvent } from "react";
 import { useLocale, useTranslations } from "next-intl";
-import { useRouter } from "@/i18n/navigation";
+import { Link, useRouter } from "@/i18n/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { passwordMeetsRequirements } from "@/lib/password";
 import { PasswordChecklist } from "@/components/auth/PasswordChecklist";
+import { CURRENT_TERMS_VERSION } from "@/lib/legal";
 
 const inputClass = "h-9 rounded-lg border border-line bg-white px-3 text-sm disabled:bg-paper disabled:text-muted";
 const labelClass = "flex flex-col gap-1 text-sm";
@@ -24,12 +25,23 @@ export function InviteAcceptForm({ email }: { email: string }) {
   const [error, setError] = useState<string | null>(null);
   const [checkEmail, setCheckEmail] = useState(false);
   const [pending, setPending] = useState(false);
+  // GDPR/compliance audit finding: accepting a team invite created a real
+  // employer_users row with no terms/privacy acceptance recorded anywhere
+  // — required in both modes here, unlike AuthForm's OAuth special case,
+  // since both paths genuinely create this person's first membership at
+  // this company.
+  const [termsAccepted, setTermsAccepted] = useState(false);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     setError(null);
+    if (!termsAccepted) {
+      setError(t("termsRequired"));
+      return;
+    }
     setPending(true);
     const supabase = createClient();
+    const termsAcceptedAt = new Date().toISOString();
 
     // No unconditional finally resetting `pending` — see AuthForm.tsx's
     // handleSubmit for why: once router.push() is about to swap the page
@@ -46,7 +58,11 @@ export function InviteAcceptForm({ email }: { email: string }) {
         password,
         options: {
           emailRedirectTo: `${window.location.origin}/auth/callback?next=/${locale}/recruit`,
-          data: { last_role: "employer" },
+          data: {
+            last_role: "employer",
+            pending_terms_accepted_at: termsAcceptedAt,
+            pending_terms_version: CURRENT_TERMS_VERSION,
+          },
         },
       });
       if (signUpError) {
@@ -76,7 +92,7 @@ export function InviteAcceptForm({ email }: { email: string }) {
       const res = await fetch("/api/auth/attach-role", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ role: "employer" }),
+        body: JSON.stringify({ role: "employer", termsAcceptedAt, termsVersion: CURRENT_TERMS_VERSION }),
       });
       const json = await res.json();
       router.push(res.ok ? (json.landingPath ?? "/recruit") : "/recruit");
@@ -112,9 +128,30 @@ export function InviteAcceptForm({ email }: { email: string }) {
       </label>
       {mode === "register" && <PasswordChecklist password={password} />}
 
+      <label className="flex items-start gap-2 text-xs text-muted">
+        <input
+          type="checkbox"
+          required
+          checked={termsAccepted}
+          onChange={(e) => setTermsAccepted(e.target.checked)}
+          className="mt-0.5"
+        />
+        <span>
+          {t("termsConsent")}{" "}
+          <Link href="/terms" target="_blank" className="underline hover:text-ink">
+            {t("termsLink")}
+          </Link>{" "}
+          {t("and")}{" "}
+          <Link href="/privacy" target="_blank" className="underline hover:text-ink">
+            {t("privacyPolicyLink")}
+          </Link>
+          .
+        </span>
+      </label>
+
       <button
         type="submit"
-        disabled={pending}
+        disabled={pending || !termsAccepted}
         className="flex h-9 items-center justify-center gap-2 rounded-lg bg-pine px-3 text-sm font-medium text-white hover:bg-pine/90 disabled:opacity-50"
       >
         {pending && (

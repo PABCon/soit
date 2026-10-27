@@ -38,8 +38,16 @@ export async function GET(request: NextRequest) {
     | "employer"
     | "candidate";
   const locale = next.split("/")[1] || "pt";
+  // Same reason `role` travels as a query param: OAuth has no metadata
+  // channel at sign-in time, so AuthForm's handleOAuth puts terms
+  // acceptance here too instead of in signUp()'s `data` option (which this
+  // path never calls). Both present or both absent — AuthForm only adds
+  // them once the consent checkbox was actually checked.
+  const termsAcceptedAt = searchParams.get("termsAcceptedAt");
+  const termsVersion = searchParams.get("termsVersion");
+  const termsOverride = termsAcceptedAt && termsVersion ? { termsAcceptedAt, termsVersion } : undefined;
   try {
-    const { landingPath } = await completeRegistration(data.user, intendedRole);
+    const { landingPath } = await completeRegistration(data.user, intendedRole, termsOverride);
     return NextResponse.redirect(`${origin}/${locale}${landingPath}`);
   } catch (err) {
     if (err instanceof DuplicateNifError) {
