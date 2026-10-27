@@ -1,7 +1,14 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { updateMyMemberProfile, uploadMemberAvatar, type UploadResult } from "@/lib/db/team";
+import {
+  updateMyMemberProfile,
+  uploadMemberAvatar,
+  deleteEmployerAccount,
+  type UploadResult,
+  type DeleteEmployerAccountResult,
+} from "@/lib/db/team";
+import { getMyEmployerDataExport } from "@/lib/db/data-export";
 
 export async function updateMyProfileAction(formData: FormData) {
   await updateMyMemberProfile({
@@ -21,4 +28,12 @@ export async function uploadMyAvatarAction(formData: FormData): Promise<UploadRe
     revalidatePath("/recruit/team");
   }
   return result;
+}
+
+export async function exportMyEmployerDataAction() {
+  return getMyEmployerDataExport();
+}
+
+export async function deleteEmployerAccountAction(): Promise<DeleteEmployerAccountResult> {
+  return deleteEmployerAccount();
 }

@@ -237,3 +237,58 @@ export async function getInviteByToken(token: string) {
     companyName: (data.companies as unknown as { company_name: string } | null)?.company_name ?? "",
   };
 }
+
+export type DeleteEmployerAccountResult =
+  | { ok: true }
+  | { ok: false; reason: "not_an_employer" | "sole_owner" };
+
+/**
+ * GDPR account deletion for an employer-side account (audit finding: this
+ * existed for candidates only). Deliberately removes only this person's
+ * own membership and personal data — never the company, its jobs,
+ * applicants, or messages, which are the company's business records, not
+ * this individual's to delete. A sole owner can't delete their account at
+ * all: doing so would leave the company with no owner, the exact same
+ * "must keep at least one owner" invariant removeMember already enforces
+ * for removing *someone else* — here it's the same check, just against
+ * the caller's own membership instead.
+ *
+ * Unlike the candidate deletion, there's no anonymize-in-place step: an
+ * employer_users row carries no independently-meaningful personal data of
+ * its own (name/avatar/phone all live in auth.users.user_metadata, not on
+ * this row) — a plain delete of the row is already the complete removal,
+ * same as removeMember already does for a departing colleague.
+ */
+export async function deleteEmployerAccount(): Promise<DeleteEmployerAccountResult> {
+  const ctx = await getMyEmployerContext();
+  if (!ctx) return { ok: false, reason: "not_an_employer" };
+
+  const supabase = await createClient();
+  const admin = createAdminClient();
+
+  if (ctx.role === "owner") {
+    const { count } = await supabase
+      .from("employer_users")
+      .select("id", { count: "exact", head: true })
+      .eq("company_id", ctx.company.id)
+      .eq("role", "owner");
+    if ((count ?? 0) <= 1) return { ok: false, reason: "sole_owner" };
+  }
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, reason: "not_an_employer" };
+
+  await admin.from("employer_users").delete().eq("id", ctx.employerId);
+
+  const { data: avatarFiles } = await admin.storage.from("avatars").list(user.id);
+  if (avatarFiles && avatarFiles.length > 0) {
+    await admin.storage.from("avatars").remove(avatarFiles.map((f) => `${user.id}/${f.name}`));
+  }
+
+  await admin.auth.admin.deleteUser(user.id);
+  await supabase.auth.signOut();
+
+  return { ok: true };
+}

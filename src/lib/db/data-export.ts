@@ -10,6 +10,7 @@ import { getMyApplications } from "./applications";
 import { getMyFavoriteJobs } from "./favorites";
 import { getMySavedSearches } from "./saved-searches";
 import { getMyThreadsAsCandidate, getThreadDetail } from "./messaging";
+import { getMyEmployerContext } from "./companies";
 
 /**
  * GDPR data export / right to data portability (real-usage QA item) —
@@ -72,5 +73,47 @@ export async function getMyDataExport() {
     favoriteJobs: favoriteJobs.map((j) => ({ title: j.title, companySlug: j.company.slug })),
     savedSearches: savedSearches.map((s) => ({ label: s.label, query: s.query, createdAt: s.createdAt })),
     messageThreads: threads,
+  };
+}
+
+/**
+ * GDPR data export for an employer-side account (audit finding: this
+ * existed for candidates only). Deliberately scoped narrower than the
+ * candidate export's "everything" — a team member's own data export isn't
+ * the same thing as a dump of the company's business records (other
+ * applicants, other jobs, other members' messages), which belong to the
+ * company, not to this one individual. What's genuinely this person's own:
+ * their account/profile, which company and role they hold, and the jobs
+ * they personally created (`jobs.created_by`).
+ */
+export async function getMyEmployerDataExport() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return null;
+
+  const ctx = await getMyEmployerContext();
+  if (!ctx) return null;
+
+  const { data: jobsCreated } = await supabase
+    .from("jobs")
+    .select("title, status, created_at")
+    .eq("created_by", ctx.employerId)
+    .order("created_at", { ascending: false });
+
+  const meta = user.user_metadata as { full_name?: string; phone?: string } | undefined;
+
+  return {
+    exportedAt: new Date().toISOString(),
+    account: {
+      email: user.email,
+      fullName: meta?.full_name ?? null,
+      phone: meta?.phone ?? null,
+      role: ctx.role,
+      accountCreatedAt: user.created_at,
+    },
+    company: { name: ctx.company.company_name, slug: ctx.company.slug },
+    jobsCreated: (jobsCreated ?? []).map((j) => ({ title: j.title, status: j.status, createdAt: j.created_at })),
   };
 }
