@@ -162,6 +162,23 @@ export function ApplyModal({
                       className={inputClass}
                     />
                   </label>
+                  {/* Honeypot (security audit finding): never shown to a
+                   *  real person — positioned off-screen, not
+                   *  display:none (some bots specifically skip
+                   *  display:none fields but still autofill anything
+                   *  present in the DOM), no visible label, excluded from
+                   *  tab order and screen readers. A naive scripted
+                   *  form-filler reliably populates it anyway;
+                   *  applyAnonymously silently no-ops on anything other
+                   *  than an empty value here. */}
+                  <input
+                    type="text"
+                    name="website"
+                    tabIndex={-1}
+                    autoComplete="off"
+                    aria-hidden="true"
+                    style={{ position: "absolute", left: "-9999px", width: 1, height: 1, opacity: 0 }}
+                  />
                 </>
               )}
 

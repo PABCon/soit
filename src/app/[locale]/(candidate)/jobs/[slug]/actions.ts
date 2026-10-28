@@ -17,7 +17,11 @@ export async function applyAnonymousAction(jobSlug: string, formData: FormData):
   const fullName = String(formData.get("fullName") ?? "");
   const email = String(formData.get("email") ?? "");
   const coverNote = String(formData.get("coverNote") ?? "");
+  // Security audit finding — see applyAnonymously's own comment: a hidden
+  // field the real form never shows a human, checked there before any DB
+  // work.
+  const honeypot = String(formData.get("website") ?? "");
   if (!file || file.size === 0) return { ok: false, reason: "bad_file" };
   if (!fullName.trim() || !email.trim()) return { ok: false, reason: "db_error" };
-  return applyAnonymously(jobSlug, { fullName, email, file, coverNote });
+  return applyAnonymously(jobSlug, { fullName, email, file, coverNote, honeypot });
 }

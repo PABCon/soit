@@ -202,6 +202,10 @@ export async function applyToJob(jobSlug: string, cv: CvSource, coverNote: strin
     .maybeSingle();
   if (!job) return { ok: false, reason: "job_not_found" };
 
+  // Cheap, non-atomic pre-filter — avoids an expensive CV upload when
+  // obviously already over the cap. Not the real gate any more: see
+  // insert_application_if_under_cap below (security audit finding — this
+  // check used to be the only one, racy under genuine concurrency).
   const { count: recentCount } = await supabase
     .from("applications")
     .select("id", { count: "exact", head: true })
@@ -214,21 +218,26 @@ export async function applyToJob(jobSlug: string, cv: CvSource, coverNote: strin
     cv.kind === "upload" ? await uploadCv(admin, candidateId, job.id, cv.file) : await uploadCvFromStored(admin, candidateId, job.id);
   if ("error" in uploaded) return { ok: false, reason: uploaded.error };
 
-  const { data: inserted, error: insertError } = await supabase
-    .from("applications")
-    .insert({
-      job_id: job.id,
-      candidate_id: candidateId,
-      cv_url: uploaded.path,
-      cover_note: coverNote.trim() || null,
-    })
-    .select("id")
-    .single();
+  // Security audit finding: the recount above and this insert used to be
+  // two separate round trips — racy under real concurrency (a scripted
+  // burst of requests could all pass the pre-check before any of them
+  // committed). This RPC recounts and inserts atomically, serialized per
+  // candidate — the authoritative gate; the pre-check above is just a
+  // cheap optimization now.
+  const { data: insertedId, error: insertError } = await supabase.rpc("insert_application_if_under_cap", {
+    p_candidate_id: candidateId,
+    p_job_id: job.id,
+    p_cv_url: uploaded.path,
+    p_cover_note: coverNote,
+    p_daily_cap: DAILY_APPLICATION_CAP,
+  });
   if (insertError) {
     // unique(job_id, candidate_id) — the double-submit backstop.
     if (insertError.code === "23505") return { ok: false, reason: "already_applied" };
     return { ok: false, reason: "db_error" };
   }
+  if (!insertedId) return { ok: false, reason: "rate_limited" };
+  const inserted = { id: insertedId };
 
   await logEvent("application.created", { job_id: job.id, candidate_id: candidateId });
 
@@ -276,7 +285,7 @@ export type AnonymousApplyResult =
  */
 export async function applyAnonymously(
   jobSlug: string,
-  input: { fullName: string; email: string; file: File; coverNote: string },
+  input: { fullName: string; email: string; file: File; coverNote: string; honeypot?: string },
 ): Promise<AnonymousApplyResult> {
   const admin = createAdminClient();
   const email = input.email.trim().toLowerCase();
@@ -291,6 +300,24 @@ export async function applyAnonymously(
   if (!job) return { ok: false, reason: "job_not_found" };
   const companies = job.companies as unknown as { company_name: string; company_logo_url: string | null };
 
+  // Security audit finding: this is the most exposed unauthenticated
+  // write path in the app, and had zero bot mitigation at all (a real,
+  // previously-deferred gap — needed external infra nobody had
+  // configured). A honeypot is the cheapest real deterrent that needs
+  // none: a field the real form never shows a human (off-screen, not
+  // `display:none` — some bots skip hidden-by-display fields but still
+  // autofill every visible-to-the-DOM input) but that naive scripted
+  // form-fillers reliably populate. Deliberately returns the *same*
+  // success-shaped response a real submission would have gotten — never
+  // signals back that it was caught, which would just teach a scraper to
+  // leave the field alone next time — but does no further work at all
+  // (no candidate row, no CV upload, no application) past this point.
+  if (input.honeypot && input.honeypot.trim().length > 0) {
+    return { ok: true, companyName: companies.company_name };
+  }
+
+  // Cheap, non-atomic pre-filter — same reasoning as applyToJob's own
+  // (see insert_application_if_under_cap below for the real gate).
   const { count: recentCount } = await admin
     .from("applications")
     .select("id, candidates!inner(email)", { count: "exact", head: true })
@@ -320,20 +347,21 @@ export async function applyAnonymously(
   const uploaded = await uploadCv(admin, candidateId, job.id, input.file);
   if ("error" in uploaded) return { ok: false, reason: uploaded.error };
 
-  const { data: inserted, error: insertError } = await admin
-    .from("applications")
-    .insert({
-      job_id: job.id,
-      candidate_id: candidateId,
-      cv_url: uploaded.path,
-      cover_note: input.coverNote.trim() || null,
-    })
-    .select("id")
-    .single();
+  // Security audit finding: same race as applyToJob's own insert — see
+  // insert_application_if_under_cap's own comment.
+  const { data: insertedId, error: insertError } = await admin.rpc("insert_application_if_under_cap", {
+    p_candidate_id: candidateId,
+    p_job_id: job.id,
+    p_cv_url: uploaded.path,
+    p_cover_note: input.coverNote,
+    p_daily_cap: DAILY_APPLICATION_CAP,
+  });
   if (insertError) {
     if (insertError.code === "23505") return { ok: false, reason: "already_applied" };
     return { ok: false, reason: "db_error" };
   }
+  if (!insertedId) return { ok: false, reason: "rate_limited" };
+  const inserted = { id: insertedId };
 
   await logEvent("application.created", { job_id: job.id, candidate_id: candidateId });
 
