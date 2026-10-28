@@ -10,7 +10,10 @@ function forEachLocale(path: string): MetadataRoute.Sitemap {
 }
 
 /**
- * Static pages, every live job/company detail page, and browse-page URLs —
+ * Static pages (SEO audit finding: /salario-liquido, /developers, and
+ * /recommendations were built as real, public, indexable pages but never
+ * actually submitted here), every live job/company detail page, and
+ * browse-page URLs —
  * but only the location/category combinations that currently have ≥1 live
  * job. The full taxonomy cross-product (14 locations × ~14 categories,
  * plus 159 tech tags) would be mostly empty pages; publishing thousands of
@@ -23,7 +26,9 @@ function forEachLocale(path: string): MetadataRoute.Sitemap {
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const [jobs, companies] = await Promise.all([getLiveJobs(), getVerifiedCompanies()]);
 
-  const staticPages = ["", "/jobs", "/companies"].flatMap(forEachLocale);
+  const staticPages = ["", "/jobs", "/companies", "/salario-liquido", "/developers", "/recommendations"].flatMap(
+    forEachLocale,
+  );
   const jobPages = jobs.flatMap((j) => forEachLocale(`/jobs/${j.slug}`));
   const companyPages = companies.flatMap((c) => forEachLocale(`/companies/${c.slug}`));
 

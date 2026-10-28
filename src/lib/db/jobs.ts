@@ -265,6 +265,42 @@ export async function getLiveJobBySlug(slug: string): Promise<JobDetail | null> 
   return toJobDetail(data as unknown as JobRow);
 }
 
+/** SEO fix: a naturally-expired or employer-paused job used to 404 the
+ *  instant it fell out of getLiveJobBySlug's live condition — exactly the
+ *  "many many 404s" a growing job board accumulates over time from its
+ *  own, previously-indexed URLs. Google's own JobPosting guidance is the
+ *  opposite of a hard 404 here: keep the page a real 200, just drop the
+ *  stale structured data and make the "closed" state honest. Only ever
+ *  returns a row that was genuinely public at some point
+ *  (`published_at is not null`) — a pure draft (never published) still
+ *  correctly 404s via the page's own notFound() fallback, since no real
+ *  inbound link or index entry could ever point at one.
+ *
+ *  Admin client, deliberately: the only public SELECT policy on `jobs`
+ *  ("live jobs are public") scopes an anonymous/candidate session to
+ *  `status = 'published' and expires_at > now()` — RLS, not just this
+ *  query's own WHERE clause, so a request-scoped client can never read a
+ *  closed job regardless of what's asked for here. `published_at is not
+ *  null` is the real security boundary instead, same admin-client-
+ *  scoped-in-code pattern `getApplicantsForJob`/`candidate-matches.ts`
+ *  already use for a public-but-broader-than-RLS read. Confirmed by a
+ *  real repro: this 404'd for every closed job until the client was
+ *  swapped here, not caught by `tsc`/`eslint`/the build. */
+export async function getJobBySlugEverPublished(slug: string): Promise<{ job: JobDetail; live: boolean } | null> {
+  const admin = createAdminClient();
+  const { data, error } = await admin
+    .from("jobs")
+    .select(SELECT)
+    .eq("slug", slug)
+    .not("published_at", "is", null)
+    .maybeSingle();
+
+  if (error || !data) return null;
+  const row = data as unknown as JobRow;
+  const live = row.status === "published" && row.expires_at !== null && new Date(row.expires_at) > new Date();
+  return { job: toJobDetail(row), live };
+}
+
 /** "Preview" (real-usage ask: "it should open another tab and display as
  *  if it was like the real page") — same shape as `getLiveJobBySlug`, but
  *  by id and with no `status`/`expires_at` filter at all, so a draft the

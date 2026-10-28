@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { setRequestLocale } from "next-intl/server";
+import { getTranslations, setRequestLocale } from "next-intl/server";
+import { permanentRedirect } from "@/i18n/navigation";
 import { JobDetailBody } from "@/components/JobDetailBody";
-import { getLiveJobBySlug, getSimilarJobs, type JobDetail } from "@/lib/db/jobs";
+import { getJobBySlugEverPublished, getBrowseJobs, getSimilarJobs, type JobDetail } from "@/lib/db/jobs";
 import { getApplyStatus } from "@/lib/db/applications";
 import { getMyFavoriteJobIds } from "@/lib/db/favorites";
 import { getCompanyBySlug } from "@/lib/db/companies";
@@ -12,10 +13,48 @@ type Props = { params: Promise<{ locale: string; slug: string }> };
 
 const SITE = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
 
+// SEO policy, confirmed with the product owner: a closed job keeps its own
+// "no longer accepting applications" page for a while (real visitors can
+// still land on it from a recent share/bookmark/search ranking), but past
+// this many days closed it 301s to a still-live page instead of sitting
+// around indefinitely as stale crawl surface. `expiresAt` is used as the
+// "closed since" reference point even for an employer-paused (not
+// naturally expired) job — imprecise for that case (pausing doesn't move
+// expiresAt), but only ever biases toward redirecting *later* than ideal,
+// never earlier, which is the safe direction to be wrong in.
+const STALE_CLOSED_JOB_DAYS = 90;
+
+/** Where a stale-closed job's URL should 301 to: its own category+location
+ *  browse page when that combination still has at least one live job
+ *  (checked for real, not just linked blindly — an empty browse page is a
+ *  worse landing than the plain job index), falling back one step at a
+ *  time to the broader category-only browse page, then to `/jobs`. */
+// Pulled out of the page component itself: `react-hooks/purity` flags a
+// direct `Date.now()` call inside a component's own body (same reasoning
+// already applied to JobExpiryBar's `expiryPercentLeft()` helper) — a
+// plain, non-component function isn't subject to that rule.
+function daysSince(isoDate: string): number {
+  return (Date.now() - new Date(isoDate).getTime()) / 86_400_000;
+}
+
+async function resolveStaleRedirectTarget(job: JobDetail): Promise<string> {
+  if (job.locationSlug && job.categorySlug) {
+    const combo = await getBrowseJobs({ locationSlug: job.locationSlug, facetSlug: job.categorySlug });
+    if (combo && combo.jobs.length > 0) return `/jobs/in/${job.locationSlug}/${job.categorySlug}`;
+  }
+  if (job.categorySlug) {
+    const categoryOnly = await getBrowseJobs({ facetSlug: job.categorySlug });
+    if (categoryOnly && categoryOnly.jobs.length > 0) return `/jobs/in/all-locations/${job.categorySlug}`;
+  }
+  return "/jobs";
+}
+
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale, slug } = await params;
-  const job = await getLiveJobBySlug(slug);
-  if (!job) return {};
+  const result = await getJobBySlugEverPublished(slug);
+  if (!result) return {};
+  const { job, live } = result;
+  const t = await getTranslations({ locale, namespace: "job" });
 
   const title = `${job.title} — ${job.company.name}`;
   // A per-job description was entirely missing before this (SEO audit
@@ -24,7 +63,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   // tagline. Truncated: job descriptions can run long, and OG/Twitter
   // consumers (and search snippets) clip anyway — better to clip on a
   // word boundary ourselves than mid-word.
-  const description = job.description.length > 200 ? `${job.description.slice(0, 197).trimEnd()}…` : job.description;
+  const rawDescription = job.description.length > 200 ? `${job.description.slice(0, 197).trimEnd()}…` : job.description;
+  // SEO fix: an expired/closed job keeps its own real page (see
+  // getJobBySlugEverPublished's own comment) rather than 404ing — the
+  // snippet has to say so honestly, not keep advertising a dead posting.
+  const description = live ? rawDescription : `${t("closedMetaPrefix")} ${rawDescription}`;
 
   return {
     title,
@@ -151,8 +194,13 @@ export default async function JobDetailPage({ params }: Props) {
   const { locale, slug } = await params;
   setRequestLocale(locale);
 
-  const job = await getLiveJobBySlug(slug);
-  if (!job) notFound();
+  const result = await getJobBySlugEverPublished(slug);
+  if (!result) notFound();
+  const { job, live } = result;
+
+  if (!live && daysSince(job.expiresAt) > STALE_CLOSED_JOB_DAYS) {
+    permanentRedirect({ href: await resolveStaleRedirectTarget(job), locale });
+  }
 
   const [applyStatus, favoriteJobIds, similarJobs, companyProfile] = await Promise.all([
     getApplyStatus(job.id),
@@ -163,12 +211,20 @@ export default async function JobDetailPage({ params }: Props) {
 
   return (
     <>
-      <script
-        type="application/ld+json"
-        dangerouslySetInnerHTML={{
-          __html: JSON.stringify(jobPostingJsonLd(job, locale)),
-        }}
-      />
+      {/* SEO fix: JobPosting structured data must never describe a dead
+       *  posting as live — Google's JobPosting guidance treats stale
+       *  structured data on an expired job as a rich-results policy
+       *  violation (risks losing rich-result eligibility sitewide), so
+       *  this is omitted entirely once the job is no longer live, rather
+       *  than kept with a backdated validThrough. */}
+      {live && (
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify(jobPostingJsonLd(job, locale)),
+          }}
+        />
+      )}
 
       <JobDetailBody
         job={job}
@@ -177,6 +233,7 @@ export default async function JobDetailPage({ params }: Props) {
         favoriteJobIds={favoriteJobIds}
         similarJobs={similarJobs}
         companyProfile={companyProfile}
+        closed={!live}
       />
     </>
   );

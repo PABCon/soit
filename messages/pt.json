@@ -689,6 +689,8 @@
     "showMap": "Mostrar mapa",
     "jobsIn": "Vagas de IT em {place}",
     "facetJobsIn": "Vagas de {facet} em {place}",
+    "browseLocationMetaDescription": "{count, plural, =0 {Sem vagas de IT abertas em {place} neste momento} one {# vaga de IT aberta em {place}, com salário indicado} other {# vagas de IT abertas em {place}, todas com salário indicado}} — veja e candidate-se na Just IT.",
+    "browseFacetMetaDescription": "{count, plural, =0 {Sem vagas de {facet} abertas em {place} neste momento} one {# vaga de {facet} aberta em {place}, com salário indicado} other {# vagas de {facet} abertas em {place}, todas com salário indicado}} — veja e candidate-se na Just IT.",
     "allJobs": "Todas as vagas",
     "allLocations": "todas as localizações",
     "browseByLocation": "Explorar por localização",
@@ -842,7 +844,12 @@
     "tabCompany": "Empresa",
     "tabBenefits": "Benefícios",
     "viewAll": "Ver todas",
-    "breadcrumbJobs": "Vagas"
+    "breadcrumbJobs": "Vagas",
+    "closedBadge": "Encerrada",
+    "jobClosed": "Esta vaga já não está a aceitar candidaturas.",
+    "jobClosedBrowseCta": "Ver vagas abertas",
+    "jobClosedRegisterCta": "Crie uma conta gratuita para ser notificado sobre vagas semelhantes",
+    "closedMetaPrefix": "Esta vaga já foi encerrada."
   },
   "apply": {
     "apply": "Candidatar",
@@ -1086,6 +1093,7 @@
   },
   "recommendations": {
     "title": "Vagas à sua medida",
+    "metaDescription": "Receba vagas de IT em Portugal à medida das suas competências e experiência reais — grátis, sempre.",
     "subtitle": "Ordenadas de acordo com as suas competências e preferências de vaga.",
     "pitchTitle": "Receba vagas à medida das suas competências",
     "pitchBody": "Crie uma conta gratuita, adicione as suas competências (ou carregue o seu CV e fazemo-lo por si) e ordenamos as vagas ativas de acordo com o seu perfil real.",
@@ -1174,6 +1182,8 @@
     "resultEmployerCostAnnual": "Custo para a empresa (anual)",
     "shareButton": "Copiar link para partilhar",
     "shareCopied": "Link copiado!",
+    "ctaBrowseJobs": "Ver vagas de IT abertas",
+    "ctaCreateAccount": "Crie uma conta gratuita para guardar pesquisas e candidatar-se mais rápido",
     "disclaimer": "Valores estimados com base nas tabelas de retenção e regras fiscais em vigor para o período selecionado. Não substitui o processamento salarial nem aconselhamento fiscal profissional.",
     "resultError": "Não foi possível calcular um resultado com estes dados — tente ajustá-los.",
     "breakdownHeading": "Como calculámos este valor",

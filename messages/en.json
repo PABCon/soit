@@ -689,6 +689,8 @@
     "showMap": "Show map",
     "jobsIn": "IT jobs in {place}",
     "facetJobsIn": "{facet} jobs in {place}",
+    "browseLocationMetaDescription": "{count, plural, =0 {No open IT jobs in {place} right now} one {# open IT job in {place}, with salary listed} other {# open IT jobs in {place}, all with salary listed}} — browse and apply at Just IT.",
+    "browseFacetMetaDescription": "{count, plural, =0 {No open {facet} jobs in {place} right now} one {# open {facet} job in {place}, with salary listed} other {# open {facet} jobs in {place}, all with salary listed}} — browse and apply at Just IT.",
     "allJobs": "All jobs",
     "allLocations": "all locations",
     "browseByLocation": "Browse by location",
@@ -842,7 +844,12 @@
     "tabCompany": "Company",
     "tabBenefits": "Benefits",
     "viewAll": "View all",
-    "breadcrumbJobs": "Jobs"
+    "breadcrumbJobs": "Jobs",
+    "closedBadge": "Closed",
+    "jobClosed": "This position is no longer accepting applications.",
+    "jobClosedBrowseCta": "Browse open jobs",
+    "jobClosedRegisterCta": "Create a free account to get notified about new jobs like this",
+    "closedMetaPrefix": "This position has closed."
   },
   "apply": {
     "apply": "Apply",
@@ -1086,6 +1093,7 @@
   },
   "recommendations": {
     "title": "Jobs matched to you",
+    "metaDescription": "Get IT jobs in Portugal matched to your real skills and experience — free, always.",
     "subtitle": "Ranked against your skills and job preferences.",
     "pitchTitle": "Get jobs matched to your skills",
     "pitchBody": "Create a free account, add your skills (or just upload your CV), and we'll rank live jobs against your real profile.",
@@ -1174,6 +1182,8 @@
     "resultEmployerCostAnnual": "Cost to the employer (annual)",
     "shareButton": "Copy a shareable link",
     "shareCopied": "Link copied!",
+    "ctaBrowseJobs": "Browse open IT jobs",
+    "ctaCreateAccount": "Create a free account to save your searches and apply faster",
     "disclaimer": "Estimated values based on the withholding tables and tax rules in force for the period selected. This doesn't replace payroll processing or professional tax advice.",
     "resultError": "Couldn't calculate a result for these inputs — try adjusting them.",
     "breakdownHeading": "How this was calculated",

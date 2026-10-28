@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
+import { localeAlternates, socialMeta } from "@/lib/seo";
 
 type Props = { params: Promise<{ locale: string }> };
 
@@ -9,7 +10,16 @@ const SITE = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale } = await params;
   const t = await getTranslations({ locale, namespace: "developers" });
-  return { title: t("title"), description: t("intro") };
+  const title = t("title");
+  const description = t("intro");
+  return {
+    title,
+    description,
+    // SEO audit finding: fell back to the root layout's homepage
+    // alternates with none of its own, same gap as /salario-liquido.
+    alternates: localeAlternates("/developers", locale),
+    ...socialMeta({ title, description, url: `${SITE}/${locale}/developers` }),
+  };
 }
 
 const codeClass = "overflow-x-auto rounded-lg bg-paper px-3 py-2 text-xs";

@@ -4,8 +4,11 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
 import { getBrowseJobs } from "@/lib/db/jobs";
 import { JobFeed } from "@/components/JobFeed";
+import { localeAlternates, socialMeta } from "@/lib/seo";
 
 type Props = { params: Promise<{ locale: string; location: string; facet: string }> };
+
+const SITE = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
 
 function resolveParams(location: string, facet: string) {
   return { locationSlug: location === "all-locations" ? undefined : location, facetSlug: facet };
@@ -22,13 +25,26 @@ async function resolveFacetLabel(
   return result.facetLabel ?? "";
 }
 
+// SEO audit finding: same gap as the plain location browse page — this
+// template had no description/canonical/hreflang/OG at all. Fixed once
+// here so every current and future location×facet combination (no
+// per-page work needed) gets it automatically.
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale, location, facet } = await params;
   const result = await getBrowseJobs(resolveParams(location, facet));
   if (!result) return {};
   const place = result.locationName ?? "Portugal";
   const facetLabel = await resolveFacetLabel(locale, result);
-  return { title: `${facetLabel} jobs in ${place} — Just IT` };
+  const t = await getTranslations({ locale, namespace: "feed" });
+  const title = `${facetLabel} jobs in ${place} — Just IT`;
+  const description = t("browseFacetMetaDescription", { count: result.jobs.length, facet: facetLabel, place });
+  return {
+    title,
+    description,
+    alternates: localeAlternates(`/jobs/in/${location}/${facet}`, locale),
+    ...socialMeta({ title, description, url: `${SITE}/${locale}/jobs/in/${location}/${facet}` }),
+    ...(result.jobs.length === 0 ? { robots: { index: false, follow: true } } : {}),
+  };
 }
 
 /** justjoin.it-style browse page — `/jobs/in/lisboa/react` or `/jobs/in/

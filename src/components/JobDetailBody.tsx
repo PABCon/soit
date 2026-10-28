@@ -46,6 +46,7 @@ export async function JobDetailBody({
   similarJobs,
   companyProfile,
   preview = false,
+  closed = false,
 }: {
   job: JobDetail;
   locale: string;
@@ -54,6 +55,12 @@ export async function JobDetailBody({
   similarJobs: Job[];
   companyProfile: CompanyProfile;
   preview?: boolean;
+  /** SEO fix: an expired/employer-closed job still renders this same page
+   *  (see getJobBySlugEverPublished's own comment for why) instead of
+   *  404ing — but it's a real, live-audience page, unlike `preview`, so
+   *  it keeps view tracking/engagement nudges and only swaps the apply
+   *  flow itself for an honest "no longer accepting applications" state. */
+  closed?: boolean;
 }) {
   const [t, tf, tjf] = await Promise.all([
     getTranslations({ locale, namespace: "job" }),
@@ -110,7 +117,7 @@ export async function JobDetailBody({
       label: t("tabOverview"),
       content: (
         <div className="space-y-6">
-          {!preview && <JobMatchBanner jobId={job.id} locale={locale} />}
+          {!preview && !closed && <JobMatchBanner jobId={job.id} locale={locale} />}
           <div>
             <h3 className="font-display text-lg font-semibold">{t("aboutRole")}</h3>
             <div className="mt-2">
@@ -251,6 +258,7 @@ export async function JobDetailBody({
             </div>
 
             <div className="mt-3 flex flex-wrap items-center gap-1.5">
+              {closed && <Badge variant="neutral">{t("closedBadge")}</Badge>}
               {job.isTopEmployer && <Badge variant="topEmployer">{tf("topEmployer")}</Badge>}
               {job.isBoosted && <Badge variant="boosted">{tf("boosted")}</Badge>}
               {[
@@ -263,7 +271,7 @@ export async function JobDetailBody({
                   {b}
                 </span>
               ))}
-              {job.daysLeft !== null && job.daysLeft <= 7 && (
+              {!closed && job.daysLeft !== null && job.daysLeft <= 7 && (
                 <Badge variant="warning">{tf("daysLeft", { days: job.daysLeft })}</Badge>
               )}
               {!preview && (
@@ -320,7 +328,7 @@ export async function JobDetailBody({
               <span className="flex h-9 min-w-0 flex-1 items-center gap-2 border-l border-line py-1 pl-4">
                 <Clock className="h-4 w-4 shrink-0 text-muted" aria-hidden="true" />
                 <span className="truncate font-medium text-ink">
-                  {preview ? t("previewBadge") : tf("postedAgo", { days: job.postedDaysAgo })}
+                  {closed ? t("closedBadge") : preview ? t("previewBadge") : tf("postedAgo", { days: job.postedDaysAgo })}
                 </span>
               </span>
             </div>
@@ -333,7 +341,27 @@ export async function JobDetailBody({
 
         <aside className="min-w-0 lg:sticky lg:top-20 lg:self-start">
           <div className="rounded-xl border border-line bg-white p-5">
-            {preview || !applyStatus ? (
+            {closed ? (
+              // SEO fix: the apply flow for a job that's no longer live has
+              // to actually say so, not silently vanish behind a 404 — and
+              // this is exactly the moment to redirect an organic visitor
+              // toward something that still converts, per the growth goal
+              // behind this whole pass.
+              <div>
+                <p className="rounded-lg bg-paper px-3 py-2 text-center text-sm text-muted">{t("jobClosed")}</p>
+                <Link href="/jobs" className={`mt-3 block w-full text-center ${buttonClassName({ size: "md" })}`}>
+                  {t("jobClosedBrowseCta")}
+                </Link>
+                {!applyStatus?.isCandidate && (
+                  <Link
+                    href="/candidate/register"
+                    className="mt-2 block text-center text-xs text-pine hover:underline"
+                  >
+                    {t("jobClosedRegisterCta")}
+                  </Link>
+                )}
+              </div>
+            ) : preview || !applyStatus ? (
               <div>
                 <button type="button" disabled className={`w-full ${buttonClassName({ size: "md" })} opacity-50`}>
                   {t("apply")}
@@ -350,12 +378,12 @@ export async function JobDetailBody({
                 storedCv={applyStatus.storedCv}
               />
             )}
-            {!preview && favoriteJobIds && (
+            {!preview && !closed && favoriteJobIds && (
               <div className="mt-3">
                 <FavoriteButton jobId={job.id} initiallyFavorited={favoriteJobIds.includes(job.id)} variant="labeled" />
               </div>
             )}
-            {!preview && expiryPercent !== null && (
+            {!preview && !closed && expiryPercent !== null && (
               <div className="mt-3">
                 <JobExpiryBar percentLeft={expiryPercent} />
                 {job.daysLeft !== null && (

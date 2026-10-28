@@ -38,6 +38,43 @@ export function generateStaticParams() {
 
 const SITE = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
 
+/**
+ * SEO audit finding: `JobPosting` structured data existed on job detail
+ * pages, but nothing at the site level — this is what makes Google
+ * eligible to show a logo/knowledge-panel for brand-name searches
+ * ("Just IT") and a sitelinks search box. `sameAs` only lists LinkedIn
+ * when `NEXT_PUBLIC_LINKEDIN_URL` is actually set (same guard Footer.tsx
+ * already uses) — no fabricated/placeholder social links.
+ */
+function organizationJsonLd(name: string, locale: string) {
+  const linkedinUrl = process.env.NEXT_PUBLIC_LINKEDIN_URL;
+  return {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "Organization",
+        "@id": `${SITE}/#organization`,
+        name,
+        url: SITE,
+        logo: `${SITE}/logo-justit.png`,
+        ...(linkedinUrl ? { sameAs: [linkedinUrl] } : {}),
+      },
+      {
+        "@type": "WebSite",
+        "@id": `${SITE}/#website`,
+        name,
+        url: `${SITE}/${locale}`,
+        publisher: { "@id": `${SITE}/#organization` },
+        potentialAction: {
+          "@type": "SearchAction",
+          target: `${SITE}/${locale}/jobs?q={search_term_string}`,
+          "query-input": "required name=search_term_string",
+        },
+      },
+    ],
+  };
+}
+
 export async function generateMetadata({
   params,
 }: Omit<Props, "children">): Promise<Metadata> {
@@ -67,9 +104,15 @@ export default async function LocaleLayout({ children, params }: Props) {
   if (!hasLocale(routing.locales, locale)) notFound();
   setRequestLocale(locale);
 
+  const t = await getTranslations({ locale, namespace: "brand" });
+
   return (
     <html lang={locale} className={geist.variable}>
       <body className="bg-paper text-ink antialiased">
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd(t("name"), locale)) }}
+        />
         <NextIntlClientProvider>
           {children}
           <CookieConsentBanner />

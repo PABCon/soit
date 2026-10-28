@@ -7,14 +7,27 @@ import { getJobRecommendationsForCandidate } from "@/lib/db/recommendations";
 import { getMyFavoriteJobIds } from "@/lib/db/favorites";
 import { JobRow } from "@/components/JobRow";
 import { buttonClassName } from "@/components/Button";
+import { localeAlternates, socialMeta } from "@/lib/seo";
 
 type Props = { params: Promise<{ locale: string }> };
 type T = Awaited<ReturnType<typeof getTranslations>>;
 
+const SITE = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale } = await params;
   const t = await getTranslations({ locale, namespace: "recommendations" });
-  return { title: t("title") };
+  const title = t("title");
+  const description = t("metaDescription");
+  return {
+    title,
+    description,
+    // SEO audit finding: public (anonymous-visitor-reachable, per this
+    // page's own design) but was falling back to the root layout's
+    // homepage alternates — same gap as the other growth-funnel pages.
+    alternates: localeAlternates("/recommendations", locale),
+    ...socialMeta({ title, description, url: `${SITE}/${locale}/recommendations` }),
+  };
 }
 
 /** Shared empty/teaser-state shell — the same icon-circle-in-a-white-card

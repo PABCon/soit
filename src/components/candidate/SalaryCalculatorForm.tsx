@@ -3,6 +3,8 @@
 import { useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useTranslations, useFormatter } from "next-intl";
+import { Link } from "@/i18n/navigation";
+import { buttonClassName } from "@/components/Button";
 import { calculateEmploymentNet } from "@/lib/salary-calculator/engine/mode-a";
 import { calculateFreelanceNet } from "@/lib/salary-calculator/engine/freelance";
 import { calculateCompanyNet } from "@/lib/salary-calculator/engine/company";
@@ -949,6 +951,23 @@ export function SalaryCalculatorForm() {
             >
               {copied ? t("shareCopied") : t("shareButton")}
             </button>
+
+            {/* SEO audit finding: likely this app's highest-organic-traffic
+             *  page (a genuinely useful standalone tool) had zero internal
+             *  links back to the product — a dead end for exactly the
+             *  "visitor → registered user" funnel this whole pass is
+             *  about. */}
+            <div className="mt-4 border-t border-line pt-4">
+              <Link href="/jobs" className={`block w-full text-center ${buttonClassName({ size: "md" })}`}>
+                {t("ctaBrowseJobs")}
+              </Link>
+              <Link
+                href="/candidate/register"
+                className="mt-2 block text-center text-xs text-pine hover:underline"
+              >
+                {t("ctaCreateAccount")}
+              </Link>
+            </div>
           </div>
 
           <p className="text-xs text-muted">{t("disclaimer")}</p>
