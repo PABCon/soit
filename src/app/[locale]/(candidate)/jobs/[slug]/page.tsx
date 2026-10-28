@@ -190,6 +190,28 @@ function jobPostingJsonLd(job: JobDetail, locale: string) {
   };
 }
 
+/** SEO audit finding: the page already renders a real, visible breadcrumb
+ *  nav (Jobs / company / title, in JobDetailBody) with no matching
+ *  structured data — free `BreadcrumbList` rich-result eligibility.
+ *  Rendered regardless of `live` — it's navigation structure, not a
+ *  "this job is live" claim the way JobPosting is. */
+function breadcrumbJsonLd(job: JobDetail, locale: string) {
+  return {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: "Jobs", item: `${SITE}/${locale}/jobs` },
+      {
+        "@type": "ListItem",
+        position: 2,
+        name: job.company.name,
+        item: `${SITE}/${locale}/companies/${job.company.slug}`,
+      },
+      { "@type": "ListItem", position: 3, name: job.title },
+    ],
+  };
+}
+
 export default async function JobDetailPage({ params }: Props) {
   const { locale, slug } = await params;
   setRequestLocale(locale);
@@ -225,6 +247,12 @@ export default async function JobDetailPage({ params }: Props) {
           }}
         />
       )}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(breadcrumbJsonLd(job, locale)),
+        }}
+      />
 
       <JobDetailBody
         job={job}

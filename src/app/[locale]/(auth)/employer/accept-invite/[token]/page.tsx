@@ -1,8 +1,16 @@
+import type { Metadata } from "next";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { getInviteByToken } from "@/lib/db/team";
 import { InviteAcceptForm } from "@/components/auth/InviteAcceptForm";
 
 type Props = { params: Promise<{ locale: string; token: string }> };
+
+// SEO audit finding: a one-time token in the URL has no business ever
+// being indexed — missed on this page (every other (auth) page already
+// sets this individually; there's no shared layout-level noindex).
+export function generateMetadata(): Metadata {
+  return { robots: { index: false, follow: false } };
+}
 
 export default async function AcceptInvitePage({ params }: Props) {
   const { locale, token } = await params;

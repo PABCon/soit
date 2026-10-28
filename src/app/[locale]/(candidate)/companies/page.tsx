@@ -9,14 +9,19 @@ type Props = { params: Promise<{ locale: string }> };
 
 const SITE = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
 
+// SEO audit finding: had a title but no description at all (socialMeta
+// was called with none either) — fixed by reusing the page's own real
+// subtitle copy, same as every other page in this pass.
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale } = await params;
   const t = await getTranslations({ locale, namespace: "companies" });
   const title = t("title");
+  const description = t("subtitle");
   return {
     title,
+    description,
     alternates: localeAlternates("/companies", locale),
-    ...socialMeta({ title, url: `${SITE}/${locale}/companies` }),
+    ...socialMeta({ title, description, url: `${SITE}/${locale}/companies` }),
   };
 }
 

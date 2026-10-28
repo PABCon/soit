@@ -43,7 +43,7 @@ export function CompanyLogo({
         className={`${SIZES[size]} ${shapeClass} flex shrink-0 items-center justify-center overflow-hidden border border-line bg-white p-1.5`}
       >
         {/* eslint-disable-next-line @next/next/no-img-element -- external Supabase Storage URLs, not local assets. */}
-        <img src={company.logoUrl} alt="" className="h-full w-full object-contain" />
+        <img src={company.logoUrl} alt={company.name} className="h-full w-full object-contain" />
       </div>
     );
   }

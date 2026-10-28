@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getTranslations, getFormatter, setRequestLocale } from "next-intl/server";
 import { ArrowLeft, Building2 } from "lucide-react";
@@ -10,6 +11,15 @@ import { ThreadRealtimeRefresh } from "@/components/messaging/ThreadRealtimeRefr
 import { sendCandidateMessageAction } from "./actions";
 
 type Props = { params: Promise<{ locale: string; threadId: string }> };
+
+// SEO audit finding: every sibling private page (/messages, /applications,
+// /favorites, /profile, /saved-searches, /settings) sets this explicitly —
+// this one was missed, silently inheriting the root layout's public
+// defaults. Auth already blocks a real visitor, but a private page
+// shouldn't rely on that alone.
+export function generateMetadata(): Metadata {
+  return { robots: { index: false, follow: false } };
+}
 
 export default async function CandidateThreadPage({ params }: Props) {
   const { locale, threadId } = await params;

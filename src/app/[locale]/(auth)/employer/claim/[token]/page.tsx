@@ -1,9 +1,16 @@
+import type { Metadata } from "next";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { getClaimPreview } from "@/lib/db/claim-invites";
 import { ClaimForm } from "@/components/auth/ClaimForm";
 import { CompanyLogo } from "@/components/CompanyLogo";
 
 type Props = { params: Promise<{ locale: string; token: string }> };
+
+// SEO audit finding: same gap as accept-invite — a one-time claim token
+// in the URL should never be indexable.
+export function generateMetadata(): Metadata {
+  return { robots: { index: false, follow: false } };
+}
 
 /** "Claim your profile" (§claim-invites) — the landing page for the
  *  outreach email's link. Public, no session required: the whole point is
