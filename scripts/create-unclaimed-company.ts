@@ -22,12 +22,12 @@ import type { JobFormInput } from "../src/lib/db/jobs";
 const admin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
 
 // EDIT PER PROSPECT:
-const companyWebsite = "https://www.neotalent.pt/pt/";
-const companyName = "Neotalent Conclusion";
+const companyWebsite = "https://www.olisipo.pt";
+const companyName = "Olisipo";
 // Same reasoning as the prior runs: going straight to itjobs.pt's company
 // page rather than risking another JS-rendered/unreachable careers site —
 // proven reliable (server-rendered, real per-job URLs, rich descriptions).
-const jobsListingUrl = "https://www.itjobs.pt/empresa/neotalent";
+const jobsListingUrl = "https://www.itjobs.pt/empresa/olisipo";
 // Hard cap on how many of the discovered jobs to actually pull in as
 // drafts — a real prospect page can list dozens; the claim page only
 // needs enough to make the "look what's already done" point, not every
