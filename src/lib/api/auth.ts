@@ -1,5 +1,6 @@
 import crypto from "crypto";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { checkApiRateLimit } from "./rate-limit";
 
 export type ApiAuthResult = { ok: true; companyId: string } | { ok: false; status: number; error: string };
 
@@ -39,6 +40,14 @@ export async function authenticateApiRequest(request: Request): Promise<ApiAuthR
       () => {},
       () => {},
     );
+
+  // Security audit finding: no rate limiting existed anywhere on this
+  // surface. Checked after a successful key lookup (not before) — the
+  // threat this guards against is a *valid* key being hammered/abused,
+  // not key-guessing (infeasible at this key's real entropy), so the
+  // limit follows the company, applied only once we know who they are.
+  const withinLimit = await checkApiRateLimit(row.company_id);
+  if (!withinLimit) return { ok: false, status: 429, error: "rate_limited" };
 
   return { ok: true, companyId: row.company_id };
 }
