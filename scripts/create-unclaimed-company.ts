@@ -22,15 +22,12 @@ import type { JobFormInput } from "../src/lib/db/jobs";
 const admin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
 
 // EDIT PER PROSPECT:
-const companyWebsite = "https://gritsolutions.pt";
-const companyName = "GRiT Solutions";
-// GRiT's own careers site (grit-solutions.key.work) is a single-page app
-// where each job expands in place with no individual URL — nothing for a
-// plain server-side fetch to crawl. Falling back to their itjobs.pt
-// company page instead: a normal server-rendered listing with real,
-// individually-addressable job URLs (confirmed via direct curl before
-// using it here).
-const jobsListingUrl = "https://www.itjobs.pt/empresa/grit-solutions";
+const companyWebsite = "https://dellentconsulting.com";
+const companyName = "Dellent";
+// Same reasoning as the GRiT Solutions run: going straight to itjobs.pt's
+// company page rather than risking another JS-rendered careers site —
+// proven reliable (server-rendered, real per-job URLs, rich descriptions).
+const jobsListingUrl = "https://www.itjobs.pt/empresa/dellent";
 // Hard cap on how many of the discovered jobs to actually pull in as
 // drafts — a real prospect page can list dozens; the claim page only
 // needs enough to make the "look what's already done" point, not every
