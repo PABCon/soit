@@ -1,0 +1,112 @@
+<!--
+  Just IT — "claim your profile" outreach email (Portuguese version)
+
+  Same template/design/placeholders as claim-invite-email.html, just
+  translated for a PT-speaking recipient — use this one for Portuguese
+  companies, the English one for everyone else.
+
+  HOW TO USE
+  1. Open this file in a browser (double-click it, or File > Open).
+  2. Fill in the {{PLACEHOLDERS}} below first (find-and-replace in a text
+     editor is fastest), OR just edit them directly in the browser view —
+     most browsers let you click into the page and type (not guaranteed,
+     depends on the browser) — safest is to edit the HTML source, then
+     reload.
+  3. Select the whole rendered email in the browser (Cmd/Ctrl+A) and copy
+     it (Cmd/Ctrl+C).
+  4. Paste directly into a new Gmail/Outlook/Apple Mail compose window.
+     Pasting (not typing) into a rich-text compose box keeps the
+     formatting, links and image intact.
+  5. Set the subject line separately (suggested subject is in the comment
+     below) — it's not part of the pasted body.
+  6. Send from hello@justit.pt.
+
+  SUGGESTED SUBJECT LINE:
+  Já criámos a vossa vaga de {{ROLE_TITLE}} na Just IT
+
+  PLACEHOLDERS TO FILL IN PER COMPANY:
+  {{CONTACT_NAME}}   — the person's first name if you have it, else "equipa"
+  {{COMPANY_NAME}}   — e.g. "Acme Software"
+  {{ROLE_TITLE}}     — the specific open role, e.g. "Senior Backend Engineer"
+  {{CLAIM_LINK}}     — the claim URL for their draft profile/job
+  {{SENDER_NAME}}    — your name
+  {{SENDER_TITLE}}   — your title, e.g. "Fundador" or "Co-fundador"
+
+  DESIGN NOTE: same as the English version — the body is deliberately
+  plain, no big colored button, no heavy template chrome. All the brand
+  polish lives in the signature at the bottom.
+-->
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="utf-8">
+<title>Just IT — email de convite para reclamar perfil</title>
+</head>
+<body style="margin:0;padding:0;background:#ffffff;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#ffffff;">
+<tr>
+<td align="center" style="padding:24px 16px;">
+<table role="presentation" width="600" cellpadding="0" cellspacing="0" style="width:600px;max-width:100%;text-align:left;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:15px;line-height:1.6;color:#182230;">
+
+<tr><td style="padding-bottom:16px;">
+Olá {{CONTACT_NAME}},
+</td></tr>
+
+<tr><td style="padding-bottom:16px;">
+Sou o/a {{SENDER_NAME}}, da Just IT &mdash; estamos a construir o job board onde todas as vagas mostram sempre um intervalo salarial real, sem exceções, porque é exatamente isso que os profissionais de IT em Portugal nos dizem que falta em todo o lado.
+</td></tr>
+
+<tr><td style="padding-bottom:16px;">
+Preparei um rascunho da vaga de {{ROLE_TITLE}} da {{COMPANY_NAME}}, já pronta na Just IT: <a href="{{CLAIM_LINK}}" style="color:#465bff;">{{CLAIM_LINK}}</a>
+</td></tr>
+
+<tr><td style="padding-bottom:8px;">
+Algumas razões para valer a pena dois minutos:
+</td></tr>
+
+<tr><td style="padding-bottom:16px;">
+<table role="presentation" cellpadding="0" cellspacing="0" style="font-size:15px;line-height:1.6;color:#182230;">
+<tr><td style="padding:0 0 8px;vertical-align:top;width:18px;">&bull;</td><td style="padding:0 0 8px;">Inquirimos 109 profissionais de IT em Portugal &mdash; 74% disseram que a transparência salarial é a principal razão para mudarem de plataforma de emprego. Aqui, todas as vagas já a têm.</td></tr>
+<tr><td style="padding:0 0 8px;vertical-align:top;">&bull;</td><td style="padding:0 0 8px;">Cada candidato é avaliado e pontuado automaticamente com IA face à vaga &mdash; sem custo de sourcing, incluído.</td></tr>
+<tr><td style="padding:0;vertical-align:top;">&bull;</td><td style="padding:0;">É grátis, para sempre, para a primeira vaga. Sem cartão.</td></tr>
+</table>
+</td></tr>
+
+<tr><td style="padding-bottom:16px;">
+Ainda não está publicado &mdash; esse link mostra apenas o rascunho. Demora cerca de dois minutos a tornar real, se quiser, ou ignore esta mensagem se agora não for a altura certa.
+</td></tr>
+
+<tr><td style="padding-bottom:28px;">
+{{SENDER_NAME}}
+</td></tr>
+
+<!-- ===================== SIGNATURE ===================== -->
+<tr><td style="padding-top:16px;border-top:1px solid #e2e6ef;">
+<table role="presentation" cellpadding="0" cellspacing="0" style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;">
+<tr>
+<td style="padding-right:16px;vertical-align:top;">
+<img src="https://justit.pt/logo-justit.png" width="110" height="44" alt="Just IT" style="display:block;border:0;width:110px;height:44px;object-fit:contain;">
+</td>
+<td style="vertical-align:top;border-left:1px solid #e2e6ef;padding-left:16px;">
+<div style="font-size:14px;font-weight:700;color:#182230;">{{SENDER_NAME}}</div>
+<div style="font-size:13px;color:#667085;margin-top:1px;">{{SENDER_TITLE}}, Just IT</div>
+<div style="font-size:12px;color:#8893a8;margin-top:4px;">Nº 1 portal de vagas de IT em Portugal</div>
+<div style="font-size:13px;margin-top:8px;">
+<a href="https://justit.pt" style="color:#465bff;text-decoration:none;">justit.pt</a>
+<span style="color:#e2e6ef;"> &nbsp;|&nbsp; </span>
+<a href="mailto:hello@justit.pt" style="color:#465bff;text-decoration:none;">hello@justit.pt</a>
+<span style="color:#e2e6ef;"> &nbsp;|&nbsp; </span>
+<a href="https://www.linkedin.com/company/justitpt/" style="color:#465bff;text-decoration:none;">LinkedIn</a>
+</div>
+</td>
+</tr>
+</table>
+</td></tr>
+<!-- =================== /SIGNATURE ======================= -->
+
+</table>
+</td>
+</tr>
+</table>
+</body>
+</html>

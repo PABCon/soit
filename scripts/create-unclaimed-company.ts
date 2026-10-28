@@ -2,7 +2,7 @@
 // draft jobs + a claim link, for the "claim your profile" outreach flow.
 // No admin UI exists for this yet (deliberately — see claim-invites.ts's
 // own doc comment), so this is the real tool: copy this file per prospect,
-// edit companyName/website/jobUrls below, then run:
+// edit companyName/website/jobsListingUrl below, then run:
 //
 //   set -a && source .env.local && set +a && npx tsx scripts/create-unclaimed-company.ts
 //
@@ -12,6 +12,7 @@
 // environment (commonly localhost in .env.local) — swap the host for
 // https://justit.pt before actually emailing anyone the link.
 import { createClient } from "@supabase/supabase-js";
+import { extractJobLinksFromUrl } from "../src/lib/ai/extract-job-links";
 import { extractJobFromUrl, type ExtractedJob } from "../src/lib/ai/extract-job";
 import { extractCompanyProfileFromUrl } from "../src/lib/ai/extract-company-profile";
 import { resolveExtractedJobVocab } from "../src/lib/jobs/resolve-vocab";
@@ -21,17 +22,31 @@ import type { JobFormInput } from "../src/lib/db/jobs";
 const admin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
 
 // EDIT PER PROSPECT:
-const companyWebsite = "https://www.issworld.com";
-const companyName = "ISS Facility Services Portugal";
-const jobUrls = [
-  "https://jobs.issworld.com/job/Porto-Senior-Machine-Learning-Engineer-4000-457/1367661157/",
-  "https://jobs.issworld.com/job/Porto-IT-Application-Manager-4000-457/1369613457/",
-  "https://jobs.issworld.com/job/Porto-Solution-Architect-4000-457/1363868957/",
-  "https://jobs.issworld.com/job/Porto-Cloud-Hosting-Engineer-%28Kubernetes%29-4000-457/1351006857/",
-  "https://jobs.issworld.com/job/Porto-Platform-Engineer-%28Analytics%2C-Data-&amp;-AI%29-4000-457/1369000157/",
-];
+const companyWebsite = "https://gritsolutions.pt";
+const companyName = "GRiT Solutions";
+// GRiT's own careers site (grit-solutions.key.work) is a single-page app
+// where each job expands in place with no individual URL — nothing for a
+// plain server-side fetch to crawl. Falling back to their itjobs.pt
+// company page instead: a normal server-rendered listing with real,
+// individually-addressable job URLs (confirmed via direct curl before
+// using it here).
+const jobsListingUrl = "https://www.itjobs.pt/empresa/grit-solutions";
+// Hard cap on how many of the discovered jobs to actually pull in as
+// drafts — a real prospect page can list dozens; the claim page only
+// needs enough to make the "look what's already done" point, not every
+// single one (and each extraction is a real LLM call).
+const MAX_JOBS = 10;
 
 async function main() {
+  console.log("Discovering job links from", jobsListingUrl);
+  const discovery = await extractJobLinksFromUrl(jobsListingUrl);
+  if (!discovery.ok) {
+    console.log("FAILED discovering job links:", discovery.reason);
+    return;
+  }
+  console.log(`Found ${discovery.links.length} job links${discovery.truncated ? " (truncated — more may exist)" : ""}`);
+  const jobUrls = discovery.links.slice(0, MAX_JOBS).map((l) => l.url);
+
   console.log("Fetching company profile...");
   const profileResult = await extractCompanyProfileFromUrl(companyWebsite);
   console.log("profile ok:", profileResult.ok, profileResult.ok ? profileResult.data.tagline : profileResult.reason);
