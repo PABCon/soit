@@ -53,7 +53,7 @@ export default async function TermsPage({ params }: Props) {
   return (
     <>
       <h1 className="text-3xl font-bold lg:text-4xl">{t("termsTitle")}</h1>
-      <p className="mt-2 text-xs text-muted">{t("lastUpdated")}</p>
+      <p className="mt-2 text-xs text-muted">{t("termsLastUpdated")}</p>
       <p className="mt-6 text-sm leading-relaxed text-muted">{t("terms.intro")}</p>
       {SECTIONS.map((key) => (
         <section key={key}>

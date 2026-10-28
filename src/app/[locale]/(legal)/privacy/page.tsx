@@ -51,7 +51,7 @@ export default async function PrivacyPage({ params }: Props) {
   return (
     <>
       <h1 className="text-3xl font-bold lg:text-4xl">{t("privacyTitle")}</h1>
-      <p className="mt-2 text-xs text-muted">{t("lastUpdated")}</p>
+      <p className="mt-2 text-xs text-muted">{t("privacyLastUpdated")}</p>
       <p className="mt-6 text-sm leading-relaxed text-muted">{t("privacy.intro")}</p>
       {SECTIONS.map((key) => (
         <section key={key}>
