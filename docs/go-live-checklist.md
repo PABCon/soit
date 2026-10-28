@@ -97,26 +97,18 @@ commit or CLAUDE.md entry anywhere suggesting either changed.
 
 ## Database / infra
 
-- [ ] Decide Supabase Free vs Pro before real launch traffic —
-      deliberately **not** upgrading yet (agreed 2026-09-29: no reason
-      to pay while still developing). Confirmed directly: this project
-      is on Free, 13MB DB (nowhere near any capacity limit). The actual
-      risk isn't capacity, it's Free tier's **auto-pause after ~1 week
-      of no API traffic** — the whole site goes down until manually
-      resumed in the dashboard. Revisit this specifically once there's
-      real, less-predictable production traffic. Pro also unlocks
-      session timeout controls (see below) and better backup/PITR
-      guarantees.
-- [ ] Once on Pro (or otherwise): apply the already-declared
-      `[auth.sessions]` block in `supabase/config.toml`
-      (`inactivity_timeout = "2h"`, `timebox = "24h"`) via `supabase
-      config push` — **read the file's own header warning about
-      `auth.sms.twilio.enabled` first**, a blind push would silently
-      disable a live, intentionally-enabled setting unrelated to this
-      change
-- [ ] If Pro is deferred past launch: build the inactivity-logout
-      check as app-level middleware instead (discussed as the
-      alternative to paying for the native feature)
+- [x] Decide Supabase Free vs Pro before real launch traffic —
+      **upgraded to Pro 2026-10-28** (resolves the Free-tier
+      auto-pause-after-~1-week-of-no-traffic risk, and unlocks session
+      timeout controls, used immediately below).
+- [x] Session inactivity timeout — applied live 2026-10-28 via a scoped
+      `PATCH /v1/projects/{ref}/config/auth` (`sessions_inactivity_timeout:
+      1`, hours — confirmed against the Management API's own schema).
+      `supabase/config.toml`'s `[auth.sessions]` block updated to match
+      (`inactivity_timeout = "1h"`). `timebox` deliberately left unset —
+      see that section's own comment for why (would force a logout
+      mid-active-use regardless of activity, more disruptive than asked
+      for).
 
 ## Map
 

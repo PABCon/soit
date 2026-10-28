@@ -258,22 +258,21 @@ max_frequency = "5s"
 # refresh token just keeps renewing forever as long as the app is opened
 # occasionally. inactivity_timeout is the actual fix for that exact
 # complaint (logs out only once genuinely idle — never interrupts a long
-# continuously-active session); timebox is a no-cost 24h backstop on top,
-# in case a session somehow stays "active" unattended (e.g. a background
-# tab silently refreshing tokens).
+# continuously-active session) — deliberately the only one set: a
+# `timebox` would force a logout mid-active-use at a fixed hour
+# regardless of activity, which is more disruptive than what was asked
+# for here.
 #
-# ⚠ Declared here but NOT YET LIVE: the Management API rejects this with
-# 402 "User sessions can only be configured on Pro Plans and up" — this
-# project is still on the free tier. Confirmed directly via
-# `PATCH /v1/projects/{ref}/config/auth`, not assumed. Either upgrade the
-# Supabase project to Pro and push this (`supabase config push` — but
-# read the file-header warning about auth.sms.twilio.enabled first), or
-# build the equivalent as app-level middleware logic instead.
+# LIVE as of 2026-10-28, applied via a scoped
+# `PATCH /v1/projects/{ref}/config/auth` (`sessions_inactivity_timeout:
+# 1`, hours — confirmed via the Management API's own OpenAPI schema,
+# not assumed) once the project was upgraded to Pro — the prior blocker
+# (`402 User sessions can only be configured on Pro Plans and up`) is
+# gone. `timebox` stays at 0/unset, by explicit choice (see above), not
+# because it's still blocked.
 [auth.sessions]
-# Force log out after the specified duration.
-timebox = "24h"
 # Force log out if the user has been inactive longer than the specified duration.
-inactivity_timeout = "2h"
+inactivity_timeout = "1h"
 
 # This hook runs before a token is issued and allows you to add additional claims based on the authentication method used.
 # [auth.hook.custom_access_token]
