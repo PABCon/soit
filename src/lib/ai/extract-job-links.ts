@@ -1,6 +1,7 @@
 import { generateText, Output } from "ai";
 import { z } from "zod";
 import { stripHtml } from "./strip-html";
+import { safeFetch } from "../safe-fetch";
 
 // Same model choice as extract-job.ts, same reasoning — a deliberate, rare
 // action (starting a bulk import), not high-volume traffic. Always
@@ -118,14 +119,21 @@ async function fetchJobListingPage(url: string): Promise<PageFetchResult> {
   try {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
-    const res = await fetch(url, {
+    // SSRF defense (security audit finding): this is the one fetch every
+    // page of the crawl goes through — including pages discovered from a
+    // prior page's own "next page"/job links, not just the URL the
+    // caller originally supplied. safeFetch re-validates the destination
+    // (and every redirect hop) on each call, so a malicious page can't
+    // plant a link pointing at an internal address and have it followed.
+    const result = await safeFetch(url, {
       signal: controller.signal,
       headers: { "User-Agent": "Mozilla/5.0 (compatible; JustITBot/1.0; +https://justit.pt)" },
     });
     clearTimeout(timeout);
-    if (!res.ok) return { ok: false, reason: "fetch_failed" };
+    if (!result.ok) return { ok: false, reason: "fetch_failed" };
+    if (!result.response.ok) return { ok: false, reason: "fetch_failed" };
 
-    const buf = await res.arrayBuffer();
+    const buf = await result.response.arrayBuffer();
     if (buf.byteLength > MAX_FETCH_BYTES) return { ok: false, reason: "too_large" };
     return { ok: true, html: new TextDecoder().decode(buf) };
   } catch {

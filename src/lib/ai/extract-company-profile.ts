@@ -1,6 +1,7 @@
 import { generateText, Output } from "ai";
 import { z } from "zod";
 import { stripHtml } from "./strip-html";
+import { safeFetch } from "../safe-fetch";
 
 // Sonnet, not Haiku — same reasoning as extract-job.ts: a deliberate, rare
 // user action, not high-volume traffic, so extraction quality is worth
@@ -194,14 +195,15 @@ async function fetchSitemapCandidates(baseUrl: string): Promise<PageCandidate[]>
   try {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
-    const res = await fetch(`${origin}/sitemap.xml`, {
+    // SSRF defense (security audit finding) — see safe-fetch.ts.
+    const result = await safeFetch(`${origin}/sitemap.xml`, {
       signal: controller.signal,
       headers: { "User-Agent": "Mozilla/5.0 (compatible; JustITBot/1.0; +https://justit.pt)" },
     });
     clearTimeout(timeout);
-    if (!res.ok) return [];
+    if (!result.ok || !result.response.ok) return [];
 
-    const buf = await res.arrayBuffer();
+    const buf = await result.response.arrayBuffer();
     if (buf.byteLength > MAX_SITEMAP_BYTES) return [];
     const xml = new TextDecoder().decode(buf);
 
@@ -263,14 +265,17 @@ async function fetchPageText(url: string): Promise<string | null> {
   try {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
-    const res = await fetch(url, {
+    // SSRF defense (security audit finding) — `url` here is a candidate
+    // page discovered from the homepage's own links or sitemap.xml, not
+    // just the original caller-supplied URL — see safe-fetch.ts.
+    const result = await safeFetch(url, {
       signal: controller.signal,
       headers: { "User-Agent": "Mozilla/5.0 (compatible; JustITBot/1.0; +https://justit.pt)" },
     });
     clearTimeout(timeout);
-    if (!res.ok) return null;
+    if (!result.ok || !result.response.ok) return null;
 
-    const buf = await res.arrayBuffer();
+    const buf = await result.response.arrayBuffer();
     if (buf.byteLength > MAX_FETCH_BYTES) return null;
     const html = new TextDecoder().decode(buf);
     return stripHtml(html).slice(0, MAX_PAGE_PROMPT_CHARS);
@@ -307,14 +312,16 @@ export async function extractCompanyProfileFromUrl(url: string): Promise<Extract
   try {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
-    const res = await fetch(parsed.toString(), {
+    // SSRF defense (security audit finding) — see safe-fetch.ts.
+    const result = await safeFetch(parsed.toString(), {
       signal: controller.signal,
       headers: { "User-Agent": "Mozilla/5.0 (compatible; JustITBot/1.0; +https://justit.pt)" },
     });
     clearTimeout(timeout);
-    if (!res.ok) return { ok: false, reason: "fetch_failed" };
+    if (!result.ok) return { ok: false, reason: result.reason === "fetch_failed" ? "fetch_failed" : "invalid_url" };
+    if (!result.response.ok) return { ok: false, reason: "fetch_failed" };
 
-    const buf = await res.arrayBuffer();
+    const buf = await result.response.arrayBuffer();
     if (buf.byteLength > MAX_FETCH_BYTES) return { ok: false, reason: "too_large" };
     html = new TextDecoder().decode(buf);
   } catch {

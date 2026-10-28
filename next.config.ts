@@ -14,6 +14,32 @@ const nextConfig: NextConfig = {
   // Pin the workspace root: an unrelated lockfile higher up the tree would
   // otherwise be inferred as the root.
   turbopack: { root: dirname(fileURLToPath(import.meta.url)) },
+  // Security audit finding: zero security headers were configured
+  // anywhere (confirmed live — only `strict-transport-security`, added
+  // automatically by Vercel's edge, was present). Missing
+  // `X-Frame-Options` specifically meant `/employer/login`,
+  // `/candidate/login`, and the apply flow could be framed by an
+  // attacker-controlled page for a clickjacking overlay. A full
+  // Content-Security-Policy is deliberately NOT added here — this app
+  // loads Stripe Checkout, Sentry, Google Analytics, MapTiler tiles, and
+  // Google Fonts across many different pages, and shipping a CSP wrong
+  // (too strict) risks silently breaking one of those without a full
+  // per-page audit this pass didn't have room for; a wrong CSP is a worse
+  // outcome than no CSP. These four are zero-risk, well-understood
+  // defaults that can't break legitimate functionality.
+  async headers() {
+    return [
+      {
+        source: "/:path*",
+        headers: [
+          { key: "X-Frame-Options", value: "DENY" },
+          { key: "X-Content-Type-Options", value: "nosniff" },
+          { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+          { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
+        ],
+      },
+    ];
+  },
   async redirects() {
     return [
       // Real-usage report: visiting (or bookmarking) the raw Vercel alias

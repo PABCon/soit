@@ -6,6 +6,7 @@ import { Geist } from "next/font/google";
 import { routing } from "@/i18n/routing";
 import { CookieConsentBanner } from "@/components/CookieConsentBanner";
 import { localeAlternates, socialMeta } from "@/lib/seo";
+import { safeJsonLd } from "@/lib/json-ld";
 import "../globals.css";
 
 // Corrective landing-page redesign: switched from Inter to **Geist**, the
@@ -111,7 +112,7 @@ export default async function LocaleLayout({ children, params }: Props) {
       <body className="bg-paper text-ink antialiased">
         <script
           type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd(t("name"), locale)) }}
+          dangerouslySetInnerHTML={{ __html: safeJsonLd(organizationJsonLd(t("name"), locale)) }}
         />
         <NextIntlClientProvider>
           {children}

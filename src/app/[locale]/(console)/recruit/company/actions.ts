@@ -13,7 +13,24 @@ import {
 import { extractCompanyProfileFromUrl, type ExtractCompanyProfileResult } from "@/lib/ai/extract-company-profile";
 import { normalizeWebsiteUrl } from "@/lib/url";
 import { resizeImageIfNeeded } from "@/lib/image-resize";
+import { sniffAttachmentType } from "@/lib/file-sniff";
+import { getMyEmployerContext } from "@/lib/db/companies";
+import { safeFetch } from "@/lib/safe-fetch";
 import { revalidatePath } from "next/cache";
+
+// Security audit finding: every upload path below only ever checked the
+// client-declared `file.type` — trivially spoofable (a renamed/relabeled
+// file with a malicious payload would sail through). CV uploads already
+// go through real magic-byte sniffing (`sniffFileType`); these never did.
+// This is the equivalent check for the image types this file accepts —
+// returns the real, sniffed content-type (never the client-declared one)
+// so what gets stored/served back always matches what the bytes actually
+// are, or null if the bytes don't match any allowed image format.
+const SNIFFED_TO_MIME: Record<string, string> = { png: "image/png", jpeg: "image/jpeg", webp: "image/webp" };
+function sniffImageContentType(bytes: ArrayBuffer): string | null {
+  const sniffed = sniffAttachmentType(new Uint8Array(bytes));
+  return sniffed ? (SNIFFED_TO_MIME[sniffed] ?? null) : null;
+}
 
 // Real-usage report: an oversized upload was stored and displayed at
 // whatever resolution the user picked, relying entirely on CSS object-fit
@@ -80,7 +97,15 @@ export async function updateProfileAction(formData: FormData) {
 // 20260921120200_storage.sql) — checked here too so a bad upload gets a
 // specific, translated reason instead of a raw Storage error string.
 const MAX_IMAGE_BYTES = 2 * 1024 * 1024;
-const ALLOWED_IMAGE_TYPES = ["image/png", "image/jpeg", "image/webp", "image/svg+xml"];
+// Security audit finding: SVG deliberately dropped from this list. Unlike
+// PNG/JPEG/WEBP, SVG is XML text with no fixed binary signature — it
+// can't be content-sniffed the way the other formats below now are, and
+// an SVG can embed a real `<script>` that executes when the file is
+// opened directly (new tab, or an `<object>`/`<iframe>` embed), served
+// back with the exact content-type it declared. No sanitization library
+// is worth adding for a logo/cover upload — PNG/JPEG/WEBP cover every
+// real use case here.
+const ALLOWED_IMAGE_TYPES = ["image/png", "image/jpeg", "image/webp"];
 
 export type UploadImageResult =
   | { ok: true }
@@ -96,6 +121,10 @@ export async function uploadImageAction(
   if (file.size > MAX_IMAGE_BYTES) return { ok: false, reason: "file_too_large" };
   if (!ALLOWED_IMAGE_TYPES.includes(file.type)) return { ok: false, reason: "bad_file" };
 
+  const fileBytes = await file.arrayBuffer();
+  const sniffedType = sniffImageContentType(fileBytes);
+  if (!sniffedType) return { ok: false, reason: "bad_file" };
+
   const supabase = await createClient();
   const { data: companyId } = await supabase.rpc("my_company_id");
   if (!companyId) return { ok: false, reason: "not_employer" };
@@ -103,12 +132,7 @@ export async function uploadImageAction(
   const ext = file.name.split(".").pop() || "png";
   const path = `${companyId}/${field}.${ext}`;
   const maxSize = field === "logo" ? LOGO_MAX : COVER_MAX;
-  const { bytes, contentType } = await resizeImageIfNeeded(
-    await file.arrayBuffer(),
-    file.type,
-    maxSize.width,
-    maxSize.height,
-  );
+  const { bytes, contentType } = await resizeImageIfNeeded(fileBytes, sniffedType, maxSize.width, maxSize.height);
 
   const { error: uploadError } = await supabase.storage
     .from("branding")
@@ -158,6 +182,10 @@ export async function uploadTeamMemberPhotoAction(formData: FormData): Promise<U
   if (file.size > MAX_IMAGE_BYTES) return { ok: false, reason: "file_too_large" };
   if (!ALLOWED_IMAGE_TYPES.includes(file.type)) return { ok: false, reason: "bad_file" };
 
+  const fileBytes = await file.arrayBuffer();
+  const sniffedType = sniffImageContentType(fileBytes);
+  if (!sniffedType) return { ok: false, reason: "bad_file" };
+
   const supabase = await createClient();
   const { data: companyId } = await supabase.rpc("my_company_id");
   if (!companyId) return { ok: false, reason: "not_employer" };
@@ -165,8 +193,8 @@ export async function uploadTeamMemberPhotoAction(formData: FormData): Promise<U
   const ext = file.name.split(".").pop() || "png";
   const path = `${companyId}/team/${crypto.randomUUID()}.${ext}`;
   const { bytes, contentType } = await resizeImageIfNeeded(
-    await file.arrayBuffer(),
-    file.type,
+    fileBytes,
+    sniffedType,
     TEAM_PHOTO_MAX.width,
     TEAM_PHOTO_MAX.height,
   );
@@ -197,6 +225,10 @@ export async function uploadGalleryPhotoAction(formData: FormData): Promise<Uplo
   if (file.size > MAX_IMAGE_BYTES) return { ok: false, reason: "file_too_large" };
   if (!ALLOWED_IMAGE_TYPES.includes(file.type)) return { ok: false, reason: "bad_file" };
 
+  const fileBytes = await file.arrayBuffer();
+  const sniffedType = sniffImageContentType(fileBytes);
+  if (!sniffedType) return { ok: false, reason: "bad_file" };
+
   const supabase = await createClient();
   const { data: companyId } = await supabase.rpc("my_company_id");
   if (!companyId) return { ok: false, reason: "not_employer" };
@@ -204,8 +236,8 @@ export async function uploadGalleryPhotoAction(formData: FormData): Promise<Uplo
   const ext = file.name.split(".").pop() || "png";
   const path = `${companyId}/gallery/${crypto.randomUUID()}.${ext}`;
   const { bytes, contentType } = await resizeImageIfNeeded(
-    await file.arrayBuffer(),
-    file.type,
+    fileBytes,
+    sniffedType,
     GALLERY_MAX.width,
     GALLERY_MAX.height,
   );
@@ -240,12 +272,28 @@ export async function removeGalleryPhotoAction(photoId: string) {
 
 /** "Autofill from website" — pure suggestion, no DB write. The console
  *  form prefills from the result and the employer still reviews/edits/
- *  saves normally, same UX as the existing job-URL extraction feature. */
+ *  saves normally, same UX as the existing job-URL extraction feature.
+ *
+ *  Security audit finding: this had no auth check at all, and
+ *  `extractCompanyProfileFromUrl` fetches a caller-supplied URL server
+ *  side — a fully unauthenticated SSRF + free-compute vector, not just a
+ *  missing-permission gap. Gated behind a real employer session now;
+ *  `extractCompanyProfileFromUrl` itself is also hardened (safe-fetch.ts)
+ *  as defense in depth for the one legitimate caller. */
 export async function autofillCompanyProfileAction(url: string): Promise<ExtractCompanyProfileResult> {
+  const ctx = await getMyEmployerContext();
+  if (!ctx) return { ok: false, reason: "invalid_url" };
   return extractCompanyProfileFromUrl(url);
 }
 
 export async function applySuggestedLogoAction(logoUrl: string): Promise<UploadImageResult> {
+  // Security audit finding: auth was checked only *after* fetching the
+  // caller-supplied URL — the SSRF-capable request already happened by
+  // then. Moved to the top, before any network call.
+  const supabase = await createClient();
+  const { data: companyId } = await supabase.rpc("my_company_id");
+  if (!companyId) return { ok: false, reason: "not_employer" };
+
   let parsed: URL;
   try {
     parsed = new URL(logoUrl);
@@ -259,24 +307,20 @@ export async function applySuggestedLogoAction(logoUrl: string): Promise<UploadI
   try {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 10_000);
-    const res = await fetch(parsed.toString(), { signal: controller.signal });
+    const result = await safeFetch(parsed.toString(), { signal: controller.signal });
     clearTimeout(timeout);
-    if (!res.ok) return { ok: false, reason: "upload_failed" };
+    if (!result.ok || !result.response.ok) return { ok: false, reason: "upload_failed" };
 
-    contentType = res.headers.get("content-type")?.split(";")[0]?.trim() ?? "";
-    if (!ALLOWED_IMAGE_TYPES.includes(contentType)) return { ok: false, reason: "bad_file" };
-
-    bytes = await res.arrayBuffer();
+    bytes = await result.response.arrayBuffer();
     if (bytes.byteLength > MAX_IMAGE_BYTES) return { ok: false, reason: "file_too_large" };
+    const sniffed = sniffImageContentType(bytes);
+    if (!sniffed) return { ok: false, reason: "bad_file" };
+    contentType = sniffed;
   } catch {
     return { ok: false, reason: "upload_failed" };
   }
 
-  const supabase = await createClient();
-  const { data: companyId } = await supabase.rpc("my_company_id");
-  if (!companyId) return { ok: false, reason: "not_employer" };
-
-  const ext = contentType.split("/")[1]?.replace("svg+xml", "svg") || "png";
+  const ext = contentType.split("/")[1] || "png";
   const path = `${companyId}/logo.${ext}`;
   const resized = await resizeImageIfNeeded(bytes, contentType, LOGO_MAX.width, LOGO_MAX.height);
 

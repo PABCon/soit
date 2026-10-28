@@ -11,6 +11,25 @@ import { SITE_URL as SITE } from "./site-url";
 
 const LOGO_URL = `${SITE}/logo-justit.png`;
 
+/** Security audit finding: every field this shared layout interpolates
+ *  into HTML was unescaped — `contact-message.ts`/`new-message.ts`
+ *  already have (and use) the identical fix locally, this is the same
+ *  one applied where it protects every caller of `emailLayout`/
+ *  `renderEntityCard` at once (job titles, applicant/candidate names,
+ *  message bodies, saved-search labels — all real, user-authored text
+ *  that reaches these templates). `bodyHtml` is deliberately NOT escaped
+ *  here — it's documented as "already-built inner HTML," the caller's
+ *  own responsibility (and `renderEntityCard`'s fields below are exactly
+ *  how a caller is expected to safely build it). */
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 const COLOR = {
   paper: "#f5f7fb",
   ink: "#182230",
@@ -52,16 +71,16 @@ export function emailLayout({
   footerLinks,
 }: EmailLayoutParams): { html: string; text: string } {
   const ctaHtml = cta
-    ? `<a href="${cta.url}" style="display:block;background:${COLOR.pine};color:#ffffff;text-align:center;padding:14px 24px;border-radius:10px;font-size:15px;font-weight:700;text-decoration:none;margin:24px 0 12px;">${cta.label}</a>`
+    ? `<a href="${cta.url}" style="display:block;background:${COLOR.pine};color:#ffffff;text-align:center;padding:14px 24px;border-radius:10px;font-size:15px;font-weight:700;text-decoration:none;margin:24px 0 12px;">${escapeHtml(cta.label)}</a>`
     : "";
   const secondaryHtml = secondaryLink
-    ? `<p style="text-align:center;margin:0 0 20px;"><a href="${secondaryLink.url}" style="color:${COLOR.pine};font-size:14px;text-decoration:none;">${secondaryLink.label}</a></p>`
+    ? `<p style="text-align:center;margin:0 0 20px;"><a href="${secondaryLink.url}" style="color:${COLOR.pine};font-size:14px;text-decoration:none;">${escapeHtml(secondaryLink.label)}</a></p>`
     : "";
   const noteHtml = note
-    ? `<hr style="border:none;border-top:1px solid ${COLOR.line};margin:20px 0;" /><p style="font-size:13px;color:${COLOR.muted};line-height:1.6;margin:0 0 20px;">${note}</p>`
+    ? `<hr style="border:none;border-top:1px solid ${COLOR.line};margin:20px 0;" /><p style="font-size:13px;color:${COLOR.muted};line-height:1.6;margin:0 0 20px;">${escapeHtml(note)}</p>`
     : "";
   const footerLinksHtml = footerLinks
-    .map((l) => `<a href="${l.url}" style="color:${COLOR.muted};text-decoration:underline;">${l.label}</a>`)
+    .map((l) => `<a href="${l.url}" style="color:${COLOR.muted};text-decoration:underline;">${escapeHtml(l.label)}</a>`)
     .join(" &middot; ");
 
   const html = `
@@ -69,8 +88,8 @@ export function emailLayout({
       <div style="max-width:480px;margin:0 auto;background:#ffffff;border-radius:16px;overflow:hidden;border:1px solid ${COLOR.line};">
         <div style="padding:32px 32px 8px;text-align:center;">
           <img src="${LOGO_URL}" width="140" height="56" alt="Just IT" style="display:block;margin:0 auto 24px;border:0;" />
-          <div style="font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:${COLOR.muted};margin-bottom:8px;">${eyebrow}</div>
-          <h1 style="font-size:22px;font-weight:700;color:${COLOR.ink};margin:0 0 16px;line-height:1.3;">${headline}</h1>
+          <div style="font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:${COLOR.muted};margin-bottom:8px;">${escapeHtml(eyebrow)}</div>
+          <h1 style="font-size:22px;font-weight:700;color:${COLOR.ink};margin:0 0 16px;line-height:1.3;">${escapeHtml(headline)}</h1>
         </div>
         <div style="padding:0 32px;">
           ${bodyHtml}
@@ -81,7 +100,7 @@ export function emailLayout({
         <div style="padding:24px 32px 32px;">
           <hr style="border:none;border-top:1px solid ${COLOR.line};margin:0 0 20px;" />
           <div style="font-size:12px;color:${COLOR.muted};text-align:center;line-height:1.7;">
-            ${footerContext}<br/>
+            ${escapeHtml(footerContext)}<br/>
             ${footerLinksHtml}
           </div>
         </div>
@@ -122,13 +141,13 @@ export type EntityCardParams = {
 export function renderEntityCard({ logoUrl, initials, title, meta, pill, quote, href }: EntityCardParams): string {
   const logoCell = logoUrl
     ? `<img src="${logoUrl}" width="40" height="40" alt="" style="display:block;border-radius:8px;object-fit:cover;border:0;" />`
-    : `<div style="width:40px;height:40px;border-radius:8px;background:${COLOR.pine};color:#ffffff;font-size:14px;font-weight:700;text-align:center;line-height:40px;">${initials}</div>`;
+    : `<div style="width:40px;height:40px;border-radius:8px;background:${COLOR.pine};color:#ffffff;font-size:14px;font-weight:700;text-align:center;line-height:40px;">${escapeHtml(initials)}</div>`;
 
   const pillHtml = pill
-    ? `<span style="display:inline-block;margin-top:8px;padding:2px 10px;border-radius:999px;background:${COLOR.pillBg};color:${COLOR.pine};font-size:12px;font-weight:600;">${pill}</span>`
+    ? `<span style="display:inline-block;margin-top:8px;padding:2px 10px;border-radius:999px;background:${COLOR.pillBg};color:${COLOR.pine};font-size:12px;font-weight:600;">${escapeHtml(pill)}</span>`
     : "";
   const quoteHtml = quote
-    ? `<div style="margin-top:10px;padding-left:10px;border-left:2px solid ${COLOR.pine};font-size:13px;color:${COLOR.ink};font-style:italic;line-height:1.5;">&ldquo;${quote}&rdquo;</div>`
+    ? `<div style="margin-top:10px;padding-left:10px;border-left:2px solid ${COLOR.pine};font-size:13px;color:${COLOR.ink};font-style:italic;line-height:1.5;">&ldquo;${escapeHtml(quote)}&rdquo;</div>`
     : "";
 
   const inner = `
@@ -139,8 +158,8 @@ export function renderEntityCard({ logoUrl, initials, title, meta, pill, quote, 
             <tr>
               <td style="width:40px;vertical-align:top;padding-right:12px;">${logoCell}</td>
               <td style="vertical-align:top;">
-                <div style="font-size:15px;font-weight:700;color:${COLOR.ink};">${title}</div>
-                ${meta ? `<div style="font-size:13px;color:${COLOR.muted};margin-top:2px;">${meta}</div>` : ""}
+                <div style="font-size:15px;font-weight:700;color:${COLOR.ink};">${escapeHtml(title)}</div>
+                ${meta ? `<div style="font-size:13px;color:${COLOR.muted};margin-top:2px;">${escapeHtml(meta)}</div>` : ""}
                 ${pillHtml}
                 ${quoteHtml}
               </td>

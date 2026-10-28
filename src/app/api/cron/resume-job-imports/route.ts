@@ -9,6 +9,7 @@ import { runImportBatch, triggerImportBatch } from "@/lib/jobs/run-import-batch"
 import { sendEmail } from "@/lib/email/send";
 import { jobImportSummaryEmail } from "@/lib/email/templates/job-import-summary";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { verifyCronRequest } from "@/lib/cron-auth";
 
 // Same reasoning as the process route — this can end up running one real
 // batch per stalled import it finds.
@@ -24,8 +25,7 @@ export const maxDuration = 60;
  * import still progressing normally never shows up in this query at all).
  */
 export async function GET(request: Request) {
-  const authHeader = request.headers.get("authorization");
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (!verifyCronRequest(request)) {
     return new Response("Unauthorized", { status: 401 });
   }
 

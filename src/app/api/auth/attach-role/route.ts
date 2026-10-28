@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { ensureEmployerProfile, ensureCandidateProfile } from "@/lib/auth/complete-registration";
+import { ensureEmployerProfile, ensureCandidateProfile, DuplicateNifError } from "@/lib/auth/complete-registration";
 
 /**
  * Same-email dual-role attach (§6.4a): called after the client has already
@@ -47,6 +47,21 @@ export async function POST(request: NextRequest) {
     });
     return NextResponse.json({ landingPath });
   } catch (e) {
-    return NextResponse.json({ error: e instanceof Error ? e.message : "attach failed" }, { status: 400 });
+    // Security audit finding: this used to forward the raw thrown error
+    // message straight to the client — for a DuplicateNifError that's a
+    // harmless string, but the catch-all applied to *any* thrown error
+    // (including a real Postgres constraint-violation message, confirmed
+    // reachable via the company-creation path in complete-registration.ts),
+    // which can leak internal details (table/column names) a client
+    // response shouldn't carry. Also fixes a real, pre-existing latent
+    // bug this surfaced: AuthForm.tsx checks for the literal string
+    // `"duplicate_nif"`, which the raw DuplicateNifError message
+    // ("A company with NIF ... is already registered") never matched —
+    // the translated duplicate-NIF message was silently unreachable from
+    // this flow until now.
+    if (e instanceof DuplicateNifError) {
+      return NextResponse.json({ error: "duplicate_nif" }, { status: 400 });
+    }
+    return NextResponse.json({ error: "attach_failed" }, { status: 400 });
   }
 }

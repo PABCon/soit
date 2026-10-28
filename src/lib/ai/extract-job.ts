@@ -1,6 +1,7 @@
 import { generateText, Output } from "ai";
 import { z } from "zod";
 import { stripHtml } from "./strip-html";
+import { safeFetch } from "../safe-fetch";
 
 // Sonnet, not Haiku — this only ever runs on a deliberate, rare user action
 // (posting a new job), not high-volume traffic, so extraction quality is
@@ -116,14 +117,19 @@ export async function extractJobFromUrl(
   try {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
-    const res = await fetch(parsed.toString(), {
+    // SSRF defense (security audit finding): safeFetch resolves and
+    // re-validates the destination on every redirect hop — a bare
+    // scheme check (http/https) does nothing to stop a request aimed at
+    // localhost, an RFC1918 address, or a cloud metadata endpoint.
+    const result = await safeFetch(parsed.toString(), {
       signal: controller.signal,
       headers: { "User-Agent": "Mozilla/5.0 (compatible; JustITBot/1.0; +https://justit.pt)" },
     });
     clearTimeout(timeout);
-    if (!res.ok) return { ok: false, reason: "fetch_failed" };
+    if (!result.ok) return { ok: false, reason: result.reason === "fetch_failed" ? "fetch_failed" : "invalid_url" };
+    if (!result.response.ok) return { ok: false, reason: "fetch_failed" };
 
-    const buf = await res.arrayBuffer();
+    const buf = await result.response.arrayBuffer();
     if (buf.byteLength > MAX_FETCH_BYTES) return { ok: false, reason: "too_large" };
     html = new TextDecoder().decode(buf);
   } catch {

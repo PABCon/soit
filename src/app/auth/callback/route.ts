@@ -3,6 +3,22 @@ import { createClient } from "@/lib/supabase/server";
 import { completeRegistration, DuplicateNifError } from "@/lib/auth/complete-registration";
 
 /**
+ * Security audit finding: `next` was used in `${origin}${next}` via plain
+ * string concatenation — no OAuth flow needed, a single unauthenticated
+ * GET with `?next=@evil.com` resolves (via the classic userinfo-`@`
+ * ambiguity: `https://justit.pt@evil.com` parses as host `evil.com` with
+ * `justit.pt` as userinfo) to an open redirect for phishing. Fixed by
+ * requiring an internal, single-leading-slash path — rejects a bare `//`
+ * prefix too (a "network-path reference," which `new URL()` resolution
+ * would otherwise happily rewrite to an external origin).
+ */
+function sanitizeNextPath(next: string | null): string {
+  const fallback = "/pt/jobs";
+  if (!next || !next.startsWith("/") || next.startsWith("//")) return fallback;
+  return next;
+}
+
+/**
  * Single redirect target for email-link confirmation and OAuth (§9.1, §9.2).
  * Deliberately outside [locale] — the locale is threaded through as `next`
  * on the redirectTo URL passed to signUp/signInWithOAuth.
@@ -10,7 +26,7 @@ import { completeRegistration, DuplicateNifError } from "@/lib/auth/complete-reg
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get("code");
-  const next = searchParams.get("next") ?? "/pt/jobs";
+  const next = sanitizeNextPath(searchParams.get("next"));
 
   if (!code) return NextResponse.redirect(`${origin}${next}`);
 

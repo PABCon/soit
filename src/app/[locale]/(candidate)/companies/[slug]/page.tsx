@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { setRequestLocale } from "next-intl/server";
 import { CompanyProfileBody, getCompanyPageMetadata } from "@/components/candidate/CompanyProfileBody";
 import { getCompanyBySlug } from "@/lib/db/companies";
+import { safeJsonLd } from "@/lib/json-ld";
 
 type Props = { params: Promise<{ locale: string; slug: string }> };
 
@@ -49,7 +50,7 @@ export default async function CompanyPage({ params }: Props) {
       {company && (
         <script
           type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(companyJsonLd(company, locale)) }}
+          dangerouslySetInnerHTML={{ __html: safeJsonLd(companyJsonLd(company, locale)) }}
         />
       )}
       <CompanyProfileBody locale={locale} slug={slug} showBackLink />

@@ -8,6 +8,7 @@ import { getApplyStatus } from "@/lib/db/applications";
 import { getMyFavoriteJobIds } from "@/lib/db/favorites";
 import { getCompanyBySlug } from "@/lib/db/companies";
 import { localeAlternates, socialMeta } from "@/lib/seo";
+import { safeJsonLd } from "@/lib/json-ld";
 
 type Props = { params: Promise<{ locale: string; slug: string }> };
 
@@ -243,14 +244,14 @@ export default async function JobDetailPage({ params }: Props) {
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{
-            __html: JSON.stringify(jobPostingJsonLd(job, locale)),
+            __html: safeJsonLd(jobPostingJsonLd(job, locale)),
           }}
         />
       )}
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
-          __html: JSON.stringify(breadcrumbJsonLd(job, locale)),
+          __html: safeJsonLd(breadcrumbJsonLd(job, locale)),
         }}
       />
 

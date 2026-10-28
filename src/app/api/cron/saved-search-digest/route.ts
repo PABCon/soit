@@ -1,4 +1,5 @@
 import { runSavedSearchDigest } from "@/lib/notifications/saved-search-digest";
+import { verifyCronRequest } from "@/lib/cron-auth";
 
 /**
  * Vercel Cron target (see vercel.json's `crons`), once daily. Vercel signs
@@ -7,8 +8,7 @@ import { runSavedSearchDigest } from "@/lib/notifications/saved-search-digest";
  * anyone who finds the URL and force a mass email send on demand.
  */
 export async function GET(request: Request) {
-  const authHeader = request.headers.get("authorization");
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (!verifyCronRequest(request)) {
     return new Response("Unauthorized", { status: 401 });
   }
 

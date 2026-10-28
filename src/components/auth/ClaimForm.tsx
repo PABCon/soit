@@ -114,7 +114,12 @@ export function ClaimForm({ token, email: fixedEmail }: { token: string; email?:
       });
       const json = await res.json();
       if (!res.ok) {
-        setError(json.error ?? t("errorGeneric"));
+        // Security audit finding: this used to display `json.error`
+        // directly as user-facing text — attach-role's own error
+        // responses are now internal reason codes, not display strings
+        // (closing a raw-internal-error-message leak), same translated-
+        // lookup pattern AuthForm.tsx already uses for this same route.
+        setError(json.error === "duplicate_nif" ? t("nifError.duplicate") : t("errorGeneric"));
         setPending(false);
         return;
       }

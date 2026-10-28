@@ -34,7 +34,12 @@ ${cards.map((c) => entityCardText(c)).join("\n")}`;
 
   const { html, text } = emailLayout({
     eyebrow: "Saved search",
-    headline: `${jobs.length} ${jobWord} &ldquo;${searchLabel}&rdquo;`,
+    // Security audit finding: emailLayout now escapes `headline` as a
+    // whole (closing a real email-HTML-injection gap for the
+    // user-authored `searchLabel` embedded in it) — a real Unicode curly
+    // quote survives that unescaped, a raw `&ldquo;` HTML entity would
+    // have been double-escaped into literal garbage text instead.
+    headline: `${jobs.length} ${jobWord} “${searchLabel}”`,
     bodyHtml,
     bodyText,
     cta: { label: "See the full search", url: searchUrl },

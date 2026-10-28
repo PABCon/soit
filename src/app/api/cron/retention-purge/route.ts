@@ -1,4 +1,5 @@
 import { runRetentionPurge } from "@/lib/db/retention-purge";
+import { verifyCronRequest } from "@/lib/cron-auth";
 
 /**
  * Vercel Cron target (see vercel.json's `crons`), once daily — the §6.6
@@ -9,8 +10,7 @@ import { runRetentionPurge } from "@/lib/db/retention-purge";
  * hit on demand by anyone who finds the URL and force an off-schedule purge.
  */
 export async function GET(request: Request) {
-  const authHeader = request.headers.get("authorization");
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+  if (!verifyCronRequest(request)) {
     return new Response("Unauthorized", { status: 401 });
   }
 

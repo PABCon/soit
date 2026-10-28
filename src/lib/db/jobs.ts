@@ -631,13 +631,26 @@ export async function saveJob(
   // fine to save, never fine to publish, same DB-level guarantee
   // `jobs_published_requires_salary` enforces independently.
   const hasRequiredFields = input.categoryId != null && input.salaryMin != null && input.salaryMax != null;
-  const canPublish = isVerified && liveCount < company.job_ad_slot_cap && hasRequiredFields;
-  const willPublish = wantsPublish && canPublish;
+  // Security audit finding: this used to also require `liveCount <
+  // company.job_ad_slot_cap` here, decided once in JS and then written
+  // unconditionally — the exact same TOCTOU shape as the ad-credit race
+  // already found and fixed once (decrement_ad_credit). Two concurrent
+  // publish requests could both read the same liveCount, both pass, and
+  // both publish, exceeding the company's actual slot cap. The cap is now
+  // the one thing `claim_job_publish_slot` re-checks atomically, below —
+  // everything else here (`isVerified`/`hasRequiredFields`) is a stable,
+  // non-racy precondition, still fine to decide statically.
+  const staticallyEligible = isVerified && hasRequiredFields;
+  const willPublishStatically = wantsPublish && staticallyEligible;
   // Whether this particular publish occupies a paid slot (beyond the
   // universal free baseline) — drives the same bump-credit grant the old
   // credit-spend path used, just keyed off slot-cap membership instead of
-  // an actual decrement.
-  const usesPaidSlot = willPublish && !canPublishFree;
+  // an actual decrement. Still read from the same (non-atomic) liveCount
+  // as before — a known, lower-stakes edge case under real concurrency
+  // (which bucket a legitimate, correctly-capped publish gets attributed
+  // to), not the hard cap itself, which is what actually protects
+  // revenue and is now atomic below.
+  const usesPaidSlot = willPublishStatically && !canPublishFree;
 
   // Only a genuine draft/inactive → published transition grants bump
   // credits, resets the 30-day window and the boost state — re-saving an
@@ -648,7 +661,12 @@ export async function saveJob(
     const { data: existing } = await supabase.from("jobs").select("status").eq("id", jobId).maybeSingle();
     wasAlreadyPublished = existing?.status === "published";
   }
-  const isNewPublish = willPublish && !wasAlreadyPublished;
+  // A re-save of an already-published job never claims a NEW slot — it
+  // already occupies its own (excluded from its own live-count by
+  // `countOtherLiveJobs`'s `excludeJobId`), so deciding its status
+  // statically here carries no race risk, same as before. Only a genuine
+  // new transition goes through the atomic gate, after the row exists.
+  const isNewPublishAttempt = willPublishStatically && !wasAlreadyPublished;
 
   const salaryPublic = isPayingCustomer ? input.salaryPublic : true;
 
@@ -659,7 +677,7 @@ export async function saveJob(
   // producing an invalid or already-expired listing.
   const chosenExpiry = input.expiresAt ? new Date(input.expiresAt) : null;
   const expiresAt = chosenExpiry && chosenExpiry.getTime() > now.getTime() ? chosenExpiry : defaultExpiry;
-  const autoBoost = isNewPublish && isPayingCustomer && salaryPublic;
+  const autoBoost = isNewPublishAttempt && isPayingCustomer && salaryPublic;
 
   const base = {
     company_id: company.id,
@@ -681,21 +699,29 @@ export async function saveJob(
     employment_type: input.employmentTypes[0],
     external_apply_url: input.externalApplyUrl.trim() || null,
     salary_public: salaryPublic,
-    status: willPublish ? "published" : "draft",
-    ...(isNewPublish
-      ? {
-          published_at: now.toISOString(),
-          expires_at: expiresAt.toISOString(),
-          boost_rank_at: now.toISOString(),
-          boosted_until: autoBoost ? new Date(now.getTime() + 72 * 3600e3).toISOString() : null,
-          bump_credits_remaining: usesPaidSlot ? 2 : 0,
-        }
-      : {}),
+    // A NEW publish attempt is always written as a draft first — the
+    // atomic function below flips it to "published" (plus every
+    // publish-time field) only once it's actually secured the slot, so
+    // the cap check and the write that claims it happen together, not as
+    // two round trips a concurrent request could land between. An
+    // already-published job being merely edited keeps tracking
+    // `wantsPublish` directly, same as always — no race risk there.
+    status: wasAlreadyPublished ? (willPublishStatically ? "published" : "draft") : "draft",
   };
 
   let id = jobId;
   if (id) {
-    const { error } = await supabase.from("jobs").update(base).eq("id", id);
+    // Security audit finding: this was the one write in this file scoped
+    // only by `id`, not also `company_id` — every sibling function
+    // (setJobStatus, deleteJob, getCompanyJobById) explicitly adds
+    // `.eq("company_id", company.id)` as "the real security boundary."
+    // Not currently reachable cross-tenant (the one admin-client/override
+    // caller, PUT /api/v1/jobs/[id], already pre-checks ownership before
+    // calling this), but `base` itself includes `company_id: company.id`
+    // — so without this, any future caller of an override path that skips
+    // that pre-check would silently reassign someone else's job to their
+    // own company. Defense in depth, matching the established pattern.
+    const { error } = await supabase.from("jobs").update(base).eq("id", id).eq("company_id", company.id);
     if (error) throw new Error(error.message);
   } else {
     const { data, error } = await supabase
@@ -705,6 +731,32 @@ export async function saveJob(
       .single();
     if (error) throw new Error(error.message);
     id = data.id;
+  }
+
+  // The atomic gate: only reached for a genuine new draft/inactive →
+  // published transition (`isNewPublishAttempt`) — the row was just
+  // written as a draft above, and this is the one call that can actually
+  // flip it to "published," re-checking the live-job count fresh and
+  // inside the same database round trip as the write that claims the
+  // slot. `published` starts from the static (non-racy) outcome for every
+  // other case — an already-published job being merely edited, or a plain
+  // draft save — and is only ever overwritten by the RPC's real result
+  // for a genuine new-publish attempt.
+  let published = wasAlreadyPublished && willPublishStatically;
+  if (isNewPublishAttempt) {
+    const { data: claimed, error: claimError } = await supabase.rpc("claim_job_publish_slot", {
+      p_job_id: id,
+      p_company_id: company.id,
+      p_slot_cap: company.job_ad_slot_cap,
+      p_salary_public: salaryPublic,
+      p_published_at: now.toISOString(),
+      p_expires_at: expiresAt.toISOString(),
+      p_boost_rank_at: now.toISOString(),
+      p_boosted_until: autoBoost ? new Date(now.getTime() + 72 * 3600e3).toISOString() : null,
+      p_bump_credits_remaining: usesPaidSlot ? 2 : 0,
+    });
+    if (claimError) throw new Error(claimError.message);
+    published = claimed === true;
   }
 
   await supabase.from("job_tech_tags").delete().eq("job_id", id);
@@ -757,9 +809,9 @@ export async function saveJob(
   return {
     id: id!,
     slug: saved!.slug,
-    published: willPublish,
+    published,
     message:
-      wantsPublish && !willPublish
+      wantsPublish && !published
         ? !isVerified
           ? "notVerified"
           : !hasRequiredFields
@@ -801,10 +853,18 @@ export async function setJobStatus(
     return { ok: true };
   }
 
+  // Security audit finding: same TOCTOU shape as saveJob's own publish
+  // gate (see its own comment) — the live-count-vs-cap check and the
+  // write were two separate round trips, racy under concurrent reactivate
+  // attempts. Fixed the same way: `liveCount`/`canPublishFree` are still
+  // read here for the bump-credit/salary-public/autoBoost field values
+  // (a known, lower-stakes edge case under real concurrency — not the
+  // hard cap itself), but the actual gate decision is now
+  // `claim_job_publish_slot`'s, re-checked fresh inside the same atomic
+  // call that performs the write.
   const liveCount = await countOtherLiveJobs(supabase, company.id, jobId);
   const isPayingCustomer = company.job_ad_slot_cap > 1 || company.top_employer_active;
   const canPublishFree = liveCount < 1;
-  if (liveCount >= company.job_ad_slot_cap) return { ok: false, message: "noAdCredits" };
   const usesPaidSlot = !canPublishFree;
 
   const { data: job } = await supabase.from("jobs").select("salary_public").eq("id", jobId).maybeSingle();
@@ -812,20 +872,19 @@ export async function setJobStatus(
   const now = new Date();
   const autoBoost = isPayingCustomer && salaryPublic;
 
-  const { error } = await supabase
-    .from("jobs")
-    .update({
-      status: "published",
-      salary_public: salaryPublic,
-      published_at: now.toISOString(),
-      expires_at: new Date(now.getTime() + 30 * 864e5).toISOString(),
-      boost_rank_at: now.toISOString(),
-      boosted_until: autoBoost ? new Date(now.getTime() + 72 * 3600e3).toISOString() : null,
-      bump_credits_remaining: usesPaidSlot ? 2 : 0,
-    })
-    .eq("id", jobId)
-    .eq("company_id", company.id);
-  if (error) throw new Error(error.message);
+  const { data: claimed, error: claimError } = await supabase.rpc("claim_job_publish_slot", {
+    p_job_id: jobId,
+    p_company_id: company.id,
+    p_slot_cap: company.job_ad_slot_cap,
+    p_salary_public: salaryPublic,
+    p_published_at: now.toISOString(),
+    p_expires_at: new Date(now.getTime() + 30 * 864e5).toISOString(),
+    p_boost_rank_at: now.toISOString(),
+    p_boosted_until: autoBoost ? new Date(now.getTime() + 72 * 3600e3).toISOString() : null,
+    p_bump_credits_remaining: usesPaidSlot ? 2 : 0,
+  });
+  if (claimError) throw new Error(claimError.message);
+  if (claimed !== true) return { ok: false, message: "noAdCredits" };
 
   return { ok: true };
 }
