@@ -1480,5 +1480,23 @@
     "privacyLinkText": "Política de privacidade",
     "accept": "Aceitar",
     "reject": "Recusar"
+  },
+  "errorPages": {
+    "notFoundEyebrow": "Página não encontrada · 404",
+    "notFoundHeadline": "Não encontramos essa página.",
+    "notFoundBody": "O link pode estar desatualizado, ou a página pode ter sido movida. Vamos ajudá-lo a voltar às oportunidades certas.",
+    "notFoundPrimaryCta": "Procurar vagas",
+    "notFoundSecondaryCta": "Ver empresas",
+    "notFoundLinkJobs": "Ver vagas",
+    "notFoundLinkCompanies": "Explorar empresas",
+    "notFoundLinkPostJob": "Publicar vaga",
+    "serverErrorEyebrow": "Problema temporário · 500",
+    "serverErrorHeadline": "Algo correu mal.",
+    "serverErrorBody": "Estamos com dificuldades a carregar esta página neste momento. É um problema temporário do nosso lado. Tente novamente dentro de instantes.",
+    "serverErrorPrimaryCta": "Tentar novamente",
+    "serverErrorSecondaryCta": "Ver vagas",
+    "serverErrorLinkHome": "Ir para a página inicial",
+    "serverErrorLinkCompanies": "Explorar empresas",
+    "serverErrorChip": "Estamos a trabalhar para resolver isto."
   }
 }

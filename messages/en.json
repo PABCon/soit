@@ -1480,5 +1480,23 @@
     "privacyLinkText": "Privacy Policy",
     "accept": "Accept",
     "reject": "Reject"
+  },
+  "errorPages": {
+    "notFoundEyebrow": "Page not found · 404",
+    "notFoundHeadline": "We can't find that page.",
+    "notFoundBody": "The link may be outdated, or the page may have moved. Let's get you back to the right opportunities.",
+    "notFoundPrimaryCta": "Search jobs",
+    "notFoundSecondaryCta": "Browse companies",
+    "notFoundLinkJobs": "Browse jobs",
+    "notFoundLinkCompanies": "Explore companies",
+    "notFoundLinkPostJob": "Post a job",
+    "serverErrorEyebrow": "Temporary issue · 500",
+    "serverErrorHeadline": "Something went wrong.",
+    "serverErrorBody": "We're having trouble loading this page right now. It's a temporary issue on our side. Please try again in a moment.",
+    "serverErrorPrimaryCta": "Try again",
+    "serverErrorSecondaryCta": "Browse jobs",
+    "serverErrorLinkHome": "Go to homepage",
+    "serverErrorLinkCompanies": "Explore companies",
+    "serverErrorChip": "We're working to fix this."
   }
 }
