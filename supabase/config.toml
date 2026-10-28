@@ -153,10 +153,13 @@ minimum_password_length = 8
 # meeting all three classes at 8+ chars passes validation.
 #
 # `password_hibp_enabled` (reject known-breached passwords via
-# HaveIBeenPwned) was also tried and explicitly rejected by the API:
-# "available on Pro Plans and up" — same free-tier ceiling as the
-# session-timeout controls (see CLAUDE.md). Not applied.
+# HaveIBeenPwned) was tried and rejected at the time — "available on
+# Pro Plans and up," same free-tier ceiling as the session-timeout
+# controls. LIVE as of 2026-10-28 (security audit pass), applied via the
+# same scoped PATCH /v1/projects/{ref}/config/auth mechanism, now that
+# the project is on Pro — the earlier blocker is gone.
 password_requirements = "lower_upper_letters_digits"
+password_hibp_enabled = true
 
 [auth.rate_limit]
 # Number of emails that can be sent per hour. Requires auth.email.smtp to be enabled.
