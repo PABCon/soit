@@ -7,19 +7,21 @@
  * `pricePerAd(n) = FLOOR + AMP * n^(-K)` — a power-law decay toward a
  * floor, with the three constants solved EXACTLY (not fitted/approximated)
  * from three real, known prices rather than assumed:
- *   n=1   -> €59.00  (the live job_ad_credits_1 Price)
- *   n=5   -> €34.00  (the live job_ad_credits_5 Price, per-ad: 170/5)
- *   n=200 -> €20.00  (ITDS's real negotiated volume rate at their actual
- *                      ~200 ads/month — the floor this curve approaches)
+ *   n=1   -> €59.00    (the live job_ad_credits_1 Price)
+ *   n=5   -> €34.00    (the live job_ad_credits_5 Price, per-ad: 170/5)
+ *   n=200 -> €2,000.00 (ITDS's real negotiated TOTAL at their actual
+ *                        ~200 ads/month, i.e. €10.00/ad — corrected from
+ *                        an earlier, wrong reading of this same fact as
+ *                        "€20/ad," which implied a €4,000 total instead)
  * Solving `FLOOR + AMP*1^-K = 59`, `FLOOR + AMP*5^-K = 34`, and
- * `FLOOR + AMP*200^-K = 20` simultaneously gives the constants below —
+ * `FLOOR + AMP*200^-K = 10` simultaneously gives the constants below —
  * re-derive them the same way (see this file's own git history for the
  * worked Python solve) if any of those three anchors ever change for real
  * business reasons; never hand-tune them to make a number "look nicer."
  */
-const FLOOR = 18.205347785666397;
-const AMP = 40.7946522143336;
-const K = 0.589572034446147;
+const FLOOR = 0.8660330883293073;
+const AMP = 58.13396691167069;
+const K = 0.34930901665715514;
 
 /** Below this, buy a fixed pack instead (job_ad_credits_1/2/3/5) — the
  *  curve is really only meant to extend beyond them, not replace them. */

@@ -8,10 +8,11 @@ import {
 } from "./ad-credit-pricing";
 
 describe("ad-credit-pricing", () => {
-  it("passes through the three real anchor points exactly (n=1, n=5, n=200)", () => {
+  it("passes through the three real anchor points exactly (n=1, n=5, n=200 total)", () => {
     expect(pricePerAdEur(1)).toBeCloseTo(59.0, 2);
     expect(pricePerAdEur(5)).toBeCloseTo(34.0, 2);
-    expect(pricePerAdEur(200)).toBeCloseTo(20.0, 2);
+    expect(pricePerAdEur(200)).toBeCloseTo(10.0, 2);
+    expect(totalPriceEurCents(200)).toBe(200_000); // €2,000.00 — the real ITDS reference
   });
 
   it("is monotonically decreasing (more ads never costs more per ad)", () => {
