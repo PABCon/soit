@@ -6,17 +6,28 @@ import { Link } from "@/i18n/navigation";
 import { CheckCircle2, Users } from "lucide-react";
 import {
   createAdCreditCheckoutAction,
+  createCustomAdCreditCheckoutAction,
   createBillingPortalSessionAction,
   type AdCreditPackSize,
 } from "@/app/[locale]/(console)/recruit/jobs/ads/actions";
+import {
+  AD_CREDIT_CUSTOM_MAX_QTY,
+  AD_CREDIT_CUSTOM_MIN_QTY,
+  isValidCustomAdCreditQty,
+  pricePerAdEur,
+  totalPriceEurCents,
+} from "@/lib/billing/ad-credit-pricing";
 import { buttonClassName } from "@/components/Button";
 
-// §pricing — the reverse-engineered volume curve (anchored on €59 at n=1
-// and the real ITDS rate of ~€20/ad at n≈108), rounded to clean checkout
-// prices for the four self-serve packs, with the discount vs. buying
-// singles clearly labeled — this is the actual incentive to buy more at
-// once, and it needs to be visible, not just implied by the math. 6+ is
-// deliberately not offered here — that's the "talk to sales" path.
+// §pricing — the volume curve this codebase's own real numbers were
+// solved from (see ad-credit-pricing.ts's own doc comment for the exact
+// three-point derivation: €59 at n=1, €34 at n=5 — both live Stripe
+// prices — and the real ITDS rate of €20/ad at their actual ~200/month),
+// rounded to clean checkout prices for the four self-serve packs, with
+// the discount vs. buying singles clearly labeled — this is the actual
+// incentive to buy more at once, and it needs to be visible, not just
+// implied by the math. 6-200 uses that same curve directly via the custom
+// quantity input below; beyond 200 is the "talk to sales" path.
 const PACKS: { quantity: AdCreditPackSize; totalEur: number; discountPct: number }[] = [
   { quantity: 1, totalEur: 59, discountPct: 0 },
   { quantity: 2, totalEur: 90, discountPct: 24 },
@@ -46,8 +57,9 @@ export function AdCreditPacks({
 }) {
   const t = useTranslations("console");
   const locale = useLocale();
-  const [pending, setPending] = useState<AdCreditPackSize | "portal" | null>(null);
+  const [pending, setPending] = useState<AdCreditPackSize | "custom" | "portal" | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [customQtyInput, setCustomQtyInput] = useState("");
 
   async function buy(quantity: AdCreditPackSize) {
     setError(null);
@@ -59,6 +71,30 @@ export function AdCreditPacks({
         return;
       }
       setError(t("errorGeneric"));
+    } catch {
+      setError(t("errorGeneric"));
+    } finally {
+      setPending(null);
+    }
+  }
+
+  // Parsed once, reused both for the live price preview and the actual
+  // checkout call — an empty/invalid input simply shows no preview rather
+  // than an error, since a half-typed number isn't really "wrong" yet.
+  const customQty = Number(customQtyInput);
+  const customQtyValid = customQtyInput.trim() !== "" && isValidCustomAdCreditQty(customQty);
+
+  async function buyCustom() {
+    if (!customQtyValid) return;
+    setError(null);
+    setPending("custom");
+    try {
+      const result = await createCustomAdCreditCheckoutAction(customQty, locale);
+      if (result.ok) {
+        window.location.assign(result.url);
+        return;
+      }
+      setError(result.reason === "invalid_quantity" ? t("adCreditCustomInvalidQuantity") : t("errorGeneric"));
     } catch {
       setError(t("errorGeneric"));
     } finally {
@@ -165,6 +201,51 @@ export function AdCreditPacks({
       </div>
       {error && <p className="mt-3 text-sm text-red-700">{error}</p>}
 
+      <div className="mt-4 rounded-xl border border-line bg-subtle p-4">
+        <p className="font-semibold text-ink">{t("adCreditCustomTitle")}</p>
+        <p className="mt-1 text-sm text-muted">
+          {t("adCreditCustomSubtitle", { min: AD_CREDIT_CUSTOM_MIN_QTY, max: AD_CREDIT_CUSTOM_MAX_QTY })}
+        </p>
+        <div className="mt-3 flex flex-wrap items-end gap-3">
+          <label className="flex flex-col gap-1 text-sm">
+            <span className="text-xs font-medium text-muted">{t("adCreditCustomQuantityLabel")}</span>
+            <input
+              type="number"
+              inputMode="numeric"
+              min={AD_CREDIT_CUSTOM_MIN_QTY}
+              max={AD_CREDIT_CUSTOM_MAX_QTY}
+              step={1}
+              value={customQtyInput}
+              onChange={(e) => setCustomQtyInput(e.target.value)}
+              placeholder={String(AD_CREDIT_CUSTOM_MIN_QTY)}
+              className="h-10 w-28 rounded-lg border border-line bg-white px-3 text-sm text-ink"
+            />
+          </label>
+          {customQtyValid && (
+            <div className="text-sm text-ink">
+              <p className="font-display text-xl font-bold">
+                €{(totalPriceEurCents(customQty) / 100).toFixed(2)}
+                <span className="text-sm font-normal text-muted"> {t("perMonth")}</span>
+              </p>
+              <p className="text-xs text-muted">
+                €{pricePerAdEur(customQty).toFixed(2)} {t("perAd")} · {t("billedMonthly")}
+              </p>
+            </div>
+          )}
+          <button
+            type="button"
+            disabled={!customQtyValid || pending !== null}
+            onClick={buyCustom}
+            className={buttonClassName({ variant: "primary", className: !customQtyValid || pending ? "opacity-50" : "" })}
+          >
+            {pending === "custom" ? t("redirecting") : t("adCreditCustomSubscribe")}
+          </button>
+        </div>
+        {customQtyInput.trim() !== "" && !customQtyValid && (
+          <p className="mt-2 text-xs text-red-700">{t("adCreditCustomInvalidQuantity")}</p>
+        )}
+      </div>
+
       <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-line bg-subtle p-4">
         <div className="flex items-center gap-3">
           <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-pine/10 text-pine">
@@ -172,7 +253,7 @@ export function AdCreditPacks({
           </span>
           <div>
             <p className="font-semibold text-ink">{t("needMoreTitle")}</p>
-            <p className="text-sm text-muted">{t("needMoreSubtitle")}</p>
+            <p className="text-sm text-muted">{t("needMoreSubtitle", { max: AD_CREDIT_CUSTOM_MAX_QTY })}</p>
           </div>
         </div>
         <Link href="/recruit/contact" className={buttonClassName({ variant: "secondary" })}>

@@ -103,7 +103,15 @@ const SUBSCRIPTION_ACTIVE_STATUSES: Stripe.Subscription.Status[] = ["active", "t
  *  `recurring.interval` rather than a custom metadata field — correct
  *  automatically whether the subscription came from our Checkout flow or
  *  was created by hand in the Stripe Dashboard, neither of which needs to
- *  separately declare it. */
+ *  separately declare it.
+ *
+ *  A custom-quantity checkout (6-200, createCustomAdCreditCheckoutAction)
+ *  is the one exception: it charges via an inline `price_data` line item,
+ *  which Stripe's Checkout API has no `metadata` field for at all — there
+ *  is no Price object to attach `job_ad_slots` to. That flow puts the
+ *  quantity on `subscription_data.metadata.job_ad_slots` instead (right
+ *  alongside the `company_id` every subscription already carries there),
+ *  checked first, before the Price-metadata lookup below. */
 async function resolvePlan(subscription: Stripe.Subscription): Promise<
   | { planType: "job_ads"; slotCap: number; billingInterval: "month" | "year" }
   | { planType: "top_employer"; slotCap: null; billingInterval: "month" | "year" }
@@ -111,6 +119,8 @@ async function resolvePlan(subscription: Stripe.Subscription): Promise<
   let price = subscription.items.data[0]?.price;
   if (price && typeof price === "string") price = await stripe.prices.retrieve(price);
   const billingInterval = price?.recurring?.interval === "year" ? "year" : "month";
+  const subscriptionSlots = Number(subscription.metadata?.job_ad_slots ?? 0);
+  if (subscriptionSlots > 0) return { planType: "job_ads", slotCap: subscriptionSlots, billingInterval };
   const slots = Number(price?.metadata?.job_ad_slots ?? 0);
   if (slots > 0) return { planType: "job_ads", slotCap: slots, billingInterval };
   return { planType: "top_employer", slotCap: null, billingInterval };

@@ -2,6 +2,7 @@
 
 import { stripe, newIntegrationIdentifier } from "@/lib/stripe";
 import { getMyEmployerContext } from "@/lib/db/companies";
+import { isValidCustomAdCreditQty, totalPriceEurCents } from "@/lib/billing/ad-credit-pricing";
 
 const SITE = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
 
@@ -68,6 +69,71 @@ export async function createAdCreditCheckoutAction(
     return { ok: true, url: session.url };
   } catch (err) {
     console.error("createAdCreditCheckoutAction failed:", err);
+    return { ok: false, reason: "stripe_error" };
+  }
+}
+
+export type CreateCustomCheckoutResult =
+  | { ok: true; url: string }
+  | { ok: false; reason: "not_an_employer" | "invalid_quantity" | "price_not_found" | "stripe_error" };
+
+/** Custom-quantity job-ads plan (§pricing) — the "more than 5? enter your
+ *  own number" path, 6-200, priced off the volume curve in
+ *  ad-credit-pricing.ts rather than a fixed Price per size (which would
+ *  mean pre-creating 195 Stripe Prices). Quantity is re-validated here,
+ *  server-side, even though the UI already constrains the input — a
+ *  client-supplied number is never trusted to decide what gets charged.
+ *
+ *  Charges via an inline Checkout `price_data` line item (quantity: 1,
+ *  unit_amount = the curve's own rounded total for this many ads) rather
+ *  than a pre-created Price, attached to the *same* "Job Ad Credits"
+ *  Product the four fixed packs already use (found via one of their own
+ *  lookup-keyed Prices) so the Stripe Dashboard shows one product with
+ *  every variant, not a new ad-hoc product per checkout. `price_data` has
+ *  no `metadata` field at all (unlike a real Price object) — the webhook
+ *  can't read `job_ad_slots` off it the way it does for the fixed tiers,
+ *  so this flow puts the quantity on `subscription_data.metadata`
+ *  instead; see resolvePlan() in the webhook for the matching read. */
+export async function createCustomAdCreditCheckoutAction(
+  quantity: number,
+  locale: string,
+): Promise<CreateCustomCheckoutResult> {
+  const ctx = await getMyEmployerContext();
+  if (!ctx) return { ok: false, reason: "not_an_employer" };
+  if (!isValidCustomAdCreditQty(quantity)) return { ok: false, reason: "invalid_quantity" };
+
+  try {
+    const anchorPrices = await stripe.prices.list({ lookup_keys: [PACK_LOOKUP_KEYS[1]], limit: 1 });
+    const anchorPrice = anchorPrices.data[0];
+    if (!anchorPrice) return { ok: false, reason: "price_not_found" };
+    const productId = typeof anchorPrice.product === "string" ? anchorPrice.product : anchorPrice.product.id;
+
+    const session = await stripe.checkout.sessions.create({
+      mode: "subscription",
+      ...(ctx.company.stripe_customer_id ? { customer: ctx.company.stripe_customer_id } : {}),
+      line_items: [
+        {
+          price_data: {
+            currency: "eur",
+            product: productId,
+            recurring: { interval: "month" },
+            unit_amount: totalPriceEurCents(quantity),
+          },
+          quantity: 1,
+        },
+      ],
+      client_reference_id: ctx.company.id,
+      subscription_data: { metadata: { company_id: ctx.company.id, job_ad_slots: String(quantity) } },
+      integration_identifier: newIntegrationIdentifier("job_ads_custom"),
+      allow_promotion_codes: true,
+      success_url: `${SITE}/${locale}/recruit/jobs/ads?purchase=success`,
+      cancel_url: `${SITE}/${locale}/recruit/jobs/ads?purchase=canceled`,
+    });
+
+    if (!session.url) return { ok: false, reason: "stripe_error" };
+    return { ok: true, url: session.url };
+  } catch (err) {
+    console.error("createCustomAdCreditCheckoutAction failed:", err);
     return { ok: false, reason: "stripe_error" };
   }
 }
