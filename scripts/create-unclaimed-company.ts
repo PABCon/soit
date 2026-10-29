@@ -17,17 +17,36 @@ import { extractJobFromUrl, type ExtractedJob } from "../src/lib/ai/extract-job"
 import { extractCompanyProfileFromUrl } from "../src/lib/ai/extract-company-profile";
 import { resolveExtractedJobVocab } from "../src/lib/jobs/resolve-vocab";
 import { createUnclaimedCompanyWithJobs } from "../src/lib/db/claim-invites";
+import { recordImportedSource } from "../src/lib/db/job-imports";
 import type { JobFormInput } from "../src/lib/db/jobs";
 
 const admin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!);
 
 // EDIT PER PROSPECT:
-const companyWebsite = "http://www.integer.pt";
-const companyName = "Integer Consulting";
-// Same reasoning as the prior runs: going straight to itjobs.pt's company
-// page rather than risking another JS-rendered/unreachable careers site —
-// proven reliable (server-rendered, real per-job URLs, rich descriptions).
-const jobsListingUrl = "https://www.itjobs.pt/empresa/integer-consulting";
+const companyWebsite = "https://www.wearemeta.io";
+const companyName = "We Are Meta";
+// We Are Meta's own /careers listing is JS-rendered (extractJobLinksFromUrl
+// returns empty_content against it, confirmed) — its real job data comes
+// from a WordPress AJAX endpoint (admin-ajax.php?action=load_jobs) that
+// isn't a "listing page" extractJobLinksFromUrl can crawl. When a
+// prospect's listing is like this, leave jobsListingUrl set (still used
+// for the claim-page "where we found you" framing / as a fallback) but
+// populate MANUAL_JOB_URLS with real individual job-detail links found by
+// hand — each one is itself normal server-rendered content, so
+// extractJobFromUrl still works fine on it directly. Leave this empty for
+// the normal case (a site, or itjobs.pt's company page, that
+// extractJobLinksFromUrl can actually discover).
+const jobsListingUrl = "https://www.wearemeta.io/careers/";
+const MANUAL_JOB_URLS: string[] = [
+  "https://www.wearemeta.io/careers/job/5795", // Senior Fullstack Developer (Java & Angular)
+  "https://www.wearemeta.io/careers/job/5784", // Senior AI Engineer
+  "https://www.wearemeta.io/careers/job/5776", // Product Manager
+  "https://www.wearemeta.io/careers/job/5777", // Senior DevOps Engineer
+  "https://www.wearemeta.io/careers/job/5766", // QA Automation Engineer (French Speaker)
+  "https://www.wearemeta.io/careers/job/5539", // Data Engineer
+  "https://www.wearemeta.io/careers/job/5624", // Cybersecurity Expert
+  "https://www.wearemeta.io/careers/job/5498", // Senior iOS Developer
+];
 // Hard cap on how many of the discovered jobs to actually pull in as
 // drafts — a real prospect page can list dozens; the claim page only
 // needs enough to make the "look what's already done" point, not every
@@ -35,14 +54,20 @@ const jobsListingUrl = "https://www.itjobs.pt/empresa/integer-consulting";
 const MAX_JOBS = 10;
 
 async function main() {
-  console.log("Discovering job links from", jobsListingUrl);
-  const discovery = await extractJobLinksFromUrl(jobsListingUrl);
-  if (!discovery.ok) {
-    console.log("FAILED discovering job links:", discovery.reason);
-    return;
+  let jobUrls: string[];
+  if (MANUAL_JOB_URLS.length > 0) {
+    console.log(`Using ${MANUAL_JOB_URLS.length} manually-supplied job URLs (listing page isn't crawlable)`);
+    jobUrls = MANUAL_JOB_URLS.slice(0, MAX_JOBS);
+  } else {
+    console.log("Discovering job links from", jobsListingUrl);
+    const discovery = await extractJobLinksFromUrl(jobsListingUrl);
+    if (!discovery.ok) {
+      console.log("FAILED discovering job links:", discovery.reason);
+      return;
+    }
+    console.log(`Found ${discovery.links.length} job links${discovery.truncated ? " (truncated — more may exist)" : ""}`);
+    jobUrls = discovery.links.slice(0, MAX_JOBS).map((l) => l.url);
   }
-  console.log(`Found ${discovery.links.length} job links${discovery.truncated ? " (truncated — more may exist)" : ""}`);
-  const jobUrls = discovery.links.slice(0, MAX_JOBS).map((l) => l.url);
 
   console.log("Fetching company profile...");
   const profileResult = await extractCompanyProfileFromUrl(companyWebsite);
@@ -110,6 +135,19 @@ async function main() {
       return jobInputs;
     },
   );
+
+  // Bump the pilot's slot cap above the default (1) so a real follow-up
+  // import (any remaining roles, run later through the console once
+  // claimed) isn't immediately blocked by this pilot batch alone.
+  await admin.from("companies").update({ job_ad_slot_cap: 20 }).eq("id", result.companyId);
+
+  // Register each pilot job's source URL in job_import_sources so a real
+  // future import run against the same source correctly skips these as
+  // already-imported instead of creating duplicates.
+  for (let i = 0; i < extractedJobs.length; i++) {
+    await recordImportedSource(result.companyId, extractedJobs[i].url, result.jobIds[i]);
+  }
+
   console.log(JSON.stringify(result, null, 2));
 }
 
