@@ -2,7 +2,17 @@ import type { Metadata } from "next";
 import { routing } from "@/i18n/routing";
 
 const SITE = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
-const DEFAULT_OG_IMAGE = `${SITE}/logo-justit.png`;
+// Real-usage report: a justit.pt/jobs link shared in iMessage rendered its
+// thumbnail as a cropped "Jst" fragment — `logo-justit.png` is an 800x318
+// wordmark (2.5:1), and a link-preview thumbnail crop (square on iMessage,
+// 1.91:1 on most others) just cuts off most of a wide wordmark regardless
+// of platform. `og-image.png` is a dedicated 1200x630 share image instead
+// — the icon mark + wordmark + tagline are all centered inside the
+// 630x630 middle band, so even the tightest (square) crop a platform can
+// apply still shows the complete lockup, never a fragment.
+const DEFAULT_OG_IMAGE = `${SITE}/og-image.png`;
+const DEFAULT_OG_IMAGE_WIDTH = 1200;
+const DEFAULT_OG_IMAGE_HEIGHT = 630;
 
 /**
  * SEO audit (go-live round): hreflang/canonical existed on exactly one
@@ -43,6 +53,7 @@ export function socialMeta({
   url: string;
   image?: string | null;
 }): Pick<Metadata, "openGraph" | "twitter"> {
+  const usingDefaultImage = !image;
   const resolvedImage = image ?? DEFAULT_OG_IMAGE;
   return {
     openGraph: {
@@ -51,10 +62,19 @@ export function socialMeta({
       url,
       siteName: "Just IT",
       type: "website",
-      images: [{ url: resolvedImage }],
+      images: [
+        usingDefaultImage
+          ? { url: resolvedImage, width: DEFAULT_OG_IMAGE_WIDTH, height: DEFAULT_OG_IMAGE_HEIGHT }
+          : { url: resolvedImage },
+      ],
     },
+    // "summary_large_image" over the previous "summary": a company logo
+    // (the other real caller of this function, via `image`) is usually
+    // close to square and reads fine at summary size, but the default
+    // share image above is a 1200x630 landscape banner purpose-built for
+    // the large-image treatment.
     twitter: {
-      card: "summary",
+      card: "summary_large_image",
       title,
       description,
       images: [resolvedImage],
