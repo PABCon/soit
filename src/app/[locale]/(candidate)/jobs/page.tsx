@@ -20,7 +20,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const t = await getTranslations({ locale, namespace: "jobs" });
   const tb = await getTranslations({ locale, namespace: "brand" });
   const title = t("title");
-  const description = tb("tagline");
+  // Same fix as the root layout's metadata — see its own comment.
+  const description = tb("shareDescription");
   return {
     title,
     description,

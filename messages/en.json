@@ -1,8 +1,8 @@
 {
   "brand": {
     "name": "Just IT",
-    "tagline": "Only IT jobs. Always with a salary.",
-    "navTagline": "#1 IT Job Board in Portugal"
+    "navTagline": "#1 IT Job Board in Portugal",
+    "shareDescription": "Just IT is Portugal's #1 IT job board — every listing shows a real salary range, no exceptions. Browse verified tech jobs and apply in minutes."
   },
   "nav": {
     "login": "Log in",

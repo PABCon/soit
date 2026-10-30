@@ -82,7 +82,17 @@ export async function generateMetadata({
   const { locale } = await params;
   const t = await getTranslations({ locale, namespace: "brand" });
   const name = t("name");
-  const description = t("tagline");
+  // Real-usage report: a link shared in WhatsApp/Teams/iMessage showed
+  // "Only IT jobs. Always with a salary." as its preview message — real,
+  // on-brand copy, but not the message wanted for a share card, and
+  // LinkedIn's own Post Inspector separately flagged it as too short
+  // (its stated minimum is 100 characters; the old `tagline` was 36).
+  // `shareDescription` is a new, dedicated key — long enough to read as a
+  // real sentence, not a label — kept distinct from `navTagline`, which
+  // still does its own real job as the short line under the wordmark in
+  // TopNav, where this much longer sentence wouldn't fit. `tagline`
+  // itself is gone — this was its only remaining caller.
+  const description = t("shareDescription");
   return {
     title: { default: name, template: `%s · ${name}` },
     description,

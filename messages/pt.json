@@ -1,8 +1,8 @@
 {
   "brand": {
     "name": "Just IT",
-    "tagline": "Só vagas de IT. Sempre com salário.",
-    "navTagline": "Nº 1 portal de vagas de IT em Portugal"
+    "navTagline": "Nº 1 portal de vagas de IT em Portugal",
+    "shareDescription": "A Just IT é o portal de emprego de IT número 1 em Portugal — todas as vagas mostram sempre o salário real, sem exceções. Encontre vagas verificadas e candidate-se em minutos."
   },
   "nav": {
     "login": "Entrar",
