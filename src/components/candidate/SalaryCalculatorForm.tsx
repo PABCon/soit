@@ -958,9 +958,27 @@ export function SalaryCalculatorForm() {
              *  "visitor → registered user" funnel this whole pass is
              *  about. */}
             <div className="mt-4 border-t border-line pt-4">
-              <Link href="/jobs" className={`block w-full text-center ${buttonClassName({ size: "md" })}`}>
-                {t("ctaBrowseJobs")}
-              </Link>
+              {mode === "employment" && employmentResult ? (
+                // Growth plan (Nov 2026): a generic "browse jobs" link next
+                // to a real calculated number was a missed bridge — this
+                // reuses /jobs's own already-working `minSalary` deep link
+                // (JobsExplorer's `monthlyFloor()` already normalizes every
+                // job's own salary onto the same monthly-gross scale) so
+                // the one click someone actually takes from here lands
+                // already filtered to their own level, not a cold start.
+                // Freelance/company modes keep the generic link — their
+                // "gross" isn't the same kind of number a job posting uses.
+                <Link
+                  href={`/jobs?minSalary=${Math.round(employmentResult.monthly.gross)}`}
+                  className={`block w-full text-center ${buttonClassName({ size: "md" })}`}
+                >
+                  {t("ctaBrowseJobsWithSalary", { amount: money(employmentResult.monthly.gross) })}
+                </Link>
+              ) : (
+                <Link href="/jobs" className={`block w-full text-center ${buttonClassName({ size: "md" })}`}>
+                  {t("ctaBrowseJobs")}
+                </Link>
+              )}
               <Link
                 href="/candidate/register"
                 className="mt-2 block text-center text-xs text-pine hover:underline"
