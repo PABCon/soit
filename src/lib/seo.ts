@@ -47,14 +47,21 @@ export function socialMeta({
   description,
   url,
   image,
+  imageIsLandscape,
 }: {
   title: string;
   description?: string;
   url: string;
   image?: string | null;
+  /** Set when a custom `image` is also a 1200x630 landscape banner (e.g.
+   *  the salary calculator's per-result share image) rather than something
+   *  arbitrary like a company logo — declares the real dimensions instead
+   *  of leaving them unset. */
+  imageIsLandscape?: boolean;
 }): Pick<Metadata, "openGraph" | "twitter"> {
   const usingDefaultImage = !image;
   const resolvedImage = image ?? DEFAULT_OG_IMAGE;
+  const declareDimensions = usingDefaultImage || imageIsLandscape;
   return {
     openGraph: {
       title,
@@ -63,7 +70,7 @@ export function socialMeta({
       siteName: "Just IT",
       type: "website",
       images: [
-        usingDefaultImage
+        declareDimensions
           ? { url: resolvedImage, width: DEFAULT_OG_IMAGE_WIDTH, height: DEFAULT_OG_IMAGE_HEIGHT }
           : { url: resolvedImage },
       ],
