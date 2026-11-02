@@ -62,7 +62,7 @@ export function writeUrlSearchParams(next: URLSearchParams) {
   window.dispatchEvent(new Event(PARAMS_EVENT));
 }
 
-export function parseListParam(sp: URLSearchParams, key: string): string[] {
-  const v = sp.get(key);
-  return v ? v.split(",").filter(Boolean) : [];
-}
+// `parseListParam` moved to `@/lib/jobs/match-filters` — it needs to be
+// importable from plain server code too (the saved-search digest cron),
+// and this file is "use client".
+export { parseListParam } from "@/lib/jobs/match-filters";

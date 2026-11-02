@@ -128,7 +128,12 @@ function SearchBarFields({
   const [suggestionsOpen, setSuggestionsOpen] = useState(false);
   const [highlighted, setHighlighted] = useState(0);
 
-  const canSave = q.trim() !== "" || near !== "";
+  // Real bug report: selecting salary/remote/etc. chip filters (anything
+  // other than typing a keyword or picking a location) left this button
+  // permanently disabled — those filters live entirely in the URL
+  // (JobsExplorer's own state), which this component never looked at
+  // before deciding whether there was "a search" to save.
+  const canSave = q.trim() !== "" || near !== "" || (onJobsPage && urlParams.toString() !== "");
 
   // "Search-bar autocomplete/suggestions" (real-usage QA item) — matches
   // against the two curated vocabularies this app already has (tech
@@ -197,10 +202,24 @@ function SearchBarFields({
     setSaveState("saving");
     const place = locations.find((l) => l.slug === near)?.name;
     const label = [q.trim() && `"${q.trim()}"`, place].filter(Boolean).join(" · ") || t("search");
-    const result = await saveSearchAction(
-      { q: q.trim() || null, near: near || null, radiusKm: near ? Number(radiusKm) : null },
-      label,
-    );
+
+    // Captures every active chip filter (salary, remote, work model,
+    // etc.) along with the keyword/location fields this component owns
+    // directly — not just the latter, which is the bug being fixed here.
+    // Merges local q/near/radiusKm on top so a keyword typed but not yet
+    // submitted still gets saved, same as before this fix.
+    const merged = onJobsPage ? new URLSearchParams(urlParams.toString()) : new URLSearchParams();
+    if (q.trim()) merged.set("q", q.trim());
+    else merged.delete("q");
+    if (near) {
+      merged.set("near", near);
+      merged.set("radiusKm", radiusKm);
+    } else {
+      merged.delete("near");
+      merged.delete("radiusKm");
+    }
+
+    const result = await saveSearchAction(Object.fromEntries(merged.entries()), label);
     setSaveState(result.ok ? "saved" : "error");
   }
 
