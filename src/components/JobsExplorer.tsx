@@ -9,7 +9,7 @@ import { Button } from "@/components/Button";
 import { TechIcon } from "@/components/icons/tech-icons";
 import { CategoryIcon } from "@/components/icons/category-icons";
 import { useUrlSearchParams, writeUrlSearchParams, parseListParam } from "@/hooks/useUrlSearchParams";
-import { haversineKm } from "@/lib/geo";
+import { parseJobFilterParams, jobMatchesFilters, monthlyFloor } from "@/lib/jobs/match-filters";
 import type { Job, Seniority, WorkModel } from "@/lib/types";
 import type { EmploymentType } from "@/components/Salary";
 import type { LocationOption } from "@/lib/db/locations";
@@ -41,23 +41,6 @@ const PANEL_WORK_MODELS: WorkModel[] = ["hybrid", "office"];
 // way remote-only does.
 const EMPLOYMENT_TYPES: EmploymentType[] = ["permanent", "fixed_term", "contractor", "freelance", "internship"];
 type Sort = "recent" | "oldest" | "salary";
-
-/** Monthly-equivalent floor, so a day rate and a monthly salary sort
- *  comparably — null when the employer has hidden the salary (§pricing),
- *  which a minSalary filter must never use to silently exclude the job. */
-function monthlyFloor(job: Job): number | null {
-  if (job.salaryMin == null) return null;
-  switch (job.salaryPeriod) {
-    case "hour":
-      return job.salaryMin * 8 * 21;
-    case "day":
-      return job.salaryMin * 21;
-    case "year":
-      return Math.round(job.salaryMin / 12);
-    default:
-      return job.salaryMin;
-  }
-}
 
 const CHIP_WIDTH = 72;
 const CHIP_GAP = 12; // gap-x-3
@@ -226,26 +209,14 @@ export function JobsExplorer({
 
   const searchKey = searchParams.toString();
 
+  // Single source of truth for "does this job match the current filters"
+  // — shared with the saved-search digest cron (src/lib/jobs/match-filters.ts)
+  // so a saved search's email notifications can never drift from what
+  // this same predicate shows right here.
+  const filters = parseJobFilterParams(searchParams);
+
   const jobs = useMemo(() => {
-    const query = q.trim().toLowerCase();
-    const filtered = allJobs.filter(
-      (j) =>
-        (tech.length === 0 || tech.some((x) => j.tech.includes(x))) &&
-        (cat.length === 0 || (j.categorySlug !== null && cat.includes(j.categorySlug))) &&
-        (seniority.length === 0 || seniority.includes(j.seniority)) &&
-        (adLanguage.length === 0 || adLanguage.includes(j.language)) &&
-        (workModel.length === 0 || workModel.includes(j.workModel)) &&
-        (employmentType.length === 0 || j.employmentTypes.some((et) => employmentType.includes(et))) &&
-        (reqLanguage.length === 0 || reqLanguage.some((l) => j.requiredLanguageSlugs.includes(l))) &&
-        (!remoteOnly || j.workModel === "remote") &&
-        (monthlyFloor(j) === null || monthlyFloor(j)! >= minSalary) &&
-        (!query || j.title.toLowerCase().includes(query)) &&
-        (!nearLocation ||
-          radiusKm <= 0 ||
-          (j.lat !== null &&
-            j.lng !== null &&
-            haversineKm(nearLocation.latitude, nearLocation.longitude, j.lat, j.lng) <= radiusKm)),
-    );
+    const filtered = allJobs.filter((j) => jobMatchesFilters(j, filters, nearLocation));
     switch (sort) {
       case "oldest":
         return filtered.sort((a, b) => b.postedDaysAgo - a.postedDaysAgo);

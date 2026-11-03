@@ -1,10 +1,14 @@
 import { createClient } from "@/lib/supabase/server";
 
-export type SearchQuery = {
-  q: string | null;
-  near: string | null;
-  radiusKm: number | null;
-};
+/** Every active `/jobs` URL param at the moment the search was saved —
+ *  deliberately a plain string map, not a fixed `{q, near, radiusKm}`
+ *  struct (the pre-fix shape). That fixed shape is exactly what caused a
+ *  real bug: a saved search could only ever capture a keyword/location,
+ *  silently dropping every other filter (salary, remote, work model,
+ *  tech, etc.) both from what got saved and from what the digest cron
+ *  matched against. A plain map needs no schema change here or in the
+ *  digest whenever `/jobs` gains a new filter param. */
+export type SearchQuery = Record<string, string>;
 
 export type SavedSearch = {
   id: string;
@@ -16,15 +20,11 @@ export type SavedSearch = {
 
 /** Builds the URL query string a saved search re-runs against — kept here,
  *  next to the type it operates on, so the /jobs link and the delete/list
- *  UI can't drift apart from what was actually saved. */
+ *  UI can't drift apart from what was actually saved. Every stored key
+ *  round-trips verbatim — no per-field logic to keep in sync as `/jobs`
+ *  gains filters. */
 export function savedSearchHref(query: SearchQuery): string {
-  const params = new URLSearchParams();
-  if (query.q) params.set("q", query.q);
-  if (query.near) {
-    params.set("near", query.near);
-    if (query.radiusKm) params.set("radiusKm", String(query.radiusKm));
-  }
-  const qs = params.toString();
+  const qs = new URLSearchParams(query).toString();
   return qs ? `/jobs?${qs}` : "/jobs";
 }
 
