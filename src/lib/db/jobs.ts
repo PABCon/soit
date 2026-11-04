@@ -5,6 +5,7 @@ import type { Job, SkillLevel, ContractSalary } from "@/lib/types";
 import type { SalaryBasis } from "@/components/Salary";
 import { getMyEmployerContext, type MyCompany } from "./companies";
 import { getMyEmployerUnreadThreadCount } from "./messaging";
+import { sortForFeed } from "@/lib/jobs/sort-feed";
 
 /** An API-key-authenticated request has no cookie session at all — only
  *  the caller's already-verified `companyId` (from
@@ -174,21 +175,15 @@ export function hideSalaryIfPrivate(row: JobRow, job: Job): Job {
   return { ...job, salaryMin: null, salaryMax: null, contractSalaries: [] };
 }
 
-/** Top-Employer jobs sort first (their own subscription perk), then by
- *  `boost_rank_at` — a manual bump or the salary-transparency auto-boost
- *  jumps a job back to the top of its own bracket, same idea as a repost,
- *  not a fixed multi-day pinned state. Stable sort: within each bracket,
- *  rows already arrive `boost_rank_at desc` from the DB `order()` clause,
- *  so this only ever reorders across the Top-Employer/regular boundary. */
-function sortForFeed(rows: JobRow[]): JobRow[] {
-  return [...rows].sort((a, b) => {
-    const topEmployerDelta = Number(b.companies.top_employer_active) - Number(a.companies.top_employer_active);
-    if (topEmployerDelta !== 0) return topEmployerDelta;
-    const aRank = a.boost_rank_at ? new Date(a.boost_rank_at).getTime() : 0;
-    const bRank = b.boost_rank_at ? new Date(b.boost_rank_at).getTime() : 0;
-    return bRank - aRank;
-  });
-}
+// `sortForFeed` lives in `@/lib/jobs/sort-feed` (a pure, dependency-light
+// module) rather than here — this file's own import chain has a
+// side-effecting module load (the Resend client is constructed eagerly,
+// via messaging.ts → send.ts) that breaks importing anything from here at
+// all under Vitest with no API key configured. `export { x } from "y"` is
+// a re-export only — it doesn't bind `x` locally, so the real call sites
+// below need a genuine `import` too; re-exported afterward so this stays
+// a drop-in replacement for the function that used to live here.
+export { sortForFeed };
 
 export type RequiredLanguage = { slug: string; label: string; level: SkillLevel | null };
 
