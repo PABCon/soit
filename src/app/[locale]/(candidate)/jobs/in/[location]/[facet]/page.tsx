@@ -36,7 +36,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const place = result.locationName ?? "Portugal";
   const facetLabel = await resolveFacetLabel(locale, result);
   const t = await getTranslations({ locale, namespace: "feed" });
-  const title = `${facetLabel} jobs in ${place} — Just IT`;
+  // Screaming Frog audit (Nov 2026): same two bugs as the plain location
+  // browse page's title (see its own comment) — hardcoded English
+  // regardless of locale, plus a redundant "— Just IT" stacking on top of
+  // the root layout's own " · Just IT" template. `facetJobsIn` is the
+  // exact same already-localized string this page's own <h1> uses.
+  const title = t("facetJobsIn", { facet: facetLabel, place });
   const description = t("browseFacetMetaDescription", { count: result.jobs.length, facet: facetLabel, place });
   return {
     title,

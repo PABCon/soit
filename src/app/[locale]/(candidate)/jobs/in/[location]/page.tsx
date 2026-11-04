@@ -23,7 +23,15 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   if (!result) return {};
   const t = await getTranslations({ locale, namespace: "feed" });
   const place = result.locationName ?? "";
-  const title = `IT jobs in ${place} — Just IT`;
+  // Screaming Frog audit (Nov 2026): this was hardcoded English regardless
+  // of locale — the PT-locale version of this page literally said "IT
+  // jobs in Lisboa" — and separately appended its own "— Just IT" on top
+  // of the root layout's title template, which already adds " · Just IT",
+  // producing "...— Just IT · Just IT". `jobsIn` is the exact same string
+  // already used for this page's own <h1>, already correctly localized in
+  // both catalogues — reusing it fixes both bugs at once rather than
+  // inventing a parallel, easily-drifting title string.
+  const title = t("jobsIn", { place });
   const description = t("browseLocationMetaDescription", { count: result.jobs.length, place });
   return {
     title,
