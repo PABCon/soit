@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { routing } from "@/i18n/routing";
 
+const { defaultLocale } = routing;
+
 const SITE = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
 // Real-usage report: a justit.pt/jobs link shared in iMessage rendered its
 // thumbnail as a cropped "Jst" fragment — `logo-justit.png` is an 800x318
@@ -22,13 +24,23 @@ const DEFAULT_OG_IMAGE_HEIGHT = 630;
  * same correct `x-default` + per-locale pairing the job detail page's own
  * implementation already had right, instead of each page reinventing it
  * (or not).
+ *
+ * Screaming Frog audit (Nov 2026): `x-default` pointed at the bare,
+ * un-prefixed root (`SITE/`) — but `routing.localePrefix` is "always", so
+ * that URL only ever 307-redirects to the default locale via middleware,
+ * never itself returns 200. Every page on the site carries this same tag,
+ * which is exactly why the crawl flagged ~97% of URLs as having a
+ * non-200 hreflang target. `x-default` now points at the default
+ * locale's own real URL instead, matching that locale's `languages` entry
+ * exactly (same value, not a near-duplicate) so it's always a real,
+ * directly-indexable 200.
  */
 export function localeAlternates(path: string, locale: string): Metadata["alternates"] {
   return {
     canonical: `${SITE}/${locale}${path}`,
     languages: {
       ...Object.fromEntries(routing.locales.map((l) => [l, `${SITE}/${l}${path}`])),
-      "x-default": `${SITE}/`,
+      "x-default": `${SITE}/${defaultLocale}${path}`,
     },
   };
 }

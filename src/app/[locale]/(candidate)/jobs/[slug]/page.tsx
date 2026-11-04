@@ -58,6 +58,16 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const t = await getTranslations({ locale, namespace: "job" });
 
   const title = `${job.title} — ${job.company.name}`;
+  // Screaming Frog audit (Nov 2026): job titles are employer-chosen and
+  // often already long on their own; the root layout's `%s · Just IT`
+  // template was appending another ~12 characters on top of that for
+  // every one of the ~100 live job pages, consistently pushing them past
+  // the ~60-char/~560px SERP display budget (71% of the whole crawled
+  // site — this page type alone). `{ absolute }` opts this one field out
+  // of the template rather than changing it site-wide — the company name
+  // already differentiates the listing, and every other page (where
+  // titles are short and controlled by us, not an employer) keeps the
+  // suffix unchanged.
   // A per-job description was entirely missing before this (SEO audit
   // finding) — the single highest-value page in the app for social-share
   // CTR had no description and fell back to the generic site-level
@@ -71,7 +81,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const description = live ? rawDescription : `${t("closedMetaPrefix")} ${rawDescription}`;
 
   return {
-    title,
+    title: { absolute: title },
     description,
     alternates: localeAlternates(`/jobs/${slug}`, locale),
     ...socialMeta({
