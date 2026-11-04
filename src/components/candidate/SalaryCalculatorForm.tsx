@@ -146,7 +146,18 @@ export function SalaryCalculatorForm() {
     // must not get clobbered by re-reading the original shared link.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-  const [mode, setMode] = useState<CalculatorMode>(sharedState?.mode ?? "employment");
+  // `?mode=` is a plain deep-link into one tab (e.g. from the recibos
+  // verdes guide's "calculate your numbers" CTA) — distinct from `?s=`,
+  // which carries a full previously-shared calculation. `?s=` wins when
+  // both are somehow present, since it's a complete, intentional state.
+  // Validated against the real mode list — an unrecognized value (a
+  // stale/malformed link) falls back to the normal default instead of
+  // setting `mode` to a string none of the `mode === "..."` checks below
+  // would ever match.
+  const modeParam = searchParams.get("mode");
+  const initialMode =
+    sharedState?.mode ?? (MODES.includes(modeParam as CalculatorMode) ? (modeParam as CalculatorMode) : "employment");
+  const [mode, setMode] = useState<CalculatorMode>(initialMode);
   const [profile, setProfile] = useState<Profile>(sharedState?.profile ?? DEFAULT_PROFILE);
   const [employmentInput, setEmploymentInput] = useState<EmploymentInput>(
     sharedState?.employmentInput ?? DEFAULT_EMPLOYMENT_INPUT,
@@ -996,20 +1007,25 @@ export function SalaryCalculatorForm() {
         <h2 className="font-semibold">{t("infoHeading")}</h2>
 
         {mode === "employment" && (
-          <dl className="mt-3 space-y-3">
-            <div>
-              <dt className="font-medium">{t("employmentInfoWithholdingTerm")}</dt>
-              <dd className="text-muted">{t("employmentInfoWithholdingDefinition")}</dd>
-            </div>
-            <div>
-              <dt className="font-medium">{t("employmentInfoRightsTerm")}</dt>
-              <dd className="text-muted">{t("employmentInfoRightsDefinition")}</dd>
-            </div>
-            <div>
-              <dt className="font-medium">{t("employmentInfoContractTypesTerm")}</dt>
-              <dd className="text-muted">{t("employmentInfoContractTypesDefinition")}</dd>
-            </div>
-          </dl>
+          <>
+            <dl className="mt-3 space-y-3">
+              <div>
+                <dt className="font-medium">{t("employmentInfoWithholdingTerm")}</dt>
+                <dd className="text-muted">{t("employmentInfoWithholdingDefinition")}</dd>
+              </div>
+              <div>
+                <dt className="font-medium">{t("employmentInfoRightsTerm")}</dt>
+                <dd className="text-muted">{t("employmentInfoRightsDefinition")}</dd>
+              </div>
+              <div>
+                <dt className="font-medium">{t("employmentInfoContractTypesTerm")}</dt>
+                <dd className="text-muted">{t("employmentInfoContractTypesDefinition")}</dd>
+              </div>
+            </dl>
+            <Link href="/guia/contrato-trabalho" className="mt-4 inline-block text-sm font-medium text-pine hover:underline">
+              {t("employmentGuideLink")}
+            </Link>
+          </>
         )}
 
         {mode === "freelance" && (
@@ -1052,28 +1068,41 @@ export function SalaryCalculatorForm() {
                 <dd className="text-muted">{t("freelancePitfallNoRightsDefinition")}</dd>
               </div>
             </dl>
+
+            {/* Growth plan: bidirectional link with the new recibos
+             *  verdes guide — someone deep in the numbers here who wants
+             *  the fuller picture can go read it, same as the guide
+             *  itself links back in here to compute real figures. */}
+            <Link href="/guia/recibos-verdes" className="mt-4 inline-block text-sm font-medium text-pine hover:underline">
+              {t("freelanceGuideLink")}
+            </Link>
           </>
         )}
 
         {mode === "company" && (
-          <dl className="mt-3 space-y-3">
-            <div>
-              <dt className="font-medium">{t("companyInfoAccountantTerm")}</dt>
-              <dd className="text-muted">{t("companyInfoAccountantDefinition")}</dd>
-            </div>
-            <div>
-              <dt className="font-medium">{t("companyInfoLegalReserveTerm")}</dt>
-              <dd className="text-muted">{t("companyInfoLegalReserveDefinition")}</dd>
-            </div>
-            <div>
-              <dt className="font-medium">{t("companyInfoSalaryVsDividendsTerm")}</dt>
-              <dd className="text-muted">{t("companyInfoSalaryVsDividendsDefinition")}</dd>
-            </div>
-            <div>
-              <dt className="font-medium">{t("companyInfoIrcScheduleTerm")}</dt>
-              <dd className="text-muted">{t("companyInfoIrcScheduleDefinition")}</dd>
-            </div>
-          </dl>
+          <>
+            <dl className="mt-3 space-y-3">
+              <div>
+                <dt className="font-medium">{t("companyInfoAccountantTerm")}</dt>
+                <dd className="text-muted">{t("companyInfoAccountantDefinition")}</dd>
+              </div>
+              <div>
+                <dt className="font-medium">{t("companyInfoLegalReserveTerm")}</dt>
+                <dd className="text-muted">{t("companyInfoLegalReserveDefinition")}</dd>
+              </div>
+              <div>
+                <dt className="font-medium">{t("companyInfoSalaryVsDividendsTerm")}</dt>
+                <dd className="text-muted">{t("companyInfoSalaryVsDividendsDefinition")}</dd>
+              </div>
+              <div>
+                <dt className="font-medium">{t("companyInfoIrcScheduleTerm")}</dt>
+                <dd className="text-muted">{t("companyInfoIrcScheduleDefinition")}</dd>
+              </div>
+            </dl>
+            <Link href="/guia/empresa-propria" className="mt-4 inline-block text-sm font-medium text-pine hover:underline">
+              {t("companyGuideLink")}
+            </Link>
+          </>
         )}
       </div>
 
