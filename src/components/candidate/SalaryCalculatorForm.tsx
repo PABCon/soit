@@ -146,7 +146,18 @@ export function SalaryCalculatorForm() {
     // must not get clobbered by re-reading the original shared link.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-  const [mode, setMode] = useState<CalculatorMode>(sharedState?.mode ?? "employment");
+  // `?mode=` is a plain deep-link into one tab (e.g. from the recibos
+  // verdes guide's "calculate your numbers" CTA) — distinct from `?s=`,
+  // which carries a full previously-shared calculation. `?s=` wins when
+  // both are somehow present, since it's a complete, intentional state.
+  // Validated against the real mode list — an unrecognized value (a
+  // stale/malformed link) falls back to the normal default instead of
+  // setting `mode` to a string none of the `mode === "..."` checks below
+  // would ever match.
+  const modeParam = searchParams.get("mode");
+  const initialMode =
+    sharedState?.mode ?? (MODES.includes(modeParam as CalculatorMode) ? (modeParam as CalculatorMode) : "employment");
+  const [mode, setMode] = useState<CalculatorMode>(initialMode);
   const [profile, setProfile] = useState<Profile>(sharedState?.profile ?? DEFAULT_PROFILE);
   const [employmentInput, setEmploymentInput] = useState<EmploymentInput>(
     sharedState?.employmentInput ?? DEFAULT_EMPLOYMENT_INPUT,
@@ -1052,6 +1063,14 @@ export function SalaryCalculatorForm() {
                 <dd className="text-muted">{t("freelancePitfallNoRightsDefinition")}</dd>
               </div>
             </dl>
+
+            {/* Growth plan: bidirectional link with the new recibos
+             *  verdes guide — someone deep in the numbers here who wants
+             *  the fuller picture can go read it, same as the guide
+             *  itself links back in here to compute real figures. */}
+            <Link href="/guia/recibos-verdes" className="mt-4 inline-block text-sm font-medium text-pine hover:underline">
+              {t("freelanceGuideLink")}
+            </Link>
           </>
         )}
 
