@@ -8,13 +8,18 @@ import { AuthSplitScreen } from "@/components/auth/AuthSplitScreen";
 import { AuthHero } from "@/components/auth/AuthHero";
 import { TopEmployerLogos } from "@/components/auth/TopEmployerLogos";
 import { getTopEmployerCompanies } from "@/lib/db/companies";
+import { localeAlternates } from "@/lib/seo";
 
 type Props = { params: Promise<{ locale: string }> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale } = await params;
   const t = await getTranslations({ locale, namespace: "auth" });
-  return { title: t("employerRegisterTitle"), robots: { index: false, follow: false } };
+  return {
+    title: t("employerRegisterTitle"),
+    robots: { index: false, follow: false },
+    alternates: localeAlternates("/employer/register", locale),
+  };
 }
 
 export default async function EmployerRegisterPage({ params }: Props) {

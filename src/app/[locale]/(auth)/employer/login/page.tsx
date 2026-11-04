@@ -6,13 +6,18 @@ import { Link } from "@/i18n/navigation";
 import { AuthForm } from "@/components/auth/AuthForm";
 import { AuthSplitScreen } from "@/components/auth/AuthSplitScreen";
 import { AuthHero } from "@/components/auth/AuthHero";
+import { localeAlternates } from "@/lib/seo";
 
 type Props = { params: Promise<{ locale: string }> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale } = await params;
   const t = await getTranslations({ locale, namespace: "auth" });
-  return { title: t("employerLoginTitle"), robots: { index: false, follow: false } };
+  return {
+    title: t("employerLoginTitle"),
+    robots: { index: false, follow: false },
+    alternates: localeAlternates("/employer/login", locale),
+  };
 }
 
 export default async function EmployerLoginPage({ params }: Props) {

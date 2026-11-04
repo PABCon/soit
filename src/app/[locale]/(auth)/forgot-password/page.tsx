@@ -1,13 +1,18 @@
 import type { Metadata } from "next";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { ForgotPasswordForm } from "@/components/auth/ForgotPasswordForm";
+import { localeAlternates } from "@/lib/seo";
 
 type Props = { params: Promise<{ locale: string }> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { locale } = await params;
   const t = await getTranslations({ locale, namespace: "auth" });
-  return { title: t("forgotPasswordTitle"), robots: { index: false, follow: false } };
+  return {
+    title: t("forgotPasswordTitle"),
+    robots: { index: false, follow: false },
+    alternates: localeAlternates("/forgot-password", locale),
+  };
 }
 
 /** Role-agnostic (§6.4) — password reset doesn't care whether the email
