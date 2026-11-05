@@ -1465,6 +1465,9 @@
     },
     "strengthsHeading": "What's working",
     "improvementsHeading": "What to fix",
+    "matchCtaHeading": "Let's get you matched against real jobs",
+    "matchCtaBody": "Complete your profile and we'll show you open roles ranked by how well they actually fit your skills and experience.",
+    "matchCtaButton": "See my job matches",
     "claimError": {
       "not_found": "We couldn't find that review — it may have expired. Upload your CV again to get a fresh score.",
       "expired": "That review has expired. Upload your CV again to get a fresh score.",

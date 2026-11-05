@@ -1465,6 +1465,9 @@
     },
     "strengthsHeading": "O que está a funcionar",
     "improvementsHeading": "O que corrigir",
+    "matchCtaHeading": "Vamos encontrar vagas à sua medida",
+    "matchCtaBody": "Complete o seu perfil e mostramos-lhe vagas abertas, ordenadas por quão bem correspondem às suas competências e experiência.",
+    "matchCtaButton": "Ver as minhas vagas recomendadas",
     "claimError": {
       "not_found": "Não encontrámos essa avaliação — pode ter expirado. Carregue o seu CV novamente para obter uma nova pontuação.",
       "expired": "Essa avaliação expirou. Carregue o seu CV novamente para obter uma nova pontuação.",

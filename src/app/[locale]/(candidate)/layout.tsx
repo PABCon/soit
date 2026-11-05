@@ -5,6 +5,7 @@ import { getMyCandidateUnreadThreadCount } from "@/lib/db/messaging";
 import { Rail } from "@/components/candidate/Rail";
 import { TopNav } from "@/components/candidate/TopNav";
 import { CvOnboardingPrompt } from "@/components/candidate/CvOnboardingPrompt";
+import { CvReviewClaimWatcher } from "@/components/candidate/CvReviewClaimWatcher";
 import { Footer } from "@/components/Footer";
 
 /**
@@ -64,6 +65,7 @@ export default async function CandidateLayout({
       <div className="flex min-w-0 flex-1 flex-col">
         <TopNav />
         <CvOnboardingPrompt />
+        <CvReviewClaimWatcher />
         {/* Real-usage report, confirmed via a real 3420px-wide screenshot:
          *  the prior 1600px cap left a ~900px dead gap on each side on a
          *  genuinely wide/ultrawide monitor. Widened to 2200px — every

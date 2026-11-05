@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { Link, useRouter } from "@/i18n/navigation";
 import { buttonClassName } from "@/components/Button";
 import { reviewCvAction, type CreateCvReviewResult } from "@/app/[locale]/(candidate)/avaliar-cv/actions";
+import { PENDING_CV_REVIEW_TOKEN_KEY } from "@/components/candidate/CvReviewClaimWatcher";
 
 type Scored = Extract<CreateCvReviewResult, { ok: true }>;
 
@@ -41,6 +42,18 @@ export function CvReviewUpload() {
     if (result.claimed) {
       router.push(`/avaliar-cv/resultado?token=${result.token}`);
       return;
+    }
+    // Belt-and-suspenders with the explicit `next=` links below: those
+    // cover a direct click on this card's own CTAs, this covers a visitor
+    // who instead logs in/registers through the site's main nav (a
+    // separate component with no idea a review is in progress) —
+    // CvReviewClaimWatcher, mounted once in the candidate shell, picks
+    // this up and redirects the moment a session exists.
+    try {
+      localStorage.setItem(PENDING_CV_REVIEW_TOKEN_KEY, result.token);
+    } catch {
+      // Private browsing / blocked storage — the explicit next= links
+      // still work, so this is a pure enhancement, never load-bearing.
     }
     setBusy(false);
     setScored(result);

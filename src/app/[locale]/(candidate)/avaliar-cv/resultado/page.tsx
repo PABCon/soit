@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import { getTranslations, setRequestLocale } from "next-intl/server";
-import { redirect } from "@/i18n/navigation";
+import { redirect, Link } from "@/i18n/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { claimCvReview } from "@/lib/db/cv-review";
+import { buttonClassName } from "@/components/Button";
 
 type Props = {
   params: Promise<{ locale: string }>;
@@ -94,6 +95,14 @@ export default async function CvReviewResultPage({ params, searchParams }: Props
           </li>
         ))}
       </ul>
+
+      <div className="mt-10 rounded-2xl border border-line bg-paper p-6 text-center">
+        <h2 className="font-display text-lg font-bold">{t("matchCtaHeading")}</h2>
+        <p className="mx-auto mt-2 max-w-md text-sm text-muted">{t("matchCtaBody")}</p>
+        <Link href="/recommendations" className={`mt-4 inline-block ${buttonClassName({ size: "md" })}`}>
+          {t("matchCtaButton")}
+        </Link>
+      </div>
     </article>
   );
 }
