@@ -36,6 +36,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     "/developers",
     "/recommendations",
     "/avaliar-cv",
+    "/preparacao-entrevista",
   ].flatMap(forEachLocale);
   const jobPages = jobs.flatMap((j) => forEachLocale(`/jobs/${j.slug}`));
   const companyPages = companies.flatMap((c) => forEachLocale(`/companies/${c.slug}`));
