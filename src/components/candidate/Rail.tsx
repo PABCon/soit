@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { Link, usePathname } from "@/i18n/navigation";
 
-type Item = { key: string; href: string; icon: React.ReactNode; mvp: boolean };
+type Item = { key: string; href: string; icon: React.ReactNode; mvp: boolean; requiresAuth?: boolean };
 
 const icon = (d: string) => (
   <svg
@@ -39,7 +39,13 @@ const ITEMS: Item[] = [
     mvp: true,
   },
   { key: "favorites", href: "/favorites", icon: icon("m12 20-7-7a4 4 0 0 1 7-5 4 4 0 0 1 7 5Z"), mvp: true },
-  { key: "profile", href: "/profile", icon: icon("M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm-8 8a8 8 0 0 1 16 0"), mvp: true },
+  {
+    key: "profile",
+    href: "/profile",
+    icon: icon("M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm-8 8a8 8 0 0 1 16 0"),
+    mvp: true,
+    requiresAuth: true,
+  },
   { key: "cv", href: "/avaliar-cv", icon: icon("M7 3h7l5 5v13H7Zm7 0v5h5"), mvp: true },
   {
     key: "interviewPrep",
@@ -47,7 +53,13 @@ const ITEMS: Item[] = [
     icon: icon("M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z"),
     mvp: true,
   },
-  { key: "settings", href: "/settings", icon: icon("M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm8-3-2-1 1-2-2-2-2 1-1-2h-4l-1 2-2-1-2 2 1 2-2 1v4l2 1-1 2 2 2 2-1 1 2h4l1-2 2 1 2-2-1-2 2-1Z"), mvp: true },
+  {
+    key: "settings",
+    href: "/settings",
+    icon: icon("M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm8-3-2-1 1-2-2-2-2 1-1-2h-4l-1 2-2-1-2 2 1 2-2 1v4l2 1-1 2 2 2 2-1 1 2h4l1-2 2 1 2-2-1-2 2-1Z"),
+    mvp: true,
+    requiresAuth: true,
+  },
 ];
 
 /**
@@ -81,11 +93,23 @@ const ITEMS: Item[] = [
  * `(candidate)/layout.tsx`, zero overlap with content by construction)
  * is unchanged from rounds 5/6 — this round only touches this component's
  * own vertical position/sizing and its interaction model.
+ *
+ * `requiresAuth` (added later, direct instruction, deliberately scoped to
+ * just these two on a direct follow-up correction): Profile and Settings
+ * both redirect a logged-out visitor straight to login with zero public
+ * value of their own. `isLoggedIn`, computed once in
+ * `(candidate)/layout.tsx`'s own existing session check (no new
+ * client-side auth fetch needed), filters them out entirely for an
+ * anonymous visitor instead of showing a link that only ever bounces
+ * them away. Everything else — including Applications/Messages/
+ * Favorites, which also redirect to login when signed out — stays
+ * visible either way, per explicit instruction not to touch those.
  */
-export function Rail({ unreadMessageCount = 0 }: { unreadMessageCount?: number }) {
+export function Rail({ unreadMessageCount = 0, isLoggedIn = false }: { unreadMessageCount?: number; isLoggedIn?: boolean }) {
   const t = useTranslations("rail");
   const pathname = usePathname();
   const [hovered, setHovered] = useState(false);
+  const items = ITEMS.filter((item) => !item.requiresAuth || isLoggedIn);
 
   function isActive(item: Item) {
     return pathname === item.href || pathname.startsWith(`${item.href}/`);
@@ -175,7 +199,7 @@ export function Rail({ unreadMessageCount = 0 }: { unreadMessageCount?: number }
             hovered ? "w-56 px-3" : "w-16 px-2"
           }`}
         >
-          {ITEMS.map((item) => renderItem(item))}
+          {items.map((item) => renderItem(item))}
         </nav>
       </div>
     </div>

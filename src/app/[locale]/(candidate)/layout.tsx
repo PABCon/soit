@@ -35,6 +35,7 @@ export default async function CandidateLayout({
   // — worst case here is just skipping the redirect, not crashing the page.
   let blockEmployer = false;
   let unreadMessageCount = 0;
+  let isLoggedIn = false;
   try {
     const supabase = await createClient();
     const {
@@ -46,6 +47,7 @@ export default async function CandidateLayout({
         supabase.from("candidates").select("id").eq("auth_user_id", user.id).maybeSingle(),
       ]);
       blockEmployer = !!employer && !candidate;
+      isLoggedIn = !!candidate;
       if (candidate) unreadMessageCount = await getMyCandidateUnreadThreadCount();
     }
   } catch {
@@ -61,7 +63,7 @@ export default async function CandidateLayout({
     // width or scroll position, by construction (see Rail.tsx's own
     // comment for the full reasoning).
     <div className="flex min-h-dvh flex-col sm:flex-row">
-      <Rail unreadMessageCount={unreadMessageCount} />
+      <Rail unreadMessageCount={unreadMessageCount} isLoggedIn={isLoggedIn} />
       <div className="flex min-w-0 flex-1 flex-col">
         <TopNav />
         <CvOnboardingPrompt />
