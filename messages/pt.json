@@ -36,7 +36,7 @@
     "salaryCalculator": "Calculadora de salário",
     "favorites": "Favoritos",
     "profile": "Perfil",
-    "cv": "CV",
+    "cv": "Pontuação do CV",
     "settings": "Definições",
     "soon": "Em breve",
     "collapse": "Reduzir menu",
@@ -1429,6 +1429,48 @@
     "ctaHeading": "Compare os seus próprios números",
     "ctaBody": "A verdadeira contrapartida entre empresa própria, recibos verdes e contrato de trabalho depende inteiramente do seu rendimento e situação — a calculadora aplica as três opções às regras reais de 2026.",
     "ctaButton": "Calcule os números da sua empresa →"
+  },
+  "cvReview": {
+    "pageTitle": "Avaliação Gratuita do CV para Profissionais de IT em Portugal",
+    "pageDescription": "Carregue o seu CV e receba uma pontuação instantânea de qualidade feita por IA, pensada para o mercado de IT em Portugal — estrutura, impacto e completude, com sugestões específicas e acionáveis.",
+    "heading": "O seu CV é mesmo bom?",
+    "introP1": "Carregue o seu CV e receba uma pontuação instantânea — construída à volta do que realmente faz um CV de IT destacar-se em Portugal. Não precisa de criar conta para ver a sua pontuação.",
+    "scoreHeading": "A pontuação do seu CV",
+    "teaserBody": "Crie uma conta gratuita para ver exatamente o que está a influenciar esta pontuação — uma análise detalhada de estrutura, impacto e completude, com correções específicas que pode aplicar hoje.",
+    "createAccountCta": "Criar a minha conta grátis",
+    "alreadyHaveAccount": "Já tem conta?",
+    "logIn": "Entrar",
+    "chooseFile": "Escolher ficheiro",
+    "analyzing": "A analisar…",
+    "uploadHint": "PDF ou Word, até 5MB. Nada é guardado até criar uma conta.",
+    "error": {
+      "file_too_large": "Esse ficheiro é demasiado grande.",
+      "bad_file": "Esse ficheiro não tem um formato suportado, ou não conseguimos lê-lo.",
+      "empty_content": "Esse ficheiro não tem texto suficiente para avaliar — tente outro.",
+      "generation_failed": "Não foi possível avaliar esse CV agora. Tente novamente."
+    },
+    "tipsHeading": "O que realmente torna um CV de IT forte",
+    "structureTerm": "Estrutura",
+    "structureBody": "Um recrutador deve conseguir ler o seu CV em 30 segundos — títulos claros, ordem cronológica inversa, sem blocos de texto contínuo.",
+    "impactTerm": "Impacto",
+    "impactBody": "Descreva resultados e impacto, não apenas responsabilidades — o que mudou por estar lá, idealmente com números reais.",
+    "completenessTerm": "Completude",
+    "completenessBody": "Contacto, um historial profissional completo com datas, e formação académica — o básico de que um recrutador precisa para sequer agir.",
+    "resultPageTitle": "A Sua Pontuação de CV",
+    "resultHeading": "A análise completa do seu CV",
+    "section": {
+      "structure": "Estrutura",
+      "impact": "Impacto",
+      "completeness": "Completude"
+    },
+    "strengthsHeading": "O que está a funcionar",
+    "improvementsHeading": "O que corrigir",
+    "claimError": {
+      "not_found": "Não encontrámos essa avaliação — pode ter expirado. Carregue o seu CV novamente para obter uma nova pontuação.",
+      "expired": "Essa avaliação expirou. Carregue o seu CV novamente para obter uma nova pontuação.",
+      "claimed_by_other": "Esta avaliação já está associada a outra conta.",
+      "not_a_candidate": "Algo correu mal. Tente novamente."
+    }
   },
   "footer": {
     "pagesNav": "Páginas",

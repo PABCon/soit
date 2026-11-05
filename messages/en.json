@@ -36,7 +36,7 @@
     "salaryCalculator": "Salary calculator",
     "favorites": "Favorites",
     "profile": "Profile",
-    "cv": "CV",
+    "cv": "CV Score",
     "settings": "Settings",
     "soon": "Coming soon",
     "collapse": "Collapse menu",
@@ -1429,6 +1429,48 @@
     "ctaHeading": "Compare your own numbers",
     "ctaBody": "The real trade-off between a company, recibos verdes, and an employment contract depends entirely on your own revenue and situation — the calculator runs all three against the real 2026 rules.",
     "ctaButton": "Calculate your company numbers →"
+  },
+  "cvReview": {
+    "pageTitle": "Free CV Score for IT Professionals in Portugal",
+    "pageDescription": "Upload your CV and get an instant quality score from AI, built for the Portuguese IT job market — structure, impact, and completeness, with specific, actionable feedback.",
+    "heading": "How good is your CV, really?",
+    "introP1": "Upload your CV and get an instant score — built around what actually makes an IT CV stand out in Portugal. No signup needed to see your score.",
+    "scoreHeading": "Your CV score",
+    "teaserBody": "Create a free account to see exactly what's driving this score — a breakdown of structure, impact, and completeness, plus specific fixes you can make today.",
+    "createAccountCta": "Create my free account",
+    "alreadyHaveAccount": "Already have an account?",
+    "logIn": "Log in",
+    "chooseFile": "Choose file",
+    "analyzing": "Analyzing…",
+    "uploadHint": "PDF or Word, up to 5MB. Nothing is saved until you create an account.",
+    "error": {
+      "file_too_large": "That file is too large.",
+      "bad_file": "That file isn't a supported format, or we couldn't read it.",
+      "empty_content": "That file doesn't have enough text to review — try a different one.",
+      "generation_failed": "Couldn't score that CV right now. Try again."
+    },
+    "tipsHeading": "What actually makes an IT CV strong",
+    "structureTerm": "Structure",
+    "structureBody": "A recruiter should be able to scan your CV in 30 seconds — clear headings, reverse-chronological order, no walls of unbroken text.",
+    "impactTerm": "Impact",
+    "impactBody": "List outcomes and results, not just responsibilities — what changed because you were there, ideally with real numbers.",
+    "completenessTerm": "Completeness",
+    "completenessBody": "Contact info, a full work history with dates, and education — the basics a recruiter needs before they can act on it at all.",
+    "resultPageTitle": "Your CV Score",
+    "resultHeading": "Your full CV breakdown",
+    "section": {
+      "structure": "Structure",
+      "impact": "Impact",
+      "completeness": "Completeness"
+    },
+    "strengthsHeading": "What's working",
+    "improvementsHeading": "What to fix",
+    "claimError": {
+      "not_found": "We couldn't find that review — it may have expired. Upload your CV again to get a fresh score.",
+      "expired": "That review has expired. Upload your CV again to get a fresh score.",
+      "claimed_by_other": "This review is already linked to a different account.",
+      "not_a_candidate": "Something went wrong. Try again."
+    }
   },
   "footer": {
     "pagesNav": "Pages",
