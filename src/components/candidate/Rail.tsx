@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { Link, usePathname } from "@/i18n/navigation";
 
-type Item = { key: string; href: string; icon: React.ReactNode; mvp: boolean };
+type Item = { key: string; href: string; icon: React.ReactNode; mvp: boolean; requiresAuth?: boolean };
 
 const icon = (d: string) => (
   <svg
@@ -24,12 +24,19 @@ const icon = (d: string) => (
 const ITEMS: Item[] = [
   { key: "recommendations", href: "/recommendations", icon: icon("M12 2 14.5 9H22l-6 4.5L18 22l-6-4.5L6 22l2-8.5L2 9h7.5Z"), mvp: true },
   { key: "offers", href: "/jobs", icon: icon("M4 7h16M4 12h16M4 17h10"), mvp: true },
-  { key: "applications", href: "/applications", icon: icon("M9 5h6m-7 4h8m-8 4h8m-8 4h5M5 3h14v18H5Z"), mvp: true },
+  {
+    key: "applications",
+    href: "/applications",
+    icon: icon("M9 5h6m-7 4h8m-8 4h8m-8 4h5M5 3h14v18H5Z"),
+    mvp: true,
+    requiresAuth: true,
+  },
   {
     key: "communication",
     href: "/messages",
     icon: icon("M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2Z"),
     mvp: true,
+    requiresAuth: true,
   },
   { key: "companies", href: "/companies", icon: icon("M3 21h18M5 21V7l7-4 7 4v14M9 10h2m2 0h2m-6 4h2m2 0h2"), mvp: true },
   {
@@ -38,8 +45,20 @@ const ITEMS: Item[] = [
     icon: icon("M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"),
     mvp: true,
   },
-  { key: "favorites", href: "/favorites", icon: icon("m12 20-7-7a4 4 0 0 1 7-5 4 4 0 0 1 7 5Z"), mvp: true },
-  { key: "profile", href: "/profile", icon: icon("M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm-8 8a8 8 0 0 1 16 0"), mvp: true },
+  {
+    key: "favorites",
+    href: "/favorites",
+    icon: icon("m12 20-7-7a4 4 0 0 1 7-5 4 4 0 0 1 7 5Z"),
+    mvp: true,
+    requiresAuth: true,
+  },
+  {
+    key: "profile",
+    href: "/profile",
+    icon: icon("M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm-8 8a8 8 0 0 1 16 0"),
+    mvp: true,
+    requiresAuth: true,
+  },
   { key: "cv", href: "/avaliar-cv", icon: icon("M7 3h7l5 5v13H7Zm7 0v5h5"), mvp: true },
   {
     key: "interviewPrep",
@@ -47,7 +66,13 @@ const ITEMS: Item[] = [
     icon: icon("M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z"),
     mvp: true,
   },
-  { key: "settings", href: "/settings", icon: icon("M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm8-3-2-1 1-2-2-2-2 1-1-2h-4l-1 2-2-1-2 2 1 2-2 1v4l2 1-1 2 2 2 2-1 1 2h4l1-2 2 1 2-2-1-2 2-1Z"), mvp: true },
+  {
+    key: "settings",
+    href: "/settings",
+    icon: icon("M12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6Zm8-3-2-1 1-2-2-2-2 1-1-2h-4l-1 2-2-1-2 2 1 2-2 1v4l2 1-1 2 2 2 2-1 1 2h4l1-2 2 1 2-2-1-2 2-1Z"),
+    mvp: true,
+    requiresAuth: true,
+  },
 ];
 
 /**
@@ -81,11 +106,23 @@ const ITEMS: Item[] = [
  * `(candidate)/layout.tsx`, zero overlap with content by construction)
  * is unchanged from rounds 5/6 — this round only touches this component's
  * own vertical position/sizing and its interaction model.
+ *
+ * `requiresAuth` (added later, direct instruction): Applications,
+ * Messages, Favorites, Profile and Settings all redirect a logged-out
+ * visitor straight to login with zero public value of their own — dead
+ * entries in the nav rather than useful links. `isLoggedIn`, computed
+ * once in `(candidate)/layout.tsx`'s own existing session check (no new
+ * client-side auth fetch needed), filters them out entirely for an
+ * anonymous visitor instead of showing a link that only ever bounces
+ * them away. Offers/Companies/Salary calculator/CV Score/Interview prep
+ * stay visible either way — each has real standalone value (or an honest
+ * pitch) for someone who isn't logged in yet.
  */
-export function Rail({ unreadMessageCount = 0 }: { unreadMessageCount?: number }) {
+export function Rail({ unreadMessageCount = 0, isLoggedIn = false }: { unreadMessageCount?: number; isLoggedIn?: boolean }) {
   const t = useTranslations("rail");
   const pathname = usePathname();
   const [hovered, setHovered] = useState(false);
+  const items = ITEMS.filter((item) => !item.requiresAuth || isLoggedIn);
 
   function isActive(item: Item) {
     return pathname === item.href || pathname.startsWith(`${item.href}/`);
@@ -175,7 +212,7 @@ export function Rail({ unreadMessageCount = 0 }: { unreadMessageCount?: number }
             hovered ? "w-56 px-3" : "w-16 px-2"
           }`}
         >
-          {ITEMS.map((item) => renderItem(item))}
+          {items.map((item) => renderItem(item))}
         </nav>
       </div>
     </div>
