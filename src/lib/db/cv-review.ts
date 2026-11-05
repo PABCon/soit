@@ -15,19 +15,26 @@ function generateReviewToken(): string {
 }
 
 export type CreateCvReviewResult =
-  | { ok: true; token: string; overallScore: number }
+  | { ok: true; token: string; overallScore: number; claimed: boolean }
   | { ok: false; reason: "file_too_large" | "bad_file" | "empty_content" | "generation_failed" };
 
 /**
- * The public "upload your CV, get scored instantly" entry point —
- * deliberately no auth required, mirroring applyAnonymously's own
- * no-session-needed posture: an anonymous visitor is the whole point of
- * this growth loop. Returns only the headline `overallScore`, never the
- * full breakdown — the detailed `result` stays server-side until a real
- * candidate account claims this token, which is the actual conversion
- * moment the feature exists for (§AI Pieces backlog, Track C).
+ * The "upload your CV, get scored instantly" entry point — reachable both
+ * anonymously (the growth-loop case this was originally built for) and by
+ * an already-logged-in candidate (once the Rail's own "CV Score" nav link
+ * made that the much more common path for a returning visitor). A real
+ * bug, caught by the user's own testing, not any automated check: a
+ * logged-in candidate uploading here still got the anonymous "create an
+ * account" prompt — nothing ever checked whether a session already
+ * existed. `candidateId`, when the caller already has one, makes this
+ * claim itself immediately rather than leaving it to be claimed later —
+ * `claimed: true` in the result tells the client to skip the registration
+ * interstitial entirely and go straight to the full breakdown. For a
+ * genuinely anonymous upload (`candidateId` omitted), behavior is
+ * unchanged from before: only the headline `overallScore` ever reaches
+ * the client until a real account claims the token.
  */
-export async function createCvReview(bytes: Uint8Array): Promise<CreateCvReviewResult> {
+export async function createCvReview(bytes: Uint8Array, candidateId?: string | null): Promise<CreateCvReviewResult> {
   if (bytes.byteLength === 0 || bytes.byteLength > MAX_CV_BYTES) return { ok: false, reason: "file_too_large" };
 
   const kind = sniffFileType(bytes);
@@ -42,16 +49,18 @@ export async function createCvReview(bytes: Uint8Array): Promise<CreateCvReviewR
   const admin = createAdminClient();
   const token = generateReviewToken();
   const expiresAt = new Date(Date.now() + REVIEW_TTL_DAYS * 864e5);
+  const now = new Date().toISOString();
   const { error } = await admin.from("cv_review_results").insert({
     token,
     overall_score: scored.data.overallScore,
     result: scored.data,
     cv_text: text,
     expires_at: expiresAt.toISOString(),
+    ...(candidateId ? { candidate_id: candidateId, claimed_at: now } : {}),
   });
   if (error) throw new Error(`cv review creation failed: ${error.message}`);
 
-  return { ok: true, token, overallScore: scored.data.overallScore };
+  return { ok: true, token, overallScore: scored.data.overallScore, claimed: Boolean(candidateId) };
 }
 
 export type CvReviewPreview = { overallScore: number; claimed: boolean };

@@ -5,14 +5,21 @@ import { createCvReview, claimCvReview, type CreateCvReviewResult, type ClaimCvR
 
 export type { CreateCvReviewResult, ClaimCvReviewResult };
 
-/** Public, no-auth entry point — see cv-review.ts's own doc comment for
- *  why this is the deliberate design (score now, gate the breakdown
- *  behind account creation). */
+/** No auth required — but when a session already exists (the Rail's own
+ *  "CV Score" link means a logged-in candidate reaches this page just as
+ *  often as an anonymous visitor now), the upload auto-claims immediately
+ *  instead of making an already-authenticated candidate go through a
+ *  registration prompt for an account they already have. See
+ *  cv-review.ts's own doc comment for the real bug this fixes. */
 export async function reviewCvAction(formData: FormData): Promise<CreateCvReviewResult> {
   const file = formData.get("file") as File | null;
   if (!file || file.size === 0) return { ok: false, reason: "file_too_large" };
   const bytes = new Uint8Array(await file.arrayBuffer());
-  return createCvReview(bytes);
+
+  const supabase = await createClient();
+  const { data: candidateId } = await supabase.rpc("my_candidate_id");
+
+  return createCvReview(bytes, candidateId);
 }
 
 export type ClaimActionResult = ClaimCvReviewResult | { ok: false; reason: "not_a_candidate" };
