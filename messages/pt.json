@@ -37,6 +37,7 @@
     "favorites": "Favoritos",
     "profile": "Perfil",
     "cv": "Pontuação do CV",
+    "interviewPrep": "Preparação de entrevista",
     "settings": "Definições",
     "soon": "Em breve",
     "collapse": "Reduzir menu",
@@ -1474,6 +1475,39 @@
       "claimed_by_other": "Esta avaliação já está associada a outra conta.",
       "not_a_candidate": "Algo correu mal. Tente novamente."
     }
+  },
+  "interviewPrep": {
+    "pageTitle": "Preparação Gratuita para Entrevistas de IT em Portugal",
+    "pageDescription": "Marque uma sessão real de preparação para entrevista com uma pessoa — peça um horário com pelo menos 2 dias de antecedência e confirmamos por email.",
+    "heading": "Prepare-se para a sua próxima entrevista",
+    "introP1": "Peça um horário e confirmamos por email para marcar uma sessão real — sem cartão, sem marcação automática, apenas uma pessoa a responder-lhe.",
+    "pitchTitle": "Crie uma conta gratuita para marcar",
+    "pitchBody": "Marcar uma sessão é grátis para candidatos — basta criar uma conta primeiro para sabermos a quem responder.",
+    "createAccount": "Criar a minha conta grátis",
+    "alreadyHaveAccount": "Já tem conta?",
+    "logIn": "Entrar",
+    "dateLabel": "Data preferida",
+    "timeLabel": "Horário preferido",
+    "noteLabel": "Algo que devêssemos saber? (opcional)",
+    "notePlaceholder": "ex. a vaga ou empresa para a qual está em processo",
+    "leadTimeHint": "Os pedidos precisam de pelo menos 2 dias de antecedência — não é possível marcar para hoje ou amanhã.",
+    "submitCta": "Pedir uma sessão",
+    "submitting": "A enviar…",
+    "doneTitle": "Pedido recebido",
+    "doneBody": "Vamos responder por email para confirmar um horário. Obrigado pelo contacto!",
+    "error": {
+      "missing_date": "Escolha primeiro uma data.",
+      "not_a_candidate": "Algo correu mal. Tente novamente.",
+      "too_soon": "Essa data é demasiado próxima — os pedidos precisam de pelo menos 2 dias de antecedência.",
+      "db_error": "Algo correu mal. Tente novamente."
+    },
+    "tipsHeading": "Como se preparar de verdade",
+    "starTerm": "Use o método STAR",
+    "starBody": "Para perguntas comportamentais, estruture a resposta em Situação, Tarefa, Ação, Resultado — mantém a história concreta e mostra impacto real em vez de um resumo vago.",
+    "researchTerm": "Investigue a empresa e a equipa",
+    "researchBody": "Saiba o que constroem, quem são os clientes e porque existe a vaga — uma pergunta como \"porquê nós?\" é fácil de responder bem depois de ter realmente investigado.",
+    "questionsTerm": "Prepare perguntas próprias e concretas",
+    "questionsBody": "Fazer perguntas específicas e informadas sobre a vaga ou equipa demonstra interesse genuíno — \"como é o sucesso nos primeiros 90 dias?\" causa muito melhor impressão do que não fazer perguntas."
   },
   "footer": {
     "pagesNav": "Páginas",

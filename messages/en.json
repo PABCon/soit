@@ -37,6 +37,7 @@
     "favorites": "Favorites",
     "profile": "Profile",
     "cv": "CV Score",
+    "interviewPrep": "Interview prep",
     "settings": "Settings",
     "soon": "Coming soon",
     "collapse": "Collapse menu",
@@ -1474,6 +1475,39 @@
       "claimed_by_other": "This review is already linked to a different account.",
       "not_a_candidate": "Something went wrong. Try again."
     }
+  },
+  "interviewPrep": {
+    "pageTitle": "Free Interview Prep for IT Professionals in Portugal",
+    "pageDescription": "Book a real interview prep session with a human — request a time at least 2 days out, and we'll confirm by email.",
+    "heading": "Get ready for your next interview",
+    "introP1": "Request a time and we'll confirm by email to set up a real session — no card needed, no automated booking, just a real person getting back to you.",
+    "pitchTitle": "Create a free account to book",
+    "pitchBody": "Booking a session is free for candidates — just create an account first so we know who to get back to.",
+    "createAccount": "Create my free account",
+    "alreadyHaveAccount": "Already have an account?",
+    "logIn": "Log in",
+    "dateLabel": "Preferred date",
+    "timeLabel": "Preferred time",
+    "noteLabel": "Anything we should know? (optional)",
+    "notePlaceholder": "e.g. the role or company you're interviewing with",
+    "leadTimeHint": "Requests need at least 2 days' notice — same-day and next-day aren't available.",
+    "submitCta": "Request a session",
+    "submitting": "Sending…",
+    "doneTitle": "Request received",
+    "doneBody": "We'll reply by email to confirm a time. Thanks for reaching out!",
+    "error": {
+      "missing_date": "Pick a date first.",
+      "not_a_candidate": "Something went wrong. Try again.",
+      "too_soon": "That date is too soon — requests need at least 2 days' notice.",
+      "db_error": "Something went wrong. Try again."
+    },
+    "tipsHeading": "How to actually prepare",
+    "starTerm": "Use the STAR method",
+    "starBody": "For behavioral questions, structure your answer as Situation, Task, Action, Result — it keeps your story concrete and shows real impact instead of a vague summary.",
+    "researchTerm": "Research the company and the team",
+    "researchBody": "Know what they build, who their customers are, and why the role exists — a question like \"why us?\" is easy to answer well once you've actually looked.",
+    "questionsTerm": "Prepare real questions of your own",
+    "questionsBody": "Asking specific, informed questions about the role or team signals genuine interest — \"what does success look like in the first 90 days?\" lands much better than no questions at all."
   },
   "footer": {
     "pagesNav": "Pages",
