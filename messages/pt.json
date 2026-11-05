@@ -1509,11 +1509,21 @@
     "questionsTerm": "Prepare perguntas próprias e concretas",
     "questionsBody": "Fazer perguntas específicas e informadas sobre a vaga ou equipa demonstra interesse genuíno — \"como é o sucesso nos primeiros 90 dias?\" causa muito melhor impressão do que não fazer perguntas."
   },
+  "blog": {
+    "listingTitle": "Blog Just IT — Carreiras e Recrutamento de IT em Portugal",
+    "listingDescription": "Artigos reais e investigados sobre carreiras de IT, recrutamento e salários em Portugal — nada de conteúdo genérico.",
+    "listingHeading": "O Blog da Just IT",
+    "listingIntro": "Artigos reais e investigados sobre carreiras de IT e recrutamento em Portugal.",
+    "empty": "Ainda sem artigos — volte em breve.",
+    "readMore": "Ler mais",
+    "publishedOn": "Publicado a"
+  },
   "footer": {
     "pagesNav": "Páginas",
     "legalNav": "Legal",
     "jobs": "Vagas",
     "companies": "Empresas",
+    "blog": "Blog",
     "postJob": "Publicar vaga",
     "privacy": "Política de privacidade",
     "terms": "Termos de utilização",

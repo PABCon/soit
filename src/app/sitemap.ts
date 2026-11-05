@@ -1,6 +1,7 @@
 import type { MetadataRoute } from "next";
 import { getLiveJobs } from "@/lib/db/jobs";
 import { getVerifiedCompanies } from "@/lib/db/companies";
+import { getAllBlogSlugs } from "@/lib/blog";
 import { routing } from "@/i18n/routing";
 
 const SITE = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
@@ -37,9 +38,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     "/recommendations",
     "/avaliar-cv",
     "/preparacao-entrevista",
+    "/blog",
   ].flatMap(forEachLocale);
   const jobPages = jobs.flatMap((j) => forEachLocale(`/jobs/${j.slug}`));
   const companyPages = companies.flatMap((c) => forEachLocale(`/companies/${c.slug}`));
+  const blogPages = getAllBlogSlugs().flatMap((slug) => forEachLocale(`/blog/${slug}`));
 
   const locationSlugs = new Set<string>();
   const categorySlugs = new Set<string>();
@@ -62,6 +65,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     ...staticPages,
     ...jobPages,
     ...companyPages,
+    ...blogPages,
     ...locationPages,
     ...allLocationsCategoryPages,
     ...locationCategoryPages,

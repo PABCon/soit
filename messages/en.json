@@ -1509,11 +1509,21 @@
     "questionsTerm": "Prepare real questions of your own",
     "questionsBody": "Asking specific, informed questions about the role or team signals genuine interest — \"what does success look like in the first 90 days?\" lands much better than no questions at all."
   },
+  "blog": {
+    "listingTitle": "Just IT Blog — IT Careers & Hiring in Portugal",
+    "listingDescription": "Real, researched articles on IT careers, hiring, and salaries in Portugal — not generic filler.",
+    "listingHeading": "The Just IT Blog",
+    "listingIntro": "Real, researched articles on IT careers and hiring in Portugal.",
+    "empty": "No posts yet — check back soon.",
+    "readMore": "Read more",
+    "publishedOn": "Published"
+  },
   "footer": {
     "pagesNav": "Pages",
     "legalNav": "Legal",
     "jobs": "Jobs",
     "companies": "Companies",
+    "blog": "Blog",
     "postJob": "Post a job",
     "privacy": "Privacy policy",
     "terms": "Terms of use",

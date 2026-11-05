@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@plugin "@tailwindcss/typography";
 
 /**
  * Just IT design tokens — visual brand redesign (energetic/sharp/tech-
