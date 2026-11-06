@@ -20,15 +20,6 @@ The dominant profiles are software development (59%) and DevOps/cloud/infrastruc
 
 We asked where they'd found their last two jobs or contracts. The result leaves little room for doubt:
 
-- **84%**: LinkedIn
-- 32%: a recruiter or headhunter reached out directly
-- 21%: personal network / referral
-- 21%: applied directly on the company's own site
-- 11%: Indeed
-- 6%: Net-Empregos
-- 6%: SAPO Emprego
-- 1%: ITJobs
-
 ![Where they found their last job](/blog/inquerito-onde-encontraram-en.svg)
 
 That's not a comfortable read if you're building a new job board. LinkedIn dominates overwhelmingly, and even the largest general-purpose platforms in Portugal (Net-Empregos, SAPO) barely register as a real hiring source for IT. We're not going to pretend that isn't a real problem: it's the single biggest obstacle any new platform has to overcome, and it's a big part of why so much of our work (SEO, content, this article included) is about giving people a reason to know us before they actively need to job hunt.
@@ -37,10 +28,6 @@ That's not a comfortable read if you're building a new job board. LinkedIn domin
 
 We asked people to check off everything that frustrates them about job hunting in Portugal. One answer stood out clearly above the rest:
 
-**74%**: salaries are never published in job ads.
-
-Next came 63% citing too many intermediary recruiters with no direct employer contact, 45% citing irrelevant or low-quality offers, and 39% citing companies that post jobs and then never respond.
-
 ![Biggest job-hunting frustrations](/blog/inquerito-frustracoes-en.svg)
 
 There's no way around it: salary transparency isn't a "nice to have" we invented for marketing. It's, measurably, the single biggest source of frustration for IT job seekers in Portugal, bigger than being ghosted, bigger than listing quality, bigger than recruiter noise.
@@ -48,11 +35,6 @@ There's no way around it: salary transparency isn't a "nice to have" we invented
 ## What happens if salary is always visible
 
 We asked directly: if a platform always published the salary range on every listing, would that change your behavior?
-
-- 53%: would use it more, but not exclusively
-- 31%: would switch to using it as their primary platform
-- 13%: wouldn't change much
-- 3%: would be skeptical the ranges were accurate
 
 ![If salary was always visible](/blog/inquerito-salario-visivel-en.svg)
 

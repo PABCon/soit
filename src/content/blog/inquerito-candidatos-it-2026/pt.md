@@ -20,15 +20,6 @@ Os perfis dominantes são desenvolvimento de software (59%) e DevOps/cloud/infra
 
 Perguntámos onde tinham encontrado os seus dois últimos empregos ou contratos. O resultado não deixa muita dúvida:
 
-- **84%**: LinkedIn
-- 32%: recrutador ou headhunter que os contactou diretamente
-- 21%: rede pessoal / referência
-- 21%: candidatura direta ao site da empresa
-- 11%: Indeed
-- 6%: Net-Empregos
-- 6%: SAPO Emprego
-- 1%: ITJobs
-
 ![Onde encontraram o último emprego](/blog/inquerito-onde-encontraram-pt.svg)
 
 Isto não é uma leitura confortável para quem está a construir um job board novo. O LinkedIn domina de forma esmagadora, e mesmo as plataformas generalistas de maior escala em Portugal (Net-Empregos, SAPO) mal aparecem como fonte real de contratação para IT. Não vamos fingir que isto não é um problema: é o principal obstáculo que qualquer plataforma nova tem de ultrapassar, e é por isso que grande parte do nosso trabalho de SEO e conteúdo (como este artigo) é sobre dar às pessoas uma razão concreta para nos conhecerem antes de precisarem ativamente de procurar emprego.
@@ -37,10 +28,6 @@ Isto não é uma leitura confortável para quem está a construir um job board n
 
 Pedimos para assinalarem tudo o que os frustra na procura de emprego em Portugal. Uma resposta destacou-se claramente de todas as outras:
 
-**74%**: salários nunca são publicados nos anúncios de emprego.
-
-A seguir: 63% queixam-se de demasiados intermediários/recrutadores sem contacto direto com o empregador, 45% de ofertas irrelevantes ou de baixa qualidade, e 39% de empresas que publicam vagas e depois nunca respondem.
-
 ![Maiores frustrações na procura de emprego](/blog/inquerito-frustracoes-pt.svg)
 
 Não há volta a dar: a transparência salarial não é um "nice to have" que inventámos para diferenciar a Just IT no marketing. É, de forma mensurável, a maior fonte de frustração de quem procura emprego de IT em Portugal, mais do que o ghosting das empresas, mais do que a qualidade das vagas, mais do que os intermediários.
@@ -48,11 +35,6 @@ Não há volta a dar: a transparência salarial não é um "nice to have" que in
 ## O que acontece se o salário estiver sempre visível
 
 Fomos diretos: se uma plataforma publicasse sempre o intervalo salarial em todas as vagas, isso mudaria o seu comportamento?
-
-- 53%: usaria mais essa plataforma, mas não exclusivamente
-- 31%: mudaria para usar essa plataforma como principal
-- 13%: não mudaria muito
-- 3%: ficaria cético quanto à veracidade dos valores
 
 ![Se o salário estivesse sempre visível](/blog/inquerito-salario-visivel-pt.svg)
 
