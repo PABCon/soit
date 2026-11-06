@@ -18,7 +18,8 @@ export async function extractCvText(bytes: Uint8Array, kind: SniffedType): Promi
       const { value } = await mammoth.extractRawText({ buffer: Buffer.from(bytes) });
       return value;
     }
-  } catch {
+  } catch (err) {
+    console.error("extractCvText failed:", err);
     return null;
   }
   return null;
