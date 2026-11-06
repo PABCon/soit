@@ -2,6 +2,8 @@
 title: "Best IT Job Boards in Portugal (2026)"
 excerpt: "An honest comparison of the main platforms for finding IT jobs in Portugal — what each one does well, and why salary transparency is still the exception, not the rule."
 date: "2026-11-05"
+category: "market"
+coverImage: "/blog/melhores-sites-emprego-ti-cover.jpg"
 ---
 
 If you work in IT in Portugal and you're job hunting, you've probably already bounced between half a dozen different platforms without being quite sure which ones are actually worth your time. This isn't a generic listicle — it's the result of looking directly at each platform, what they actually publish, and specifically, what they don't tell you until after you've already applied.

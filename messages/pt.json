@@ -1513,11 +1513,33 @@
   "blog": {
     "listingTitle": "Blog Just IT — Carreiras e Recrutamento de IT em Portugal",
     "listingDescription": "Artigos reais e investigados sobre carreiras de IT, recrutamento e salários em Portugal — nada de conteúdo genérico.",
-    "listingHeading": "O Blog da Just IT",
-    "listingIntro": "Artigos reais e investigados sobre carreiras de IT e recrutamento em Portugal.",
+    "listingLabel": "Blog",
+    "listingHeading": "Perspetivas, dicas e histórias reais do mundo de IT em Portugal",
+    "listingIntro": "Conselhos de carreira, tendências do setor, histórias de empresas e dicas práticas para ajudar a crescer na sua carreira de IT.",
     "empty": "Ainda sem artigos — volte em breve.",
     "readMore": "Ler mais",
-    "publishedOn": "Publicado a"
+    "publishedOn": "Publicado a",
+    "minRead": "{count, plural, one {# min de leitura} other {# min de leitura}}",
+    "searchPlaceholder": "Pesquisar artigos…",
+    "categoryAll": "Todos",
+    "category": {
+      "career": "Carreira",
+      "tech": "Tecnologia",
+      "companies": "Empresas",
+      "market": "Mercado",
+      "tips": "Dicas"
+    },
+    "backToBlog": "← Voltar ao blog",
+    "relatedArticlesHeading": "Artigos relacionados",
+    "findOpportunityHeading": "Encontre a sua próxima oportunidade de IT",
+    "findOpportunityBody": "Explore milhares de vagas no mercado de tecnologia em Portugal.",
+    "browseJobsCta": "Ver vagas →",
+    "shareArticleHeading": "Partilhe este artigo",
+    "previousArticle": "Artigo anterior",
+    "nextArticle": "Próximo artigo",
+    "shareStoryHeading": "Quer partilhar a sua história?",
+    "shareStoryBody": "Adorávamos ouvir de si. Contacte-nos se quiser escrever para o nosso blog ou tiver um tema em mente.",
+    "shareStoryCta": "Contacte-nos →"
   },
   "footer": {
     "pagesNav": "Páginas",

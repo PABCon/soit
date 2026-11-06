@@ -2,6 +2,8 @@
 title: "Os Melhores Sites de Emprego TI em Portugal (2026)"
 excerpt: "Comparação honesta dos principais sites e plataformas para procurar emprego de IT em Portugal — o que cada um faz bem, e porque é que a transparência salarial continua a ser a exceção, não a regra."
 date: "2026-11-05"
+category: "market"
+coverImage: "/blog/melhores-sites-emprego-ti-cover.jpg"
 ---
 
 Se trabalha em IT em Portugal e está a candidatar-se a vagas, provavelmente já passou por meia dúzia de plataformas diferentes sem saber muito bem qual delas vale realmente o seu tempo. Esta comparação não é uma lista genérica — é o resultado de olhar diretamente para cada plataforma, o que publicam, e sobretudo, o que *não* dizem até já ter enviado o currículo.

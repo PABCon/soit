@@ -1513,11 +1513,33 @@
   "blog": {
     "listingTitle": "Just IT Blog — IT Careers & Hiring in Portugal",
     "listingDescription": "Real, researched articles on IT careers, hiring, and salaries in Portugal — not generic filler.",
-    "listingHeading": "The Just IT Blog",
-    "listingIntro": "Real, researched articles on IT careers and hiring in Portugal.",
+    "listingLabel": "Blog",
+    "listingHeading": "Insights, tips and real stories from the IT world in Portugal",
+    "listingIntro": "Career advice, industry trends, company stories and practical tips to help you grow in your IT journey.",
     "empty": "No posts yet — check back soon.",
     "readMore": "Read more",
-    "publishedOn": "Published"
+    "publishedOn": "Published",
+    "minRead": "{count, plural, one {# min read} other {# min read}}",
+    "searchPlaceholder": "Search articles…",
+    "categoryAll": "All",
+    "category": {
+      "career": "Career",
+      "tech": "Tech",
+      "companies": "Companies",
+      "market": "Market",
+      "tips": "Tips"
+    },
+    "backToBlog": "← Back to blog",
+    "relatedArticlesHeading": "Related articles",
+    "findOpportunityHeading": "Find your next IT opportunity",
+    "findOpportunityBody": "Explore thousands of jobs in Portugal's tech market.",
+    "browseJobsCta": "Browse jobs →",
+    "shareArticleHeading": "Share this article",
+    "previousArticle": "Previous article",
+    "nextArticle": "Next article",
+    "shareStoryHeading": "Want to share your story?",
+    "shareStoryBody": "We'd love to hear from you. Get in touch if you want to write for our blog or have a topic in mind.",
+    "shareStoryCta": "Contact us →"
   },
   "footer": {
     "pagesNav": "Pages",
