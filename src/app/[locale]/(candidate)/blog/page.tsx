@@ -31,14 +31,14 @@ export default async function BlogIndexPage({ params }: Props) {
 
   return (
     <div className="mx-auto max-w-6xl">
-      <div className="grid items-center gap-8 rounded-2xl bg-pine/5 p-8 sm:p-10 lg:grid-cols-[1fr_280px]">
+      <div className="grid items-center gap-8 rounded-2xl bg-pine/5 p-8 sm:p-10 lg:grid-cols-[1fr_340px]">
         <div>
           <p className="text-sm font-semibold text-pine">{t("listingLabel")}</p>
           <h1 className="mt-2 font-display text-2xl font-bold text-ink sm:text-3xl">{t("listingHeading")}</h1>
           <p className="mt-3 max-w-lg text-sm leading-relaxed text-muted">{t("listingIntro")}</p>
         </div>
-        <div className="relative mx-auto aspect-square w-[200px] sm:w-[240px]">
-          <Image src="/blog/robot-hero.png" alt="" fill sizes="240px" className="object-contain" priority />
+        <div className="relative mx-auto aspect-[3/2] w-full max-w-[340px]">
+          <Image src="/blog/robot-hero.png" alt="" fill sizes="340px" className="object-contain" priority />
         </div>
       </div>
 
