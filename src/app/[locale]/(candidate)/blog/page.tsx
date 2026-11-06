@@ -37,16 +37,8 @@ export default async function BlogIndexPage({ params }: Props) {
           <h1 className="mt-2 font-display text-2xl font-bold text-ink sm:text-3xl">{t("listingHeading")}</h1>
           <p className="mt-3 max-w-lg text-sm leading-relaxed text-muted">{t("listingIntro")}</p>
         </div>
-        {/* Robot illustration — the current source PNG's own dark glow
-         *  background is baked into its pixels (not real transparency; a
-         *  luminance-threshold removal attempt confirmed there's no clean
-         *  way to cut it out automatically), so it's framed in a matching
-         *  dark card rather than floating directly on this light section
-         *  the way the original design calls for. Swap this card out for
-         *  a plain `object-contain` image the moment a transparent-
-         *  background version exists. */}
-        <div className="relative mx-auto aspect-square w-[200px] overflow-hidden rounded-2xl bg-slate-900 sm:w-[240px]">
-          <Image src="/blog/robot-hero.png" alt="" fill sizes="240px" className="object-cover" priority />
+        <div className="relative mx-auto aspect-square w-[200px] sm:w-[240px]">
+          <Image src="/blog/robot-hero.png" alt="" fill sizes="240px" className="object-contain" priority />
         </div>
       </div>
 

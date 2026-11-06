@@ -137,10 +137,8 @@ export default async function BlogPostPage({ params }: Props) {
           )}
 
           <div className="overflow-hidden rounded-2xl bg-pine/5 p-5">
-            {/* Same dark-card caveat as the listing hero's robot image —
-             *  see that page's own comment. */}
-            <div className="relative mx-auto h-20 w-20 overflow-hidden rounded-xl bg-slate-900">
-              <Image src="/blog/robot-sidebar.png" alt="" fill sizes="80px" className="object-cover" />
+            <div className="relative mx-auto h-20 w-20">
+              <Image src="/blog/robot-sidebar.png" alt="" fill sizes="80px" className="object-contain" />
             </div>
             <h2 className="mt-4 text-sm font-bold text-ink">{t("findOpportunityHeading")}</h2>
             <p className="mt-1 text-xs text-muted">{t("findOpportunityBody")}</p>
