@@ -35,6 +35,9 @@ export async function Footer() {
             <Link href="/companies" prefetch={false} className="hover:text-ink">
               {t("companies")}
             </Link>
+            <Link href="/blog" prefetch={false} className="hover:text-ink">
+              {t("blog")}
+            </Link>
             <Link href="/recruit" prefetch={false} className="hover:text-ink">
               {t("postJob")}
             </Link>
