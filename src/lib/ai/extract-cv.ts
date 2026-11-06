@@ -37,7 +37,17 @@ const ExtractedCvSchema = z.object({
       // when only a month/year is stated, never to invent a day it wasn't given.
       startDate: z.string().nullable(),
       endDate: z.string().nullable(),
-      note: z.string().nullable(),
+      // Deliberately NOT extracted (unlike the manually-editable profile
+      // field of the same name, which is untouched) — Anthropic's structured-
+      // output API hard-rejects a schema once it crosses 16 nullable/array-
+      // typed parameters ("Schemas contains too many parameters with union
+      // types... limit: 16"), and this schema was sitting at 17, silently
+      // breaking every single CV analysis in production (swallowed by the
+      // catch below into a generic "upload failed" message, with no log
+      // anywhere). Dropping this one low-value field is the minimal fix —
+      // re-verified live against the real Gateway that this schema is under
+      // the limit again. If a new field is ever added here, re-check the
+      // total against that same limit before shipping.
     }),
   ),
   // §AI Pieces backlog, profile-depth phase — work history and
@@ -138,7 +148,8 @@ export async function extractCvProfile(text: string): Promise<ExtractCvResult> {
         `CV text:\n${prompt}`,
     });
     return { ok: true, data: output };
-  } catch {
+  } catch (err) {
+    console.error("extractCvProfile failed:", err);
     return { ok: false, reason: "extraction_failed" };
   }
 }

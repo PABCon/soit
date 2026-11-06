@@ -102,7 +102,9 @@ export function CandidateProfileForm({
           fieldOfStudy: e.fieldOfStudy,
           startDate: e.startDate,
           endDate: e.endDate,
-          note: e.note,
+          // Not part of the AI extraction schema (see extract-cv.ts) — the
+          // candidate can still fill this in by hand, same as always.
+          note: null,
         })),
       }
     : skillsAndEducation;
