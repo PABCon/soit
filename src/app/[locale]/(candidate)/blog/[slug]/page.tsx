@@ -86,7 +86,7 @@ export default async function BlogPostPage({ params }: Props) {
           </div>
 
           <div className="relative mt-6 aspect-video w-full overflow-hidden rounded-2xl bg-paper">
-            <Image src={post.coverImage} alt="" fill sizes="(min-width: 1024px) 700px, 100vw" className="object-cover" priority />
+            <Image src={post.coverImage} alt={post.title} fill sizes="(min-width: 1024px) 700px, 100vw" className="object-cover" priority />
           </div>
 
           <div
@@ -123,7 +123,7 @@ export default async function BlogPostPage({ params }: Props) {
                   <li key={r.slug}>
                     <Link href={`/blog/${r.slug}`} className="flex gap-3">
                       <span className="relative h-14 w-14 shrink-0 overflow-hidden rounded-lg bg-paper">
-                        <Image src={r.coverImage} alt="" fill sizes="56px" className="object-cover" />
+                        <Image src={r.coverImage} alt={r.title} fill sizes="56px" className="object-cover" />
                       </span>
                       <span className="min-w-0">
                         <span className="line-clamp-2 block text-sm font-medium text-ink hover:text-pine">{r.title}</span>
