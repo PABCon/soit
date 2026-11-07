@@ -638,7 +638,7 @@ export function JobForm({
         <div className="flex flex-col gap-6">
           {!initial && (
             <SectionCard icon={Link2} title={t("pasteJobLink")} subtitle={t("pasteJobLinkSubtitle")}>
-              <div className="flex gap-2">
+              <div className="flex flex-col gap-2 sm:flex-row">
                 <input
                   type="url"
                   value={extractUrl}
