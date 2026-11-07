@@ -98,4 +98,15 @@
   .scrollbar-hide::-webkit-scrollbar {
     display: none;
   }
+
+  /* Mobile-responsiveness pass: blog post tables (rendered from plain
+   * markdown via remark-gfm, no React wrapper to add a container to)
+   * have real, multi-column tabular data that can't just shrink to fit
+   * a narrow screen. Tailwind Typography's own table styling doesn't add
+   * a scroll container by default, so a wide table was blowing out the
+   * whole page horizontally on mobile instead of scrolling on its own. */
+  .prose table {
+    display: block;
+    overflow-x: auto;
+  }
 }

@@ -245,7 +245,7 @@ export function SalaryCalculatorForm() {
         ))}
       </div>
 
-      <div className="grid gap-8 lg:grid-cols-[1fr_380px]">
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1fr_380px]">
         <div className="space-y-6">
           <fieldset className="space-y-4 rounded-xl border border-line bg-white p-4">
             <legend className="px-1 text-sm font-semibold">{t("aboutYouHeading")}</legend>
