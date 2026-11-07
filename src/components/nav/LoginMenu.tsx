@@ -86,11 +86,14 @@ export function LoginMenu() {
 
   if (email) {
     const label = profile?.fullName || email;
+    // Same off-screen-at-narrow-widths issue as the signed-out dropdown
+    // below — this trigger sits in the exact same header group.
     return (
       <Dropdown
         triggerLabel={label}
         triggerClassName="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full"
-        panelClassName="w-56 rounded-lg border border-line bg-white py-1 shadow-sm"
+        panelClassName="w-56 rounded-lg border border-line bg-white py-1 shadow-sm sm:right-0 sm:left-auto"
+        align="left"
         trigger={<Avatar label={label} avatarUrl={profile?.avatarUrl ?? null} />}
       >
         {(close) => (
@@ -137,9 +140,19 @@ export function LoginMenu() {
 
   return (
     <>
+      {/* Real-usage report: below sm, this trigger sits close to the left
+       *  edge (hamburger + logo + language switcher all come before it),
+       *  and the default `align="right"` grows the 256px panel leftward
+       *  from there — confirmed via direct measurement to go negative
+       *  (off-screen) at every width from 390px up to ~540px. `align="left"`
+       *  fixes that; the `sm:right-0 sm:left-auto` override restores the
+       *  original rightward growth once this sits far enough right in the
+       *  wider header layout (search bar visible, more room) for that to
+       *  be safe again. */}
       <Dropdown
         triggerClassName="flex h-9 cursor-pointer items-center rounded-lg px-3 text-sm font-medium text-ink hover:bg-white"
-        panelClassName="w-64 rounded-lg border border-line bg-white py-1 shadow-sm"
+        panelClassName="w-64 rounded-lg border border-line bg-white py-1 shadow-sm sm:right-0 sm:left-auto"
+        align="left"
         trigger={t("login")}
       >
         {(close) => (
