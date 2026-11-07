@@ -2,6 +2,7 @@ import { getLocale, getTranslations } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { LoginMenu } from "@/components/nav/LoginMenu";
+import { MobileNavMenu } from "@/components/nav/MobileNavMenu";
 import { SearchBar, type SearchSuggestion } from "@/components/nav/SearchBar";
 import { getLocations } from "@/lib/db/locations";
 import { getTechTags } from "@/lib/db/tech-tags";
@@ -13,9 +14,12 @@ import { getJobCategories } from "@/lib/db/job-categories";
  * LoginMenu — it only makes sense logged-out, and that's the one place
  * that already knows auth state. LoginMenu/SearchBar are the only
  * client-side pieces; this stays a server component so it can fetch the
- * curated locations list SearchBar's "near" picker needs.
+ * curated locations list SearchBar's "near" picker needs. `isLoggedIn`
+ * is threaded down from the candidate layout's own existing session
+ * check (same prop Rail already takes) purely for MobileNavMenu's
+ * requiresAuth filtering — no second auth read.
  */
-export async function TopNav() {
+export async function TopNav({ isLoggedIn = false }: { isLoggedIn?: boolean }) {
   const locale = await getLocale();
   const brand = await getTranslations({ locale, namespace: "brand" });
   const [locations, techTags, categories] = await Promise.all([
@@ -49,18 +53,21 @@ export async function TopNav() {
        *  1fr]` still makes the search bar genuinely centered regardless
        *  of how wide the logo or the right-side group happen to be. */}
       <div className="mx-auto grid h-16 w-full max-w-[2200px] grid-cols-[1fr_auto_1fr] items-center gap-4 px-4 sm:px-6">
-        <Link href="/jobs" className="justify-self-start leading-tight">
-          {/* eslint-disable-next-line @next/next/no-img-element -- small local brand asset, not a remote/optimizable photo */}
-          <img src="/logo-justit.png" alt={brand("name")} className="h-7 w-auto" />
-          {/* Hidden below sm: a real, measured mobile overflow bug — this
-           *  single-line, un-wrapped tagline forced the whole logo block to
-           *  ~200px wide (its own natural text width), which combined with
-           *  the nav's own shrink-0 button group overflowed a 390px
-           *  viewport by ~90px. Purely decorative subtitle, not
-           *  functional — hiding it at the one breakpoint where it doesn't
-           *  fit is a real fix, not a content removal. */}
-          <span className="mt-0.5 hidden text-[11px] text-muted sm:block">{brand("navTagline")}</span>
-        </Link>
+        <div className="flex min-w-0 items-center gap-1 justify-self-start">
+          <MobileNavMenu isLoggedIn={isLoggedIn} />
+          <Link href="/jobs" className="min-w-0 leading-tight">
+            {/* eslint-disable-next-line @next/next/no-img-element -- small local brand asset, not a remote/optimizable photo */}
+            <img src="/logo-justit.png" alt={brand("name")} className="h-7 w-auto" />
+            {/* Hidden below sm: a real, measured mobile overflow bug — this
+             *  single-line, un-wrapped tagline forced the whole logo block to
+             *  ~200px wide (its own natural text width), which combined with
+             *  the nav's own shrink-0 button group overflowed a 390px
+             *  viewport by ~90px. Purely decorative subtitle, not
+             *  functional — hiding it at the one breakpoint where it doesn't
+             *  fit is a real fix, not a content removal. */}
+            <span className="mt-0.5 hidden text-[11px] text-muted sm:block">{brand("navTagline")}</span>
+          </Link>
+        </div>
 
         {/* max-w-4xl, not max-w-2xl: real-usage follow-up — widening the
          *  keyword input (below) to fit its own doubled-size placeholder

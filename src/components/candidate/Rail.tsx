@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { Link, usePathname } from "@/i18n/navigation";
 
-type Item = { key: string; href: string; icon: React.ReactNode; mvp: boolean; requiresAuth?: boolean };
+export type Item = { key: string; href: string; icon: React.ReactNode; mvp: boolean; requiresAuth?: boolean };
 
 const icon = (d: string) => (
   <svg
@@ -21,7 +21,7 @@ const icon = (d: string) => (
   </svg>
 );
 
-const ITEMS: Item[] = [
+export const ITEMS: Item[] = [
   { key: "recommendations", href: "/recommendations", icon: icon("M12 2 14.5 9H22l-6 4.5L18 22l-6-4.5L6 22l2-8.5L2 9h7.5Z"), mvp: true },
   { key: "offers", href: "/jobs", icon: icon("M4 7h16M4 12h16M4 17h10"), mvp: true },
   { key: "applications", href: "/applications", icon: icon("M9 5h6m-7 4h8m-8 4h8m-8 4h5M5 3h14v18H5Z"), mvp: true },

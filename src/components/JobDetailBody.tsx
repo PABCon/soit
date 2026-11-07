@@ -189,16 +189,23 @@ export async function JobDetailBody({
         </>
       )}
 
-      <nav className="flex items-center gap-1.5 text-sm text-muted" aria-label="Breadcrumb">
-        <Link href="/jobs" className="hover:text-pine hover:underline">
+      <nav className="flex items-center gap-1.5 overflow-x-auto text-sm text-muted" aria-label="Breadcrumb">
+        <Link href="/jobs" className="shrink-0 whitespace-nowrap hover:text-pine hover:underline">
           {t("breadcrumbJobs")}
         </Link>
-        <span aria-hidden="true">/</span>
-        <Link href={`/companies/${job.company.slug}`} className="hover:text-pine hover:underline">
+        <span className="shrink-0" aria-hidden="true">
+          /
+        </span>
+        <Link
+          href={`/companies/${job.company.slug}`}
+          className="shrink-0 whitespace-nowrap hover:text-pine hover:underline"
+        >
           {job.company.name}
         </Link>
-        <span aria-hidden="true">/</span>
-        <span className="min-w-0 truncate text-ink">{job.title}</span>
+        <span className="shrink-0" aria-hidden="true">
+          /
+        </span>
+        <span className="min-w-0 truncate whitespace-nowrap text-ink">{job.title}</span>
       </nav>
 
       <div className="mt-4 grid gap-8 lg:grid-cols-[2fr_1fr]">
@@ -296,36 +303,41 @@ export async function JobDetailBody({
              *  "not well distributed" complaint. `flex-nowrap` (no
              *  `flex-wrap`) plus `min-w-0`/`truncate` guarantees one row
              *  that degrades by truncating text, never by stacking. */}
-            <div className="mt-4 flex flex-nowrap items-center border-t border-line pt-4 text-sm">
-              <span className="flex h-9 min-w-0 flex-1 items-center gap-2 py-1 pr-4">
+            {/* Below sm, five equal flex-1 items have no room at all for
+             *  icon+label text (each collapsed to 1-2 truncated characters,
+             *  a real mobile readability bug) — a 2-column grid gives each
+             *  item roughly half the row instead of a fifth. The border
+             *  dividers only make sense once everything's back in one row. */}
+            <div className="mt-4 grid grid-cols-2 gap-x-4 gap-y-3 border-t border-line pt-4 text-sm sm:flex sm:flex-nowrap sm:items-center sm:gap-x-0 sm:gap-y-0">
+              <span className="flex h-9 min-w-0 items-center gap-2 py-1 sm:flex-1 sm:pr-4">
                 <Briefcase className="h-4 w-4 shrink-0 text-muted" aria-hidden="true" />
                 <span className="min-w-0">
                   <span className="block truncate text-xs text-muted">{tjf("employmentType")}</span>
                   <span className="block truncate font-medium text-ink">{tjf(`employmentTypeOption.${job.employmentType}`)}</span>
                 </span>
               </span>
-              <span className="flex h-9 min-w-0 flex-1 items-center gap-2 border-l border-line py-1 px-4">
+              <span className="flex h-9 min-w-0 items-center gap-2 py-1 sm:flex-1 sm:border-l sm:border-line sm:px-4">
                 <Home className="h-4 w-4 shrink-0 text-muted" aria-hidden="true" />
                 <span className="min-w-0">
                   <span className="block truncate text-xs text-muted">{tf("filterSectionWorkModel")}</span>
                   <span className="block truncate font-medium text-ink">{tf(`workModel.${job.workModel}`)}</span>
                 </span>
               </span>
-              <span className="flex h-9 min-w-0 flex-1 items-center gap-2 border-l border-line py-1 px-4">
+              <span className="flex h-9 min-w-0 items-center gap-2 py-1 sm:flex-1 sm:border-l sm:border-line sm:px-4">
                 <MapPin className="h-4 w-4 shrink-0 text-muted" aria-hidden="true" />
                 <span className="min-w-0">
                   <span className="block truncate text-xs text-muted">{tjf("location")}</span>
                   <span className="block truncate font-medium text-ink">{job.location ?? tf("remote")}</span>
                 </span>
               </span>
-              <span className="flex h-9 min-w-0 flex-1 items-center gap-2 border-l border-line py-1 px-4">
+              <span className="flex h-9 min-w-0 items-center gap-2 py-1 sm:flex-1 sm:border-l sm:border-line sm:px-4">
                 <TrendingUp className="h-4 w-4 shrink-0 text-muted" aria-hidden="true" />
                 <span className="min-w-0">
                   <span className="block truncate text-xs text-muted">{tf("filterSectionSeniority")}</span>
                   <span className="block truncate font-medium text-ink">{tf(`seniority.${job.seniority}`)}</span>
                 </span>
               </span>
-              <span className="flex h-9 min-w-0 flex-1 items-center gap-2 border-l border-line py-1 pl-4">
+              <span className="flex h-9 min-w-0 items-center gap-2 py-1 sm:flex-1 sm:border-l sm:border-line sm:pl-4">
                 <Clock className="h-4 w-4 shrink-0 text-muted" aria-hidden="true" />
                 <span className="truncate font-medium text-ink">
                   {closed ? t("closedBadge") : preview ? t("previewBadge") : tf("postedAgo", { days: job.postedDaysAgo })}
