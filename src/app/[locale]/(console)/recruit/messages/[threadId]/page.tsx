@@ -120,7 +120,9 @@ export default async function EmployerThreadPage({ params }: Props) {
         </ul>
       </div>
 
-      <ThreadComposer onSend={sendEmployerMessageAction.bind(null, threadId)} />
+      {thread.requestStatus === "pending" && <p className="mt-4 text-sm text-muted">{t("waitingForCandidateNotice")}</p>}
+      {thread.requestStatus === "declined" && <p className="mt-4 text-sm text-muted">{t("candidateDeclinedNotice")}</p>}
+      {thread.requestStatus === "accepted" && <ThreadComposer onSend={sendEmployerMessageAction.bind(null, threadId)} />}
     </>
   );
 }

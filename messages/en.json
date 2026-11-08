@@ -991,7 +991,19 @@
     "attachFile": "Attach a file",
     "removeAttachment": "Remove attachment",
     "attachmentTooLarge": "That file is too large (max 5 MB).",
-    "errorBadAttachment": "This file could not be attached (unsupported type or too large)."
+    "errorBadAttachment": "This file could not be attached (unsupported type or too large).",
+    "requestConnection": "Request connection",
+    "connectionRequestPlaceholder": "Introduce yourself and say why you'd like to connect with this candidate…",
+    "sendRequest": "Send request",
+    "viewConversation": "View conversation",
+    "pendingBadge": "Awaiting response",
+    "declinedBadge": "Declined",
+    "respondPrompt": "{company} would like to talk to you about this role. Would you like to accept the connection request?",
+    "accept": "Accept",
+    "decline": "Decline",
+    "youDeclinedNotice": "You declined this connection request.",
+    "waitingForCandidateNotice": "Waiting for the candidate to respond to your connection request.",
+    "candidateDeclinedNotice": "The candidate declined to connect. Their identity remains private."
   },
   "profile": {
     "title": "My profile",

@@ -8,7 +8,8 @@ import { getThreadDetail } from "@/lib/db/messaging";
 import { ThreadReplyBox } from "@/components/ThreadReplyBox";
 import { MessageAttachment } from "@/components/messaging/MessageAttachment";
 import { ThreadRealtimeRefresh } from "@/components/messaging/ThreadRealtimeRefresh";
-import { sendCandidateMessageAction } from "./actions";
+import { ConnectionRequestResponse } from "@/components/messaging/ConnectionRequestResponse";
+import { sendCandidateMessageAction, respondToConnectionRequestAction } from "./actions";
 
 type Props = { params: Promise<{ locale: string; threadId: string }> };
 
@@ -111,7 +112,14 @@ export default async function CandidateThreadPage({ params }: Props) {
         </ul>
       </div>
 
-      <ThreadReplyBox onSend={sendCandidateMessageAction.bind(null, threadId)} />
+      {thread.requestStatus === "pending" && (
+        <ConnectionRequestResponse
+          companyName={thread.companyName}
+          onRespond={respondToConnectionRequestAction.bind(null, threadId)}
+        />
+      )}
+      {thread.requestStatus === "declined" && <p className="mt-4 text-sm text-muted">{t("youDeclinedNotice")}</p>}
+      {thread.requestStatus === "accepted" && <ThreadReplyBox onSend={sendCandidateMessageAction.bind(null, threadId)} />}
     </>
   );
 }

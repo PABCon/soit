@@ -991,7 +991,19 @@
     "attachFile": "Anexar ficheiro",
     "removeAttachment": "Remover anexo",
     "attachmentTooLarge": "Esse ficheiro é demasiado grande (máx. 5 MB).",
-    "errorBadAttachment": "Não foi possível anexar este ficheiro (tipo não suportado ou demasiado grande)."
+    "errorBadAttachment": "Não foi possível anexar este ficheiro (tipo não suportado ou demasiado grande).",
+    "requestConnection": "Pedir contacto",
+    "connectionRequestPlaceholder": "Apresente-se e diga porque gostaria de falar com este candidato…",
+    "sendRequest": "Enviar pedido",
+    "viewConversation": "Ver conversa",
+    "pendingBadge": "A aguardar resposta",
+    "declinedBadge": "Recusado",
+    "respondPrompt": "{company} gostaria de falar consigo sobre esta vaga. Quer aceitar o pedido de contacto?",
+    "accept": "Aceitar",
+    "decline": "Recusar",
+    "youDeclinedNotice": "Recusou este pedido de contacto.",
+    "waitingForCandidateNotice": "A aguardar resposta do candidato ao seu pedido de contacto.",
+    "candidateDeclinedNotice": "O candidato recusou o pedido de contacto. A identidade permanece privada."
   },
   "profile": {
     "title": "O meu perfil",

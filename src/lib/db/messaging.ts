@@ -6,6 +6,7 @@ import { getMyEmployerContext } from "./companies";
 import { logEvent } from "@/lib/events";
 import { sendEmail } from "@/lib/email/send";
 import { newMessageEmail } from "@/lib/email/templates/new-message";
+import { connectionResponseEmail } from "@/lib/email/templates/connection-response";
 import { sniffAttachmentType } from "@/lib/file-sniff";
 
 // Round 31 — real attachments. Same 5MB cap as the `cvs` bucket (§6.7);
@@ -35,6 +36,8 @@ const ATTACHMENT_CONTENT_TYPES: Record<Exclude<ReturnType<typeof sniffAttachment
 
 const SITE = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
 
+type RequestStatus = "pending" | "accepted" | "declined";
+
 type ThreadRow = {
   id: string;
   company_id: string;
@@ -42,6 +45,7 @@ type ThreadRow = {
   job_id: string;
   origin: "application" | "match";
   identity_unlocked: boolean;
+  request_status: RequestStatus;
 };
 
 async function ensureThread(
@@ -57,6 +61,10 @@ async function ensureThread(
     .maybeSingle();
   if (existing) return existing.id;
 
+  // Phase 3 — the gate: a brand-new 'match' thread starts 'pending', a
+  // real request the candidate must explicitly respond to; 'application'
+  // threads start (and stay) 'accepted' — identity there is already
+  // known from the application itself, so there's nothing to gate.
   const { data: created, error } = await supabase
     .from("message_threads")
     .insert({
@@ -65,6 +73,7 @@ async function ensureThread(
       job_id: params.jobId,
       origin: params.origin,
       identity_unlocked: params.identityUnlocked,
+      request_status: params.origin === "match" ? "pending" : "accepted",
     })
     .select("id")
     .single();
@@ -134,6 +143,29 @@ export async function getOrCreateThreadIdForApplicant(applicationId: string): Pr
   return { ok: true, threadId };
 }
 
+export type ExistingMatchThread = { threadId: string; requestStatus: RequestStatus } | null;
+
+/** Phase 3 — the matchmaking candidate page needs to know, before
+ *  rendering anything, whether a connection request was already sent for
+ *  this exact candidate+job: once sent, it's a one-shot ask (the
+ *  employer can't just keep re-triggering `StartThreadButton` to send a
+ *  second opening message — `sendMessage`'s own gate already rejects
+ *  that server-side, but the UI shouldn't invite the attempt at all). */
+export async function getExistingMatchThread(candidateId: string, jobId: string): Promise<ExistingMatchThread> {
+  const ctx = await getMyEmployerContext();
+  if (!ctx) return null;
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("message_threads")
+    .select("id, request_status")
+    .eq("company_id", ctx.company.id)
+    .eq("candidate_id", candidateId)
+    .eq("job_id", jobId)
+    .eq("origin", "match")
+    .maybeSingle();
+  return data ? { threadId: data.id, requestStatus: data.request_status } : null;
+}
+
 /** Matching outreach — identity stays blinded until the candidate
  *  replies. Re-verifies paying-customer status at send time, same as
  *  `candidate-matches.ts`'s read gate — matching access shouldn't
@@ -161,7 +193,9 @@ export async function getOrCreateThreadForMatch(candidateId: string, jobId: stri
   return { ok: true, threadId };
 }
 
-export type SendMessageResult = { ok: true } | { ok: false; reason: "forbidden" | "not_found" | "bad_attachment" };
+export type SendMessageResult =
+  | { ok: true }
+  | { ok: false; reason: "forbidden" | "not_found" | "bad_attachment" | "request_pending" | "request_declined" };
 
 type UploadedAttachment = { path: string; filename: string; contentType: string; sizeBytes: number };
 
@@ -213,7 +247,7 @@ export async function sendMessage(threadId: string, body: string, file?: File | 
   const supabase = await createClient();
   const { data: thread } = await supabase
     .from("message_threads")
-    .select("id, company_id, candidate_id, job_id, origin, identity_unlocked")
+    .select("id, company_id, candidate_id, job_id, origin, identity_unlocked, request_status")
     .eq("id", threadId)
     .maybeSingle();
   // RLS already hides threads that aren't the caller's — a miss here
@@ -229,6 +263,24 @@ export async function sendMessage(threadId: string, body: string, file?: File | 
   const isCandidate = !!candidateId && candidateId === row.candidate_id;
   if (!isEmployer && !isCandidate) return { ok: false, reason: "forbidden" };
   const senderType: "employer" | "candidate" = isEmployer ? "employer" : "candidate";
+
+  // Phase 3 — the accept/decline gate. A declined thread is terminal for
+  // both sides, permanently (identity never unlocked, nothing further to
+  // say). A pending thread blocks the candidate from skipping the
+  // explicit Accept/Decline step by just replying, and blocks the
+  // employer from sending a second message before the candidate has
+  // responded to the first (server-enforced, not just a hidden compose
+  // box — the same discipline this project applies to every other
+  // client-trust boundary).
+  if (row.request_status === "declined") return { ok: false, reason: "request_declined" };
+  if (row.request_status === "pending") {
+    if (isCandidate) return { ok: false, reason: "request_pending" };
+    const { count } = await supabase
+      .from("messages")
+      .select("id", { count: "exact", head: true })
+      .eq("thread_id", threadId);
+    if ((count ?? 0) > 0) return { ok: false, reason: "request_pending" };
+  }
 
   let attachment: UploadedAttachment | null = null;
   if (file) {
@@ -265,6 +317,83 @@ export async function sendMessage(threadId: string, body: string, file?: File | 
 
   scheduleMessageNotification({ thread: row, senderType, messageExcerpt: finalBody });
   return { ok: true };
+}
+
+export type RespondToConnectionRequestResult = { ok: true } | { ok: false; reason: "forbidden" | "not_found" | "already_responded" };
+
+/** Phase 3 — the candidate's own explicit response to a connection
+ *  request. This, not a plain reply, is what unlocks identity on a
+ *  'match' thread now: accepting is itself the consent action (no
+ *  forced opening reply required, same as a real "accept connection"
+ *  interaction elsewhere), and declining never unlocks anything, ever —
+ *  the thread becomes terminal, identity stays private regardless of
+ *  how the employer might otherwise have learned it. */
+export async function respondToConnectionRequest(
+  threadId: string,
+  decision: "accepted" | "declined",
+): Promise<RespondToConnectionRequestResult> {
+  const supabase = await createClient();
+  const { data: candidateId } = await supabase.rpc("my_candidate_id");
+  if (!candidateId) return { ok: false, reason: "forbidden" };
+
+  const { data: thread } = await supabase
+    .from("message_threads")
+    .select("id, company_id, candidate_id, job_id, origin, identity_unlocked, request_status")
+    .eq("id", threadId)
+    .maybeSingle();
+  if (!thread) return { ok: false, reason: "not_found" };
+  const row = thread as ThreadRow;
+  if (row.candidate_id !== candidateId || row.origin !== "match") return { ok: false, reason: "not_found" };
+  if (row.request_status !== "pending") return { ok: false, reason: "already_responded" };
+
+  const admin = createAdminClient();
+  const { error } = await admin
+    .from("message_threads")
+    .update({
+      request_status: decision,
+      responded_at: new Date().toISOString(),
+      ...(decision === "accepted" ? { identity_unlocked: true } : {}),
+    })
+    .eq("id", threadId);
+  if (error) return { ok: false, reason: "forbidden" };
+
+  await logEvent(decision === "accepted" ? "thread.request_accepted" : "thread.request_declined", { thread_id: threadId });
+  scheduleConnectionResponseNotification({ thread: row, decision });
+  return { ok: true };
+}
+
+function scheduleConnectionResponseNotification(params: { thread: ThreadRow; decision: "accepted" | "declined" }) {
+  try {
+    after(() => notifyConnectionResponse(params));
+  } catch {
+    void notifyConnectionResponse(params);
+  }
+}
+
+/** Employer-only — a candidate always already knows the outcome of their
+ *  own decision, nothing to notify them of. Deliberately never names the
+ *  candidate even on acceptance (same "A candidate" genericism
+ *  `notifyNewMessage` already uses for this direction) — the employer
+ *  sees the real name the moment they open the now-unlocked thread, this
+ *  is just the nudge to go look. */
+async function notifyConnectionResponse({ thread, decision }: { thread: ThreadRow; decision: "accepted" | "declined" }) {
+  const admin = createAdminClient();
+  const { data: job } = await admin.from("jobs").select("title").eq("id", thread.job_id).single();
+  const { data: members } = await admin.from("employer_users").select("auth_user_id").eq("company_id", thread.company_id);
+  await Promise.all(
+    (members ?? []).map(async (m) => {
+      const { data } = await admin.auth.admin.getUserById(m.auth_user_id);
+      if (!data.user?.email) return;
+      await sendEmail(
+        connectionResponseEmail({
+          to: data.user.email,
+          decision,
+          jobTitle: job?.title ?? "",
+          threadUrl: `${SITE}/pt/recruit/messages/${thread.id}`,
+        }),
+      );
+    }),
+  );
 }
 
 function scheduleMessageNotification(params: {
@@ -349,6 +478,7 @@ export type EmployerThreadSummary = {
   jobTitle: string;
   origin: "application" | "match";
   identityUnlocked: boolean;
+  requestStatus: RequestStatus;
   /** null when still blinded — the page renders the anonymous label. */
   candidateName: string | null;
   lastMessagePreview: string | null;
@@ -363,7 +493,9 @@ export async function getMyThreadsAsEmployer(): Promise<EmployerThreadSummary[]>
   const supabase = await createClient();
   const { data } = await supabase
     .from("message_threads")
-    .select("id, job_id, origin, identity_unlocked, candidate_id, employer_last_read_at, last_message_at, jobs!inner ( title )")
+    .select(
+      "id, job_id, origin, identity_unlocked, request_status, candidate_id, employer_last_read_at, last_message_at, jobs!inner ( title )",
+    )
     .eq("company_id", ctx.company.id)
     .order("last_message_at", { ascending: false });
   if (!data) return [];
@@ -391,6 +523,7 @@ export async function getMyThreadsAsEmployer(): Promise<EmployerThreadSummary[]>
         jobTitle: job.title,
         origin: row.origin,
         identityUnlocked: row.identity_unlocked,
+        requestStatus: row.request_status,
         candidateName,
         lastMessagePreview: lastMessage ? attachmentPrefixed(lastMessage.body, lastMessage.attachment_path) : null,
         lastMessageAt: row.last_message_at,
@@ -410,6 +543,7 @@ export type CandidateThreadSummary = {
   jobId: string;
   jobTitle: string;
   companyName: string;
+  requestStatus: RequestStatus;
   lastMessagePreview: string | null;
   lastMessageAt: string;
   unread: boolean;
@@ -425,7 +559,9 @@ export async function getMyThreadsAsCandidate(): Promise<CandidateThreadSummary[
 
   const { data } = await supabase
     .from("message_threads")
-    .select("id, job_id, candidate_last_read_at, last_message_at, jobs!inner ( title, companies!inner ( company_name ) )")
+    .select(
+      "id, job_id, request_status, candidate_last_read_at, last_message_at, jobs!inner ( title, companies!inner ( company_name ) )",
+    )
     .eq("candidate_id", candidateId)
     .order("last_message_at", { ascending: false });
   if (!data) return [];
@@ -446,6 +582,7 @@ export async function getMyThreadsAsCandidate(): Promise<CandidateThreadSummary[
         jobId: row.job_id,
         jobTitle: job.title,
         companyName: job.companies.company_name,
+        requestStatus: row.request_status,
         lastMessagePreview: lastMessage ? attachmentPrefixed(lastMessage.body, lastMessage.attachment_path) : null,
         lastMessageAt: row.last_message_at,
         unread: !row.candidate_last_read_at || row.last_message_at > row.candidate_last_read_at,
@@ -479,6 +616,7 @@ export type ThreadDetailResult =
       jobSlug: string;
       origin: "application" | "match";
       identityUnlocked: boolean;
+      requestStatus: RequestStatus;
       candidateName: string | null;
       companyName: string;
       messages: ThreadMessage[];
@@ -490,7 +628,7 @@ export async function getThreadDetail(threadId: string): Promise<ThreadDetailRes
   const { data: thread } = await supabase
     .from("message_threads")
     .select(
-      "id, company_id, candidate_id, job_id, origin, identity_unlocked, jobs!inner ( title, slug, companies!inner ( company_name ) )",
+      "id, company_id, candidate_id, job_id, origin, identity_unlocked, request_status, jobs!inner ( title, slug, companies!inner ( company_name ) )",
     )
     .eq("id", threadId)
     .maybeSingle();
@@ -564,6 +702,7 @@ export async function getThreadDetail(threadId: string): Promise<ThreadDetailRes
     jobSlug: job.slug,
     origin: thread.origin,
     identityUnlocked: thread.identity_unlocked,
+    requestStatus: thread.request_status,
     candidateName,
     companyName: job.companies.company_name,
     messages,
