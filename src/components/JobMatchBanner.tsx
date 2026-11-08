@@ -44,17 +44,21 @@ export async function JobMatchBanner({ jobId, locale }: { jobId: string; locale:
   }
 
   return (
+    // Same truncation bug as RecommendationsTeaser (its own direct
+    // sibling on /jobs — this is the job-detail-page equivalent), same
+    // fix: stack below sm instead of forcing the title/subtitle onto one
+    // line squeezed between a fixed icon and a fixed CTA pill.
     <Link
       href="/recommendations"
-      className="flex items-center justify-between gap-4 rounded-lg bg-gradient-to-r from-pine/20 to-pine/5 px-4 py-3 transition-colors hover:from-pine/25 hover:to-pine/10"
+      className="flex flex-col gap-3 rounded-lg bg-gradient-to-r from-pine/20 to-pine/5 px-4 py-3 transition-colors hover:from-pine/25 hover:to-pine/10 sm:flex-row sm:items-center sm:justify-between sm:gap-4"
     >
       <span className="flex min-w-0 items-center gap-3">
         <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-pine/15">
           <Sparkles aria-hidden="true" className="h-5 w-5 text-pine" />
         </span>
         <span className="min-w-0">
-          <span className="block truncate text-sm font-bold text-pine">{title}</span>
-          <span className="block truncate text-xs text-muted">{subtitle}</span>
+          <span className="block text-sm font-bold text-pine sm:truncate">{title}</span>
+          <span className="block text-xs text-muted sm:truncate">{subtitle}</span>
         </span>
       </span>
       <span className="shrink-0 rounded-md bg-pine px-3 py-1.5 text-xs font-semibold whitespace-nowrap text-white">
