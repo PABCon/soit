@@ -145,6 +145,7 @@ function StatusDropdown({
  *  this list already had (view CV, message, change status). */
 export function AllApplicantsList({ applicants, locale }: { applicants: CompanyApplicant[]; locale: string }) {
   const t = useTranslations("applicants");
+  const tm = useTranslations("messaging");
 
   const [query, setQuery] = useState("");
   const [jobFilter, setJobFilter] = useState("");
@@ -211,7 +212,7 @@ export function AllApplicantsList({ applicants, locale }: { applicants: CompanyA
 
         <FilterSelect icon={<ListFilter className="h-4 w-4" aria-hidden="true" />} value={statusFilter} onChange={setStatusFilter}>
           <option value="">{t("allStatuses")}</option>
-          {STATUSES.map((s) => (
+          {[...STATUSES, "connected" as const].map((s) => (
             <option key={s} value={s}>
               {t(`status.${s}`)}
             </option>
@@ -257,7 +258,9 @@ export function AllApplicantsList({ applicants, locale }: { applicants: CompanyA
                           <Link href={`/recruit/applicants/${a.id}`} className="font-medium text-ink hover:text-pine hover:underline">
                             {a.candidateName}
                           </Link>
-                          <p className="truncate text-xs text-muted">{t("appliedFor", { job: a.jobTitle })}</p>
+                          <p className="truncate text-xs text-muted">
+                            {a.origin === "application" ? t("appliedFor", { job: a.jobTitle }) : t("connectedFor", { job: a.jobTitle })}
+                          </p>
                         </div>
                       </div>
                     </td>
@@ -270,12 +273,16 @@ export function AllApplicantsList({ applicants, locale }: { applicants: CompanyA
                       })}
                     </td>
                     <td className="px-4 py-3">
-                      <StatusDropdown
-                        jobId={a.jobId}
-                        applicationId={a.id}
-                        status={a.status}
-                        onChange={(s) => setStatusOverrides((o) => ({ ...o, [a.id]: s }))}
-                      />
+                      {a.origin === "application" ? (
+                        <StatusDropdown
+                          jobId={a.jobId}
+                          applicationId={a.id}
+                          status={a.status as Status}
+                          onChange={(s) => setStatusOverrides((o) => ({ ...o, [a.id]: s }))}
+                        />
+                      ) : (
+                        <Badge variant={STATUS_BADGE.connected}>{t("status.connected")}</Badge>
+                      )}
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
@@ -286,7 +293,15 @@ export function AllApplicantsList({ applicants, locale }: { applicants: CompanyA
                         ) : (
                           <span className="text-xs text-muted">{t("cvUnavailable")}</span>
                         )}
-                        <MessageButton applicationId={a.id} />
+                        {a.origin === "application" ? (
+                          <MessageButton applicationId={a.id} />
+                        ) : (
+                          a.threadId && (
+                            <Link href={`/recruit/messages/${a.threadId}`} className={buttonClassName()}>
+                              {tm("viewConversation")}
+                            </Link>
+                          )
+                        )}
                       </div>
                     </td>
                   </tr>

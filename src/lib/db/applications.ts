@@ -6,6 +6,8 @@ import { sniffFileType } from "@/lib/file-sniff";
 import { extractCvText } from "@/lib/cv-text";
 import { generateApplicantSynopsis, type ApplicantSynopsis } from "@/lib/ai/applicant-synopsis";
 import type { CandidateExperienceEntry, CandidateCertificationEntry } from "@/lib/db/candidate-profile";
+import { getConnectedCandidatesForCompany, type ConnectedCandidate } from "@/lib/db/candidate-matches";
+import { getMyEmployerContext } from "@/lib/db/companies";
 import { sendEmail } from "@/lib/email/send";
 import { applicationConfirmationEmail } from "@/lib/email/templates/application-confirmation";
 import { newApplicantEmail } from "@/lib/email/templates/new-applicant";
@@ -433,7 +435,7 @@ export async function getMyApplications(): Promise<MyApplication[]> {
 
 export type Applicant = {
   id: string;
-  status: MyApplication["status"];
+  status: MyApplication["status"] | "connected";
   createdAt: string;
   coverNote: string | null;
   candidateName: string;
@@ -451,6 +453,19 @@ export type Applicant = {
    *  profile form already writes, just never read on this side before. */
   yearsExperience: number | null;
   cvSignedUrl: string | null;
+  /** Matchmaking rework, Phase 4: a real applicant has `origin:
+   *  "application"` (an `applications` row exists, the case every one of
+   *  the fields above was originally designed for). A candidate who
+   *  became known to this company by accepting a connection request,
+   *  not by applying, has `origin: "match"` instead, with `matchScore`
+   *  and `threadId` set (a real existing thread to link "Message" at,
+   *  never a new one to create). `status` is the fixed sentinel
+   *  `"connected"` for these rows, not a real application pipeline
+   *  state, since there's no application to move through one. */
+  origin: "application" | "match";
+  matchScore?: number;
+  threadId?: string;
+  candidateId?: string;
 };
 
 const CANDIDATE_DETAIL_SELECT = "full_name, email, phone, linkedin_url, avatar_url, skills, years_experience";
@@ -481,6 +496,32 @@ function toApplicant(
     skills: candidate?.skills ?? [],
     yearsExperience: candidate?.years_experience ?? null,
     cvSignedUrl,
+    origin: "application",
+  };
+}
+
+/** Matchmaking rework, Phase 4: the `getConnectedCandidatesForCompany()`
+ *  equivalent of `toApplicant` above, so both lists below can merge
+ *  connected-match candidates into the exact same `Applicant`-shaped
+ *  rows the rest of this file and its UI already know how to render. */
+function connectedCandidateToApplicant(row: ConnectedCandidate): Applicant {
+  return {
+    id: `match:${row.candidateId}:${row.jobId}`,
+    status: "connected",
+    createdAt: row.connectedAt,
+    coverNote: null,
+    candidateName: row.candidateName,
+    candidateEmail: row.candidateEmail,
+    phone: row.phone,
+    linkedinUrl: row.linkedinUrl,
+    avatarUrl: row.avatarUrl,
+    skills: row.skills,
+    yearsExperience: row.yearsExperience,
+    cvSignedUrl: row.cvSignedUrl,
+    origin: "match",
+    matchScore: row.matchScore,
+    threadId: row.threadId,
+    candidateId: row.candidateId,
   };
 }
 
@@ -494,16 +535,19 @@ function toApplicant(
  *  bucket has no read policy for anyone. */
 export async function getApplicantsForJob(jobId: string): Promise<Applicant[]> {
   const supabase = await createClient();
-  const { data } = await supabase
-    .from("applications")
-    .select("id, status, created_at, cover_note, cv_url, candidate_id")
-    .eq("job_id", jobId)
-    .order("created_at", { ascending: false });
+  const [{ data }, { data: jobRow }] = await Promise.all([
+    supabase
+      .from("applications")
+      .select("id, status, created_at, cover_note, cv_url, candidate_id")
+      .eq("job_id", jobId)
+      .order("created_at", { ascending: false }),
+    supabase.from("jobs").select("company_id").eq("id", jobId).maybeSingle(),
+  ]);
 
   if (!data) return [];
 
   const admin = createAdminClient();
-  return Promise.all(
+  const applicants = await Promise.all(
     data.map(async (row) => {
       const [{ data: candidate }, { data: signed }] = await Promise.all([
         admin.from("candidates").select(CANDIDATE_DETAIL_SELECT).eq("id", row.candidate_id).single(),
@@ -512,6 +556,19 @@ export async function getApplicantsForJob(jobId: string): Promise<Applicant[]> {
       return toApplicant(row, candidate, signed?.signedUrl ?? null);
     }),
   );
+
+  // Matchmaking rework, Phase 4: a candidate known to this company via an
+  // accepted connection request, who currently matches this specific
+  // job too, merged in alongside the real applicants, never duplicating
+  // someone who's already listed here as a genuine applicant to this job.
+  if (!jobRow) return applicants;
+  const appliedCandidateIds = new Set(data.map((row) => row.candidate_id));
+  const connected = await getConnectedCandidatesForCompany(jobRow.company_id);
+  const connectedForThisJob = connected
+    .filter((c) => c.jobId === jobId && !appliedCandidateIds.has(c.candidateId))
+    .map(connectedCandidateToApplicant);
+
+  return [...applicants, ...connectedForThisJob];
 }
 
 export type CompanyApplicant = Applicant & { jobId: string; jobTitle: string; jobSlug: string };
@@ -533,7 +590,7 @@ export async function getAllApplicantsForCompany(companyId: string): Promise<Com
   if (!data) return [];
 
   const admin = createAdminClient();
-  return Promise.all(
+  const applicants = await Promise.all(
     data.map(async (row) => {
       const job = row.jobs as unknown as { id: string; title: string; slug: string };
       const [{ data: candidate }, { data: signed }] = await Promise.all([
@@ -543,6 +600,18 @@ export async function getAllApplicantsForCompany(companyId: string): Promise<Com
       return { ...toApplicant(row, candidate, signed?.signedUrl ?? null), jobId: job.id, jobTitle: job.title, jobSlug: job.slug };
     }),
   );
+
+  // Matchmaking rework, Phase 4: every connected candidate against every
+  // job of this company they currently match, except a (candidate, job)
+  // pair that's already a real application above, so nobody is ever
+  // listed twice for the same job.
+  const appliedPairs = new Set(data.map((row) => `${row.candidate_id}:${(row.jobs as unknown as { id: string }).id}`));
+  const connected = await getConnectedCandidatesForCompany(companyId);
+  const connectedApplicants: CompanyApplicant[] = connected
+    .filter((c) => !appliedPairs.has(`${c.candidateId}:${c.jobId}`))
+    .map((c) => ({ ...connectedCandidateToApplicant(c), jobId: c.jobId, jobTitle: c.jobTitle, jobSlug: c.jobSlug }));
+
+  return [...applicants, ...connectedApplicants];
 }
 
 export type ApplicantDetail = Applicant & {
@@ -565,13 +634,82 @@ export type ApplicantDetail = Applicant & {
   certifications: CandidateCertificationEntry[];
 };
 
+async function getConnectedCandidateDetail(candidateId: string, jobId: string): Promise<ApplicantDetail | null> {
+  const ctx = await getMyEmployerContext();
+  if (!ctx) return null;
+
+  // Re-derives from the same company-scoped function the lists already
+  // use, rather than a separate, narrower query. This is also the
+  // ownership check: a (candidateId, jobId) pair that isn't a real
+  // accepted connection for *this* employer's own company simply never
+  // appears in the result, same "RLS does the scoping" shape every other
+  // function in this file relies on, just expressed in application code
+  // since there's no `applications` row (or RLS policy) to lean on here.
+  const connected = await getConnectedCandidatesForCompany(ctx.company.id);
+  const match = connected.find((c) => c.candidateId === candidateId && c.jobId === jobId);
+  if (!match) return null;
+
+  const admin = createAdminClient();
+  const [{ data: experienceRows }, { data: certificationRows }] = await Promise.all([
+    admin
+      .from("candidate_experience")
+      .select("id, title, company, location, start_date, end_date, description, highlights")
+      .eq("candidate_id", candidateId)
+      .order("start_date", { ascending: false, nullsFirst: false }),
+    admin
+      .from("candidate_certifications")
+      .select("id, name, issuer, issued_date")
+      .eq("candidate_id", candidateId)
+      .order("issued_date", { ascending: false, nullsFirst: false }),
+  ]);
+
+  const experience: CandidateExperienceEntry[] = (experienceRows ?? []).map((r) => ({
+    id: r.id,
+    title: r.title,
+    company: r.company,
+    location: r.location,
+    startDate: r.start_date,
+    endDate: r.end_date,
+    description: r.description,
+    highlights: r.highlights ?? [],
+  }));
+  const certifications: CandidateCertificationEntry[] = (certificationRows ?? []).map((r) => ({
+    id: r.id,
+    name: r.name,
+    issuer: r.issuer,
+    issuedDate: r.issued_date,
+  }));
+
+  return {
+    ...connectedCandidateToApplicant(match),
+    jobId: match.jobId,
+    jobTitle: match.jobTitle,
+    jobSlug: match.jobSlug,
+    companyName: ctx.company.company_name,
+    aiSynopsis: null,
+    experience,
+    certifications,
+  };
+}
+
 /** The canonical candidate-detail route (`/recruit/applicants/[id]`),
  *  reachable from both the per-job and the aggregated applicant lists —
  *  one page, not two. Relies entirely on the same `applications` RLS
  *  policy every other applicant read here does: a row for a job this
  *  employer's company doesn't own simply doesn't come back, no separate
- *  ownership check needed. */
+ *  ownership check needed.
+ *
+ *  Matchmaking rework, Phase 4: `applicationId` is also now a synthetic
+ *  `match:<candidateId>:<jobId>` id for a connected-but-never-applied
+ *  candidate (see `connectedCandidateToApplicant`), branching to
+ *  `getConnectedCandidateDetail` for that shape, since there's no real
+ *  `applications` row behind it at all. */
 export async function getApplicantDetail(applicationId: string): Promise<ApplicantDetail | null> {
+  if (applicationId.startsWith("match:")) {
+    const [, candidateId, jobId] = applicationId.split(":");
+    return getConnectedCandidateDetail(candidateId, jobId);
+  }
+
   const supabase = await createClient();
   const { data } = await supabase
     .from("applications")

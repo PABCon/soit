@@ -405,6 +405,132 @@ export async function getMatchCountsForCompanyJobs(): Promise<JobMatchCount[]> {
     });
 }
 
+export type ConnectedCandidate = {
+  candidateId: string;
+  jobId: string;
+  jobTitle: string;
+  jobSlug: string;
+  matchScore: number;
+  threadId: string;
+  connectedAt: string;
+  candidateName: string;
+  candidateEmail: string;
+  phone: string | null;
+  linkedinUrl: string | null;
+  avatarUrl: string | null;
+  skills: string[];
+  yearsExperience: number | null;
+  cvSignedUrl: string | null;
+};
+
+const CONNECTED_CANDIDATE_DETAIL_SELECT = "full_name, email, phone, linkedin_url, avatar_url, skills, years_experience, cv_url";
+
+/** Matchmaking rework, Phase 4. Once a candidate accepts a connection
+ *  request (Phase 3's gate), they're known to this company going
+ *  forward, not just inside that one thread. This surfaces them against
+ *  every one of the company's other live jobs they currently match too,
+ *  not only the job the connection happened through, per the user's own
+ *  framing for this phase ("known to this company ... across every job
+ *  they match, not only the one they connected through"). Reuses the
+ *  exact admin-client-scoped-in-code pattern applications.ts already
+ *  established for real applicant PII (candidates has zero employer-read
+ *  RLS): the only real difference is the authorization boundary itself,
+ *  a real accepted connection rather than a real application row. */
+export async function getConnectedCandidatesForCompany(companyId: string): Promise<ConnectedCandidate[]> {
+  const supabase = await createClient();
+  const { data: threads } = await supabase
+    .from("message_threads")
+    .select("id, candidate_id, job_id, responded_at")
+    .eq("company_id", companyId)
+    .eq("origin", "match")
+    .eq("request_status", "accepted");
+  if (!threads || threads.length === 0) return [];
+
+  // A candidate may have an accepted thread tied to more than one job at
+  // this company (one request per job), grouped so every job they
+  // currently match gets a thread to point "Message" at: the thread tied
+  // to that specific job when one exists, otherwise the earliest
+  // accepted thread for that candidate, so there's always a real
+  // conversation to link to even for a job they never separately
+  // connected through.
+  const threadsByCandidate = new Map<string, NonNullable<typeof threads>>();
+  for (const t of threads) {
+    if (!threadsByCandidate.has(t.candidate_id)) threadsByCandidate.set(t.candidate_id, []);
+    threadsByCandidate.get(t.candidate_id)!.push(t);
+  }
+
+  const activeJobs = await getCompanyJobs(companyId, "active");
+  if (activeJobs.length === 0) return [];
+  const jobSlugById = new Map(activeJobs.map((j) => [j.id, j.slug]));
+  const jobsForEdit = (await Promise.all(activeJobs.map((j) => getJobForEdit(j.id)))).filter(
+    (j): j is NonNullable<typeof j> => j !== null,
+  );
+
+  const allCandidates = await fetchScorableCandidates();
+  const connectedIds = new Set(threadsByCandidate.keys());
+  const connectedCandidates = allCandidates.filter((c) => connectedIds.has(c.id));
+  if (connectedCandidates.length === 0) return [];
+
+  const admin = createAdminClient();
+  const { data: contactRows } = await admin
+    .from("candidates")
+    .select(`id, ${CONNECTED_CANDIDATE_DETAIL_SELECT}`)
+    .in(
+      "id",
+      connectedCandidates.map((c) => c.id),
+    );
+  const contactById = new Map((contactRows ?? []).map((r) => [r.id, r]));
+
+  const rows: ConnectedCandidate[] = [];
+  for (const candidateRow of connectedCandidates) {
+    const contact = contactById.get(candidateRow.id);
+    const candidateThreads = threadsByCandidate.get(candidateRow.id)!;
+    const skillIds = new Set(candidateRow.candidate_tech_tags.map((t) => t.tech_tag_id));
+    const prefs = candidatePrefsFromRow(candidateRow);
+
+    const cvSignedUrl = contact?.cv_url
+      ? ((await admin.storage.from("cvs").createSignedUrl(contact.cv_url, 900)).data?.signedUrl ?? null)
+      : null;
+
+    for (const job of jobsForEdit) {
+      const tags = job.job_tech_tags.map((t) => ({ techTagId: t.tech_tag_id, required: t.required }));
+      const jobFacts = {
+        categoryId: job.category_id,
+        locationId: job.location_id,
+        workModel: job.work_model,
+        employmentType: job.employment_type,
+        salaryMin: job.salary_min,
+        salaryMax: job.salary_max,
+        salaryPeriod: job.salary_period,
+      };
+      const matchScore = scoreJobMatch(jobFacts, tags, skillIds, prefs);
+      if (matchScore < MIN_MATCH_SCORE) continue;
+
+      const threadForJob = candidateThreads.find((t) => t.job_id === job.id) ?? candidateThreads[0];
+      rows.push({
+        candidateId: candidateRow.id,
+        jobId: job.id,
+        jobTitle: job.title,
+        jobSlug: jobSlugById.get(job.id) ?? "",
+        matchScore,
+        threadId: threadForJob.id,
+        connectedAt: threadForJob.responded_at ?? new Date(0).toISOString(),
+        candidateName: contact?.full_name ?? "—",
+        candidateEmail: contact?.email ?? "—",
+        phone: contact?.phone ?? null,
+        linkedinUrl: contact?.linkedin_url ?? null,
+        avatarUrl: contact?.avatar_url ?? null,
+        skills: contact?.skills ?? [],
+        yearsExperience: contact?.years_experience ?? null,
+        cvSignedUrl,
+      });
+    }
+  }
+
+  rows.sort((a, b) => new Date(b.connectedAt).getTime() - new Date(a.connectedAt).getTime());
+  return rows;
+}
+
 export type SetMatchStatusResult = { ok: true } | { ok: false; reason: "not_an_employer" | "not_found" };
 
 export async function setMatchStatus(jobId: string, candidateId: string, status: MatchStatus): Promise<SetMatchStatusResult> {

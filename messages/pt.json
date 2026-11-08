@@ -944,6 +944,7 @@
     "noResults": "Nenhuma candidatura corresponde aos filtros.",
     "changeStatus": "Alterar estado",
     "appliedFor": "Candidatura para “{job}”",
+    "connectedFor": "Contacto aceite via “{job}”",
     "backToApplicants": "← Voltar às candidaturas",
     "notProvided": "Não fornecido",
     "coverNote": "Nota de candidatura",
@@ -952,7 +953,8 @@
       "viewed": "Visto",
       "responded": "Respondido",
       "rejected": "Rejeitado",
-      "closed": "Fechado"
+      "closed": "Fechado",
+      "connected": "Contacto aceite"
     },
     "aiSynopsisHeading": "Resumo com IA",
     "synopsisSummaryLabel": "Resumo do perfil",

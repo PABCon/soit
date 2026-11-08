@@ -944,6 +944,7 @@
     "noResults": "No applicants match your filters.",
     "changeStatus": "Change status",
     "appliedFor": "Applied for “{job}”",
+    "connectedFor": "Connected via “{job}”",
     "backToApplicants": "← Back to applicants",
     "notProvided": "Not provided",
     "coverNote": "Cover note",
@@ -952,7 +953,8 @@
       "viewed": "Viewed",
       "responded": "Responded",
       "rejected": "Rejected",
-      "closed": "Closed"
+      "closed": "Closed",
+      "connected": "Connected"
     },
     "aiSynopsisHeading": "AI summary",
     "synopsisSummaryLabel": "Profile summary",
