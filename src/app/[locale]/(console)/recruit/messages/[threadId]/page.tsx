@@ -57,7 +57,12 @@ export default async function EmployerThreadPage({ params }: Props) {
         <div className="min-w-0 pt-1">
           <h1 className="text-2xl font-bold lg:text-3xl">{candidateName}</h1>
           <p className="mt-0.5 text-sm text-muted">
-            {thread.jobTitle} · {thread.companyName}
+            {/* Real-usage report: no way to see which role a thread was
+             *  actually about without hunting for it separately. */}
+            <Link href={`/recruit/jobs/${thread.jobId}/edit`} className="font-medium text-pine hover:underline">
+              {thread.jobTitle}
+            </Link>{" "}
+            · {thread.companyName}
           </p>
           <p className="mt-1 flex items-center gap-1.5 text-xs text-muted">
             <MessageSquare className="h-3.5 w-3.5" aria-hidden="true" />

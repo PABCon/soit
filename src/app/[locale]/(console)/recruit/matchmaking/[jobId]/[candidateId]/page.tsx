@@ -78,6 +78,12 @@ export default async function MatchCandidateProfilePage({ params }: Props) {
                 ? t("matchedForWithDate", { job: jobTitle, date: format.dateTime(new Date(match.aiSummaryGeneratedAt), { dateStyle: "short" }) })
                 : t("matchedForNoDate", { job: jobTitle })}
             </p>
+            {/* Real-usage report: no way to see the actual job posting
+             *  (requirements, description) this candidate matched
+             *  against without hunting for it separately. */}
+            <Link href={`/recruit/jobs/${jobId}/edit`} className="mt-0.5 inline-block text-xs font-medium text-pine hover:underline">
+              {t("viewJobPosting")}
+            </Link>
           </div>
         </div>
         <MatchStatusSelect jobId={jobId} candidateId={candidateId} initialStatus={match.status} />

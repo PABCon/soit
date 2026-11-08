@@ -1,3 +1,4 @@
+import { after } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getMyEmployerContext } from "./companies";
@@ -82,6 +83,10 @@ export type CandidateMatch = {
   hasWorkHistory: boolean;
   status: MatchStatus;
   isTopMatch: boolean;
+  /** null until an employer has actually opened this candidate's match
+   *  detail page — see markMatchViewed's own comment. Drives the "new"
+   *  badge on both the list card and the per-job match count. */
+  viewedAt: string | null;
   /** null until an employer has generated it (or the list's own batch
    *  generation has run) — see generateMatchSummaries' own comment for
    *  why this is cached, not recomputed on every view. */
@@ -120,13 +125,14 @@ type MatchNoteRow = {
   status: MatchStatus;
   ai_summary: MatchSummary | null;
   ai_summary_generated_at: string | null;
+  viewed_at: string | null;
 };
 
 async function fetchMatchNotes(companyId: string, jobId: string): Promise<Map<string, MatchNoteRow>> {
   const supabase = await createClient();
   const { data } = await supabase
     .from("candidate_match_notes")
-    .select("candidate_id, status, ai_summary, ai_summary_generated_at")
+    .select("candidate_id, status, ai_summary, ai_summary_generated_at, viewed_at")
     .eq("company_id", companyId)
     .eq("job_id", jobId);
   return new Map((data ?? []).map((row) => [row.candidate_id, row as MatchNoteRow]));
@@ -226,6 +232,7 @@ export async function getCandidateMatchesForJob(jobId: string, limit = 200): Pro
         hasWorkHistory: row.candidate_experience.length > 0,
         status: note?.status ?? "new",
         isTopMatch: false,
+        viewedAt: note?.viewed_at ?? null,
         aiSummary: note?.ai_summary ?? null,
         aiSummaryGeneratedAt: note?.ai_summary_generated_at ?? null,
       };
@@ -272,19 +279,60 @@ export type CandidateMatchDetailResult =
   | { ok: true; jobTitle: string; match: CandidateMatch }
   | { ok: false; reason: "not_an_employer" | "not_found" | "not_paying" };
 
+/** First-view-only: a match that already has a `viewed_at` never needs
+ *  touching again, so this is a plain conditional update rather than an
+ *  upsert that would also need to carry every other note column along
+ *  with it. Runs via the regular RLS-scoped client — the caller
+ *  (getCandidateMatchDetail) has already confirmed this employer owns
+ *  the job, same authorization `setMatchStatus` already relies on. */
+async function markMatchViewed(companyId: string, jobId: string, candidateId: string): Promise<void> {
+  const supabase = await createClient();
+  const { data: existing } = await supabase
+    .from("candidate_match_notes")
+    .select("id, viewed_at")
+    .eq("company_id", companyId)
+    .eq("job_id", jobId)
+    .eq("candidate_id", candidateId)
+    .maybeSingle();
+  if (existing?.viewed_at) return;
+  const now = new Date().toISOString();
+  if (existing) {
+    await supabase.from("candidate_match_notes").update({ viewed_at: now }).eq("id", existing.id);
+  } else {
+    await supabase.from("candidate_match_notes").insert({ company_id: companyId, job_id: jobId, candidate_id: candidateId, viewed_at: now });
+  }
+}
+
 /** Page 04 (candidate profile) — reuses the same list computation and
  *  picks out one candidate, rather than a parallel query shape; a match
  *  only exists in the context of its already-computed, already-sorted
- *  job list anyway. */
+ *  job list anyway. Opening this page is also the one place a match
+ *  ever gets marked "seen" (real-usage report: there was previously no
+ *  way at all to tell an already-reviewed match from a brand-new one) —
+ *  best-effort and after the fact, never blocking the page the employer
+ *  is waiting on. */
 export async function getCandidateMatchDetail(jobId: string, candidateId: string): Promise<CandidateMatchDetailResult> {
   const result = await getCandidateMatchesForJob(jobId);
   if (!result.ok) return result;
   const match = result.matches.find((m) => m.candidateId === candidateId);
   if (!match) return { ok: false, reason: "not_found" };
+
+  if (!match.viewedAt) {
+    const ctx = await getMyEmployerContext();
+    if (ctx) {
+      const markViewed = () => markMatchViewed(ctx.company.id, jobId, candidateId);
+      try {
+        after(markViewed);
+      } catch {
+        void markViewed();
+      }
+    }
+  }
+
   return { ok: true, jobTitle: result.jobTitle, match };
 }
 
-export type JobMatchCount = { jobId: string; matchCount: number; lastCheckedAt: string | null };
+export type JobMatchCount = { jobId: string; matchCount: number; newMatchCount: number; lastCheckedAt: string | null };
 
 /** Powers the `/recruit/matchmaking` overview — one candidate fetch,
  *  scored against every live job at once, rather than a separate query
@@ -301,20 +349,26 @@ export async function getMatchCountsForCompanyJobs(): Promise<JobMatchCount[]> {
   if (activeJobs.length === 0) return [];
 
   const supabase = await createClient();
-  const [candidates, lastCheckedRows, ...jobsForEdit] = await Promise.all([
+  const [candidates, noteRows, ...jobsForEdit] = await Promise.all([
     fetchScorableCandidates(),
     supabase
       .from("candidate_match_notes")
-      .select("job_id, updated_at")
+      .select("job_id, candidate_id, updated_at, viewed_at")
       .eq("company_id", ctx.company.id)
       .in("job_id", activeJobs.map((j) => j.id)),
     ...activeJobs.map((j) => getJobForEdit(j.id)),
   ]);
 
   const lastCheckedByJob = new Map<string, string>();
-  for (const row of lastCheckedRows.data ?? []) {
+  // candidate_id -> viewed_at, grouped by job_id — lets the "new matches"
+  // count below tell apart a candidate nobody's opened yet from one an
+  // employer already reviewed.
+  const viewedByJob = new Map<string, Map<string, string | null>>();
+  for (const row of noteRows.data ?? []) {
     const current = lastCheckedByJob.get(row.job_id);
     if (!current || row.updated_at > current) lastCheckedByJob.set(row.job_id, row.updated_at);
+    if (!viewedByJob.has(row.job_id)) viewedByJob.set(row.job_id, new Map());
+    viewedByJob.get(row.job_id)!.set(row.candidate_id, row.viewed_at);
   }
 
   return jobsForEdit
@@ -330,11 +384,16 @@ export async function getMatchCountsForCompanyJobs(): Promise<JobMatchCount[]> {
         salaryMax: job.salary_max,
         salaryPeriod: job.salary_period,
       };
-      const matchCount = candidates.filter((row) => {
+      const viewedForJob = viewedByJob.get(job.id);
+      let matchCount = 0;
+      let newMatchCount = 0;
+      for (const row of candidates) {
         const skillIds = new Set(row.candidate_tech_tags.map((t) => t.tech_tag_id));
-        return scoreJobMatch(jobFacts, tags, skillIds, candidatePrefsFromRow(row)) >= MIN_MATCH_SCORE;
-      }).length;
-      return { jobId: job.id, matchCount, lastCheckedAt: lastCheckedByJob.get(job.id) ?? null };
+        if (scoreJobMatch(jobFacts, tags, skillIds, candidatePrefsFromRow(row)) < MIN_MATCH_SCORE) continue;
+        matchCount++;
+        if (!viewedForJob?.get(row.id)) newMatchCount++;
+      }
+      return { jobId: job.id, matchCount, newMatchCount, lastCheckedAt: lastCheckedByJob.get(job.id) ?? null };
     });
 }
 

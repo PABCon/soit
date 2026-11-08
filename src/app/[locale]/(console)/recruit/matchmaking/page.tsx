@@ -87,8 +87,17 @@ export default async function MatchmakingPage({ params }: Props) {
     );
   }
 
-  const [jobs, counts] = await Promise.all([getCompanyJobs(ctx.company.id, "active"), getMatchCountsForCompanyJobs()]);
+  const [allJobs, counts] = await Promise.all([getCompanyJobs(ctx.company.id, "active"), getMatchCountsForCompanyJobs()]);
   const countByJob = new Map(counts.map((c) => [c.jobId, c]));
+  // Real-usage report: with every active job listed regardless of match
+  // count, in whatever order getCompanyJobs happened to return (not match
+  // count), the roles that actually had matches could sit many screens
+  // down past a long run of zero-match ones — you had to scroll all the
+  // way down past ITDS's own job list to find them. Only ever show jobs
+  // that currently have a real match, ranked by how many.
+  const jobs = allJobs
+    .filter((job) => (countByJob.get(job.id)?.matchCount ?? 0) > 0)
+    .sort((a, b) => (countByJob.get(b.id)?.matchCount ?? 0) - (countByJob.get(a.id)?.matchCount ?? 0));
 
   return (
     <>
@@ -112,7 +121,7 @@ export default async function MatchmakingPage({ params }: Props) {
       </div>
 
       {jobs.length === 0 ? (
-        <p className="mt-8 text-sm text-muted">{t("empty")}</p>
+        <p className="mt-8 text-sm text-muted">{allJobs.length === 0 ? t("empty") : t("noMatchedJobsYet")}</p>
       ) : (
         <ul className="mt-6 flex flex-col gap-3">
           {jobs.map((job) => {
@@ -125,7 +134,14 @@ export default async function MatchmakingPage({ params }: Props) {
                     <Briefcase className="h-5 w-5" aria-hidden="true" />
                   </span>
                   <div className="min-w-0">
-                    <p className="truncate font-display font-semibold text-ink">{job.title}</p>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="truncate font-display font-semibold text-ink">{job.title}</p>
+                      {(info?.newMatchCount ?? 0) > 0 && (
+                        <span className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-pine px-1.5 text-[11px] font-semibold text-white">
+                          {t("newMatchesBadge", { count: info!.newMatchCount })}
+                        </span>
+                      )}
+                    </div>
                     <p className="mt-0.5 text-xs text-muted">
                       {job.location ?? t("remoteBadge")} · {tJobForm(`employmentTypeOption.${job.employmentType}`)}
                     </p>

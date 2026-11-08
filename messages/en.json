@@ -98,8 +98,10 @@
     "tabDrafts": "Drafts",
     "logOut": "Log out",
     "empty": "You have not published any job ads yet.",
+    "noMatchedJobsYet": "None of your active jobs have any matched candidates yet. Check back in a few days.",
+    "newMatchesBadge": "{count, plural, one {# new} other {# new}}",
     "matchmaking": "Matchmaking",
-    "matchmakingSubtitle": "Candidates matched to your live job ads — ranked by fit, shown anonymously.",
+    "matchmakingSubtitle": "Candidates matched to your live job ads, ranked by fit, shown anonymously.",
     "messages": "Messages",
     "matchmakingUpsell": "Matching is included with any paid job ad — buy ad credits or subscribe to Top Employer to see matched candidates.",
     "matchCount": "{count, plural, =0 {No matches yet} one {# match} other {# matches}}",
@@ -133,6 +135,7 @@
     "skills": "Skills",
     "candidateNumber": "Candidate #{number}",
     "topMatchBadge": "Top match",
+    "newMatchBadge": "New",
     "reviewProfile": "Review profile",
     "matchStatusOption": {
       "new": "New",
@@ -143,6 +146,7 @@
     "matchedCandidateBadge": "Matched candidate",
     "matchedForWithDate": "Matched for “{job}” · {date}",
     "matchedForNoDate": "Matched for “{job}”",
+    "viewJobPosting": "View job posting →",
     "aiSummaryHeading": "AI summary",
     "aiSummaryGenerateCta": "Generate AI summary",
     "aiSummaryRegenerateCta": "Regenerate",
@@ -1100,7 +1104,7 @@
   },
   "recommendations": {
     "title": "Jobs matched to you",
-    "metaDescription": "Get IT jobs in Portugal matched to your real skills and experience — free, always.",
+    "metaDescription": "Get IT jobs in Portugal matched to your real skills and experience, free, always.",
     "subtitle": "Ranked against your skills and job preferences.",
     "pitchTitle": "Get jobs matched to your skills",
     "pitchBody": "Create a free account, add your skills (or just upload your CV), and we'll rank live jobs against your real profile.",
@@ -1118,13 +1122,13 @@
     "noMatches": "No live jobs match your profile closely right now — check back soon, or browse all jobs."
   },
   "recommendationsTeaser": {
-    "anonPitch": "Get jobs matched to your skills — free",
-    "emptyProfilePitch": "Add your skills to see jobs matched to you",
-    "noPreferencesPitch": "Set your job preferences to see jobs matched to you",
+    "anonPitch": "Get Matched! Jobs picked for your skills, free",
+    "emptyProfilePitch": "Add your skills to start getting matched",
+    "noPreferencesPitch": "Set your job preferences to get matched",
     "matchesPitch": "{count, plural, one {# job matches} other {# jobs match}} your profile",
     "noMatchesPitch": "See jobs matched to your profile",
     "subtitle": "Create a profile and let companies find you",
-    "cta": "View matches"
+    "cta": "See matches"
   },
   "salaryCalculator": {
     "pageTitle": "Portugal Net Salary Calculator 2026: Employee, Freelancer & B2B",

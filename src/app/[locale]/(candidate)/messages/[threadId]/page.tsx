@@ -62,7 +62,11 @@ export default async function CandidateThreadPage({ params }: Props) {
         </span>
         <div className="min-w-0 pt-1">
           <h1 className="text-2xl font-bold lg:text-3xl">{thread.companyName}</h1>
-          <p className="mt-0.5 text-sm text-muted">{thread.jobTitle}</p>
+          <p className="mt-0.5 text-sm text-muted">
+            <Link href={`/jobs/${thread.jobSlug}`} className="font-medium text-pine hover:underline">
+              {thread.jobTitle}
+            </Link>
+          </p>
         </div>
       </div>
 

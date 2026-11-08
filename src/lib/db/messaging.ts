@@ -474,7 +474,9 @@ export type ThreadDetailResult =
   | {
       ok: true;
       role: "employer" | "candidate";
+      jobId: string;
       jobTitle: string;
+      jobSlug: string;
       origin: "application" | "match";
       identityUnlocked: boolean;
       candidateName: string | null;
@@ -488,12 +490,12 @@ export async function getThreadDetail(threadId: string): Promise<ThreadDetailRes
   const { data: thread } = await supabase
     .from("message_threads")
     .select(
-      "id, company_id, candidate_id, origin, identity_unlocked, jobs!inner ( title, companies!inner ( company_name ) )",
+      "id, company_id, candidate_id, job_id, origin, identity_unlocked, jobs!inner ( title, slug, companies!inner ( company_name ) )",
     )
     .eq("id", threadId)
     .maybeSingle();
   if (!thread) return { ok: false, reason: "not_found" };
-  const job = thread.jobs as unknown as { title: string; companies: { company_name: string } };
+  const job = thread.jobs as unknown as { title: string; slug: string; companies: { company_name: string } };
 
   const [employerCtx, { data: candidateId }] = await Promise.all([
     getMyEmployerContext(),
@@ -557,7 +559,9 @@ export async function getThreadDetail(threadId: string): Promise<ThreadDetailRes
   return {
     ok: true,
     role: isEmployer ? "employer" : "candidate",
+    jobId: thread.job_id,
     jobTitle: job.title,
+    jobSlug: job.slug,
     origin: thread.origin,
     identityUnlocked: thread.identity_unlocked,
     candidateName,
