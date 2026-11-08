@@ -5478,15 +5478,87 @@ itself is confirmed correct and working going forward — any candidate
 who sets a real residence from here on gets the real protection; this
 one just hasn't yet.
 
+**Phase 3 shipped**: a real accept/decline gate, replacing the implicit
+"first reply unlocks identity" mechanic with a genuine request the
+candidate must explicitly respond to, per the user's own answer to
+question 2 when this rework was first scoped.
+
+1. **`message_threads.request_status`** (migration
+   `20261108130000_connection_request_gate.sql`, `pending` / `accepted`
+   / `declined`, plus `responded_at`). `origin = 'application'` threads
+   start and stay `accepted`, since identity there is already known
+   from the application itself and there's nothing to gate; a
+   brand-new `origin = 'match'` thread now starts `pending`. Existing
+   match threads were backfilled on a simple rule: one that had already
+   unlocked under the old mechanic (the candidate had already replied)
+   became `accepted`, since there's no reason to retroactively gate a
+   conversation that's already open; one that never unlocked became
+   `pending`, a stricter, not looser, rule than before, so nothing
+   previously visible becomes invisible.
+
+2. **The gate is enforced in `sendMessage()` itself, server-side, not
+   just hidden in the UI**, this project's standing discipline of never
+   trusting a client-side affordance alone for anything that matters.
+   A `declined` thread is terminal for both sides, permanently. A
+   `pending` thread blocks the candidate from skipping the real
+   Accept/Decline step by just typing a reply (that used to be exactly
+   what unlocked identity under the old mechanic); it also blocks the
+   employer from sending a second message before the candidate has
+   responded to the first, checked by counting existing messages on the
+   thread rather than trusting the UI to simply not offer a second
+   compose box.
+
+3. **`respondToConnectionRequest()`** is the candidate's real response.
+   Accepting is itself the consent action that unlocks identity, with
+   no forced opening reply required, the same shape as a real "accept
+   connection" interaction elsewhere (LinkedIn, etc.), not a relabeled
+   message. Declining never unlocks identity, ever, no matter what the
+   employer might otherwise be able to infer: the thread simply becomes
+   terminal.
+
+4. **UI**: the matchmaking candidate page's old "Message" button is now
+   genuinely framed as "Request connection," with its own placeholder
+   copy. A real design fix, not an afterthought: the page first
+   checks whether a thread already exists for this exact candidate+job
+   (new `getExistingMatchThread()`) so a second visit shows a link to
+   the real thread/status instead of re-offering a fresh "ask," which
+   the server-side gate would reject anyway. New
+   `ConnectionRequestResponse` (candidate thread page) renders Accept/
+   Decline in place of the reply box while pending; both thread pages
+   show a plain status notice (waiting / declined) instead of a
+   composer when there's nothing to compose into yet; both inbox lists
+   show a small "Awaiting response"/"Declined" badge. A new
+   `connectionResponseEmail` notifies the employer of the candidate's
+   decision, with the same genericism as the existing new-message
+   notification (never names the candidate, even on acceptance; the
+   employer sees the real name the moment they open the now-unlocked
+   thread, this is only the nudge to go look).
+
+**Verified live against production** with disposable fixtures (a Top
+Employer company, two published jobs, and a candidate with a real
+matching skill plus preferences): sent a connection request on job 1,
+confirmed the employer's thread page shows a waiting notice with no
+composer at all; confirmed the candidate's inbox surfaces the pending
+request with a visible badge, and that opening it shows Accept/Decline
+buttons (not a reply box) alongside the employer's real opening
+message; declined it, and confirmed both sides immediately show the
+correct terminal notice, with the candidate's real name still never
+appearing anywhere on the employer's side even though a full
+back-and-forth over the request had already happened. Separately, sent
+a second request on job 2 and accepted it: confirmed a real reply box
+appeared immediately (no forced message needed to unlock), sent a
+reply, and confirmed the employer's thread page now shows the real
+candidate name, a working composer, and the candidate's reply. All 15
+checks passed. Fixtures (company, two jobs, both auth users, the
+candidate row) cleaned up afterward; Playwright reinstalled `--no-save`
+for this verification and fully uninstalled again once done.
+
 **Not built yet, planned**:
-- **Phase 3**: the connection-request flow itself — a real accept/
-  decline gate replacing the current "just send a message" mechanic,
-  candidate-side UI to respond, chat only opening after acceptance.
 - **Phase 4**: once accepted, surfacing the candidate in the Applicants
   view (not just revealed inside one message thread), and treating them
   as "known to this company" across every job they match, not only the
   one they connected through.
-- **A newly-requested phase, not yet scoped against 3/4**: candidate
+- **A newly-requested phase, not yet scoped against Phase 4**: candidate
   profiles should be able to declare a job-search status (looking /
   open to offers / not looking), and the matching engine should
   prioritize — or outright exclude — candidates accordingly, so someone

@@ -7,7 +7,7 @@ import { useRouter } from "@/i18n/navigation";
 type Decision = "accepted" | "declined";
 type RespondResult = { ok: true } | { ok: false; reason?: string };
 
-/** Phase 3 — the candidate's own real accept/decline gate: an employer's
+/** Phase 3. The candidate's own real accept/decline gate: an employer's
  *  opening message on a 'match' thread is a genuine request, not an
  *  already-open conversation. Shown in place of `ThreadReplyBox` while
  *  `request_status === "pending"`; the candidate must click one of these

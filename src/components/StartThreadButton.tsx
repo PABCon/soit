@@ -22,7 +22,7 @@ export function StartThreadButton({
    *  `AllApplicantsList`'s table restyle passes the shared `Button` recipe
    *  instead, to match its real buttons. */
   triggerClassName?: string;
-  /** Phase 3 — the matchmaking candidate page frames this as a real
+  /** Phase 3: the matchmaking candidate page frames this as a real
    *  connection request, not a plain message, so its trigger/placeholder/
    *  submit copy differ from the applicant-contact entry point. Each
    *  defaults to the original plain-message strings when omitted, so

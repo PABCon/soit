@@ -61,9 +61,9 @@ async function ensureThread(
     .maybeSingle();
   if (existing) return existing.id;
 
-  // Phase 3 — the gate: a brand-new 'match' thread starts 'pending', a
+  // Phase 3: the gate. A brand-new 'match' thread starts 'pending', a
   // real request the candidate must explicitly respond to; 'application'
-  // threads start (and stay) 'accepted' — identity there is already
+  // threads start (and stay) 'accepted', since identity there is already
   // known from the application itself, so there's nothing to gate.
   const { data: created, error } = await supabase
     .from("message_threads")
@@ -145,11 +145,11 @@ export async function getOrCreateThreadIdForApplicant(applicationId: string): Pr
 
 export type ExistingMatchThread = { threadId: string; requestStatus: RequestStatus } | null;
 
-/** Phase 3 — the matchmaking candidate page needs to know, before
+/** Phase 3. The matchmaking candidate page needs to know, before
  *  rendering anything, whether a connection request was already sent for
  *  this exact candidate+job: once sent, it's a one-shot ask (the
  *  employer can't just keep re-triggering `StartThreadButton` to send a
- *  second opening message — `sendMessage`'s own gate already rejects
+ *  second opening message. `sendMessage`'s own gate already rejects
  *  that server-side, but the UI shouldn't invite the attempt at all). */
 export async function getExistingMatchThread(candidateId: string, jobId: string): Promise<ExistingMatchThread> {
   const ctx = await getMyEmployerContext();
@@ -264,13 +264,13 @@ export async function sendMessage(threadId: string, body: string, file?: File | 
   if (!isEmployer && !isCandidate) return { ok: false, reason: "forbidden" };
   const senderType: "employer" | "candidate" = isEmployer ? "employer" : "candidate";
 
-  // Phase 3 — the accept/decline gate. A declined thread is terminal for
+  // Phase 3: the accept/decline gate. A declined thread is terminal for
   // both sides, permanently (identity never unlocked, nothing further to
   // say). A pending thread blocks the candidate from skipping the
   // explicit Accept/Decline step by just replying, and blocks the
   // employer from sending a second message before the candidate has
   // responded to the first (server-enforced, not just a hidden compose
-  // box — the same discipline this project applies to every other
+  // box, the same discipline this project applies to every other
   // client-trust boundary).
   if (row.request_status === "declined") return { ok: false, reason: "request_declined" };
   if (row.request_status === "pending") {
@@ -321,12 +321,12 @@ export async function sendMessage(threadId: string, body: string, file?: File | 
 
 export type RespondToConnectionRequestResult = { ok: true } | { ok: false; reason: "forbidden" | "not_found" | "already_responded" };
 
-/** Phase 3 — the candidate's own explicit response to a connection
+/** Phase 3. The candidate's own explicit response to a connection
  *  request. This, not a plain reply, is what unlocks identity on a
  *  'match' thread now: accepting is itself the consent action (no
  *  forced opening reply required, same as a real "accept connection"
- *  interaction elsewhere), and declining never unlocks anything, ever —
- *  the thread becomes terminal, identity stays private regardless of
+ *  interaction elsewhere), and declining never unlocks anything, ever.
+ *  The thread becomes terminal, identity stays private regardless of
  *  how the employer might otherwise have learned it. */
 export async function respondToConnectionRequest(
   threadId: string,
@@ -370,10 +370,10 @@ function scheduleConnectionResponseNotification(params: { thread: ThreadRow; dec
   }
 }
 
-/** Employer-only — a candidate always already knows the outcome of their
+/** Employer-only. A candidate always already knows the outcome of their
  *  own decision, nothing to notify them of. Deliberately never names the
  *  candidate even on acceptance (same "A candidate" genericism
- *  `notifyNewMessage` already uses for this direction) — the employer
+ *  `notifyNewMessage` already uses for this direction): the employer
  *  sees the real name the moment they open the now-unlocked thread, this
  *  is just the nudge to go look. */
 async function notifyConnectionResponse({ thread, decision }: { thread: ThreadRow; decision: "accepted" | "declined" }) {

@@ -2,11 +2,11 @@ import type { EmailMessage } from "../types";
 import { emailLayout } from "../layout";
 import { SITE_URL as SITE } from "../site-url";
 
-/** Matchmaking rework, Phase 3 — notifies the employer of a candidate's
+/** Matchmaking rework, Phase 3. Notifies the employer of a candidate's
  *  response to a connection request. Employer-only (the candidate
  *  already knows their own decision the moment they make it). Never
  *  names the candidate in either direction, same genericism
- *  new-message.ts's own employer-facing copy already uses — the
+ *  new-message.ts's own employer-facing copy already uses. The
  *  employer sees the real name once they open the now-unlocked thread;
  *  this is only the nudge to go look. */
 export function connectionResponseEmail(params: {
