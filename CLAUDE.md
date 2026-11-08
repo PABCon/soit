@@ -5387,12 +5387,98 @@ candidate during verification — cascade-deleted along with the test job)
 all cleaned up afterward. `tsc --noEmit`, `eslint`, `npm run build`, and
 `check:i18n` (1519 keys, in sync) all pass.
 
+**Phase 2 shipped**: a real candidate residence field, used as a hard
+geography gate, plus the preference-bucket fix the Phase 1 bug writeup
+flagged but didn't yet touch.
+
+1. **`candidates.location_id`** (migration
+   `20261108110000_candidate_residence_location.sql`, FK into the
+   existing curated `locations` table) — a new fact, deliberately kept
+   separate from `candidate_preferred_locations` (a job-search
+   preference, "where I'd like to work") since this is "where I actually
+   live," a different question the scoring engine needs answered
+   differently. Settable two ways, same precedent as every other profile
+   field this project has added: a manual `<select>` on the Overview tab
+   (autosaves like every other field there), and CV-extraction —
+   `extract-cv.ts` gained a `locationLabel` field, fuzzy-matched against
+   the curated city list server-side in `runCvExtraction` (one alias
+   needed, "Lisbon" → "Lisboa," the rest of the curated list is already
+   English-equivalent). Deliberately **not** `.nullable()` like every
+   other extracted field — this project hit Anthropic's structured-
+   output Gateway rejecting schemas with more than 16 nullable/array
+   ("union type") parameters once already (documented in `extract-cv.ts`
+   itself, a real past outage); a plain required `z.string()` (empty
+   string when the CV states no location) doesn't count toward that
+   limit, confirmed by a live Gateway call before shipping.
+
+2. **The hard gate** (`matching-scoring.ts`, top of `scoreJobMatch`):
+   when a candidate's residence is known and differs from an on-site or
+   hybrid job's location, the match is forced to `0` regardless of
+   skill overlap — a real constraint, not a scoring bucket. A remote job
+   never triggers it (location is irrelevant to a remote role); an
+   *unknown* residence (the common case today — nobody's set this field
+   yet) never blocks anything either, staying fully neutral rather than
+   penalizing a candidate for data they haven't entered.
+
+3. **The free-neutral bug, actually fixed**: Phase 1's own writeup
+   named this as the second half of the false-positive root cause —
+   `matching-scoring.ts`'s preference bucket gave a flat `+15` (half
+   credit) whenever a candidate had set literally zero job preferences,
+   on the theory that "no preference" shouldn't be penalized. Confirmed
+   it should also never be *rewarded* — the fallback is now `0`. A
+   candidate with a genuine 1/1-required-skill match and zero
+   preferences now scores exactly `60` (skill only), correctly below
+   `MIN_MATCH_SCORE = 70`; a candidate with real matching preferences
+   still earns the real preference points, proportionally, same as
+   before — 8 new unit tests in `matching-scoring.test.ts` lock in both
+   the hard-gate behavior (known match, known mismatch on office/hybrid,
+   mismatch on remote = no penalty, unknown = neutral) and the
+   zero-preference fix side by side, so neither regresses the other.
+
+`candidate-matches.ts`'s `SCORABLE_CANDIDATE_SELECT` picked up
+`location_id`; `recommendations.ts`'s `scoreJob()` gained a 4th
+parameter (`residenceLocationId`) threaded from `getMyCandidateProfile()`
+at both call sites — the candidate-facing recommendations direction and
+the employer-facing matching direction share the exact same
+`scoreJobMatch()` call, so this one change applies to both without
+drifting apart, preserving the "provably shared, not duplicated" scoring
+invariant Phase A of the original matching-engine work established.
+
+**Verified live against production** with fresh disposable fixtures (a
+Top Employer company, an on-site/hybrid Lisboa job and a fully-remote
+job — both tagged with one shared required skill — and a candidate with
+that skill plus matching work-model/employment-type preferences, no
+residence set at first): logged in as the candidate through the real
+browser, set their residence to Warsaw via the actual Overview-tab
+`<select>`, reloaded, and confirmed it genuinely persisted (not just
+accepted client-side); logged in as the employer and confirmed the
+Warsaw-residing candidate was correctly **excluded** from the on-site/
+hybrid Lisboa job's match list (the hard gate firing in production, not
+just in the unit tests) while still correctly appearing as a match on
+the fully-remote job (confirming the gate is location-model-aware, not
+a blanket penalty). Fixtures (companies, jobs, both auth users, the
+candidate row) cleaned up afterward; Playwright reinstalled
+`--no-save` for this verification and fully uninstalled again once
+done.
+
+**An honest, non-retroactive finding, not silently claimed as
+"fixed"**: the real "Candidato #4228" case from Phase 1's bug writeup
+(Paulo Brás, matched to "Senior Oracle HCM Developer") is **not**
+changed by this phase as it stands, and that's expected, not a gap.
+Direct, read-only recomputation against his real, live data: his
+`location_id` is still unset (he's never used the new field), so the
+hard gate's "unknown residence" branch applies — neutral, not blocking
+— and his real work-model/employment-type preferences (hybrid/
+permanent) genuinely do align with that job's own facts. His score is
+still 90/100 under the new logic, for the same reason it always was:
+the remaining issue for this *specific* historical case is that the
+job itself is thin-tagged (one required skill, nothing Oracle/HCM-
+specific), not anything this phase was built to fix. The mechanism
+itself is confirmed correct and working going forward — any candidate
+who sets a real residence from here on gets the real protection; this
+one just hasn't yet.
+
 **Not built yet, planned**:
-- **Phase 2**: a real candidate location field (manual profile field +
-  CV-extraction), used as a hard penalty for on-site/hybrid jobs far
-  from the candidate (remote jobs stay location-agnostic); and tightening
-  the preference-bucket neutral that let the flagged false positives
-  through.
 - **Phase 3**: the connection-request flow itself — a real accept/
   decline gate replacing the current "just send a message" mechanic,
   candidate-side UI to respond, chat only opening after acceptance.
@@ -5400,3 +5486,9 @@ all cleaned up afterward. `tsc --noEmit`, `eslint`, `npm run build`, and
   view (not just revealed inside one message thread), and treating them
   as "known to this company" across every job they match, not only the
   one they connected through.
+- **A newly-requested phase, not yet scoped against 3/4**: candidate
+  profiles should be able to declare a job-search status (looking /
+  open to offers / not looking), and the matching engine should
+  prioritize — or outright exclude — candidates accordingly, so someone
+  who's declared "not open" never surfaces as a match at all. Raised
+  mid-Phase-2; not designed yet.
