@@ -19,6 +19,17 @@ const ExtractedCvSchema = z.object({
   fullName: z.string().nullable(),
   phone: z.string().nullable(),
   linkedinUrl: z.string().nullable(),
+  // Matchmaking rework, Phase 2 — a city guess from the CV's own header/
+  // address block, fuzzy-matched by the caller against the real curated
+  // locations table (same "label comes back as plain text, caller
+  // matches it against real vocab" contract as skillLabels/languages
+  // below). Deliberately NOT `.nullable()` like every sibling field here
+  // — this schema was already sitting at the Gateway's hard 16-nullable/
+  // array-field limit (see education's own comment on the exact
+  // production outage this caused once already); a plain required
+  // string with "leave empty if unsure" in the prompt gets the same
+  // "don't invent" behavior without tipping back over that limit.
+  locationLabel: z.string(),
   headline: z.string().nullable(),
   yearsExperience: z.number().int().nullable(),
   skillLabels: z.array(z.string()),
@@ -121,10 +132,14 @@ export async function extractCvProfile(text: string): Promise<ExtractCvResult> {
       output: Output.object({ schema: ExtractedCvSchema }),
       prompt:
         "Extract profile fields from the CV text below. Only fill a field when it " +
-        "is genuinely stated or clearly implied — leave it null (or an empty array) " +
-        "if you are not confident. Never invent skills, languages, schools, names, " +
-        "contact details, or dates that are not actually in the text. `fullName`/" +
-        "`phone`/`linkedinUrl` usually appear in the CV's own header block. " +
+        "is genuinely stated or clearly implied — leave it null (or an empty array, " +
+        "or an empty string for locationLabel) if you are not confident. Never " +
+        "invent skills, languages, schools, names, contact details, or dates that " +
+        "are not actually in the text. `fullName`/`phone`/`linkedinUrl` usually " +
+        "appear in the CV's own header block. `locationLabel` is the city the " +
+        "candidate currently lives in (often in that same header block, e.g. " +
+        "\"Lisbon, Portugal\" or \"Based in Porto\") — a bare city name, not a full " +
+        "address; return an empty string if no city is stated anywhere. " +
         "`headline` is a short current/target job title (e.g. \"Senior Backend " +
         "Engineer\"), not a summary paragraph. `yearsExperience` is your best " +
         "estimate of total professional experience in years, from the work-history " +

@@ -13,6 +13,12 @@ export type CandidateProfile = {
   hasCv: boolean;
   cvPromptDismissed: boolean;
   marketingOptIn: boolean;
+  /** Matchmaking rework, Phase 2 — where the candidate actually lives,
+   *  deliberately distinct from candidate_preferred_locations (a
+   *  job-search preference). Edited here on the Overview tab, not the
+   *  Job Preferences one — it's a fact about the person, not a
+   *  preference about the job they want. */
+  locationId: string | null;
 };
 
 /** RLS already scopes this to the caller's own row (`auth_user_id =
@@ -25,7 +31,7 @@ export async function getMyCandidateProfile(): Promise<CandidateProfile | null> 
   const supabase = await createClient();
   const { data } = await supabase
     .from("candidates")
-    .select("full_name, email, phone, linkedin_url, avatar_url, cv_url, cv_prompt_dismissed, marketing_opt_in")
+    .select("full_name, email, phone, linkedin_url, avatar_url, cv_url, cv_prompt_dismissed, marketing_opt_in, location_id")
     .maybeSingle();
 
   if (!data) return null;
@@ -38,6 +44,7 @@ export async function getMyCandidateProfile(): Promise<CandidateProfile | null> 
     hasCv: !!data.cv_url,
     cvPromptDismissed: data.cv_prompt_dismissed,
     marketingOptIn: data.marketing_opt_in,
+    locationId: data.location_id,
   };
 }
 
@@ -67,6 +74,7 @@ export async function updateCandidateProfile(fields: {
   full_name: string;
   phone: string | null;
   linkedin_url: string | null;
+  location_id?: string | null;
 }) {
   const supabase = await createClient();
   const { data: candidateId } = await supabase.rpc("my_candidate_id");

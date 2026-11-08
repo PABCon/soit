@@ -42,6 +42,7 @@ export function OverviewSection({
   cvSignedUrl,
   headline,
   yearsExperience,
+  locations,
   seededFromDraft = false,
   onDraftReady,
 }: {
@@ -49,6 +50,10 @@ export function OverviewSection({
   cvSignedUrl: string | null;
   headline: string | null;
   yearsExperience: number | null;
+  /** Matchmaking rework, Phase 2 — the curated-city picker for "where do
+   *  you live," reusing the exact same list the Job Preferences tab's
+   *  own location chips already use. */
+  locations: { id: string; name: string }[];
   /** True when this mount's `profile`/`headline`/`yearsExperience` came
    *  from a freshly-parsed AI draft, not the persisted baseline — see
    *  `useAutosave`'s own `skipFirstRun` doc. */
@@ -63,7 +68,12 @@ export function OverviewSection({
   onDraftReady: (data: AiDraft, signedUrl: string | null) => void;
 }) {
   const t = useTranslations("profile");
-  const [basics, setBasics] = useState({ fullName: profile.fullName, phone: profile.phone ?? "", linkedinUrl: profile.linkedinUrl ?? "" });
+  const [basics, setBasics] = useState({
+    fullName: profile.fullName,
+    phone: profile.phone ?? "",
+    linkedinUrl: profile.linkedinUrl ?? "",
+    locationId: profile.locationId ?? "",
+  });
   const [fileError, setFileError] = useState<string | null>(null);
   const [autofillOpen, setAutofillOpen] = useState(false);
   const [analyzingStored, setAnalyzingStored] = useState(false);
@@ -75,6 +85,7 @@ export function OverviewSection({
         full_name: value.fullName.trim(),
         phone: value.phone.trim() || null,
         linkedin_url: value.linkedinUrl.trim() || null,
+        location_id: value.locationId || null,
       }),
     800,
     { skipFirstRun: !seededFromDraft },
@@ -268,6 +279,22 @@ export function OverviewSection({
               onChange={(e) => setBasics((prev) => ({ ...prev, linkedinUrl: e.target.value }))}
               className={inputClass}
             />
+          </label>
+          <label className={labelClass}>
+            <span className="font-medium text-ink">{t("location")}</span>
+            <select
+              value={basics.locationId}
+              onChange={(e) => setBasics((prev) => ({ ...prev, locationId: e.target.value }))}
+              className={inputClass}
+            >
+              <option value="">{t("locationUnset")}</option>
+              {locations.map((loc) => (
+                <option key={loc.id} value={loc.id}>
+                  {loc.name}
+                </option>
+              ))}
+            </select>
+            <span className="text-xs text-muted">{t("locationHint")}</span>
           </label>
         </div>
       </div>

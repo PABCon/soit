@@ -8,6 +8,7 @@ import { extractCvText } from "@/lib/cv-text";
 import { extractCvProfile, type ExtractedCv } from "@/lib/ai/extract-cv";
 import { getTechTags } from "@/lib/db/tech-tags";
 import { getSpokenLanguages } from "@/lib/db/spoken-languages";
+import { getLocations } from "@/lib/db/locations";
 import { recordSkillSuggestions } from "@/lib/db/skill-suggestions";
 import type { SkillLevel } from "@/lib/types";
 import type { SniffedType } from "@/lib/file-sniff";
@@ -36,6 +37,7 @@ export async function updateCandidateProfileAction(fields: {
   full_name: string;
   phone: string | null;
   linkedin_url: string | null;
+  location_id?: string | null;
 }) {
   await updateCandidateProfile(fields);
   revalidatePath("/profile");
@@ -119,6 +121,7 @@ export type ParseCvResult =
         fullName: string | null;
         phone: string | null;
         linkedinUrl: string | null;
+        locationId: string | null;
         headline: string | null;
         yearsExperience: number | null;
         matchedSkills: MatchedSkill[];
@@ -145,7 +148,7 @@ async function runCvExtraction(bytes: Uint8Array, kind: SniffedType): Promise<Pa
   const result = await extractCvProfile(text);
   if (!result.ok) return { ok: false, reason: result.reason === "empty_content" ? "bad_file" : result.reason };
 
-  const [techTags, spokenLanguages] = await Promise.all([getTechTags(), getSpokenLanguages()]);
+  const [techTags, spokenLanguages, locations] = await Promise.all([getTechTags(), getSpokenLanguages(), getLocations()]);
 
   const matchedSkills: MatchedSkill[] = [];
   const unmatchedSkillLabels: string[] = [];
@@ -177,6 +180,22 @@ async function runCvExtraction(bytes: Uint8Array, kind: SniffedType): Promise<Pa
     }
   }
 
+  // Matchmaking rework, Phase 2 — same "label comes back as plain text,
+  // fuzzy-match against the real curated vocab" contract as skills/
+  // languages above. The curated list is almost entirely English-
+  // equivalent city names already (it includes real European hubs like
+  // Warsaw/Berlin/Dublin, not just Portugal), so the only real alias
+  // needed is the one Portuguese city whose English name genuinely
+  // differs from its DB value ("Lisbon" vs "Lisboa") — not a general
+  // fuzzy-matching system, just the one curated exception that exists.
+  const LOCATION_ALIASES: Record<string, string> = { lisbon: "lisboa" };
+  let locationId: string | null = null;
+  const locationLabel = result.data.locationLabel.trim().toLowerCase();
+  if (locationLabel) {
+    const normalized = LOCATION_ALIASES[locationLabel] ?? locationLabel;
+    locationId = locations.find((l) => l.name.toLowerCase() === normalized)?.id ?? null;
+  }
+
   // Never blocks the review UI the candidate is waiting on — same pattern
   // as applications.ts's own notification scheduling: try after() first,
   // fall back to fire-and-forget if there's no request scope to schedule in.
@@ -200,6 +219,7 @@ async function runCvExtraction(bytes: Uint8Array, kind: SniffedType): Promise<Pa
       fullName: result.data.fullName,
       phone: result.data.phone,
       linkedinUrl: result.data.linkedinUrl,
+      locationId,
       headline: result.data.headline,
       yearsExperience: result.data.yearsExperience,
       matchedSkills,

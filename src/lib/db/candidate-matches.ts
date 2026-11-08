@@ -46,9 +46,15 @@ import { generateMatchSummaries, generateSingleMatchSummary, type JobFactsForPro
 // *preference* the candidate submitted themselves is the same category
 // of non-identifying fact `preferred_work_model` already is, not a real
 // address or employer; still never `candidates.location`-shaped PII.
+// `location_id` (Phase 2 addition) is the candidate's own residence —
+// same curated 14-city table as the preferred-locations join above, so
+// the same "city-level fact, not a real address" privacy bar already
+// established for that join applies here too. Bare id only, no name
+// embed — scoring only ever compares it by id against a job's own
+// `location_id`, never renders it.
 const SCORABLE_CANDIDATE_SELECT = `
   id, years_experience, preferred_work_model, preferred_employment_type,
-  desired_salary_min, desired_salary_max, desired_salary_period,
+  desired_salary_min, desired_salary_max, desired_salary_period, location_id,
   candidate_tech_tags ( tech_tag_id, level, tech_tags ( label ) ),
   candidate_preferred_categories ( category_id ),
   candidate_preferred_locations ( location_id, locations ( name ) ),
@@ -63,6 +69,7 @@ type ScorableCandidateRow = {
   desired_salary_min: number | null;
   desired_salary_max: number | null;
   desired_salary_period: string | null;
+  location_id: string | null;
   candidate_tech_tags: { tech_tag_id: string; level: string | null; tech_tags: { label: string } }[];
   candidate_preferred_categories: { category_id: string }[];
   candidate_preferred_locations: { location_id: string; locations: { name: string } }[];
@@ -117,6 +124,7 @@ function candidatePrefsFromRow(row: ScorableCandidateRow): CandidatePrefsForScor
     salaryMin: row.desired_salary_min,
     salaryMax: row.desired_salary_max,
     salaryPeriod: row.desired_salary_period,
+    residenceLocationId: row.location_id,
   };
 }
 

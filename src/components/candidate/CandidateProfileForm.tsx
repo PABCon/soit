@@ -136,6 +136,7 @@ export function CandidateProfileForm({
         fullName: aiDraft.fullName ?? profile.fullName,
         phone: aiDraft.phone ?? profile.phone,
         linkedinUrl: aiDraft.linkedinUrl ?? profile.linkedinUrl,
+        locationId: aiDraft.locationId ?? profile.locationId,
       }
     : profile;
 
@@ -159,6 +160,7 @@ export function CandidateProfileForm({
             cvSignedUrl={signedUrl}
             headline={effectiveSkillsAndEducation?.headline ?? null}
             yearsExperience={effectiveSkillsAndEducation?.yearsExperience ?? null}
+            locations={locations}
             seededFromDraft={aiDraft !== null}
             onDraftReady={handleDraftReady}
           />
