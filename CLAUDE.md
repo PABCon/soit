@@ -5266,3 +5266,137 @@ still succeeds (backward compatible, the pre-existing single-type case).
 `tsc --noEmit`, `eslint` on both changed files, the full test suite (114
 passing, unaffected), `npm run build`, and `check:i18n` (1274 keys, in sync)
 all pass.
+
+## Matchmaking rework — a real-usage review, planned in phases
+
+A single message brought 8 real issues with the employer-paid matching
+engine (item 3) plus two side requests, after actually using it. Planned
+formally before touching code: read the real scoring/messaging/UI source
+directly, investigated the specific bug report ("Candidato #4228" wrongly
+matched to two ITDS Portugal roles) with live, read-only data rather than
+guessing, then confirmed four genuine open design decisions with the user
+before building. 4 phases total; this entry covers Phase 1, shipped and
+verified. Phases 2-4 are planned, not yet built — see the end of this
+entry for what's still ahead.
+
+**The scoring bug, root-caused with real numbers, not theorized**: checked
+the actual candidate ("Candidato #4228" = a real candidate, Paulo Brás)
+against both flagged jobs. "Senior Oracle HCM Developer" has exactly one
+required tag (SQL) — nothing Oracle/HCM-specific is tagged at all; the
+candidate has SQL, so 60/60 skill points, plus a flat +30 from the
+preference bucket (hybrid+permanent, the two most common values in the
+system) even though the candidate has set literally zero real
+preferences → 90/100. "Senior WebMethods Developer" (SQL+Linux+REST
+required, candidate has 2/3) landed exactly on the 70 threshold the same
+way. The match is mathematically correct given the inputs — the real
+bugs are (a) these jobs are tagged too thin to be a meaningful signal and
+(b) the 30-point preference bucket gives a near-free +30 to anyone
+sharing the two most common values, with no real constraint, when
+preferences are unset. Separately confirmed: `candidates` has no
+location/city field anywhere in the schema — only
+`candidate_preferred_locations`, a job-search preference this candidate
+left empty — so geography could never have factored in even if the
+scoring wanted it to. Both are Phase 2 work.
+
+**Four questions asked and answered before building anything**:
+1. Once identity unlocks, where should the employer see the candidate's
+   full info persistently? → **Merge into Applicants** (not a new
+   separate section, not left as a one-thread-only reveal).
+2. "Request connection" instead of a plain message — same mechanic
+   relabeled, or a real gate? → **Real accept/decline gate**: the
+   candidate sees an explicit request and must accept before a
+   conversation opens at all. Bigger build than a relabel, deliberately
+   chosen anyway.
+3. Candidate location field, to actually fix the geography gap → **add
+   a manual profile field, and also have CV-extraction try to fill it**
+   (same pattern as headline/years-of-experience extraction).
+4. Zero-match jobs on the matchmaking overview → **hide entirely**, not
+   collapsed/deprioritized.
+
+**Phase 1 shipped** (the pieces that needed no schema beyond one new
+column, and no new design decisions):
+
+1. **Ranking + hiding zero-match jobs.** `/recruit/matchmaking` used to
+   list every active job regardless of match count, in whatever order
+   `getCompanyJobs` happened to return — a real role with matches could
+   sit many screens below a long run of zero-match ones (confirmed: this
+   is exactly what the user hit with ITDS Portugal's own job list). Now
+   only ever shows jobs with at least one real match, sorted by count
+   descending. A genuine "all jobs, zero matches" empty state is
+   distinguished from "no jobs published at all" rather than reusing one
+   generic empty message for both.
+
+2. **Unseen-match tracking.** New `candidate_match_notes.viewed_at`
+   column (migration `20261108100000_match_notes_viewed_at.sql`,
+   deliberately separate from the existing `status` pipeline field —
+   "have I actually opened this card" is a distinct fact from an
+   employer's own shortlist/contact/pass decision, and should flip
+   automatically on first view rather than being folded into a field the
+   employer sets by hand). `getCandidateMatchDetail` marks it on first
+   open only (fire-and-forget via `after()`, same non-blocking pattern
+   this project always uses for this class of bookkeeping write). A
+   "N new" badge on each job card on the overview page, and a solid-pine
+   "Novo"/"New" pill on each still-unseen candidate card in the per-job
+   list — both verified live to actually clear once the candidate's
+   match detail page is opened, not just computed correctly at the data
+   layer.
+
+3. **Job links, four places.** Neither the message thread pages nor the
+   match list/detail pages linked to the actual job being discussed — an
+   employer reviewing a match, or either party in a conversation, had no
+   way to see the role itself without hunting for it separately
+   (confirmed directly in the message thread component: `{thread.jobTitle}
+   · {thread.companyName}` was plain, unlinked text). Fixed in all four
+   places: the per-job match list header and the match detail page now
+   link to the employer's own `/recruit/jobs/[id]/edit`; both message
+   thread pages link to the job too — the employer side to the same edit
+   page, the candidate side to the real public `/jobs/[slug]` page via a
+   new `jobSlug` field added to `getThreadDetail`'s return (previously
+   only had `jobTitle`, no slug or id at all).
+
+4. **"Correspondências" replaced with "match"/"matches" throughout the PT
+   catalogue** — direct instruction that the literal translation read
+   stiffly where English already said "match" naturally. Covers both the
+   employer-facing matchmaking UI (`matchCount`, `viewMatches`,
+   `backToJobMatches`, `topMatchBadge`, `matchedCandidateBadge`,
+   `matchedForWithDate`/`matchedForNoDate`) and the candidate-facing
+   `recommendationsTeaser`/`recommendations` namespaces. The homepage/
+   job-detail banner's own pitch copy was also rewritten to lead with a
+   direct hook ("Dê Match!"/"Get Matched!") rather than a plain feature
+   description, per the same request — PT leans on "dar match," an
+   already-familiar dating-app-era colloquialism in Portuguese, rather
+   than forcing an awkward literal translation of the English phrase. A
+   few stray em-dashes in nearby strings were cleaned up in the same
+   pass (standing style preference), in both locale files.
+
+**Verified live against production** with disposable fixtures (a Top
+Employer company, two real published jobs — one tagged to produce a real
+match, one deliberately tagged so nothing could match it — and a
+candidate with the matching skill): the zero-match job never appeared on
+the overview, the matched job did with a real "N new" badge (confirmed
+as "2 novos" once a second, pre-existing live candidate also happened to
+score above threshold against the deliberately thin-tagged test job —
+itself a live, independent reconfirmation of the Phase 2 scoring-bug
+finding above, not a test bug); opening that candidate's detail page
+showed the new "Ver anúncio da vaga →" job link, and reloading both the
+per-job list and the overview afterward confirmed the "new" badge/pill
+had genuinely cleared, not just been computed once. Fixtures (company,
+jobs, both auth users, the candidate row, and the incidental
+`candidate_match_notes` row written against the real pre-existing
+candidate during verification — cascade-deleted along with the test job)
+all cleaned up afterward. `tsc --noEmit`, `eslint`, `npm run build`, and
+`check:i18n` (1519 keys, in sync) all pass.
+
+**Not built yet, planned**:
+- **Phase 2**: a real candidate location field (manual profile field +
+  CV-extraction), used as a hard penalty for on-site/hybrid jobs far
+  from the candidate (remote jobs stay location-agnostic); and tightening
+  the preference-bucket neutral that let the flagged false positives
+  through.
+- **Phase 3**: the connection-request flow itself — a real accept/
+  decline gate replacing the current "just send a message" mechanic,
+  candidate-side UI to respond, chat only opening after acceptance.
+- **Phase 4**: once accepted, surfacing the candidate in the Applicants
+  view (not just revealed inside one message thread), and treating them
+  as "known to this company" across every job they match, not only the
+  one they connected through.
