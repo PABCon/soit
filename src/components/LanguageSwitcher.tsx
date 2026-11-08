@@ -22,15 +22,11 @@ export function LanguageSwitcher() {
   const t = useTranslations("nav");
 
   return (
-    // Same off-screen-at-narrow-widths issue as LoginMenu's two dropdowns
-    // (confirmed via direct measurement at 390px: left edge goes negative)
-    // — this trigger sits in the same right-aligned header group, further
-    // left than either of theirs.
     <Dropdown
       triggerLabel={t("language")}
       triggerClassName="flex h-9 cursor-pointer items-center gap-1 rounded-lg px-2 text-sm font-medium text-ink hover:bg-white"
-      panelClassName="w-36 rounded-lg border border-line bg-white py-1 shadow-sm sm:right-0 sm:left-auto"
-      align="left"
+      panelClassName="w-36 rounded-lg border border-line bg-white py-1 shadow-sm"
+      align="auto"
       trigger={
         <>
           {locale.toUpperCase()}

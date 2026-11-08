@@ -282,7 +282,16 @@ export async function JobDetailBody({
                 <Badge variant="warning">{tf("daysLeft", { days: job.daysLeft })}</Badge>
               )}
               {!preview && (
-                <span className="ml-auto flex shrink-0 gap-2">
+                // Real-device report: `ml-auto` on a `flex-wrap` row reads
+                // fine on desktop (always enough room to sit flush right
+                // on the badges' own line), but on mobile — where the
+                // badges alone already fill the row and this wraps to its
+                // own line — it still pins hard right, landing as an
+                // isolated button floating alone with a large empty gap
+                // to its left. `sm:ml-auto` keeps the desktop look and
+                // lets mobile fall in with the badges' own natural
+                // left-to-right flow instead.
+                <span className="flex shrink-0 gap-2 sm:ml-auto">
                   {favoriteJobIds && (
                     <FavoriteButton
                       jobId={job.id}

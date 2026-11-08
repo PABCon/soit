@@ -51,6 +51,7 @@ export function AccountMenu({
       triggerLabel={label}
       triggerClassName="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full"
       panelClassName="w-56 rounded-lg border border-line bg-white py-1 shadow-sm"
+      align="auto"
       trigger={<Avatar label={label} avatarUrl={avatarUrl} />}
     >
       {(close) => (

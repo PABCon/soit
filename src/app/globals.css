@@ -110,3 +110,22 @@
     overflow-x: auto;
   }
 }
+
+/* Real-device report: iOS Safari auto-zooms the entire page on focus of
+ * any <input>/<select>/<textarea> whose *computed* font-size is under
+ * 16px — this app's shared input/select recipe used almost everywhere
+ * (`text-sm` = 14px) hits that on nearly every form field, console and
+ * candidate side alike. That auto-zoom doesn't reset itself afterward,
+ * which is what several of a real iPhone's screenshots this round
+ * actually showed (pages reading as "randomly zoomed in", content
+ * clipped on both edges) — not a layout/overflow bug at all. Scoped to
+ * below `sm` only; desktop's existing 14px fields are untouched.
+ * Deliberately NOT @layer'd: Tailwind utility classes like `text-sm`
+ * live in its own `utilities` layer, which always wins over anything in
+ * an earlier layer regardless of selector specificity — plain, unlayered
+ * CSS sits after every layer and reliably overrides it instead. */
+@media (max-width: 639px) {
+  input, select, textarea {
+    font-size: 16px;
+  }
+}
