@@ -5553,14 +5553,91 @@ checks passed. Fixtures (company, two jobs, both auth users, the
 candidate row) cleaned up afterward; Playwright reinstalled `--no-save`
 for this verification and fully uninstalled again once done.
 
+**Phase 4 shipped**: once a candidate accepts a connection request
+(Phase 3), they're now surfaced in the employer's Applicants views, not
+just reachable from inside the one message thread they connected
+through, and visible against every one of the company's other live
+jobs they currently match too, per the user's own decision when this
+rework was first scoped ("merge into Applicants").
+
+1. **`getConnectedCandidatesForCompany()`** (`candidate-matches.ts`):
+   for every candidate with an accepted match-origin thread at a
+   company, scores them against every one of that company's other
+   active jobs and returns a row for each one they still clear the
+   match threshold on, not only the job the connection happened
+   through. Reuses the exact admin-client-scoped-in-code pattern
+   `applications.ts` already established for real applicant PII
+   (`candidates` has zero employer-read RLS): the only real difference
+   is the authorization boundary itself, a real accepted connection
+   rather than a real application row.
+
+2. **`Applicant`/`CompanyApplicant` gained an `origin: "application" |
+   "match"` discriminant**, plus `matchScore`/`threadId`/`candidateId`
+   for match-origin rows. `getApplicantsForJob()` and
+   `getAllApplicantsForCompany()` both merge connected candidates in
+   alongside real applicants, deduped against any (candidate, job) pair
+   that's already a genuine application so nobody is ever listed twice
+   for the same job. `status` widened to also carry a fixed `"connected"`
+   sentinel (its own badge variant, reusing the existing "match" visual
+   language), since there's no real application pipeline for these rows
+   to move through.
+
+3. **`getApplicantDetail()` accepts a synthetic
+   `match--<candidateId>--<jobId>` id** for a connected-but-never-applied
+   candidate, re-deriving ownership from
+   `getConnectedCandidatesForCompany()` itself (a real accepted
+   connection stands in for the `applications`-table RLS check that
+   doesn't exist for this shape).
+
+4. **UI**: both applicant lists and the detail page render the fixed
+   "Connected" badge and a plain link to the existing thread instead of
+   the find-or-create Message action for match-origin rows; the detail
+   page shows a match-score chip and a link back to the real match page
+   instead of the AI-synopsis/status controls that only make sense for
+   a real application.
+
+**A real, genuinely interesting production bug, caught only by this
+phase's own live verification, never in code review or `tsc`/`eslint`**:
+the first version of the synthetic detail id used a colon as its
+delimiter (`match:<candidateId>:<jobId>`). Every single live check for
+that route came back a plain 404, with the exact same HTTP 404 status
+and generic not-found page Next.js renders for a genuine router-level
+miss, not a `notFound()` call from inside the page. Confirmed directly,
+not assumed: a temporary debug branch (returning the parsed id and the
+full connected-candidates array as JSON instead of calling `notFound()`
+for any id starting with `"match:"`) was deployed and hit live, and it
+never fired at all, meaning the page's own code never ran, the id never
+even reached it. A colon in a URL path segment is valid per the URL
+spec, and an unauthenticated `curl` to the same URL correctly 307'd to
+login (proving routing matched *something*), but something between this
+project's CDN and Next's own router doesn't like it once an
+authenticated request actually tries to render the page. Fixed by
+switching the delimiter to a double hyphen, which no real UUID can ever
+contain, sidestepping the whole class of problem rather than chasing
+down which exact layer mishandled the colon. The debug branch was
+removed in the same fix, not left behind.
+
+**Verified live against production** with disposable fixtures (a Top
+Employer company, two published jobs at the same company, one real
+matching candidate): used the real Phase 3 flow to get a genuine
+accepted connection through job A, then confirmed the candidate
+appeared **twice** in the aggregated Applicants list (job A and job B,
+the one they were never messaged about), each with a "Connected" badge;
+confirmed job B's own per-job Applicants page also shows this
+cross-job candidate with a working "View conversation" link instead of
+a dead Message button; confirmed the detail page for the connected,
+never-applied-to job B row loads correctly, shows a real match-score
+chip, shows the candidate's real email (identity genuinely unlocked),
+links to the real match page, and has no editable application-status
+control. All 11 checks passed. Fixtures (company, two jobs, both auth
+users, the candidate row) cleaned up afterward; Playwright reinstalled
+`--no-save` for this verification and fully uninstalled again once
+done.
+
 **Not built yet, planned**:
-- **Phase 4**: once accepted, surfacing the candidate in the Applicants
-  view (not just revealed inside one message thread), and treating them
-  as "known to this company" across every job they match, not only the
-  one they connected through.
 - **A newly-requested phase, not yet scoped against Phase 4**: candidate
   profiles should be able to declare a job-search status (looking /
   open to offers / not looking), and the matching engine should
-  prioritize — or outright exclude — candidates accordingly, so someone
+  prioritize, or outright exclude, candidates accordingly, so someone
   who's declared "not open" never surfaces as a match at all. Raised
   mid-Phase-2; not designed yet.
