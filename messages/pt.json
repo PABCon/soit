@@ -48,6 +48,7 @@
     "title": "Gerir recrutamento",
     "myJobAds": "As minhas vagas",
     "myJobAdsSubtitle": "Gira as suas vagas, acompanhe candidaturas e encontre o talento certo.",
+    "analytics": "Análises",
     "companyProfile": "Perfil da empresa",
     "companyProfileSubtitle": "Faça a gestão da informação que os candidatos veem sobre a sua empresa.",
     "team": "Equipa",
@@ -921,6 +922,24 @@
     "empty": "Ainda não guardou nenhuma pesquisa.",
     "delete": "Remover",
     "notifyMe": "Notificar-me"
+  },
+  "analytics": {
+    "title": "Análises",
+    "subtitle": "Números reais sobre o desempenho das suas vagas.",
+    "stat": {
+      "totalViews": "Visualizações totais",
+      "totalApplyClicks": "Cliques em candidatar",
+      "totalApplications": "Candidaturas"
+    },
+    "trendHeading": "Últimos 30 dias",
+    "trendSubtitle": "Visualizações e cliques em candidatar em todas as suas vagas.",
+    "empty": "Publique uma vaga para começar a ver análises aqui.",
+    "columnJob": "Vaga",
+    "columnViews": "Visualizações",
+    "columnApplyClicks": "Cliques em candidatar",
+    "columnApplications": "Candidaturas",
+    "columnConversion": "Taxa de conversão",
+    "noData": "Ainda sem dados"
   },
   "applicants": {
     "title": "Candidaturas para “{job}”",

@@ -48,6 +48,7 @@
     "title": "Manage recruitments",
     "myJobAds": "My job ads",
     "myJobAdsSubtitle": "Manage your job advertisements, track applications and find the right talent.",
+    "analytics": "Analytics",
     "companyProfile": "Company profile",
     "companyProfileSubtitle": "Manage the information candidates see about your company.",
     "team": "Team",
@@ -921,6 +922,24 @@
     "empty": "You haven't saved any searches yet.",
     "delete": "Remove",
     "notifyMe": "Notify me"
+  },
+  "analytics": {
+    "title": "Analytics",
+    "subtitle": "Real numbers on how your job ads are performing.",
+    "stat": {
+      "totalViews": "Total views",
+      "totalApplyClicks": "Apply-button clicks",
+      "totalApplications": "Applications"
+    },
+    "trendHeading": "Last 30 days",
+    "trendSubtitle": "Views and apply-button clicks across all your job ads.",
+    "empty": "Post a job ad to start seeing analytics here.",
+    "columnJob": "Job",
+    "columnViews": "Views",
+    "columnApplyClicks": "Apply clicks",
+    "columnApplications": "Applications",
+    "columnConversion": "View to apply rate",
+    "noData": "No data yet"
   },
   "applicants": {
     "title": "Applicants for “{job}”",

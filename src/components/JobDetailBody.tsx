@@ -391,6 +391,7 @@ export async function JobDetailBody({
               </div>
             ) : (
               <ApplyModal
+                jobId={job.id}
                 jobSlug={job.slug}
                 companyName={job.company.name}
                 isCandidate={applyStatus.isCandidate}

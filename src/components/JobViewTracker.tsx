@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import { sendBeacon } from "@/lib/beacon";
 
 /** Fires exactly once, from a real client-side mount — never from server
  *  rendering or a `<Link>` prefetch. Prefetching fetches a page's RSC
@@ -25,16 +26,7 @@ export function JobViewTracker({ jobId }: { jobId: string }) {
   useEffect(() => {
     if (sentRef.current) return;
     sentRef.current = true;
-    try {
-      const url = `/api/jobs/${jobId}/view`;
-      if (typeof navigator.sendBeacon === "function") {
-        navigator.sendBeacon(url);
-      } else {
-        fetch(url, { method: "POST", keepalive: true });
-      }
-    } catch {
-      // A missed view count is never worth breaking the page over.
-    }
+    sendBeacon(`/api/jobs/${jobId}/view`);
   }, [jobId]);
 
   return null;

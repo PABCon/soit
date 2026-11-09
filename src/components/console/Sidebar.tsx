@@ -1,11 +1,12 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { Briefcase, Users, Mail, Plug, DollarSign, User, Building2, Phone } from "lucide-react";
+import { Briefcase, Users, Mail, Plug, DollarSign, User, Building2, Phone, BarChart3 } from "lucide-react";
 import { Link, usePathname } from "@/i18n/navigation";
 
 export const MVP = [
   { key: "myJobAds", href: "/recruit", Icon: Briefcase },
+  { key: "analytics", href: "/recruit/analytics", Icon: BarChart3 },
   { key: "matchmaking", href: "/recruit/matchmaking", Icon: Users },
   { key: "messages", href: "/recruit/messages", Icon: Mail },
   { key: "api", href: "/recruit/api", Icon: Plug },
