@@ -2,12 +2,14 @@ import { notFound } from "next/navigation";
 import { getTranslations, setRequestLocale, getFormatter } from "next-intl/server";
 import { ListChecks, Briefcase, Award, FileText as CvIcon } from "lucide-react";
 import { Link } from "@/i18n/navigation";
-import { getApplicantDetail, updateApplicationStatus } from "@/lib/db/applications";
+import { getApplicantDetail, markApplicationViewed } from "@/lib/db/applications";
+import { getOrCreateCompanyStages } from "@/lib/db/application-stages";
+import { getMyEmployerContext } from "@/lib/db/companies";
 import { ApplicantStatusSelect } from "@/components/console/ApplicantStatusSelect";
 import { ApplicantSynopsisSection } from "@/components/console/ApplicantSynopsisSection";
 import { SectionHeading } from "@/components/SectionHeading";
 import { Badge } from "@/components/Badge";
-import { APPLICANT_STATUS_BADGE } from "@/lib/applicant-status-badge";
+import { BUCKET_BADGE } from "@/lib/applicant-status-badge";
 
 type Props = { params: Promise<{ locale: string; id: string }> };
 
@@ -56,11 +58,12 @@ export default async function ApplicantDetailPage({ params }: Props) {
     notFound();
   }
 
-  let status = detail.status;
-  if (status === "applied") {
-    await updateApplicationStatus(detail.id, "viewed");
-    status = "viewed";
+  if (detail.origin === "application" && detail.viewedAt === null) {
+    await markApplicationViewed(detail.id);
   }
+
+  const ctx = await getMyEmployerContext();
+  const stages = ctx ? await getOrCreateCompanyStages(ctx.company.id) : [];
 
   const appliedOn = new Date(detail.createdAt).toLocaleDateString(locale === "pt" ? "pt-PT" : "en-GB");
 
@@ -83,7 +86,11 @@ export default async function ApplicantDetailPage({ params }: Props) {
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
               <h1 className="font-display text-2xl font-bold">{detail.candidateName}</h1>
-              <Badge variant={APPLICANT_STATUS_BADGE[status]}>{t(`status.${status}`)}</Badge>
+              {detail.origin === "application" ? (
+                <Badge variant={BUCKET_BADGE[detail.candidateBucket!]}>{detail.stageLabel}</Badge>
+              ) : (
+                <Badge variant="match">{t("status.connected")}</Badge>
+              )}
             </div>
             <p className="mt-0.5 text-sm text-muted">
               {detail.origin === "application" ? (
@@ -103,7 +110,8 @@ export default async function ApplicantDetailPage({ params }: Props) {
           <ApplicantStatusSelect
             jobId={detail.jobId}
             applicationId={detail.id}
-            initialStatus={status as Exclude<typeof status, "connected">}
+            stages={stages}
+            initialStageId={detail.stageId!}
           />
         ) : (
           detail.threadId && (

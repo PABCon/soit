@@ -2,20 +2,26 @@
 
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
-import { updateStatusAction, startApplicantThreadAction } from "@/app/[locale]/(console)/recruit/jobs/[id]/applicants/actions";
+import { updateStageAction, startApplicantThreadAction } from "@/app/[locale]/(console)/recruit/jobs/[id]/applicants/actions";
 import { StartThreadButton } from "@/components/StartThreadButton";
 import { Badge } from "@/components/Badge";
-import { APPLICANT_STATUS_BADGE } from "@/lib/applicant-status-badge";
-import type { Applicant, MyApplication } from "@/lib/db/applications";
+import type { Applicant } from "@/lib/db/applications";
+import type { ApplicationStage } from "@/lib/db/application-stages";
 
-const STATUSES: MyApplication["status"][] = ["applied", "viewed", "responded", "rejected", "closed"];
-
-export function ApplicantsList({ jobId, applicants }: { jobId: string; applicants: Applicant[] }) {
+export function ApplicantsList({
+  jobId,
+  applicants,
+  stages,
+}: {
+  jobId: string;
+  applicants: Applicant[];
+  stages: ApplicationStage[];
+}) {
   const t = useTranslations("applicants");
   const tm = useTranslations("messaging");
 
-  async function handleStatusChange(applicationId: string, status: MyApplication["status"]) {
-    await updateStatusAction(jobId, applicationId, status);
+  async function handleStageChange(applicationId: string, stageId: string) {
+    await updateStageAction(jobId, applicationId, stageId);
   }
 
   if (applicants.length === 0) {
@@ -52,13 +58,13 @@ export function ApplicantsList({ jobId, applicants }: { jobId: string; applicant
                 onSend={(body) => startApplicantThreadAction(a.id, body)}
               />
               <select
-                defaultValue={a.status}
-                onChange={(e) => handleStatusChange(a.id, e.target.value as MyApplication["status"])}
+                defaultValue={a.stageId!}
+                onChange={(e) => handleStageChange(a.id, e.target.value)}
                 className="h-9 shrink-0 rounded-lg border border-line bg-white px-2 text-sm"
               >
-                {STATUSES.map((s) => (
-                  <option key={s} value={s}>
-                    {t(`status.${s}`)}
+                {stages.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.label}
                   </option>
                 ))}
               </select>
@@ -70,7 +76,7 @@ export function ApplicantsList({ jobId, applicants }: { jobId: string; applicant
                   {tm("viewConversation")}
                 </Link>
               )}
-              <Badge variant={APPLICANT_STATUS_BADGE.connected}>{t("status.connected")}</Badge>
+              <Badge variant="match">{t("status.connected")}</Badge>
             </>
           )}
         </li>

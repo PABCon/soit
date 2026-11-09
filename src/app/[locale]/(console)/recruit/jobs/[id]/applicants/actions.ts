@@ -2,16 +2,17 @@
 
 import { revalidatePath } from "next/cache";
 import {
-  updateApplicationStatus,
+  updateApplicationStage,
   generateApplicantSynopsisForApplication,
-  type MyApplication,
   type GenerateSynopsisResult,
 } from "@/lib/db/applications";
 import { getOrCreateThreadForApplicant, getOrCreateThreadIdForApplicant, type StartThreadResult } from "@/lib/db/messaging";
 
-export async function updateStatusAction(jobId: string, applicationId: string, status: MyApplication["status"]) {
-  await updateApplicationStatus(applicationId, status);
+export async function updateStageAction(jobId: string, applicationId: string, stageId: string) {
+  await updateApplicationStage(applicationId, stageId);
   revalidatePath(`/recruit/jobs/${jobId}/applicants`);
+  revalidatePath(`/recruit/applicants/${applicationId}`);
+  revalidatePath("/recruit/applicants");
 }
 
 export async function startApplicantThreadAction(applicationId: string, body: string): Promise<StartThreadResult> {

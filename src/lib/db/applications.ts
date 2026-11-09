@@ -8,6 +8,7 @@ import { generateApplicantSynopsis, type ApplicantSynopsis } from "@/lib/ai/appl
 import type { CandidateExperienceEntry, CandidateCertificationEntry } from "@/lib/db/candidate-profile";
 import { getConnectedCandidatesForCompany, type ConnectedCandidate } from "@/lib/db/candidate-matches";
 import { getMyEmployerContext } from "@/lib/db/companies";
+import { getInitialStageId, type CandidateBucket } from "@/lib/db/application-stages";
 import { sendEmail } from "@/lib/email/send";
 import { applicationConfirmationEmail } from "@/lib/email/templates/application-confirmation";
 import { newApplicantEmail } from "@/lib/email/templates/new-applicant";
@@ -226,12 +227,14 @@ export async function applyToJob(jobSlug: string, cv: CvSource, coverNote: strin
   // committed). This RPC recounts and inserts atomically, serialized per
   // candidate — the authoritative gate; the pre-check above is just a
   // cheap optimization now.
+  const stageId = await getInitialStageId(job.company_id);
   const { data: insertedId, error: insertError } = await supabase.rpc("insert_application_if_under_cap", {
     p_candidate_id: candidateId,
     p_job_id: job.id,
     p_cv_url: uploaded.path,
     p_cover_note: coverNote,
     p_daily_cap: DAILY_APPLICATION_CAP,
+    p_stage_id: stageId,
   });
   if (insertError) {
     // unique(job_id, candidate_id) — the double-submit backstop.
@@ -351,12 +354,14 @@ export async function applyAnonymously(
 
   // Security audit finding: same race as applyToJob's own insert — see
   // insert_application_if_under_cap's own comment.
+  const stageId = await getInitialStageId(job.company_id);
   const { data: insertedId, error: insertError } = await admin.rpc("insert_application_if_under_cap", {
     p_candidate_id: candidateId,
     p_job_id: job.id,
     p_cv_url: uploaded.path,
     p_cover_note: input.coverNote,
     p_daily_cap: DAILY_APPLICATION_CAP,
+    p_stage_id: stageId,
   });
   if (insertError) {
     if (insertError.code === "23505") return { ok: false, reason: "already_applied" };
@@ -387,7 +392,13 @@ export async function applyAnonymously(
 
 export type MyApplication = {
   id: string;
-  status: "applied" | "viewed" | "responded" | "rejected" | "closed";
+  /** The small, fixed, universal bucket every company's own custom
+   *  stage is required to map onto, never the employer's own internal
+   *  stage label (see `company_application_stages`' own comment for
+   *  why). This is the one fact that must always be accurate: a real,
+   *  non-negotiable product requirement that a candidate can always see
+   *  where their application genuinely stands. */
+  bucket: CandidateBucket;
   createdAt: string;
   job: Pick<Job, "slug" | "title"> & { company: Job["company"] };
 };
@@ -407,7 +418,7 @@ export async function getMyApplications(): Promise<MyApplication[]> {
   const { data } = await supabase
     .from("applications")
     .select(
-      "id, status, created_at, jobs!inner ( slug, title, companies!inner ( slug, company_name, company_logo_url ) )",
+      "id, created_at, company_application_stages ( candidate_bucket ), jobs!inner ( slug, title, companies!inner ( slug, company_name, company_logo_url ) )",
     )
     .eq("candidate_id", candidateId)
     .order("created_at", { ascending: false });
@@ -420,9 +431,10 @@ export async function getMyApplications(): Promise<MyApplication[]> {
       title: string;
       companies: { slug: string; company_name: string; company_logo_url: string | null };
     };
+    const stage = row.company_application_stages as unknown as { candidate_bucket: CandidateBucket } | null;
     return {
       id: row.id,
-      status: row.status,
+      bucket: stage?.candidate_bucket ?? "submitted",
       createdAt: row.created_at,
       job: {
         slug: job.slug,
@@ -435,7 +447,18 @@ export async function getMyApplications(): Promise<MyApplication[]> {
 
 export type Applicant = {
   id: string;
-  status: MyApplication["status"] | "connected";
+  /** `null` only for a match-origin row (see `origin` below): a real
+   *  application always has a stage. `stageLabel` is the employer's own
+   *  custom label (never shown to the candidate, see
+   *  `company_application_stages`'s own comment); `candidateBucket` is
+   *  the universal bucket that same stage maps onto. */
+  stageId: string | null;
+  stageLabel: string | null;
+  candidateBucket: CandidateBucket | null;
+  /** Decoupled from the stage entirely: "has an employer opened this
+   *  application yet," independent of whatever stage it's currently on
+   *  or how a company renames/reorders/deletes their own stages. */
+  viewedAt: string | null;
   createdAt: string;
   coverNote: string | null;
   candidateName: string;
@@ -459,9 +482,8 @@ export type Applicant = {
    *  became known to this company by accepting a connection request,
    *  not by applying, has `origin: "match"` instead, with `matchScore`
    *  and `threadId` set (a real existing thread to link "Message" at,
-   *  never a new one to create). `status` is the fixed sentinel
-   *  `"connected"` for these rows, not a real application pipeline
-   *  state, since there's no application to move through one. */
+   *  never a new one to create) and every stage-related field above
+   *  null, since there's no application to move through a pipeline. */
   origin: "application" | "match";
   matchScore?: number;
   threadId?: string;
@@ -470,8 +492,24 @@ export type Applicant = {
 
 const CANDIDATE_DETAIL_SELECT = "full_name, email, phone, linkedin_url, avatar_url, skills, years_experience";
 
+type ApplicationStageJoin = { id: string; label: string; candidate_bucket: CandidateBucket } | null;
+
 function toApplicant(
-  row: { id: string; status: MyApplication["status"]; created_at: string; cover_note: string | null },
+  row: {
+    id: string;
+    created_at: string;
+    cover_note: string | null;
+    viewed_at: string | null;
+    // PostgREST's forward-FK embed (`applications.stage_id` ->
+    // `company_application_stages.id`) is genuinely a single row, but this
+    // project queries through a plain select string with no generated
+    // `Database` type, so supabase-js's type-level parser can't tell this
+    // embed's cardinality apart from a to-many one and always types it as
+    // an array, the same reason `jobs!inner(...)` elsewhere in this file
+    // needs its own `as unknown as` cast. Accepting both shapes here keeps
+    // every call site simple.
+    company_application_stages: ApplicationStageJoin | ApplicationStageJoin[];
+  },
   candidate: {
     full_name: string | null;
     email: string | null;
@@ -483,9 +521,13 @@ function toApplicant(
   } | null,
   cvSignedUrl: string | null,
 ): Applicant {
+  const stage = Array.isArray(row.company_application_stages) ? (row.company_application_stages[0] ?? null) : row.company_application_stages;
   return {
     id: row.id,
-    status: row.status,
+    stageId: stage?.id ?? null,
+    stageLabel: stage?.label ?? null,
+    candidateBucket: stage?.candidate_bucket ?? null,
+    viewedAt: row.viewed_at,
     createdAt: row.created_at,
     coverNote: row.cover_note,
     candidateName: candidate?.full_name ?? "—",
@@ -507,7 +549,10 @@ function toApplicant(
 function connectedCandidateToApplicant(row: ConnectedCandidate): Applicant {
   return {
     id: `match--${row.candidateId}--${row.jobId}`,
-    status: "connected",
+    stageId: null,
+    stageLabel: null,
+    candidateBucket: null,
+    viewedAt: null,
     createdAt: row.connectedAt,
     coverNote: null,
     candidateName: row.candidateName,
@@ -538,7 +583,7 @@ export async function getApplicantsForJob(jobId: string): Promise<Applicant[]> {
   const [{ data }, { data: jobRow }] = await Promise.all([
     supabase
       .from("applications")
-      .select("id, status, created_at, cover_note, cv_url, candidate_id")
+      .select("id, created_at, cover_note, cv_url, candidate_id, viewed_at, company_application_stages ( id, label, candidate_bucket )")
       .eq("job_id", jobId)
       .order("created_at", { ascending: false }),
     supabase.from("jobs").select("company_id").eq("id", jobId).maybeSingle(),
@@ -583,7 +628,9 @@ export async function getAllApplicantsForCompany(companyId: string): Promise<Com
   const supabase = await createClient();
   const { data } = await supabase
     .from("applications")
-    .select("id, status, created_at, cover_note, cv_url, candidate_id, jobs!inner ( id, title, slug, company_id )")
+    .select(
+      "id, created_at, cover_note, cv_url, candidate_id, viewed_at, company_application_stages ( id, label, candidate_bucket ), jobs!inner ( id, title, slug, company_id )",
+    )
     .eq("jobs.company_id", companyId)
     .order("created_at", { ascending: false });
 
@@ -723,7 +770,7 @@ export async function getApplicantDetail(applicationId: string): Promise<Applica
   const { data } = await supabase
     .from("applications")
     .select(
-      "id, status, created_at, cover_note, cv_url, candidate_id, ai_synopsis, jobs!inner ( id, title, slug, companies!inner ( company_name ) )",
+      "id, created_at, cover_note, cv_url, candidate_id, viewed_at, ai_synopsis, company_application_stages ( id, label, candidate_bucket ), jobs!inner ( id, title, slug, companies!inner ( company_name ) )",
     )
     .eq("id", applicationId)
     .maybeSingle();
@@ -822,15 +869,37 @@ export async function generateApplicantSynopsisForApplication(applicationId: str
   return result;
 }
 
-export async function updateApplicationStatus(applicationId: string, status: MyApplication["status"]) {
+/** Moves an application to a different stage in the company's own
+ *  custom pipeline. Also stamps `viewed_at` if it isn't already set:
+ *  an employer can't meaningfully pick a stage for someone without
+ *  having at least seen their row, the same lenient "any jump is
+ *  allowed, no enforced linear progression" shape the old fixed-status
+ *  dropdown already had. The dedicated "mark as viewed" path
+ *  (`markApplicationViewed`, opening the detail page) is the other,
+ *  independent way this same fact gets set. */
+export async function updateApplicationStage(applicationId: string, stageId: string) {
   const supabase = await createClient();
+  const { data: existing } = await supabase.from("applications").select("viewed_at").eq("id", applicationId).maybeSingle();
+
   const { data, error } = await supabase
     .from("applications")
-    .update({ status })
+    .update({ stage_id: stageId, ...(existing?.viewed_at ? {} : { viewed_at: new Date().toISOString() }) })
     .eq("id", applicationId)
     .select("job_id, candidate_id")
     .single();
   if (error) throw new Error(error.message);
 
-  await logEvent("application.status_changed", { application_id: applicationId, status, job_id: data.job_id });
+  await logEvent("application.stage_changed", { application_id: applicationId, stage_id: stageId, job_id: data.job_id });
+}
+
+/** The decoupled read-receipt itself: "has an employer actually opened
+ *  this application yet," independent of which stage it's on. A plain
+ *  conditional update, not an upsert: there's always a real row to
+ *  update by this point (an application, not a note that might not
+ *  exist yet). */
+export async function markApplicationViewed(applicationId: string) {
+  const supabase = await createClient();
+  const { data: existing } = await supabase.from("applications").select("viewed_at").eq("id", applicationId).maybeSingle();
+  if (existing?.viewed_at) return;
+  await supabase.from("applications").update({ viewed_at: new Date().toISOString() }).eq("id", applicationId);
 }
