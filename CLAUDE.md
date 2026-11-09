@@ -5711,3 +5711,110 @@ for specific display numbers rather than raw counts kept the test
 correct despite that contamination). Fixtures cleaned up afterward;
 Playwright reinstalled `--no-save` for this verification and fully
 uninstalled again once done.
+
+## Mobile overflow + nav alignment, a real-usage report with screenshots
+
+Three real iPhone screenshots (employer console) plus a text report
+(candidate profile) surfaced several distinct bugs at once, investigated
+with Playwright's WebKit engine specifically (not Chromium), since this
+class of bug can genuinely render differently between the two, and one
+of these reports didn't reproduce at all in Chromium's own flex/grid
+implementation.
+
+1. **Candidate `TopNav`'s mobile layout, root-caused precisely.** Below
+   `sm` (where the centered `SearchBar` is hidden entirely, see its own
+   long-standing comment: a 300px-minimum keyword input alongside
+   location/radius/autocomplete/save genuinely can't fit next to the
+   logo and language/login group on a phone), the 3-column
+   `grid-cols-[1fr_auto_1fr]` layout still reserved its middle `auto`
+   track, which collapsed to ~0 width with nothing visible in it,
+   leaving two equal `1fr` tracks either side. `justify-self-end` on
+   the right-side group only pushes an item to the end of *its own*
+   grid column, not the true right edge of the page, and that column
+   was only half the screen. Reads exactly as reported: "everything
+   bunched toward the middle." Fixed by switching the base (mobile)
+   layout to `flex justify-between` (exactly two visible children,
+   logo-left/group-right, naturally flush at both true edges) and only
+   switching to the 3-column grid at `sm:` and up, where the middle
+   column has real content again.
+2. **No mobile text search at all, a real functional gap, not just
+   cosmetic.** New `MobileSearchBar.tsx`: a toggle button in the header
+   (visible only below `sm`) that drops a full-width keyword-only input
+   below the header. Deliberately smaller than the desktop `SearchBar`,
+   no location/radius/autocomplete, since "search by text" was the
+   actual ask, not full parity with a control that can't fit in this
+   space regardless. Reuses the exact same instant, no-round-trip
+   URL-merge mechanism (`useUrlSearchParams`/`writeUrlSearchParams`) the
+   desktop chip filters already use when already on `/jobs`, or a plain
+   navigation to `/jobs?q=...` otherwise.
+3. **A systemic CSS Grid pitfall, found live, not from a screenshot**:
+   the candidate profile's "basic information" card overflow the user
+   reported in text, with no screenshot attached. Direct measurement
+   (not guessed): the grid container itself reported a perfectly normal
+   308px width, while its own child `<input>`/`<label>` elements
+   reported a WIDER rect (415px on a 390px viewport) than their own
+   parent. The mechanism: a Tailwind grid with a responsive column
+   override (`sm:grid-cols-2`) but *no* explicit base `grid-cols-N`
+   relies on the browser's implicit grid behavior below that
+   breakpoint, which sizes its auto column track to its content's
+   natural width, not "one column filling the container" the way a
+   plain block layout would. An `<input>` with no explicit width can
+   force that auto track, and everything placed in it, wider than the
+   grid's own box, overflowing the whole page, while the grid container
+   itself keeps reporting a completely normal size the entire time, a
+   genuinely confusing bug if you only check the container and never
+   its own children. Fixed in `OverviewSection.tsx`'s two affected
+   grids (`grid-cols-1 sm:grid-cols-2`), and, since this pattern is
+   really "any grid using a responsive column override with no
+   explicit base," audited and fixed every other instance in the
+   codebase with the same defensive `grid-cols-1` base, before it ever
+   gets reported too (`JobDetailBody.tsx`, `ErrorPageCard.tsx`, the
+   employer contact page, the applicant/matchmaking candidate detail
+   pages' two-column layout, both blog pages).
+4. **Company Profile's website-autofill row overflowed on mobile**,
+   confirmed directly via the user's own screenshot (the "Obter
+   sugestões" button bled off the right edge of the screen). Same
+   `flex-col sm:flex-row` fix already proven on `JobForm.tsx`'s
+   external-apply-URL row, applied to this architecturally identical
+   input+button shape in `CompanyAutofillPanel.tsx`.
+5. **A real truncation bug found while reproducing the employer
+   screenshots with realistic data** (the user's own real job titles,
+   not an empty fixture): a job title rendered via `<Link
+   className="truncate">` on `ConsoleJobRow.tsx` didn't actually
+   truncate on overflow. Root cause: a bare `<a>` defaults to `display:
+   inline`, and `truncate`'s `overflow-hidden`/`text-overflow: ellipsis`
+   doesn't reliably constrain an inline element the way it does a block
+   one. Fixed by adding `block`, confirmed via `document.
+   documentElement.scrollWidth` before/after against a job seeded with
+   the user's own real long title.
+
+**An honest, unresolved thread, not silently claimed as fixed**: the
+employer console's own top nav (`ConsoleTopNav`/`AccountMenu`) was
+reported with the identical "bunched toward the middle" symptom in the
+user's own screenshots, but it doesn't share the candidate `TopNav`'s
+grid-based root cause at all, it's already a plain `flex` row with
+`ml-auto`. Reproducing it directly (WebKit, iPhone viewport + user
+agent, PT locale, a fresh account, then again with realistic seeded
+data including a long job title to trigger the exact same overflow the
+screenshots showed) consistently rendered it correctly right-aligned,
+both before and after the real overflow fix above. Flagged back rather
+than guessed at: possible this was a transient render, a device/zoom
+setting, or something else not reproducible via a clean fixture; worth
+a fresh screenshot on this exact deployment before assuming it's the
+same root cause as item 1 above (likely) versus something distinct and
+still unfixed.
+
+**Verified live against production**, WebKit engine throughout (closer
+to real iPhone Safari than Chromium): `document.documentElement.
+scrollWidth` matches the 390px viewport exactly (was 415px before the
+grid fix) on the candidate profile page; the candidate `TopNav`'s
+right-side group sits flush at the true right edge on `/jobs` (within
+rounding of the header's own edge); the new mobile search icon reveals
+a real input, and submitting a keyword search correctly navigates/
+filters; the Company Profile page has zero overflow and the autofill
+row's button now sits below (not beside) the input; "My Job Ads" has
+zero overflow even with a job seeded with the user's own real long
+title and multi-contract-type salary rows. 8 checks total, all passed.
+Fixtures cleaned up afterward; Playwright (both Chromium and WebKit)
+reinstalled `--no-save` for this investigation and fully uninstalled
+again once done.
