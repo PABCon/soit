@@ -417,13 +417,28 @@ export async function getMyApplications(): Promise<MyApplication[]> {
 
   const { data } = await supabase
     .from("applications")
-    .select(
-      "id, created_at, company_application_stages ( candidate_bucket ), jobs!inner ( slug, title, companies!inner ( slug, company_name, company_logo_url ) )",
-    )
+    .select("id, created_at, stage_id, jobs!inner ( slug, title, companies!inner ( slug, company_name, company_logo_url ) )")
     .eq("candidate_id", candidateId)
     .order("created_at", { ascending: false });
 
   if (!data) return [];
+
+  // `company_application_stages`' only RLS policy scopes reads to the
+  // employer who owns it (`company_id = my_company_id()`): a candidate
+  // session has no policy letting it read that table at all, so an
+  // embedded join here would silently come back null, same "an embedded
+  // join still goes through the joined table's RLS" trap this project
+  // already hit once for the reverse case (an employer reading
+  // `candidates`). Fetched separately via the admin client instead, the
+  // same admin-client-scoped-in-code pattern, and deliberately scoped to
+  // `candidate_bucket` only, never the employer's own internal label,
+  // which a candidate should never see regardless of RLS.
+  const stageIds = [...new Set(data.map((row) => row.stage_id).filter((id): id is string => id !== null))];
+  const admin = createAdminClient();
+  const { data: stageRows } = stageIds.length
+    ? await admin.from("company_application_stages").select("id, candidate_bucket").in("id", stageIds)
+    : { data: [] as { id: string; candidate_bucket: CandidateBucket }[] };
+  const bucketByStageId = new Map((stageRows ?? []).map((s) => [s.id, s.candidate_bucket]));
 
   return data.map((row) => {
     const job = row.jobs as unknown as {
@@ -431,10 +446,9 @@ export async function getMyApplications(): Promise<MyApplication[]> {
       title: string;
       companies: { slug: string; company_name: string; company_logo_url: string | null };
     };
-    const stage = row.company_application_stages as unknown as { candidate_bucket: CandidateBucket } | null;
     return {
       id: row.id,
-      bucket: stage?.candidate_bucket ?? "submitted",
+      bucket: (row.stage_id && bucketByStageId.get(row.stage_id)) || "submitted",
       createdAt: row.created_at,
       job: {
         slug: job.slug,
