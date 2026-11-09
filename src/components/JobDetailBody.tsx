@@ -123,6 +123,9 @@ export async function JobDetailBody({
             <div className="mt-2">
               <JobDescriptionBody description={job.description} />
             </div>
+            {job.jobDisclaimer && (
+              <p className="mt-4 border-t border-line pt-3 text-xs text-muted whitespace-pre-line">{job.jobDisclaimer}</p>
+            )}
           </div>
         </div>
       ),

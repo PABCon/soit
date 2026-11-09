@@ -132,7 +132,11 @@ function jobPostingJsonLd(job: JobDetail, locale: string) {
     "@context": "https://schema.org",
     "@type": "JobPosting",
     title: job.title,
-    description: job.description,
+    // Matches what's actually visible on the page: the employer's own
+    // disclaimer (if any) renders right below the description there too,
+    // so the structured data search engines read shouldn't describe a
+    // shorter posting than what a real visitor sees.
+    description: job.jobDisclaimer ? `${job.description}\n\n${job.jobDisclaimer}` : job.description,
     // Google's Rich Results guidance for JobPosting recommends this for
     // applicant-tracking/dedup — SEO audit finding, was missing entirely.
     identifier: {

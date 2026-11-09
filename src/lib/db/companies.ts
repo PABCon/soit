@@ -42,6 +42,12 @@ export type MyCompany = {
   benefits_text: string | null;
   custom_section_title: string | null;
   custom_section_body: string | null;
+  /** Appended to the bottom of every one of this company's job postings
+   *  at display time (`toJobDetail()`), never copied into any job's own
+   *  stored description. Not Top-Employer-gated like the rich-profile
+   *  fields above: a legal/boilerplate notice is a basic utility every
+   *  employer should be able to use regardless of paid tier. */
+  job_disclaimer: string | null;
 };
 
 export type CompanyTeamMember = { id: string; name: string; role: string | null; photoUrl: string | null };
@@ -436,6 +442,7 @@ export async function updateCompanyProfile(fields: {
   custom_section_body: string | null;
   cover_position_x: number;
   cover_position_y: number;
+  job_disclaimer: string | null;
 }) {
   const supabase = await createClient();
   const { data: companyId } = await supabase.rpc("my_company_id");

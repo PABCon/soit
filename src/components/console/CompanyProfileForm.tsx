@@ -64,6 +64,7 @@ export function CompanyProfileForm({
   const t = useTranslations("console");
   const [name, setName] = useState(company.company_name);
   const [description, setDescription] = useState(company.company_description ?? "");
+  const [jobDisclaimer, setJobDisclaimer] = useState(company.job_disclaimer ?? "");
   const [website, setWebsite] = useState(company.website ?? "");
   const [industry, setIndustry] = useState(company.industry ?? "");
   const [size, setSize] = useState(company.company_size ?? "");
@@ -120,6 +121,7 @@ export function CompanyProfileForm({
     formData.set("benefits_text", benefits);
     formData.set("custom_section_title", customTitle);
     formData.set("custom_section_body", customBody);
+    formData.set("job_disclaimer", jobDisclaimer);
     formData.set("cover_position_x", String(coverPositionX));
     formData.set("cover_position_y", String(coverPositionY));
     await updateProfileAction(formData);
@@ -318,6 +320,17 @@ export function CompanyProfileForm({
             rows={4}
             className={`${inputClass} h-auto py-2`}
           />
+        </label>
+        <label className={labelClass}>
+          <span className="font-medium text-ink">{t("jobDisclaimer")}</span>
+          <textarea
+            value={jobDisclaimer}
+            onChange={(e) => setJobDisclaimer(e.target.value)}
+            rows={3}
+            placeholder={t("jobDisclaimerPlaceholder")}
+            className={`${inputClass} h-auto py-2`}
+          />
+          <span className="text-xs text-muted">{t("jobDisclaimerHint")}</span>
         </label>
         <div className="grid grid-cols-2 gap-4">
           <label className={labelClass}>
