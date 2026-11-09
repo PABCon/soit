@@ -5818,3 +5818,89 @@ title and multi-contract-type salary rows. 8 checks total, all passed.
 Fixtures cleaned up afterward; Playwright (both Chromium and WebKit)
 reinstalled `--no-save` for this investigation and fully uninstalled
 again once done.
+
+## Employer analytics, phase 1: job views, apply-clicks, a real dashboard
+
+A real-usage ask, prompted by a Teamlyzer company-performance email the
+user shared as reference ("how many views, how many apply clicks").
+Triaged the reference report's own metrics into three honest tiers
+before building anything: ready now (job views, already tracked but
+never surfaced as a dashboard; apply-button clicks, not tracked at
+all), needs new but modest infrastructure (company-*profile*-page
+views, unique/returning-visitor split, time-on-page, Teamlyzer's
+"district of visitors"), and not really analytics at all, separate
+product features (reviews, a "follow this company" button, a
+cross-company leaderboard ranking). Scoped this phase to the first
+tier only, per the user's own explicit choice.
+
+**A real architecture question settled before writing any code**: would
+Google Analytics/GTM make more sense than first-party tracking? No,
+for two concrete reasons specific to this project: GA on this site is
+consent-gated behind the cookie banner (`docs/go-live-checklist.md`'s
+own consent work), so a visitor who declines cookies simply never gets
+counted, silently undercounting a number shown to employers as a
+paid-product metric, not marketing analytics; and GTM's main real
+benefit (letting non-engineers add/edit tracking tags without a code
+deploy) doesn't buy anything here, since every change already ships
+through the same commit-and-deploy workflow regardless. First-party,
+unconditional, consent-independent tracking is exactly how
+`jobs.view_count` already worked before this phase, extended rather
+than replaced.
+
+**`jobs.apply_click_count`**, same shape as the existing `view_count`
+(`20261012100000_job_view_count.sql`): a real apply-intent signal,
+distinct from a completed application (already counted via
+`applications`), fired from `ApplyModal`'s own click handlers, whether
+that's opening the internal apply form or clicking through on an
+external-apply-URL job. Both counters now also write a timestamped row
+to the existing `events` table inside the same atomic RPC that
+increments the counter, a table that's existed since the very first
+schema migration with the doc comment "nothing consumes it yet," now
+finally put to use. The plain integer counter alone has no history,
+only a running total; the events table's existing `(type, created_at
+desc)` index is already exactly shaped for "views per day over the
+last 30 days." `company_id` is resolved and stored in the event
+payload at write time (inside the SQL function itself, via a `returning
+... into` on the same `UPDATE`), not left to a join at read time,
+since a dashboard load scans events across potentially many jobs at
+once.
+
+**New `/recruit/analytics` page** (Sidebar entry added, reusing the
+existing `MVP` array both `Sidebar`/`MobileConsoleMenu` already share):
+three stat cards (total views, apply-clicks, applications), a 30-day
+trend chart, and a per-job table with a computed view-to-apply
+conversion rate. The trend chart (`AnalyticsTrendChart.tsx`) is a plain
+inline SVG, no new charting dependency, same "no new charting library"
+discipline the blog content work already established with its own
+dependency-free SVG bar-chart generator, just reading the real
+design-system CSS custom properties (`var(--color-pine)`) directly
+since this renders inside the actual app rather than as a standalone
+script. The day-bucketing logic that turns raw `events` rows into one
+point per calendar day (zero-filled for a quiet day, so a trend chart
+never reads "no data" where the real answer is "zero") is a pure,
+separately exported function, with 5 new unit tests locking in its
+exact boundary behavior.
+
+**Verified live against production** with disposable fixtures, real
+actions, not synthetic data inserted directly: visited a real test
+job's page twice (two real page loads, two real `sendBeacon` view
+events) and clicked the real Apply button once (one real apply-click
+event), then confirmed, as the actual employer, the Analytics page
+showed exactly 2 views / 1 apply-click / 0 applications (correct: the
+click opened the form but was never submitted), the trend chart
+rendered, and the per-job table listed the test job. Cross-checked
+directly against the database itself, not just the rendered page: the
+raw `events` rows (2× `job.viewed`, 1× `job.apply_clicked`, each
+carrying the correct `job_id`/`company_id` in its payload) and the
+`jobs` row's own `view_count`/`apply_click_count` columns matched the
+real actions exactly, 1:1. Fixtures cleaned up afterward; Playwright
+reinstalled `--no-save` for this verification and fully uninstalled
+again once done.
+
+**Not built yet, planned**: the Tier 2 items above (company-profile
+views, unique/returning visitors, time-on-page, visitor geography) —
+each needs a new, lightweight first-party anonymous-visitor mechanism,
+a bigger piece of infrastructure than this phase, deliberately deferred
+until there's real signal that employers want it. Tier 3 (reviews,
+followers, a cross-company ranking) was explicitly flagged as separate
+product features, not analytics, and isn't scoped here at all.
