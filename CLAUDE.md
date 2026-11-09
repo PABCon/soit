@@ -5904,3 +5904,142 @@ a bigger piece of infrastructure than this phase, deliberately deferred
 until there's real signal that employers want it. Tier 3 (reviews,
 followers, a cross-company ranking) was explicitly flagged as separate
 product features, not analytics, and isn't scoped here at all.
+
+## Company-wide job description disclaimer
+
+A real-usage request alongside two others in the same message: let a
+company add a disclaimer once, appended automatically to the bottom of
+every one of their job descriptions, rather than pasting it into each
+posting by hand. `companies.job_disclaimer` (one nullable text column,
+public-select + owner-update grants, same shape as every other
+company-scoped text field) is set once on Company Profile and rendered
+at display time only, never copied into a job's own stored description
+text, so editing it updates every live ad immediately with no backfill
+needed. Joined into the existing shared `jobs` SELECT (the same
+`companies` sub-select `company_description` already uses) and exposed
+on `JobDetail` only, not the base `Job`/feed-card type, since it's a
+detail-page concern. Rendered as a small, visually separated note
+under the description on the job detail page, and folded into the
+`JobPosting` JSON-LD description too, so structured data matches what's
+actually visible. Deliberately not Top-Employer-gated: a legal/
+boilerplate notice is a basic utility, not a paid perk.
+
+Verified live: setting a disclaimer and publishing shows it correctly
+on the job detail page below the description, the existing description
+text itself untouched; clearing it removes the note; the JSON-LD
+`description` field picks up the appended text too.
+
+## Custom employer application pipelines, candidate-facing buckets
+
+A real-usage request, alongside the disclaimer above: let a company
+define and reorder its own hiring-pipeline stage names (e.g. "Round 2 -
+Technical," "Not a culture fit") instead of the fixed `applied/viewed/
+responded/rejected/closed` enum every company shared before this.
+Two decisions were confirmed with you via `AskUserQuestion` before any
+schema work: whether the "viewed" read-receipt should stay separate
+from a company's own stages (you confirmed yes, calling it "a critical
+non-negotiable concept for our tool: candidates should have always a
+view on the stage of their applications"), and whether the candidate
+should see the employer's actual custom stage names or a simplified,
+universal status (you chose the universal status). Both decisions
+shaped the schema directly, not just the UI.
+
+**Schema**: new `company_application_stages` table (`label`, `position`,
+a required `candidate_bucket` enum: `submitted/in_review/not_selected/
+hired`), lazily seeded with 4 default stages (Applied/Responded/
+Rejected/Closed) the first time anything asks for a company's stages:
+a company that never visits the new pipeline settings page still gets
+a real, usable pipeline. `applications` gains `stage_id` (now `not
+null`, backfilled from the old `status` enum column before the
+constraint was added) and `viewed_at`, entirely independent of each
+other: `viewed_at` is the read-receipt (has any employer opened this
+application), `stage_id` is the employer's own pipeline position,
+and neither can affect the other, directly implementing the
+non-negotiable principle above. The old `application_status` enum and
+`applications.status` column are left untouched, a frozen historical
+record, same precedent this project already follows for superseded
+columns elsewhere.
+
+**The apply-cap RPC needed a real migration, not just an added
+parameter**: `insert_application_if_under_cap` (the atomic, per-
+candidate-serialized insert path both `applyToJob` and
+`applyAnonymously` use) needed a 6th `p_stage_id` parameter, but
+Postgres identifies functions by name *and* parameter list together, so
+a plain `create or replace` with an added parameter would have created
+a second, separate, 6-parameter overload rather than replacing the
+original, leaving the old 5-parameter version still callable (and
+silently missing the now-`not null` `stage_id`, a guaranteed future
+insert failure for anyone who called it). Fixed with an explicit `drop
+function if exists ... (uuid, uuid, text, text, int)` before the
+`create or replace`.
+
+**Candidate-facing bucket, never the employer's own stage label**:
+`MyApplication.bucket` (candidate's own "My applications" page) and
+`Applicant.candidateBucket`/`stageLabel` (employer's own views) are
+both derived from `company_application_stages.candidate_bucket`/
+`.label` respectively, never cross-used: `applicant-status-badge.ts`
+now keys badge colors off the small, fixed `CandidateBucket` enum
+instead of the old free-standing status enum, so a badge's color can
+never go stale no matter how a company renames its own stages.
+
+**New `/recruit/pipeline` settings page** (new Sidebar entry): add,
+rename (both label and bucket), reorder (swap-adjacent, no drag
+library), and delete a stage, each wrapped in its own server action.
+Two guards in `deleteCompanyStage`: a company's last remaining stage
+can never be deleted (every company needs somewhere for a new
+application to start), and a stage still referenced by any real
+application can't be deleted either (no orphaned FK, no silent
+reassignment nobody asked for).
+
+**A real, production-affecting incident, found and fixed as part of
+this same work**: the schema migration dropping the old 5-parameter
+RPC had already been applied to the live database earlier in this same
+session, but the matching application code hadn't been deployed yet,
+meaning every real candidate's apply attempt on production was silently
+failing in the gap between the two. Confirmed directly (a raw RPC call
+with the old 5-parameter shape came back `PGRST202: Could not find the
+function`), then deployed this feature immediately rather than
+continuing further pre-deploy polish, restoring the apply flow.
+
+**A second real bug, caught only by live verification, not by `tsc`/
+`eslint`/the build**: the candidate's own "My applications" page showed
+every application as "Submitted" regardless of its real stage. Root
+cause: `getMyApplications()`'s embedded `company_application_stages
+( candidate_bucket )` join relied on RLS to scope the read, but that
+table's only policy grants access to the employer who owns it
+(`company_id = my_company_id()`), never to a candidate session, the
+exact "an embedded join still goes through the joined table's RLS"
+trap this project already hit once before, for the reverse case (an
+employer reading `candidates`). The join silently came back null for
+every candidate, and the code's own `?? "submitted"` fallback masked it
+completely rather than erroring. Fixed the same way the earlier case
+was fixed: fetch the bucket separately via the admin client, scoped to
+`candidate_bucket` only, never the employer's own internal stage label.
+
+Verified live against production, end to end, through the real UI, not
+staged data: a disposable candidate applied to a disposable job through
+the real Apply modal (a genuine PDF upload, content-sniffed); confirmed
+4 default stages were auto-created for the brand-new company and the
+new application started on the lowest-position ("Applied") stage with
+`viewed_at` null; opening the application as the employer set
+`viewed_at`, confirmed via direct query; changing the stage via both
+the detail page's own control and the per-job applicants list
+persisted correctly, with `viewed_at` provably unaffected by the stage
+change; the candidate's own applications page correctly showed
+"Submetida" before the change and "Em análise" after it, and never
+showed the employer's raw internal stage name ("Responded") anywhere;
+on the new pipeline settings page, a new custom stage was added and
+successfully deleted once unused, while a stage still referenced by
+the real application was correctly refused with a translated "has
+candidates associated" error. All 15 checks passed. Fixtures (company,
+job, both auth users, the candidate row, and every stage row) cleaned
+up afterward. `npx tsc --noEmit`, `eslint`, `npm run test` (156
+passing), `npm run build`, and `npm run check:i18n` (1571 keys, in
+sync) all pass. Playwright reinstalled `--no-save` for this
+verification and fully uninstalled again once done.
+
+Not built in this pass: a UI for reordering stages by drag (the up/
+down arrow swap works but isn't as fluid), and no notification to
+candidates when their stage changes (the read-receipt and stage are
+tracked, but nothing emails a candidate when either updates, a
+natural next step, not asked for here).
