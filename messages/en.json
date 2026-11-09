@@ -136,6 +136,7 @@
     "candidateNumber": "Candidate #{number}",
     "topMatchBadge": "Top match",
     "newMatchBadge": "New",
+    "activelyLookingBadge": "Actively looking",
     "reviewProfile": "Review profile",
     "matchStatusOption": {
       "new": "New",
@@ -1026,6 +1027,13 @@
     "location": "Where you live",
     "locationUnset": "Not set",
     "locationHint": "We use this so companies only see you as a match for on-site or hybrid roles near you. Remote roles are unaffected.",
+    "jobSearchStatus": "Job search status",
+    "jobSearchStatusOption": {
+      "looking": "Actively looking for a job",
+      "open": "Open to offers",
+      "not_open": "Not open to offers right now"
+    },
+    "jobSearchStatusHint": "This decides whether employers can match with you at all. Choosing \"Not open to offers\" removes you from matching entirely until you change it back.",
     "headline": "Headline",
     "yearsExperienceLabel": "Years of experience",
     "saving": "Saving…",

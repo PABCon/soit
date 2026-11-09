@@ -38,6 +38,7 @@ export async function updateCandidateProfileAction(fields: {
   phone: string | null;
   linkedin_url: string | null;
   location_id?: string | null;
+  job_search_status?: "looking" | "open" | "not_open";
 }) {
   await updateCandidateProfile(fields);
   revalidatePath("/profile");

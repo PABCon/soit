@@ -45,6 +45,15 @@ export type CandidatePrefsForScoring = {
    *  hybrid role in a different city physically impossible, regardless
    *  of how well the skills line up — see its use below. */
   residenceLocationId: string | null;
+  /** `candidates.job_search_status`, directly plugged into the engine
+   *  as a hard gate, per the user's own explicit instruction: a
+   *  candidate who's said they're not open to offers should never
+   *  surface as a match at all, in either direction, no matter how well
+   *  skills/preferences otherwise line up. `null` is treated the same
+   *  as `"open"` (never excluded). The column itself defaults to
+   *  `"open"` at the database level, so `null` only shows up here for a
+   *  caller that genuinely never fetched it. */
+  jobSearchStatus: "looking" | "open" | "not_open" | null;
 } | null;
 
 // Raised from 30 after a real false positive: a candidate with a purely
@@ -61,6 +70,12 @@ export function scoreJobMatch(
   candidateSkillIds: Set<string>,
   candidatePrefs: CandidatePrefsForScoring,
 ): number {
+  // Directly plugged into the engine, checked before anything else: a
+  // candidate who's explicitly said they're not open to offers is never
+  // a match, full stop, regardless of skill overlap or how well
+  // preferences line up. The user's own instruction for this feature.
+  if (candidatePrefs?.jobSearchStatus === "not_open") return 0;
+
   // Real-usage report: a candidate based in Warsaw was surfacing as a
   // match for on-site/hybrid Lisbon roles — skill overlap and preference
   // neutrals alone could carry a score past threshold with zero regard

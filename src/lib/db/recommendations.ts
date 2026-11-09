@@ -53,6 +53,7 @@ function scoreJob(
   skillIds: Set<string>,
   prefs: Awaited<ReturnType<typeof getMyCandidateJobPreferences>>,
   residenceLocationId: string | null,
+  jobSearchStatus: "looking" | "open" | "not_open",
 ): { score: number; matchedTechLabels: string[] } {
   const matchedTechLabels = row.job_tech_tags
     .filter((t) => skillIds.has(t.tech_tag_id))
@@ -70,13 +71,18 @@ function scoreJob(
     },
     row.job_tech_tags.map((t) => ({ techTagId: t.tech_tag_id, required: t.required })),
     skillIds,
-    // `residenceLocationId` deliberately isn't part of CandidateJobPreferences
-    // itself (that type is also what the Job Preferences tab's save action
-    // takes — residence is a separate fact, edited on the Overview tab, and
-    // keeping it off this type means that save path never has to carry a
-    // field it doesn't touch) — merged in here, at the one place that
-    // actually needs the full scoring shape.
-    prefs ? { ...prefs, residenceLocationId } : null,
+    // `residenceLocationId`/`jobSearchStatus` deliberately aren't part of
+    // CandidateJobPreferences itself (that type is also what the Job
+    // Preferences tab's save action takes, both are separate facts
+    // edited on the Overview tab, and keeping them off this type means
+    // that save path never has to carry a field it doesn't touch),
+    // merged in here, at the one place that actually needs the full
+    // scoring shape. A candidate who's said they're "not open to offers"
+    // stops seeing their own job recommendations too, by the same
+    // symmetric engine logic the employer-facing direction uses: if
+    // they're not open to being matched, "jobs matched to you" shouldn't
+    // keep surfacing either.
+    prefs ? { ...prefs, residenceLocationId, jobSearchStatus } : null,
   );
 
   return { score, matchedTechLabels };
@@ -127,7 +133,13 @@ export async function getJobRecommendationsForCandidate(limit = 20): Promise<Rec
   const rows = data as unknown as RecsJobRow[];
   const scored = rows
     .map((row) => {
-      const { score, matchedTechLabels } = scoreJob(row, skillIds, prefs, profile?.locationId ?? null);
+      const { score, matchedTechLabels } = scoreJob(
+        row,
+        skillIds,
+        prefs,
+        profile?.locationId ?? null,
+        profile?.jobSearchStatus ?? "open",
+      );
       return { job: hideSalaryIfPrivate(row, toJob(row)), matchScore: score, matchedTechLabels };
     })
     // A job with near-zero overlap isn't a "match" just because it's live —
@@ -192,6 +204,12 @@ export async function getJobMatchScoreForCandidate(jobId: string): Promise<JobMa
 
   if (!data) return { ok: false, reason: "below_threshold" };
 
-  const { score } = scoreJob(data as unknown as RecsJobRow, skillIds, prefs, profile?.locationId ?? null);
+  const { score } = scoreJob(
+    data as unknown as RecsJobRow,
+    skillIds,
+    prefs,
+    profile?.locationId ?? null,
+    profile?.jobSearchStatus ?? "open",
+  );
   return score >= MIN_MATCH_SCORE ? { ok: true, score } : { ok: false, reason: "below_threshold" };
 }

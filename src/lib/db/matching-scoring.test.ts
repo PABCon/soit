@@ -30,6 +30,7 @@ function prefs(overrides: Partial<NonNullable<CandidatePrefsForScoring>> = {}): 
     salaryMax: null,
     salaryPeriod: null,
     residenceLocationId: null,
+    jobSearchStatus: "open",
     ...overrides,
   };
 }
@@ -99,6 +100,42 @@ describe("scoreJobMatch", () => {
       [{ techTagId: SQL_TAG, required: true }],
       new Set([SQL_TAG]),
       prefs({ residenceLocationId: null }),
+    );
+    expect(score).toBe(60);
+  });
+
+  it("a candidate who's marked themselves not open to offers is a hard 0, regardless of a perfect skill+preference match", () => {
+    const score = scoreJobMatch(
+      job({ workModel: "remote", employmentType: "permanent" }),
+      [{ techTagId: SQL_TAG, required: true }],
+      new Set([SQL_TAG]),
+      prefs({ workModel: "remote", employmentType: "permanent", jobSearchStatus: "not_open" }),
+    );
+    expect(score).toBe(0);
+  });
+
+  it("an actively-looking candidate scores exactly the same as the open default: the gate is exclusion-only, not a scoring bonus", () => {
+    const looking = scoreJobMatch(
+      job(),
+      [{ techTagId: SQL_TAG, required: true }],
+      new Set([SQL_TAG]),
+      prefs({ jobSearchStatus: "looking" }),
+    );
+    const open = scoreJobMatch(
+      job(),
+      [{ techTagId: SQL_TAG, required: true }],
+      new Set([SQL_TAG]),
+      prefs({ jobSearchStatus: "open" }),
+    );
+    expect(looking).toBe(open);
+  });
+
+  it("a null jobSearchStatus is treated the same as open, never excluded", () => {
+    const score = scoreJobMatch(
+      job(),
+      [{ techTagId: SQL_TAG, required: true }],
+      new Set([SQL_TAG]),
+      prefs({ jobSearchStatus: null }),
     );
     expect(score).toBe(60);
   });

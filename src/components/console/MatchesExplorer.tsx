@@ -150,6 +150,11 @@ export function MatchesExplorer({ jobId, matches }: { jobId: string; matches: Ca
                         {t("topMatchBadge")}
                       </span>
                     )}
+                    {match.jobSearchStatus === "looking" && (
+                      <span className="rounded bg-green-100 px-1.5 py-0.5 text-[10px] font-semibold tracking-wide text-green-700 uppercase">
+                        {t("activelyLookingBadge")}
+                      </span>
+                    )}
                   </div>
                   <p className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted">
                     {match.preferredLocationName && <span>{match.preferredLocationName}</span>}

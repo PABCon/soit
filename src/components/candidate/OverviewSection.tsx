@@ -73,6 +73,7 @@ export function OverviewSection({
     phone: profile.phone ?? "",
     linkedinUrl: profile.linkedinUrl ?? "",
     locationId: profile.locationId ?? "",
+    jobSearchStatus: profile.jobSearchStatus,
   });
   const [fileError, setFileError] = useState<string | null>(null);
   const [autofillOpen, setAutofillOpen] = useState(false);
@@ -86,6 +87,7 @@ export function OverviewSection({
         phone: value.phone.trim() || null,
         linkedin_url: value.linkedinUrl.trim() || null,
         location_id: value.locationId || null,
+        job_search_status: value.jobSearchStatus,
       }),
     800,
     { skipFirstRun: !seededFromDraft },
@@ -295,6 +297,21 @@ export function OverviewSection({
               ))}
             </select>
             <span className="text-xs text-muted">{t("locationHint")}</span>
+          </label>
+          <label className={labelClass}>
+            <span className="font-medium text-ink">{t("jobSearchStatus")}</span>
+            <select
+              value={basics.jobSearchStatus}
+              onChange={(e) =>
+                setBasics((prev) => ({ ...prev, jobSearchStatus: e.target.value as typeof prev.jobSearchStatus }))
+              }
+              className={inputClass}
+            >
+              <option value="looking">{t("jobSearchStatusOption.looking")}</option>
+              <option value="open">{t("jobSearchStatusOption.open")}</option>
+              <option value="not_open">{t("jobSearchStatusOption.not_open")}</option>
+            </select>
+            <span className="text-xs text-muted">{t("jobSearchStatusHint")}</span>
           </label>
         </div>
       </div>

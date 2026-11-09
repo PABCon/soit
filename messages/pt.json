@@ -136,6 +136,7 @@
     "candidateNumber": "Candidato #{number}",
     "topMatchBadge": "Melhor match",
     "newMatchBadge": "Novo",
+    "activelyLookingBadge": "À procura ativa",
     "reviewProfile": "Rever perfil",
     "matchStatusOption": {
       "new": "Novo",
@@ -1026,6 +1027,13 @@
     "location": "Onde vive",
     "locationUnset": "Não indicado",
     "locationHint": "Usamos isto para que as empresas só o vejam como match em vagas presenciais ou híbridas na sua zona. Vagas remotas não são afetadas.",
+    "jobSearchStatus": "Estado de procura de emprego",
+    "jobSearchStatusOption": {
+      "looking": "À procura ativa de emprego",
+      "open": "Aberto/a a propostas",
+      "not_open": "Não disponível para propostas neste momento"
+    },
+    "jobSearchStatusHint": "Isto decide se as empresas podem encontrá-lo/a como match. Escolher \"Não disponível para propostas\" remove-o/a por completo do matching até alterar esta opção.",
     "headline": "Título profissional",
     "yearsExperienceLabel": "Anos de experiência",
     "saving": "A guardar…",

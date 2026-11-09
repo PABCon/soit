@@ -75,6 +75,11 @@ export default async function MatchCandidateProfilePage({ params }: Props) {
               <span className="rounded-full bg-green-100 px-2.5 py-1 text-xs font-semibold text-green-700">
                 {t("matchedCandidateBadge")}
               </span>
+              {match.jobSearchStatus === "looking" && (
+                <span className="rounded-full bg-green-100 px-2.5 py-1 text-xs font-semibold text-green-700">
+                  {t("activelyLookingBadge")}
+                </span>
+              )}
             </div>
             <p className="mt-0.5 text-sm text-muted">
               {match.aiSummaryGeneratedAt

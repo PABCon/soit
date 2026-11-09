@@ -19,6 +19,14 @@ export type CandidateProfile = {
    *  Job Preferences one — it's a fact about the person, not a
    *  preference about the job they want. */
   locationId: string | null;
+  /** Directly plugged into the matching engine (`matching-scoring.ts`'s
+   *  own hard gate): "looking" (actively job-hunting), "open" (not
+   *  actively looking but receptive), "not_open" (not interested right
+   *  now, excluded from matching in either direction entirely).
+   *  Defaults to "open" at the database level, never "not_open". A
+   *  candidate who never touches this setting keeps today's real
+   *  behavior rather than silently opting out of matching. */
+  jobSearchStatus: "looking" | "open" | "not_open";
 };
 
 /** RLS already scopes this to the caller's own row (`auth_user_id =
@@ -31,7 +39,9 @@ export async function getMyCandidateProfile(): Promise<CandidateProfile | null> 
   const supabase = await createClient();
   const { data } = await supabase
     .from("candidates")
-    .select("full_name, email, phone, linkedin_url, avatar_url, cv_url, cv_prompt_dismissed, marketing_opt_in, location_id")
+    .select(
+      "full_name, email, phone, linkedin_url, avatar_url, cv_url, cv_prompt_dismissed, marketing_opt_in, location_id, job_search_status",
+    )
     .maybeSingle();
 
   if (!data) return null;
@@ -45,6 +55,7 @@ export async function getMyCandidateProfile(): Promise<CandidateProfile | null> 
     cvPromptDismissed: data.cv_prompt_dismissed,
     marketingOptIn: data.marketing_opt_in,
     locationId: data.location_id,
+    jobSearchStatus: data.job_search_status,
   };
 }
 
@@ -75,6 +86,7 @@ export async function updateCandidateProfile(fields: {
   phone: string | null;
   linkedin_url: string | null;
   location_id?: string | null;
+  job_search_status?: "looking" | "open" | "not_open";
 }) {
   const supabase = await createClient();
   const { data: candidateId } = await supabase.rpc("my_candidate_id");

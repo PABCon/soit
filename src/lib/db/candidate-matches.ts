@@ -55,6 +55,7 @@ import { generateMatchSummaries, generateSingleMatchSummary, type JobFactsForPro
 const SCORABLE_CANDIDATE_SELECT = `
   id, years_experience, preferred_work_model, preferred_employment_type,
   desired_salary_min, desired_salary_max, desired_salary_period, location_id,
+  job_search_status,
   candidate_tech_tags ( tech_tag_id, level, tech_tags ( label ) ),
   candidate_preferred_categories ( category_id ),
   candidate_preferred_locations ( location_id, locations ( name ) ),
@@ -70,6 +71,7 @@ type ScorableCandidateRow = {
   desired_salary_max: number | null;
   desired_salary_period: string | null;
   location_id: string | null;
+  job_search_status: "looking" | "open" | "not_open";
   candidate_tech_tags: { tech_tag_id: string; level: string | null; tech_tags: { label: string } }[];
   candidate_preferred_categories: { category_id: string }[];
   candidate_preferred_locations: { location_id: string; locations: { name: string } }[];
@@ -90,6 +92,10 @@ export type CandidateMatch = {
   hasWorkHistory: boolean;
   status: MatchStatus;
   isTopMatch: boolean;
+  /** Surfaced so an employer can see the real signal behind the
+   *  "actively looking" ranking boost below, not just feel its effect
+   *  silently. */
+  jobSearchStatus: "looking" | "open" | "not_open";
   /** null until an employer has actually opened this candidate's match
    *  detail page — see markMatchViewed's own comment. Drives the "new"
    *  badge on both the list card and the per-job match count. */
@@ -125,6 +131,7 @@ function candidatePrefsFromRow(row: ScorableCandidateRow): CandidatePrefsForScor
     salaryMax: row.desired_salary_max,
     salaryPeriod: row.desired_salary_period,
     residenceLocationId: row.location_id,
+    jobSearchStatus: row.job_search_status,
   };
 }
 
@@ -240,6 +247,7 @@ export async function getCandidateMatchesForJob(jobId: string, limit = 200): Pro
         hasWorkHistory: row.candidate_experience.length > 0,
         status: note?.status ?? "new",
         isTopMatch: false,
+        jobSearchStatus: row.job_search_status,
         viewedAt: note?.viewed_at ?? null,
         aiSummary: note?.ai_summary ?? null,
         aiSummaryGeneratedAt: note?.ai_summary_generated_at ?? null,
@@ -248,7 +256,17 @@ export async function getCandidateMatchesForJob(jobId: string, limit = 200): Pro
     })
     .filter((m) => m.matchScore >= MIN_MATCH_SCORE);
 
-  scored.sort((a, b) => b.matchScore - a.matchScore);
+  // "Look first to people actually looking" (the user's own framing): at
+  // an equal score, a candidate who's actively job-hunting ranks above
+  // one who's merely open to offers, a tie-break, not a scoring bonus,
+  // so the score itself stays a meaningful, comparable number regardless
+  // of this ranking preference.
+  scored.sort((a, b) => {
+    if (b.matchScore !== a.matchScore) return b.matchScore - a.matchScore;
+    if (a.jobSearchStatus === "looking" && b.jobSearchStatus !== "looking") return -1;
+    if (b.jobSearchStatus === "looking" && a.jobSearchStatus !== "looking") return 1;
+    return 0;
+  });
   const matches = scored.slice(0, limit);
   if (matches.length > 0) matches[0].isTopMatch = true;
 
@@ -504,7 +522,14 @@ export async function getConnectedCandidatesForCompany(companyId: string): Promi
         salaryPeriod: job.salary_period,
       };
       const matchScore = scoreJobMatch(jobFacts, tags, skillIds, prefs);
-      if (matchScore < MIN_MATCH_SCORE) continue;
+      // A job the candidate already has an accepted thread for stays
+      // visible regardless of their *current* score (including the
+      // job-search-status hard gate: someone who later marks themselves
+      // "not open" shouldn't retroactively vanish from a relationship
+      // that already exists). The threshold only gates *new* cross-job
+      // surfacing, jobs they never specifically connected through.
+      const isDirectConnection = candidateThreads.some((t) => t.job_id === job.id);
+      if (matchScore < MIN_MATCH_SCORE && !isDirectConnection) continue;
 
       const threadForJob = candidateThreads.find((t) => t.job_id === job.id) ?? candidateThreads[0];
       rows.push({
