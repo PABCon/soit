@@ -3,8 +3,6 @@ import { getTranslations, setRequestLocale, getFormatter } from "next-intl/serve
 import { ListChecks, Briefcase, Award, FileText as CvIcon } from "lucide-react";
 import { Link } from "@/i18n/navigation";
 import { getApplicantDetail, updateApplicationStatus } from "@/lib/db/applications";
-import { getConnectedCandidatesForCompany } from "@/lib/db/candidate-matches";
-import { getMyEmployerContext } from "@/lib/db/companies";
 import { ApplicantStatusSelect } from "@/components/console/ApplicantStatusSelect";
 import { ApplicantSynopsisSection } from "@/components/console/ApplicantSynopsisSection";
 import { SectionHeading } from "@/components/SectionHeading";
@@ -55,28 +53,6 @@ export default async function ApplicantDetailPage({ params }: Props) {
 
   const detail = await getApplicantDetail(id);
   if (!detail) {
-    if (id.startsWith("match:")) {
-      const [, candidateId, jobId] = id.split(":");
-      const ctx = await getMyEmployerContext();
-      const connected = ctx ? await getConnectedCandidatesForCompany(ctx.company.id) : [];
-      return (
-        <pre style={{ whiteSpace: "pre-wrap" }}>
-          {JSON.stringify(
-            {
-              id,
-              candidateId,
-              jobId,
-              hasCtx: !!ctx,
-              companyId: ctx?.company.id,
-              connectedCount: connected.length,
-              connected: connected.map((c) => ({ candidateId: c.candidateId, jobId: c.jobId })),
-            },
-            null,
-            2,
-          )}
-        </pre>
-      );
-    }
     notFound();
   }
 

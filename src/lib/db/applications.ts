@@ -506,7 +506,7 @@ function toApplicant(
  *  rows the rest of this file and its UI already know how to render. */
 function connectedCandidateToApplicant(row: ConnectedCandidate): Applicant {
   return {
-    id: `match:${row.candidateId}:${row.jobId}`,
+    id: `match--${row.candidateId}--${row.jobId}`,
     status: "connected",
     createdAt: row.connectedAt,
     coverNote: null,
@@ -700,13 +700,22 @@ async function getConnectedCandidateDetail(candidateId: string, jobId: string): 
  *  ownership check needed.
  *
  *  Matchmaking rework, Phase 4: `applicationId` is also now a synthetic
- *  `match:<candidateId>:<jobId>` id for a connected-but-never-applied
+ *  `match--<candidateId>--<jobId>` id for a connected-but-never-applied
  *  candidate (see `connectedCandidateToApplicant`), branching to
  *  `getConnectedCandidateDetail` for that shape, since there's no real
- *  `applications` row behind it at all. */
+ *  `applications` row behind it at all. A double-hyphen separator, not a
+ *  colon: a real production bug caught this live, not in code review,
+ *  logs confirmed the route never even reached this function, a 404
+ *  straight from routing, not from a `notFound()` call here. A colon in
+ *  a path segment is valid per the URL spec, but is also the exact
+ *  character the active account's own stack treats specially somewhere
+ *  between the CDN and Next's own router, so it never got that far;
+ *  double-hyphen is unambiguous (no UUID ever contains two consecutive
+ *  hyphens) and avoids the whole class of problem rather than chasing
+ *  down which exact layer mishandled it. */
 export async function getApplicantDetail(applicationId: string): Promise<ApplicantDetail | null> {
-  if (applicationId.startsWith("match:")) {
-    const [, candidateId, jobId] = applicationId.split(":");
+  if (applicationId.startsWith("match--")) {
+    const [candidateId, jobId] = applicationId.slice("match--".length).split("--");
     return getConnectedCandidateDetail(candidateId, jobId);
   }
 
