@@ -134,13 +134,19 @@ export function CompanyAutofillPanel({
           <p className="mt-1 text-xs text-muted">{t("autofillHint")}</p>
         </div>
       </div>
-      <div className="mt-3 flex gap-2">
+      {/* flex-col, not just flex: real-usage report + screenshot. The
+       *  input's own UA-default content minimum width plus the button's
+       *  natural width exceeded a mobile viewport with no wrap, bleeding
+       *  the button off the right edge of the screen. Same `flex-col
+       *  sm:flex-row` fix already applied to this exact input+button
+       *  shape in `JobForm.tsx`'s external-apply-URL row. */}
+      <div className="mt-3 flex flex-col gap-2 sm:flex-row">
         <input
           type="url"
           value={url}
           onChange={(e) => setUrl(e.target.value)}
           placeholder="https://..."
-          className="h-11 flex-1 rounded-lg border border-line bg-white px-3 text-sm"
+          className="h-11 min-w-0 flex-1 rounded-lg border border-line bg-white px-3 text-sm"
         />
         <button
           type="button"

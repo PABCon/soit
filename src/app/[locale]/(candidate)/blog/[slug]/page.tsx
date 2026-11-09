@@ -73,7 +73,7 @@ export default async function BlogPostPage({ params }: Props) {
         {t("backToBlog")}
       </Link>
 
-      <div className="mt-8 grid gap-10 lg:grid-cols-[1fr_300px]">
+      <div className="mt-8 grid grid-cols-1 gap-10 lg:grid-cols-[1fr_300px]">
         <article className="min-w-0">
           <span className="inline-flex items-center rounded-full bg-pine/10 px-2.5 py-1 text-xs font-medium text-pine">
             {t(`category.${post.category}`)}

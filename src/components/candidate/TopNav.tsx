@@ -3,6 +3,7 @@ import { Link } from "@/i18n/navigation";
 import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { LoginMenu } from "@/components/nav/LoginMenu";
 import { MobileNavMenu } from "@/components/nav/MobileNavMenu";
+import { MobileSearchBar } from "@/components/nav/MobileSearchBar";
 import { SearchBar, type SearchSuggestion } from "@/components/nav/SearchBar";
 import { getLocations } from "@/lib/db/locations";
 import { getTechTags } from "@/lib/db/tech-tags";
@@ -51,8 +52,19 @@ export async function TopNav({ isLoggedIn = false }: { isLoggedIn?: boolean }) {
        *  already uses everywhere else in this app — inside a modest
        *  header, not a deliberately oversized one. `grid-cols-[1fr_auto_
        *  1fr]` still makes the search bar genuinely centered regardless
-       *  of how wide the logo or the right-side group happen to be. */}
-      <div className="mx-auto grid h-16 w-full max-w-[2200px] grid-cols-[1fr_auto_1fr] items-center gap-4 px-4 sm:px-6">
+       *  of how wide the logo or the right-side group happen to be.
+       *
+       *  Real-usage report: below `sm` (where the search column is
+       *  hidden entirely), this 3-column grid still reserved its middle
+       *  `auto` track at ~0 width, leaving two equal `1fr` tracks either
+       *  side. `justify-self-end` on the right-side group then only
+       *  pushed it to the end of *its own* column (half the screen),
+       *  not the true right edge, reading as "everything bunched toward
+       *  the middle" exactly as reported. `flex justify-between` on
+       *  mobile (two visible children, logo-left/group-right) fixes
+       *  that; `sm:grid` restores the original centered-search layout
+       *  once there's a middle column with real content again. */}
+      <div className="mx-auto flex h-16 w-full max-w-[2200px] items-center justify-between gap-4 px-4 sm:grid sm:grid-cols-[1fr_auto_1fr] sm:px-6">
         <div className="flex min-w-0 items-center gap-1 justify-self-start">
           <MobileNavMenu isLoggedIn={isLoggedIn} />
           <Link href="/jobs" className="min-w-0 leading-tight">
@@ -81,6 +93,7 @@ export async function TopNav({ isLoggedIn = false }: { isLoggedIn?: boolean }) {
         </div>
 
         <div className="flex shrink-0 items-center justify-self-end gap-2">
+          <MobileSearchBar />
           <LanguageSwitcher />
           <LoginMenu />
         </div>

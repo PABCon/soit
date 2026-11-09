@@ -228,7 +228,11 @@ export function OverviewSection({
 
       <div className={cardClass}>
         <CardHeading icon={Sparkles} title={t("headline")} action={<StatusIndicator status={headlineStatus} t={t} />} />
-        <div className="mt-5 grid grid-cols-2 gap-4">
+        {/* grid-cols-1 sm:grid-cols-2, not a bare 2-up grid: on a narrow
+         *  phone, two side-by-side fields here is cramped UX even where
+         *  it doesn't technically overflow, same single-column-first
+         *  responsive shape the basic-info card below already uses. */}
+        <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
           <label className={labelClass}>
             <span className="font-medium text-ink">{t("headline")}</span>
             <input
@@ -252,7 +256,18 @@ export function OverviewSection({
 
       <div className={cardClass}>
         <CardHeading icon={User} title={t("basicInfoHeading")} action={<StatusIndicator status={basicsStatus} t={t} />} />
-        <div className="mt-5 grid gap-4 sm:grid-cols-2">
+        {/* grid-cols-1, not a bare `grid` with no base column count: a
+         *  real production bug, caught live. With no `grid-template-
+         *  columns` set at all below `sm`, the grid's implicit column
+         *  track defaults to content-based `auto` sizing, not "one
+         *  column filling the container." An input with no explicit
+         *  width can force that auto track (and every item placed in
+         *  it) wider than the grid's own box, overflowing the page,
+         *  even though the grid container itself still reports a
+         *  perfectly normal width. `grid-cols-1` makes the base track a
+         *  real `minmax(0, 1fr)`, the same fix `sm:grid-cols-2` already
+         *  gets right at its own breakpoint. */}
+        <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
           <label className={labelClass}>
             <span className="font-medium text-ink">{t("fullName")}</span>
             <input

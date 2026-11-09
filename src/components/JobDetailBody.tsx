@@ -208,7 +208,7 @@ export async function JobDetailBody({
         <span className="min-w-0 truncate whitespace-nowrap text-ink">{job.title}</span>
       </nav>
 
-      <div className="mt-4 grid gap-8 lg:grid-cols-[2fr_1fr]">
+      <div className="mt-4 grid grid-cols-1 gap-8 lg:grid-cols-[2fr_1fr]">
         <div className="min-w-0">
           <div className="rounded-xl border border-line bg-white p-5">
             <div className="flex flex-wrap items-start justify-between gap-4">

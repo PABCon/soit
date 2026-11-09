@@ -97,7 +97,7 @@ export default async function MatchCandidateProfilePage({ params }: Props) {
         <MatchStatusSelect jobId={jobId} candidateId={candidateId} initialStatus={match.status} />
       </div>
 
-      <div className="mt-8 grid gap-8 sm:grid-cols-[1fr_16rem]">
+      <div className="mt-8 grid grid-cols-1 gap-8 sm:grid-cols-[1fr_16rem]">
         <div className="min-w-0 space-y-6">
           <MatchSummarySection jobId={jobId} candidateId={candidateId} initialSummary={match.aiSummary} />
 
