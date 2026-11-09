@@ -5634,10 +5634,80 @@ users, the candidate row) cleaned up afterward; Playwright reinstalled
 `--no-save` for this verification and fully uninstalled again once
 done.
 
-**Not built yet, planned**:
-- **A newly-requested phase, not yet scoped against Phase 4**: candidate
-  profiles should be able to declare a job-search status (looking /
-  open to offers / not looking), and the matching engine should
-  prioritize, or outright exclude, candidates accordingly, so someone
-  who's declared "not open" never surfaces as a match at all. Raised
-  mid-Phase-2; not designed yet.
+## Matchmaking rework: candidate job-search status, plugged into the engine
+
+The item raised mid-Phase-2 and left undesigned until now, built per the
+user's own explicit call ("directly plugged into the matching engine,"
+not a separate filter bolted on beside it).
+
+**`candidates.job_search_status`** (`'looking' | 'open' | 'not_open'`,
+default `'open'`): a candidate declares whether they're actively
+job-hunting, merely open to offers, or not interested right now.
+Default is deliberately `'open'`, not the exclusionary `'not_open'`:
+defaulting to exclusion would have silently dropped every existing
+candidate out of every employer's matches the moment the column
+landed; `'open'` preserves today's real behavior for everyone until
+they explicitly say otherwise. Set on the Overview tab, same autosave
+pattern Phase 2's residence field already established.
+
+**The gate lives inside `scoreJobMatch()` itself**, the one function
+both matching directions share, rather than as a filter applied
+separately in each direction's own call site, consistent with this
+project's "provably shared, not duplicated" scoring invariant. A
+`'not_open'` candidate scores a hard `0`, checked before any skill or
+preference math, which means it applies symmetrically to both the
+employer-facing matching engine (`candidate-matches.ts`) and the
+candidate's own job recommendations (`recommendations.ts`): if you've
+said you're not open to being matched, "jobs matched to you" stops
+surfacing for you too, not only you for employers. `null` (a caller
+that never fetched the field) is treated the same as `'open'`, never
+excluded.
+
+**"Actively looking" is a ranking tie-break, not a scoring bonus**:
+at an equal match score, a `'looking'` candidate ranks above an
+`'open'` one, directly answering the user's own framing ("look first
+to people actually looking for a job"). Deliberately kept out of the
+numeric score itself, so the score stays a meaningful, comparable
+number independent of this ranking preference, and surfaced as a
+real, visible "Actively looking" badge on the match card and the
+candidate detail page, not a silent reorder an employer has no way to
+notice or trust.
+
+**A real edge case, reasoned through rather than left to accident**:
+should a candidate who already has an accepted connection on a specific
+job vanish from that job's Applicants list the moment they later mark
+themselves `'not_open'`? Decided no: an existing, mutually-accepted
+relationship is a fact that already happened, not a fresh matching
+output, so it shouldn't be retroactively hidden just because the
+person's current availability changed. `getConnectedCandidatesForCompany()`
+carries an explicit carve-out: the specific job a candidate is already
+connected on always stays visible regardless of their *current* score;
+the hard gate only blocks *new* cross-job surfacing on jobs they never
+specifically connected through. 3 new unit tests lock in the hard gate,
+confirm it's exclusion-only (a `'looking'` candidate scores identically
+to an `'open'` one, nothing added), and confirm a `null` status is
+never treated as exclusionary.
+
+**Verified live against production** with disposable fixtures (a Top
+Employer company, two published jobs, two candidates with identical
+matching skills/preferences under the "open" default): confirmed both
+default candidates appear as matches; confirmed one disappears the
+moment they're set to "not open," while the untouched one is
+unaffected; confirmed they reappear and rank ahead of the "open"
+candidate once set to "actively looking," with a real, visible
+"Actively looking" badge, not just a silent reorder (checked via actual
+DOM order, not just presence); exercised the real Phase 3 connection
+flow to get a genuine accepted thread, then flipped that candidate to
+"not open" and confirmed the grandfather rule holds (still shows in
+that job's Applicants) while the hard gate still correctly blocks them
+from a *different* job's fresh matchmaking list and Applicants view
+they never connected through; confirmed the candidate's own job-detail
+AI-match banner stops claiming a match once they're "not open." All 12
+checks passed, each anchored to the real anonymized "Candidate #XXXX"
+display tag (a real pre-existing candidate's own match for the same
+thin-tagged test job was present in the list throughout, the same
+known false-positive pattern documented earlier in this file — checking
+for specific display numbers rather than raw counts kept the test
+correct despite that contamination). Fixtures cleaned up afterward;
+Playwright reinstalled `--no-save` for this verification and fully
+uninstalled again once done.
