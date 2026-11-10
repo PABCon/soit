@@ -6043,3 +6043,39 @@ down arrow swap works but isn't as fluid), and no notification to
 candidates when their stage changes (the read-receipt and stage are
 tracked, but nothing emails a candidate when either updates, a
 natural next step, not asked for here).
+
+## Pipeline customization removed; job disclaimer moved to Team
+
+Direct feedback right after the above shipped: letting companies
+rename/add/reorder/delete their own stage names added friction nobody
+wanted ("weird that we need to think about it"). Removed the whole
+customization surface: the `/recruit/pipeline` settings page, its
+Sidebar entry, and `application-stages.ts`'s `addCompanyStage`/
+`renameCompanyStage`/`deleteCompanyStage`/`reorderCompanyStages`
+mutation functions. Every company now keeps the same fixed 4-stage
+pipeline (Applied/Responded/Rejected/Closed) that was already the
+default. Deliberately kept, not reverted: the underlying `stage_id`/
+`viewed_at`/`candidate_bucket` schema and the per-application stage
+dropdowns on the applicants list/detail pages, since that plumbing is
+what fixed the real production bugs found while building this (the
+dropped RPC, the RLS gap on the candidate's own applications page):
+only the company-facing *customization* feature was the actual
+complaint, not the stage system itself.
+
+Same message also asked to move the job-description disclaimer off
+Company Profile and onto the Team page, since it's a once-per-team
+process setting (what gets appended to every job your team posts), not
+a public-facing profile fact. New narrow `updateJobDisclaimer()`
+(`src/lib/db/companies.ts`, mirrors `updateCompanyImage`'s shape)
+replaces its old spot inside `updateCompanyProfile`'s full-profile
+update; new `JobDisclaimerSection.tsx` renders it on `/recruit/team`
+alongside `TeamManager`.
+
+Verified live against production with a disposable employer fixture:
+the Sidebar no longer shows a "Pipeline" entry and `/recruit/pipeline`
+no longer renders any pipeline-settings UI; Company Profile no longer
+shows the disclaimer field; the Team page shows it instead, and saving
+a new value there persisted directly to `companies.job_disclaimer`,
+confirmed via a direct database read. Fixture cleaned up afterward;
+Playwright reinstalled `--no-save` for this verification and fully
+uninstalled again once done.
