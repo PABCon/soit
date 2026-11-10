@@ -80,7 +80,6 @@ export async function updateProfileAction(formData: FormData) {
     benefits_text: trimmedOrNull(formData, "benefits_text"),
     custom_section_title: trimmedOrNull(formData, "custom_section_title"),
     custom_section_body: trimmedOrNull(formData, "custom_section_body"),
-    job_disclaimer: trimmedOrNull(formData, "job_disclaimer"),
     cover_position_x: percentOr50(formData, "cover_position_x"),
     cover_position_y: percentOr50(formData, "cover_position_y"),
   });

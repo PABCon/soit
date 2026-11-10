@@ -465,28 +465,7 @@
     "apiEndpointDescPublish": "Publish a job ad",
     "apiMethod": "Method",
     "apiEndpoint": "Endpoint",
-    "apiDescription": "Description",
-    "pipeline": "Pipeline",
-    "pipelineSubtitle": "Define your own hiring pipeline stage names and reorder them to match how your team works.",
-    "pipelineStages": "Your stages",
-    "pipelineMoveUp": "Move up",
-    "pipelineMoveDown": "Move down",
-    "pipelineDelete": "Delete stage",
-    "pipelineAddStage": "Add stage",
-    "pipelineAddStagePlaceholder": "e.g. Technical interview",
-    "pipelineBucketHint": "Every stage you create must map to one of the four statuses a candidate sees on their own application. This is how we keep what the candidate sees simple and accurate, no matter what you call your own stages.",
-    "pipelineBucket": {
-      "submitted": "Submitted",
-      "in_review": "In review",
-      "not_selected": "Not selected",
-      "hired": "Hired"
-    },
-    "pipelineError": {
-      "not_an_employer": "You need an employer account to do this.",
-      "last_stage": "You can't delete your only remaining stage.",
-      "stage_in_use": "This stage has candidates on it, so it can't be deleted.",
-      "not_found": "Something went wrong. Please try again."
-    }
+    "apiDescription": "Description"
   },
   "jobForm": {
     "basicInfoTitle": "Basic information",

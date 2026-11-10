@@ -2,6 +2,7 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import { getMyEmployerContext } from "@/lib/db/companies";
 import { getCompanyMembers, getPendingInvites } from "@/lib/db/team";
 import { TeamManager } from "@/components/console/TeamManager";
+import { JobDisclaimerSection } from "@/components/console/JobDisclaimerSection";
 
 type Props = { params: Promise<{ locale: string }> };
 
@@ -22,8 +23,9 @@ export default async function TeamPage({ params }: Props) {
     <>
       <h1 className="text-3xl font-bold lg:text-4xl">{t("team")}</h1>
       <p className="mt-1 text-muted">{t("teamSubtitle")}</p>
-      <div className="mt-6">
+      <div className="mt-6 space-y-6">
         <TeamManager members={members} invites={invites} isOwner={ctx.role === "owner"} myEmployerId={ctx.employerId} />
+        <JobDisclaimerSection jobDisclaimer={ctx.company.job_disclaimer} />
       </div>
     </>
   );

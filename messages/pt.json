@@ -465,28 +465,7 @@
     "apiEndpointDescPublish": "Publicar uma vaga",
     "apiMethod": "Método",
     "apiEndpoint": "Endpoint",
-    "apiDescription": "Descrição",
-    "pipeline": "Pipeline",
-    "pipelineSubtitle": "Defina os nomes das suas próprias etapas do processo de contratação e reordene-as conforme a forma como a sua equipa trabalha.",
-    "pipelineStages": "As suas etapas",
-    "pipelineMoveUp": "Mover para cima",
-    "pipelineMoveDown": "Mover para baixo",
-    "pipelineDelete": "Eliminar etapa",
-    "pipelineAddStage": "Adicionar etapa",
-    "pipelineAddStagePlaceholder": "ex. Entrevista técnica",
-    "pipelineBucketHint": "Cada etapa que criar tem de corresponder a um dos quatro estados que o candidato vê na sua própria candidatura. É assim que mantemos o que o candidato vê simples e rigoroso, independentemente do nome que der às suas próprias etapas.",
-    "pipelineBucket": {
-      "submitted": "Submetida",
-      "in_review": "Em análise",
-      "not_selected": "Não selecionado",
-      "hired": "Contratado"
-    },
-    "pipelineError": {
-      "not_an_employer": "Precisa de uma conta de empresa para fazer isto.",
-      "last_stage": "Não pode eliminar a sua única etapa restante.",
-      "stage_in_use": "Esta etapa tem candidatos associados, por isso não pode ser eliminada.",
-      "not_found": "Algo correu mal. Por favor, tente novamente."
-    }
+    "apiDescription": "Descrição"
   },
   "jobForm": {
     "basicInfoTitle": "Informação básica",

@@ -442,7 +442,6 @@ export async function updateCompanyProfile(fields: {
   custom_section_body: string | null;
   cover_position_x: number;
   cover_position_y: number;
-  job_disclaimer: string | null;
 }) {
   const supabase = await createClient();
   const { data: companyId } = await supabase.rpc("my_company_id");
@@ -457,5 +456,19 @@ export async function updateCompanyImage(field: "company_logo_url" | "cover_imag
     .from("companies")
     .update({ [field]: url })
     .eq("id", companyId);
+  if (error) throw new Error(error.message);
+}
+
+/** Lives on the Team page, not Company Profile: per direct instruction,
+ *  this is a once-per-team process setting (what gets appended to every
+ *  job your team posts), not a public-facing profile fact, so it doesn't
+ *  belong in the same form as the logo/description/socials. A narrow
+ *  update, same shape as `updateCompanyImage` above, rather than routing
+ *  through `updateCompanyProfile`'s full-replace shape for a one-field
+ *  change. */
+export async function updateJobDisclaimer(jobDisclaimer: string | null) {
+  const supabase = await createClient();
+  const { data: companyId } = await supabase.rpc("my_company_id");
+  const { error } = await supabase.from("companies").update({ job_disclaimer: jobDisclaimer }).eq("id", companyId);
   if (error) throw new Error(error.message);
 }
