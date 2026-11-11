@@ -6851,6 +6851,7 @@ small purpose-built card) is what a later round would reuse for them.
 
 ## JT learns favorites, the first of the three deferred features
 
+
 Asked directly what to build next; recommended the deferred trio
 (favorites, saved searches, "my applications" status) since they reuse
 the exact same tool pattern just established, versus extending usage
@@ -6890,3 +6891,106 @@ test suite (220 passing, unaffected, `toggle-favorite.ts` wraps a DB
 call the same way `apply-job.ts` does and isn't unit-tested for the
 same reason), `npm run build`, and `check:i18n` (1670 keys, in sync)
 all pass.
+
+## JT: six real-usage fixes in one batch — markdown, OAuth, auto-scroll, CV scoring, interview prep, opening hint, job-card width
+
+A dense, six-item real-usage report, all actioned in one pass:
+
+1. **Markdown rendering bug** — some assistant replies showed raw
+   unrendered markdown. `ChatMarkdown.tsx` only ever handled `-`/`*`
+   bullets and `**bold**`; real model output also reliably used
+   numbered lists (`1.`/`2.`) and occasional inline `[text](url)`
+   links, neither of which it recognized, so they rendered as literal
+   text. Extended the same minimal block/inline parser to produce a
+   real `<ol>` for numbered lines (closing the current list rather
+   than merging items when the marker style switches mid-paragraph)
+   and a real `<a target="_blank">` for inline links.
+2. **Added Google/GitHub/LinkedIn/Facebook login to `InlineAuthCard`**
+   — it only ever had email/password. Added the identical OAuth button
+   row `AuthForm.tsx` already has (same icons, same
+   `signInWithOAuth`/`redirectTo` call, same disabled-until-terms-
+   accepted gate on signup), reusing the existing `auth.provider.*`/
+   `orContinueWith`/`termsRequired` i18n keys, so no catalogue changes
+   were needed for this piece. Unlike `AuthForm.tsx`, this stays
+   candidate-only by construction (the card itself is candidate-only),
+   so there was no "drop social login for the employer side" concern
+   here.
+3. **Auto-scroll fix** — the message list never scrolled itself; a new
+   reply required manually scrolling down. A `scrollRef` on the
+   scrollable container plus a `useEffect` keyed on `[messages,
+   isBusy]` sets `scrollTop = scrollHeight` on every message-array
+   change and while a response is streaming (streaming updates a
+   message's own content in place without changing `messages.length`,
+   so `isBusy` needed to be in the dependency list too).
+4. **CV scoring and interview-prep tools added**, following the exact
+   "thin wrapper over an already-shipped feature" pattern every other
+   JT tool already uses. New `src/lib/assistant/score-cv.ts`: resolves
+   the candidate server-side via `my_candidate_id()` (never a model-
+   supplied id), reuses `downloadMyCv()` + `createCvReview()` — the
+   same functions `/profile`'s own "Analyze my CV" already calls — so
+   no file-upload UI is needed in a chat transport at all, the
+   candidate's already-stored CV is scored directly. New
+   `src/lib/assistant/request-interview-prep.ts`: a thinner wrapper
+   still, since `requestInterviewPrep()` already resolves identity and
+   re-validates the 2-day minimum itself; this just translates its
+   `not_a_candidate` reason into the same `needs_account` signal every
+   other candidate-gated tool uses, so the client's existing
+   `InlineAuthCard` branch covers both tools for free. Deliberately no
+   preview/confirm dance for booking (unlike apply): asking the model
+   to collect a specific future date/time it can't invent already
+   functions as a natural confirmation gate, and the action itself (a
+   request for a human to follow up by email) is lower-stakes than
+   submitting a real application.
+5. **Opening-message capability hint** — JT's first message was just
+   "Tell me your dream job," giving no hint of its now much larger
+   capability set. Rewritten to name search, companies, both
+   calculators, favorites, and apply in one short line, in both
+   locales.
+6. **Job-card/company-card width-collapse bug (screenshot)** — a real
+   CSS bug, same root cause already diagnosed once this session for
+   `AssistantTeaser.tsx`: a flex item with no `flex-grow` and only a
+   cap collapses to its own content's shrink-to-fit width, made worse
+   here by `JobRow`'s own `truncate` classes contributing a near-zero
+   natural-width signal to the message bubble's sizing. Fixed
+   surgically — `w-full` added to the job-results wrapper, the
+   `CompanyCard` root, both calculator share-link `<a>`s, the
+   `previewApply` success card, and the `toggleFavorite` card —
+   deliberately not touching the shared message-bubble wrapper or the
+   plain-text bubble rendering, which would have stretched short text
+   replies into oversized empty boxes.
+
+**Verified live on both localhost and `https://justit.pt`**: a
+disposable vitest smoke test (`renderToStaticMarkup`, written and
+deleted after, this project's established "temporary verification
+only" convention for something with no permanent test infra of its
+own) confirmed `ChatMarkdown` now produces a real `<ol>`, `<strong>`,
+and `<a href>` from the exact text shape item 1 reported, with zero
+literal `**`/`1.` characters left in the output. A live Playwright
+pass confirmed: the new opening message renders; a real job search
+auto-scrolls the container to its bottom; a real job-card's measured
+width exactly matches its message bubble's width (ratio 1.00, both on
+an empty and a real multi-job result); asking to apply while
+anonymous correctly chains `searchJobs` → `previewApply` →
+`needs_account`, rendering `InlineAuthCard` with all four working
+OAuth icon buttons visible (screenshotted, not just DOM-checked);
+asking to score a CV and to book interview prep while anonymous both
+correctly triggered the identical `needs_account` card via their own
+tools (`scoreCv`/`requestInterviewPrep`, confirmed via the actual
+assistant reply text naming each capability correctly), with the
+interview-prep tool correctly asking for a specific date/time first
+rather than inventing one — exactly the designed-in soft-confirmation
+gate. A direct curl against the production `/api/assistant` endpoint
+confirmed `scoreCv` is live and returns `needs_account` for an
+anonymous request. `npx tsc --noEmit`, `eslint`, the full test suite
+(220 passing, unaffected — `score-cv.ts`/`request-interview-prep.ts`
+wrap DB/email-triggering calls the same way `apply-job.ts`/
+`toggle-favorite.ts` do and aren't unit-tested for the same reason),
+`npm run build`, and `check:i18n` (1674 keys, in sync) all pass.
+Playwright reinstalled `--no-save` for this verification and fully
+uninstalled again once done.
+
+Still owed, not yet reconfirmed as wanted: the usage-tracking extension
+discussed before this six-item report arrived (new event types for
+company lookups/calculator use, an apply-funnel view on
+`/assistant-stats`) — the user's very next message was this six-item
+batch instead of answering that question, so it remains open.
