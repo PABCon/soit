@@ -6079,3 +6079,67 @@ a new value there persisted directly to `companies.job_disclaimer`,
 confirmed via a direct database read. Fixture cleaned up afterward;
 Playwright reinstalled `--no-save` for this verification and fully
 uninstalled again once done.
+
+## Analytics: a real cold-start bug, root-caused, plus sortable columns
+
+A real-usage report: ITDS's analytics trend was reading as "dropping to
+0" while Search Console showed real traffic increasing. Investigated
+with direct, read-only database queries against the real account
+before touching any code (confirmed the "real account, read-only"
+rule, a brief accidental write during the investigation, calling the
+real `increment_job_view` RPC to test it, was caught and reverted
+immediately, restoring `view_count`/deleting the stray `events` row).
+
+**Root cause**: day-level `job.viewed`/`job.apply_clicked` event
+logging only started the exact day the Employer Analytics feature
+itself shipped (`20261109110000_job_apply_click_tracking.sql`): `jobs.
+view_count` had been a plain running total since an earlier migration,
+with zero day-by-day history before that. `bucketEventsByDay()`'s
+own zero-fill behavior (a deliberate, already-correct design: "a real
+quiet day is a zero, not a hole") then faithfully zero-filled every one
+of the ~28 days before that date too, for every company, which reads
+exactly like a real traffic collapse rather than "there's no data
+yet." Confirmed directly: the `events` table itself has existed since
+September with other event types going back that far, so this isn't a
+retention-purge wiping rows (checked `retention-purge.ts` directly: it
+never touches `events` at all): specifically these two event types
+never existed before Nov 9. ITDS's real cumulative `view_count` (124
+across 105 live jobs) was also sanity-checked directly and is a real,
+unremarkable number, not corrupted or zeroed.
+
+**Fix**: `bucketEventsByDay()` gained an optional `trackingStartedAt`
+parameter: days before it are never generated at all, rather than
+generated and zero-filled. `getCompanyAnalytics()` now computes the
+real, site-wide tracking-start date (the earliest `job.viewed`/
+`job.apply_clicked` event ever logged, across every company, a plain
+indexed query) and trims the 30-day window to start there when it's
+later than 30 days ago, surfacing a short, dated note on the page so a
+company doesn't misread a short chart as a mystery. The note is
+expected to keep appearing for every company until this feature's own
+30th day, 2026-12-09, at which point every company's chart naturally
+has a full real month of history and the note stops rendering on its
+own.
+
+**Separately requested in the same conversation**: click-to-sort
+column headers on the per-job table, pulled out into a new
+`AnalyticsJobsTable.tsx` client component (was static server-rendered
+markup). First click on a column sorts by it in that column's own
+"most interesting first" direction (descending for every number
+column, ascending for the job title); a second click flips it;
+clicking a different column resets to that column's own default
+rather than always defaulting to ascending (clicking "Views" once
+should show the top performer first, not the worst). A job with zero
+views (no real conversion rate to compare) always sorts to the bottom
+regardless of direction.
+
+Verified live against production with a disposable fixture (three jobs
+seeded with deliberately distinct view counts, 20/5/1): clicking
+"Views" correctly showed the highest first, clicking it again flipped
+to lowest-first, and clicking "Job" reset to alphabetical; confirmed
+the real site-wide tracking-start note renders correctly site-wide
+right now (expected, since the feature itself is only 2 days old).
+`tsc --noEmit`, `eslint`, the full test suite (158 passing, +2 for the
+new `trackingStartedAt` behavior), `npm run build`, and `check:i18n`
+(1555 keys, in sync) all pass. Fixture cleaned up afterward; Playwright
+reinstalled `--no-save` for this verification and fully uninstalled
+again once done.
