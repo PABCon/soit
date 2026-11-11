@@ -6524,3 +6524,59 @@ the full test suite (195 passing, +7 for `bucketAssistantEventsByDay`),
 `npm run build`, and `check:i18n` (1663 keys, in sync) all pass.
 Playwright reinstalled `--no-save` for this verification and fully
 uninstalled again once done.
+
+## JT layout fixes: drop the Get Matched teaser, fix the banner gap, full-height chat
+
+Real-usage feedback on the JT round above, from an actual screenshot of
+the live page, three fixes:
+
+1. **The "Get Matched" recommendations teaser was removed from `/jobs`**,
+   per direct instruction: it pushed the real job list (the actual main
+   content on this page) too far down. `RecommendationsTeaser` and
+   `/recommendations` themselves are untouched, just no longer rendered
+   on this one page.
+2. **`AssistantTeaser`'s own "huge space in the middle"**, visible in the
+   screenshot: on this page's wide (2200px) content column, the text
+   block and the mascot illustration were flex children pushed to
+   opposite ends of a full-bleed row, leaving a large dead gap between
+   them. Capped the banner to `max-w-4xl` (896px), close to its own
+   natural content width (the text column + image + gaps/padding), so
+   the two sit adjacent instead of stranded at either edge.
+3. **The `/assistant` page's own "Ask, don't search" heading and
+   explainer paragraph are gone.** JT's own opening line ("Tell me your
+   dream job") now carries that framing, styled as a real chat message
+   bubble (avatar + bubble, same as any other assistant reply) rather
+   than a separate heading treatment. Same real `<h1>`-landmark tradeoff
+   already made (and documented) for `/jobs`'s own removed heading.
+
+**The "fit the whole chat in the viewport, only scroll inside it" ask**
+needed the exact chrome above the page accounted for, not a guessed
+number: the candidate shell's sticky `TopNav` is `h-16` (4rem, confirmed
+by reading the component rather than an earlier round's own comment
+citing 5rem) and `<main>` carries `py-8` (4rem of padding), so the
+chat's own container height became `h-[calc(100dvh-8rem)]` (was
+`-10rem`, a number that no longer matched once the removed heading/
+paragraph freed up space above it). This isn't a total "zero outer
+scroll" page: the chat widget itself (header through the input box)
+now fits entirely within the first viewport on load, with the site's
+`Footer` sitting just below it, reachable with a small residual scroll,
+a deliberate, pragmatic middle ground rather than hiding the footer
+entirely for this one route.
+
+Verified live via Playwright at both 1920x1080 and 1440x900 (installed
+`--no-save`, fully uninstalled after): the Get Matched banner is gone
+from `/jobs`; the JT banner box measures 896px wide (not full-bleed)
+with the illustration now adjacent to the text, confirmed via a side-
+by-side screenshot comparison, not just a bounding-box number; the old
+page heading is gone and JT's opening bubble renders in its place; the
+chat's own input sits within the viewport on load (`inputBottom:
+1036px` vs. a `1080px` viewport) while the page's total scroll height
+only exceeds the viewport by the Footer's own height (`227px` at both
+tested sizes, confirmed proportional, not a growing gap). Re-verified
+live on `https://justit.pt` after deploy via direct curl: the Get
+Matched banner text is absent, the old page heading is absent, JT's
+opening line is present. `npx tsc --noEmit`, `eslint`, the full test
+suite (195 passing, unaffected), `npm run build`, and `check:i18n`
+(1660 keys, in sync, the removed `assistant.heading`/`subtitle`/
+`welcomeHeading`/`welcomeSubtitle` keys balanced by the new
+`assistant.openingMessage`) all pass.
