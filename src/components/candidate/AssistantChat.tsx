@@ -1,14 +1,21 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useTranslations } from "next-intl";
+import { useLocale, useTranslations } from "next-intl";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import { JobRow } from "@/components/JobRow";
 import { ChatMarkdown } from "@/components/candidate/ChatMarkdown";
+import { CompanyCard } from "@/components/candidate/CompanyCard";
+import { InlineAuthCard } from "@/components/candidate/InlineAuthCard";
 import { Link } from "@/i18n/navigation";
 import { serializeJobFilterParams } from "@/lib/jobs/match-filters";
 import type { SearchJobsArgs, SearchJobsResult } from "@/lib/assistant/search-jobs";
+import type { LookupCompanyToolResult } from "@/lib/assistant/lookup-company";
+import type { CalculateSalaryToolResult } from "@/lib/assistant/calculate-salary";
+import type { CalculateTerminationToolResult } from "@/lib/assistant/calculate-termination";
+import type { PreviewApplyToolResult } from "@/lib/assistant/apply-job";
+import type { ApplyResult } from "@/lib/db/applications";
 
 const EXAMPLE_KEYS = ["exampleOne", "exampleTwo", "exampleThree"] as const;
 
@@ -47,9 +54,14 @@ function suggestFollowUps(args: SearchJobsArgs, t: (key: string) => string): str
  *  by a server-side rate limit instead of a login requirement. */
 export function AssistantChat({ initialQuery }: { initialQuery?: string }) {
   const t = useTranslations("assistant");
+  const ta = useTranslations("apply");
+  const locale = useLocale();
   const [input, setInput] = useState("");
   const { messages, sendMessage, setMessages, status, error } = useChat({
-    transport: new DefaultChatTransport({ api: "/api/assistant" }),
+    // The route itself isn't locale-prefixed; this static `body` is
+    // merged into every request so the calculator tools can build a
+    // correct `/${locale}/salario-liquido`-style shareable link.
+    transport: new DefaultChatTransport({ api: "/api/assistant", body: { locale } }),
   });
 
   function handleSend(text: string) {
@@ -224,7 +236,94 @@ export function AssistantChat({ initialQuery }: { initialQuery?: string }) {
                   );
                 }
 
-                if (part.type === "tool-searchJobs" && part.state === "input-streaming") {
+                if (part.type === "tool-lookupCompany" && part.state === "output-available") {
+                  const companyResult = part.output as LookupCompanyToolResult;
+                  // A not-found match isn't rendered as a card, the
+                  // model's own text (instructed to say so plainly) is
+                  // the only feedback for that case.
+                  return companyResult.ok ? <CompanyCard key={index} company={companyResult} /> : null;
+                }
+
+                if (part.type === "tool-calculateSalary" && part.state === "output-available") {
+                  const salaryResult = part.output as CalculateSalaryToolResult;
+                  if (!salaryResult.ok) return null;
+                  return (
+                    <a
+                      key={index}
+                      href={salaryResult.shareUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="block rounded-xl border border-line bg-white px-3 py-2 text-xs font-medium text-pine hover:underline"
+                    >
+                      {t("viewFullBreakdown")} →
+                    </a>
+                  );
+                }
+
+                if (part.type === "tool-calculateTermination" && part.state === "output-available") {
+                  const terminationResult = part.output as CalculateTerminationToolResult;
+                  if (!terminationResult.ok) return null;
+                  return (
+                    <a
+                      key={index}
+                      href={terminationResult.shareUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="block rounded-xl border border-line bg-white px-3 py-2 text-xs font-medium text-pine hover:underline"
+                    >
+                      {t("viewFullBreakdown")} →
+                    </a>
+                  );
+                }
+
+                if (part.type === "tool-previewApply" && part.state === "output-available") {
+                  const previewResult = part.output as PreviewApplyToolResult;
+                  if (!previewResult.ok && previewResult.reason === "needs_account") {
+                    return <InlineAuthCard key={index} />;
+                  }
+                  if (!previewResult.ok && previewResult.reason === "no_cv_on_file") {
+                    return (
+                      <p key={index} className="rounded-xl border border-line bg-white p-3 text-sm text-ink">
+                        {t("noCvOnFile")}
+                      </p>
+                    );
+                  }
+                  // already_applied / job_not_found: the model's own
+                  // text (system-prompt instructed to relay this
+                  // plainly) is the only feedback for these.
+                  if (!previewResult.ok) return null;
+                  return (
+                    <div key={index} className="space-y-1 rounded-xl border border-line bg-white p-3">
+                      <p className="text-sm font-semibold text-ink">{previewResult.jobTitle}</p>
+                      <p className="text-xs text-muted">{previewResult.companyName}</p>
+                      <p className="pt-1 text-xs font-medium text-pine">{t("applyPreviewHint")}</p>
+                    </div>
+                  );
+                }
+
+                if (part.type === "tool-confirmApply" && part.state === "output-available") {
+                  const applyResult = part.output as ApplyResult;
+                  return (
+                    <p
+                      key={index}
+                      className={`rounded-xl border px-3 py-2 text-sm ${
+                        applyResult.ok ? "border-line bg-white text-ink" : "border-line bg-red-50 text-red-700"
+                      }`}
+                    >
+                      {applyResult.ok ? t("applySuccessMessage") : ta(`error.${applyResult.reason}`)}
+                    </p>
+                  );
+                }
+
+                if (
+                  (part.type === "tool-searchJobs" ||
+                    part.type === "tool-lookupCompany" ||
+                    part.type === "tool-calculateSalary" ||
+                    part.type === "tool-calculateTermination" ||
+                    part.type === "tool-previewApply" ||
+                    part.type === "tool-confirmApply") &&
+                  part.state === "input-streaming"
+                ) {
                   return (
                     <p key={index} className="rounded-2xl rounded-tl-sm bg-subtle px-4 py-2.5 text-sm text-muted">
                       {t("thinking")}

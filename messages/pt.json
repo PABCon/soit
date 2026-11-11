@@ -1855,7 +1855,14 @@
     "openingMessage": "Diz-me qual é o emprego dos teus sonhos.",
     "followUpRemote": "Mostrar só vagas remotas",
     "followUpSenior": "Mostrar só vagas sénior",
-    "followUpCompare": "Compara estas vagas"
+    "followUpCompare": "Compara estas vagas",
+    "authCardLoggedIn": "Sessão iniciada. Pergunta-me outra vez e continuo.",
+    "viewCompanyProfile": "Ver perfil completo",
+    "openJobsCount": "{count, plural, one {# vaga em aberto} other {# vagas em aberto}}",
+    "viewFullBreakdown": "Ver detalhe completo",
+    "applyPreviewHint": "Responde com um sim claro para submeter esta candidatura.",
+    "noCvOnFile": "Ainda não tens um CV guardado. Carrega um no teu perfil primeiro.",
+    "applySuccessMessage": "Candidatura submetida!"
   },
   "assistantTeaser": {
     "badge": "Novo",

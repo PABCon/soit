@@ -1855,7 +1855,14 @@
     "openingMessage": "Tell me your dream job.",
     "followUpRemote": "Only show remote jobs",
     "followUpSenior": "Only show senior roles",
-    "followUpCompare": "Compare these jobs for me"
+    "followUpCompare": "Compare these jobs for me",
+    "authCardLoggedIn": "You're logged in. Ask me again and I'll continue.",
+    "viewCompanyProfile": "View full profile",
+    "openJobsCount": "{count, plural, one {# open job} other {# open jobs}}",
+    "viewFullBreakdown": "View full breakdown",
+    "applyPreviewHint": "Reply with a clear yes to actually submit this application.",
+    "noCvOnFile": "You don't have a CV on file yet. Upload one on your profile first.",
+    "applySuccessMessage": "Application submitted!"
   },
   "assistantTeaser": {
     "badge": "New",
