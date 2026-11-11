@@ -6312,3 +6312,93 @@ this verification and fully uninstalled again once done.
 Not built yet (by design, confirmed scope): pre-October-2013 segmented
 tenure, "justa causa" dismissal validity (a legal judgment call, not a
 calculation), and FCT/FGCT.
+
+## Chat assistant, Phase 1: natural-language job search
+
+The second feature from the same planning conversation as the
+termination calculator above. A dedicated, Claude-style single-window
+chat at `/assistant` where a candidate searches for jobs in plain
+language instead of the manual `/jobs` filter UI, confirmed via several
+rounds of `AskUserQuestion` before building: its own full page (not a
+sitewide widget or a copilot bolted onto `/jobs`), rich job cards
+rendered inline in the conversation (not plain text links), session-
+only (no persisted history, no new DB table), open to anonymous
+visitors. **This is Phase 1 (search/discovery only)**: no apply, no
+job posting, no billing actions. Apply-via-chat is an explicitly
+separate, later phase: letting an agent submit something irreversible
+needs its own confirmation-step design, not an afterthought bolted onto
+search.
+
+**This is the project's first streaming, tool-calling, multi-turn AI
+feature**: every other AI feature here (`extract-job.ts`,
+`extract-cv.ts`, `applicant-synopsis.ts`, `polish-text.ts`) is one-shot
+`generateText`/`Output.object` extraction with no conversation state.
+Confirmed the exact `streamText`/tool/`useChat` API shape against the
+installed package's own docs (`node_modules/ai/docs/*.mdx`) before
+writing any code, same discipline as every prior AI feature in this
+project, and this one genuinely needed it: `ai` was bumped from
+`7.0.122` to `7.0.169` via `npm install`, and `@ai-sdk/react`
+(`^4.0.173`) is a brand-new dependency, this project's first use of AI
+SDK's client-side `useChat` hook.
+
+**Architecture**: `src/app/api/assistant/route.ts` is the streaming
+POST route, `streamText` + one tool + `stopWhen: isStepCount(3)`, model
+`anthropic/claude-sonnet-5.5` via the Gateway, re-verified live against
+`/v1/models` rather than trusted from memory, consistent with every
+other AI feature here. The one tool, `searchJobs`
+(`src/lib/assistant/search-jobs.ts`), is a pure, dependency-free module:
+it calls the exact same `jobMatchesFilters()` predicate `/jobs` itself
+and the saved-search-digest cron already share, so a result shown here
+is never a hallucinated count or a fabricated job, the identical
+"provably shared, not duplicated" principle this project already
+applies to its scoring engine. Every model-supplied value (tech labels,
+category/language/location slugs) is defensively re-validated against
+the real vocabulary and silently dropped if it doesn't match, never
+trusted or invented, same "never invent" discipline as
+`extract-job.ts`/`extract-cv.ts`. Deliberately reimplements the tiny
+tech-label-matching logic locally rather than importing
+`@/lib/db/tech-tags`: that module's import chain pulls in the Resend
+email provider, which throws at module-load time without
+`RESEND_API_KEY` set, and vitest doesn't load `.env.local`, so keeping
+this module's dependency surface minimal avoided a real test-
+environment crash rather than touching unrelated, already-shipped code.
+
+**Client**: `src/components/candidate/AssistantChat.tsx` uses
+`useChat`/`DefaultChatTransport`. Tool results render as real `JobRow`
+components inline in the transcript (generative UI, not a text
+summary), the exact same component every other job list in this app
+already uses. Example prompt chips show before the first message;
+a "thinking" placeholder shows during tool execution; the input
+disables while a response is in flight.
+
+**Rate limiting**: the existing Upstash sliding-window limiter
+(`Ratelimit.slidingWindow(20, "60 m")`), keyed by a persistent anonymous
+session cookie (`jobs_assistant_session`, generated via `randomUUID()`
+on first visit) rather than raw IP, so a shared office connection isn't
+unfairly throttled, the same reasoning the plan's own research
+flagged, mirroring the public API's existing rate-limit mechanism.
+
+**Entry point**: a new Rail nav item ("Ask AI" / "Perguntar à IA"),
+positioned right after Jobs.
+
+Verified end to end: a direct curl against `/api/assistant` confirmed
+real multi-step tool-calling behavior (the model intelligently
+broadened an initial zero-result search on its own, not scripted) and a
+genuinely grounded, non-hallucinated final reply; a live Playwright
+pass against `localhost` confirmed example chips render, a real inline
+job card renders from a live search, a results-count line renders, the
+assistant's own text reply renders, and the input re-enables once the
+response finishes. Re-verified live on `https://justit.pt/pt/assistant`
+after deploy: the page loads with the correct title, and a direct curl
+against the production `/api/assistant` endpoint confirmed the same
+real streaming tool-call behavior in production. `npx tsc --noEmit`,
+`eslint`, the full test suite (188 passing, +8 for `search-jobs.ts`),
+`npm run build`, and `check:i18n` (1649 keys, in sync) all pass.
+Playwright reinstalled `--no-save` for this verification and fully
+uninstalled again once done.
+
+Not built yet (Phase 2, deliberately deferred): apply-via-chat for
+logged-in candidates only with an explicit confirmation-before-submit
+step, persisted conversation history, any employer-side action, and
+prompt-injection hardening beyond what Phase 1 already gets "for free"
+by having zero consequential tools.
