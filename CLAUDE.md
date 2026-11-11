@@ -6211,3 +6211,104 @@ correctly; fetched all three guide pages and confirmed `FAQPage`
 schema with the correct question count on each (7/9/6). `tsc
 --noEmit`, `eslint`, the full test suite (158 passing), `npm run
 build`, and `check:i18n` (1555 keys, in sync) all pass.
+
+## Contract termination calculator (Portugal)
+
+A real new-feature request, planned properly before any code: real
+Keyword Planner data (Oct 2025-Sep 2026) showed demand concentrated in
+dismissal and mútuo acordo terms, not resignation ("denúncia contrato
+aviso prévio" had no measurable volume), and flagged ACT's own free
+simulator as the incumbent to differentiate from, not out-calculate.
+Two parallel research forks then verified the actual legal mechanics
+against primary sources (Código do Trabalho via DRE/informador.pt, DL
+220/2006, CIRS) before any rule file was written, the same rigor the
+salary calculator's own build used.
+
+**Scope, confirmed before building**: four scenarios sharing one
+engine. Dismissal without cause / extinção do posto de trabalho /
+despedimento coletivo / despedimento por inadaptação all cross-reference
+the same formula (CT art. 366.º: 14 days/year since the 2023 "Agenda do
+Trabalho Digno" reform, capped at 20× RMMG for the salary base and
+12× monthly pay / 240× RMMG for the total). Fixed-term non-renewal (art.
+344.º: 24 days/year). Resignation notice (art. 400.º/401.º), present but
+not the headline, matching the real search-volume finding. Universal
+entitlements (art. 245.º: proportional holiday/Christmas-subsidy pay,
+unused prior-year holidays) shown in every scenario.
+
+**The actual differentiator**: mútuo acordo has no statutory formula at
+all (CT art. 349.º/350.º, purely negotiated), so rather than trying to
+out-"calculator" ACT's official tool, the mútuo-acordo mode is framed as
+"evaluate my offer": benchmark the offered amount against what the
+dismissal formula above would pay for an equivalent case, estimate the
+IRS-exemption threshold (CIRS art. 2.º n.4 al. b: avg. monthly comp ×
+years of seniority, capped at 240× RMMG), and state the unemployment-
+benefit caveat explicitly and carefully: a mutual agreement does NOT
+automatically qualify for subsídio de desemprego, only when it's part
+of a formal workforce-reduction process meeting DL 220/2006 art. 10.º's
+specific conditions. Never implied as an automatic entitlement.
+
+**A real, deliberate scope boundary**: pre-October-2013 contracts need a
+segmented, multi-tier day-rate calculation (Lei n.º 69/2013) that the
+research pass could only confirm via secondary sources, not a direct
+primary-text fetch, so rather than guess, `engine/seniority.ts` flags
+`isPreOct2013` and every calculation refuses to produce a number for
+that tenure, showing "not yet supported, see ACT's simulator" instead.
+FCT/FGCT was researched and explicitly excluded: it was abolished
+effective 2024 (DL 115/2023), is now a frozen employer-held fund with a
+31 Dec 2026 mobilization deadline, and the real 900%-YoY search spike
+behind it is an employer/accounting concern, not a candidate one, the
+wrong audience for this tool.
+
+**RMMG 2026 verified directly** before writing any rule JSON: €920/
+month, Decreto-Lei n.º 139/2025, confirmed via DGERT
+(dgert.gov.pt/retribuicao-minima-mensal-garantida-para-2026), not
+trusted from the secondary source that first surfaced it.
+
+**Architecture**: a new `src/lib/termination-calculator/` mirrors
+`src/lib/salary-calculator/`'s proven shape exactly, independently
+(the tiny `money.ts` decimal.js wrapper is duplicated, not cross-
+imported, keeping the already-shipped salary calculator untouched):
+versioned, zod-validated rule JSON (`rules/2026/*.json`, each with a
+`source` field citing the real article/decree) loaded through a
+`pickEffective()` date-range picker, a pure `engine/` with zero
+framework imports, and the same base64url shareable-URL convention
+(`url-state.ts`). A new `engine/seniority.ts` centralizes the tenure/
+date math (calendar-accurate anniversary comparison, not a fixed-
+365.25-day average) shared by every scenario so it can't drift between
+modules.
+
+**New, standalone page, not a mode inside `/salario-liquido`**: real
+competitive research (gestao-total.pt, ipso.pt, cvmanda.pt, togai.pt,
+simula.pt) showed every real competitor in this keyword cluster uses
+its own dedicated URL, and this is a conceptually different question
+("what am I owed when I leave") from the salary calculator's own
+("what does my pay become"), bundling a fourth mode into that already-
+dense UI would muddy both tools. `/rescisao-contrato` reuses the
+*pattern* (mode-switcher UI, shared "about you" fieldset, shareable
+link), not the page itself. Bidirectional links: the three `/guia/*`
+pages and `/salario-liquido` itself each gained a small CTA pointing
+here; this page's own mútuo-acordo mode links straight to `/jobs`,
+the actual funnel payoff, since someone evaluating an exit offer is
+about to job-hunt. `FAQPage` JSON-LD (`faqPageJsonLd()`, same helper
+the guide pages already use) built from the same "what you should
+know" content shown on the page.
+
+Verified live on production: each of the four modes computes correctly
+(confirmed against the engine's own 26 new unit tests, transcribed
+directly from the cited formulas, not guessed); a pre-2013 contract
+start date shows the "not yet supported" message instead of a number;
+the shareable link round-trips; the bidirectional CTAs on
+`/salario-liquido` and all three guide pages link correctly; the FAQ
+schema and page title render correctly (a real bug caught in this same
+pass: the page's own `pageTitle` string included "· Just IT," which the
+root layout's title template *also* appends, producing a doubled
+suffix, fixed by following the same convention the salary calculator
+and guide pages already use, where `pageTitle` never includes the
+brand suffix itself). `tsc --noEmit`, `eslint`, the full test suite
+(180 passing, +26 for this feature), `npm run build`, and `check:i18n`
+(1632 keys, in sync) all pass. Playwright reinstalled `--no-save` for
+this verification and fully uninstalled again once done.
+
+Not built yet (by design, confirmed scope): pre-October-2013 segmented
+tenure, "justa causa" dismissal validity (a legal judgment call, not a
+calculation), and FCT/FGCT.
