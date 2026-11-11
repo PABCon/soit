@@ -1852,7 +1852,7 @@
     "chatName": "JT",
     "chatSubtitle": "Your AI career assistant",
     "newChat": "New chat",
-    "openingMessage": "Tell me your dream job.",
+    "openingMessage": "Tell me your dream job and I'll find it. I can also check out companies, calculate your salary or severance pay, save favorites, and help you apply. Just ask.",
     "followUpRemote": "Only show remote jobs",
     "followUpSenior": "Only show senior roles",
     "followUpCompare": "Compare these jobs for me",
@@ -1865,7 +1865,11 @@
     "applySuccessMessage": "Application submitted!",
     "favoriteSaved": "Saved to favorites",
     "favoriteRemoved": "Removed from favorites",
-    "viewFavorites": "View favorites"
+    "viewFavorites": "View favorites",
+    "cvOverallScore": "Overall score: {score}/100",
+    "cvScoreFailed": "Something went wrong scoring your CV. Please try again.",
+    "interviewPrepRequested": "Request sent! We'll follow up by email to confirm your slot.",
+    "interviewPrepTooSoon": "The earliest bookable date is {date}."
   },
   "assistantTeaser": {
     "badge": "New",

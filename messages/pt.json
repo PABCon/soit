@@ -1852,7 +1852,7 @@
     "chatName": "JT",
     "chatSubtitle": "O teu assistente de carreira com IA",
     "newChat": "Nova conversa",
-    "openingMessage": "Diz-me qual é o emprego dos teus sonhos.",
+    "openingMessage": "Diz-me qual é o emprego dos teus sonhos e eu encontro-o. Também posso verificar empresas, calcular o teu salário ou indemnização, guardar favoritos e ajudar-te a candidatar-te. É só perguntar.",
     "followUpRemote": "Mostrar só vagas remotas",
     "followUpSenior": "Mostrar só vagas sénior",
     "followUpCompare": "Compara estas vagas",
@@ -1865,7 +1865,11 @@
     "applySuccessMessage": "Candidatura submetida!",
     "favoriteSaved": "Guardada nos favoritos",
     "favoriteRemoved": "Removida dos favoritos",
-    "viewFavorites": "Ver favoritos"
+    "viewFavorites": "Ver favoritos",
+    "cvOverallScore": "Pontuação geral: {score}/100",
+    "cvScoreFailed": "Algo correu mal ao avaliar o teu CV. Tenta novamente.",
+    "interviewPrepRequested": "Pedido enviado! Vamos entrar em contacto por email para confirmar o horário.",
+    "interviewPrepTooSoon": "A data mais próxima disponível é {date}."
   },
   "assistantTeaser": {
     "badge": "Novo",

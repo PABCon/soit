@@ -19,7 +19,7 @@ export function CompanyCard({ company }: { company: CompanyCardData }) {
   const t = useTranslations("assistant");
 
   return (
-    <div className="flex items-start gap-3 rounded-xl border border-line bg-white p-3">
+    <div className="flex w-full items-start gap-3 rounded-xl border border-line bg-white p-3">
       <div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-line bg-white">
         {company.logoUrl ? (
           // eslint-disable-next-line @next/next/no-img-element -- same plain-img convention this project already uses for small logos/avatars

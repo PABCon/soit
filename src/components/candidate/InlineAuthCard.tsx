@@ -7,6 +7,15 @@ import { createClient } from "@/lib/supabase/client";
 import { passwordMeetsRequirements } from "@/lib/password";
 import { CURRENT_TERMS_VERSION } from "@/lib/legal";
 import { PasswordChecklist } from "@/components/auth/PasswordChecklist";
+import { FacebookIcon } from "@/components/icons/FacebookIcon";
+import { GoogleIcon } from "@/components/icons/GoogleIcon";
+import { GithubIcon } from "@/components/icons/GithubIcon";
+
+// Same provider set AuthForm.tsx offers, candidate-only (a company
+// account is a business identity, not a personal one, so this never
+// renders for the employer side anyway since this card is candidate-
+// only by construction).
+const OAUTH_PROVIDERS = ["google", "github", "linkedin_oidc", "facebook"] as const;
 
 type Mode = "signup" | "login";
 type Status = "idle" | "check_email" | "logged_in";
@@ -117,6 +126,25 @@ export function InlineAuthCard() {
     setPending(false);
   }
 
+  // Unlike email/password, this is a full-page redirect away to the
+  // provider and back through /auth/callback, the chat's own session-
+  // only conversation is lost the same way a plain reload would lose
+  // it; landing back on /assistant afterward is the best this surface
+  // can do without persisted history, which is explicitly out of scope.
+  async function handleOAuth(provider: (typeof OAUTH_PROVIDERS)[number]) {
+    const supabase = createClient();
+    const termsParams =
+      mode === "signup"
+        ? `&termsAcceptedAt=${encodeURIComponent(new Date().toISOString())}&termsVersion=${encodeURIComponent(CURRENT_TERMS_VERSION)}`
+        : "";
+    await supabase.auth.signInWithOAuth({
+      provider,
+      options: {
+        redirectTo: `${window.location.origin}/auth/callback?next=/${locale}/assistant&role=candidate${termsParams}`,
+      },
+    });
+  }
+
   if (status === "check_email") {
     return <p className="rounded-xl border border-line bg-white p-4 text-sm text-ink">{t("checkEmail")}</p>;
   }
@@ -201,6 +229,36 @@ export function InlineAuthCard() {
           {mode === "signup" ? (pending ? t("creatingAccount") : t("createAccount")) : pending ? t("loggingIn") : t("logIn")}
         </button>
       </form>
+
+      <div className="mt-3 flex items-center gap-2 text-xs text-muted">
+        <span className="h-px flex-1 bg-line" aria-hidden />
+        {t("orContinueWith")}
+        <span className="h-px flex-1 bg-line" aria-hidden />
+      </div>
+
+      <div className="mt-2 grid grid-cols-4 gap-1.5">
+        {OAUTH_PROVIDERS.map((provider) => (
+          <button
+            key={provider}
+            type="button"
+            disabled={mode === "signup" && !termsAccepted}
+            onClick={() => handleOAuth(provider)}
+            title={t(`provider.${provider}`)}
+            className="flex h-10 items-center justify-center rounded-lg border border-line bg-white hover:bg-paper disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {provider === "google" && <GoogleIcon className="h-5 w-5" />}
+            {provider === "github" && <GithubIcon className="h-5 w-5" />}
+            {provider === "linkedin_oidc" && (
+              // eslint-disable-next-line @next/next/no-img-element -- tiny fixed decorative icon, same convention AuthForm.tsx already uses for this exact asset
+              <img src="/linkedin-icon.png" alt="" className="h-5 w-5" />
+            )}
+            {provider === "facebook" && <FacebookIcon className="h-5 w-5" />}
+          </button>
+        ))}
+      </div>
+      {mode === "signup" && !termsAccepted && (
+        <p className="mt-1.5 text-xs text-muted">{t("termsRequired")}</p>
+      )}
     </div>
   );
 }

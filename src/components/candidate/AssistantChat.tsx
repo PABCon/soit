@@ -16,6 +16,8 @@ import type { CalculateSalaryToolResult } from "@/lib/assistant/calculate-salary
 import type { CalculateTerminationToolResult } from "@/lib/assistant/calculate-termination";
 import type { PreviewApplyToolResult } from "@/lib/assistant/apply-job";
 import type { ToggleFavoriteToolResult } from "@/lib/assistant/toggle-favorite";
+import type { ScoreCvToolResult } from "@/lib/assistant/score-cv";
+import type { RequestInterviewPrepToolResult } from "@/lib/assistant/request-interview-prep";
 import type { ApplyResult } from "@/lib/db/applications";
 
 const EXAMPLE_KEYS = ["exampleOne", "exampleTwo", "exampleThree"] as const;
@@ -102,6 +104,18 @@ export function AssistantChat({ initialQuery }: { initialQuery?: string }) {
   const isBusy = status === "submitted" || status === "streaming";
   const lastMessage = messages.at(-1);
 
+  // Real-usage bug: the message list never scrolled itself, leaving a
+  // reply the user had to manually scroll down to see. Runs on every
+  // message-array change (new user message, tool call, streamed token)
+  // and while busy, since streaming updates a message's own content in
+  // place without changing `messages.length`.
+  const scrollRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    el.scrollTop = el.scrollHeight;
+  }, [messages, isBusy]);
+
   return (
     // 8rem = the candidate shell's own fixed chrome above this page: the
     // 4rem (h-16) sticky TopNav plus <main>'s own 4rem (py-8) of vertical
@@ -129,7 +143,7 @@ export function AssistantChat({ initialQuery }: { initialQuery?: string }) {
         )}
       </div>
 
-      <div className="flex-1 space-y-4 overflow-y-auto p-4">
+      <div ref={scrollRef} className="flex-1 space-y-4 overflow-y-auto p-4">
         {messages.length === 0 && (
           // Real-usage ask: no separate "welcome" banner above the chat.
           // The opening line is just JT's own first message, styled
@@ -201,7 +215,14 @@ export function AssistantChat({ initialQuery }: { initialQuery?: string }) {
                   // reproduces the identical filtered view, not a guess.
                   const viewAllHref = `/jobs?${serializeJobFilterParams(filters).toString()}`;
                   return (
-                    <div key={index} className="space-y-2">
+                    // w-full: real-usage bug, the message bubble's own
+                    // content column has no flex-grow, so with no
+                    // explicit width here the whole column shrank to
+                    // whatever its narrowest truncated child (job
+                    // titles/company names) preferred, collapsing job
+                    // cards down to a sliver instead of using the
+                    // available bubble width.
+                    <div key={index} className="w-full space-y-2">
                       <p className="px-1 text-xs font-medium text-muted">
                         {count === 0 ? t("noResults") : t("resultsCount", { count })}
                       </p>
@@ -254,7 +275,7 @@ export function AssistantChat({ initialQuery }: { initialQuery?: string }) {
                       href={salaryResult.shareUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="block rounded-xl border border-line bg-white px-3 py-2 text-xs font-medium text-pine hover:underline"
+                      className="block w-full rounded-xl border border-line bg-white px-3 py-2 text-xs font-medium text-pine hover:underline"
                     >
                       {t("viewFullBreakdown")} →
                     </a>
@@ -270,7 +291,7 @@ export function AssistantChat({ initialQuery }: { initialQuery?: string }) {
                       href={terminationResult.shareUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="block rounded-xl border border-line bg-white px-3 py-2 text-xs font-medium text-pine hover:underline"
+                      className="block w-full rounded-xl border border-line bg-white px-3 py-2 text-xs font-medium text-pine hover:underline"
                     >
                       {t("viewFullBreakdown")} →
                     </a>
@@ -294,7 +315,7 @@ export function AssistantChat({ initialQuery }: { initialQuery?: string }) {
                   // plainly) is the only feedback for these.
                   if (!previewResult.ok) return null;
                   return (
-                    <div key={index} className="space-y-1 rounded-xl border border-line bg-white p-3">
+                    <div key={index} className="w-full space-y-1 rounded-xl border border-line bg-white p-3">
                       <p className="text-sm font-semibold text-ink">{previewResult.jobTitle}</p>
                       <p className="text-xs text-muted">{previewResult.companyName}</p>
                       <p className="pt-1 text-xs font-medium text-pine">{t("applyPreviewHint")}</p>
@@ -324,7 +345,7 @@ export function AssistantChat({ initialQuery }: { initialQuery?: string }) {
                   // job_not_found: the model's own text explains this.
                   if (!favResult.ok) return null;
                   return (
-                    <div key={index} className="flex items-center justify-between gap-3 rounded-xl border border-line bg-white p-3">
+                    <div key={index} className="flex w-full items-center justify-between gap-3 rounded-xl border border-line bg-white p-3">
                       <div className="min-w-0">
                         <p className="truncate text-sm font-semibold text-ink">{favResult.jobTitle}</p>
                         <p className="truncate text-xs text-muted">{favResult.companyName}</p>
@@ -343,6 +364,66 @@ export function AssistantChat({ initialQuery }: { initialQuery?: string }) {
                   );
                 }
 
+                if (part.type === "tool-scoreCv" && part.state === "output-available") {
+                  const scoreResult = part.output as ScoreCvToolResult;
+                  if (!scoreResult.ok && scoreResult.reason === "needs_account") {
+                    return <InlineAuthCard key={index} />;
+                  }
+                  if (!scoreResult.ok && scoreResult.reason === "no_cv_on_file") {
+                    return (
+                      <p key={index} className="rounded-xl border border-line bg-white p-3 text-sm text-ink">
+                        {t("noCvOnFile")}
+                      </p>
+                    );
+                  }
+                  if (!scoreResult.ok) {
+                    return (
+                      <p key={index} className="rounded-xl border border-line bg-white p-3 text-sm text-ink">
+                        {t("cvScoreFailed")}
+                      </p>
+                    );
+                  }
+                  return (
+                    <div key={index} className="w-full space-y-1 rounded-xl border border-line bg-white p-3">
+                      <p className="text-sm font-semibold text-ink">{t("cvOverallScore", { score: scoreResult.overallScore })}</p>
+                      <a
+                        href={scoreResult.resultUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs font-medium text-pine hover:underline"
+                      >
+                        {t("viewFullBreakdown")} →
+                      </a>
+                    </div>
+                  );
+                }
+
+                if (part.type === "tool-requestInterviewPrep" && part.state === "output-available") {
+                  const prepResult = part.output as RequestInterviewPrepToolResult;
+                  if (!prepResult.ok && prepResult.reason === "needs_account") {
+                    return <InlineAuthCard key={index} />;
+                  }
+                  if (!prepResult.ok && prepResult.reason === "too_soon") {
+                    return (
+                      <p key={index} className="rounded-xl border border-line bg-white p-3 text-sm text-ink">
+                        {t("interviewPrepTooSoon", { date: prepResult.minDate })}
+                      </p>
+                    );
+                  }
+                  if (!prepResult.ok) {
+                    return (
+                      <p key={index} className="rounded-xl border border-line bg-white p-3 text-sm text-ink">
+                        {t("errorMessage")}
+                      </p>
+                    );
+                  }
+                  return (
+                    <p key={index} className="rounded-xl border border-line bg-white p-3 text-sm text-ink">
+                      {t("interviewPrepRequested")}
+                    </p>
+                  );
+                }
+
                 if (
                   (part.type === "tool-searchJobs" ||
                     part.type === "tool-lookupCompany" ||
@@ -350,7 +431,9 @@ export function AssistantChat({ initialQuery }: { initialQuery?: string }) {
                     part.type === "tool-calculateTermination" ||
                     part.type === "tool-previewApply" ||
                     part.type === "tool-confirmApply" ||
-                    part.type === "tool-toggleFavorite") &&
+                    part.type === "tool-toggleFavorite" ||
+                    part.type === "tool-scoreCv" ||
+                    part.type === "tool-requestInterviewPrep") &&
                   part.state === "input-streaming"
                 ) {
                   return (
