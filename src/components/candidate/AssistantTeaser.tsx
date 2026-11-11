@@ -30,7 +30,14 @@ export function AssistantTeaser() {
   }
 
   return (
-    <div className="mb-6 flex items-center gap-6 overflow-hidden rounded-2xl border border-line bg-gradient-to-br from-subtle to-white p-5 sm:p-6">
+    // Capped to a content-sized max-width rather than stretching full-bleed
+    // across this page's much wider (2200px) content column. Real-usage
+    // feedback was a "huge space in the middle" between the text block and
+    // the illustration once the two were pushed to opposite ends of a full-
+    // width flex row on a wide screen. A fixed max-width close to this
+    // card's own natural content size (text column + image + gaps/padding)
+    // keeps them adjacent instead of stranded at either edge.
+    <div className="mb-6 flex max-w-4xl items-center gap-6 overflow-hidden rounded-2xl border border-line bg-gradient-to-br from-subtle to-white p-5 sm:p-6">
       <div className="min-w-0 flex-1">
         <span className="inline-flex items-center gap-1 rounded-full bg-pine/15 px-2.5 py-1 text-xs font-semibold text-pine">
           <Sparkles aria-hidden className="h-3 w-3" />

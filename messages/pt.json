@@ -1837,8 +1837,6 @@
   "assistant": {
     "pageTitle": "Assistente de Procura de Emprego",
     "pageDescription": "Procure vagas de IT em Portugal descrevendo o que procura, em vez de filtrar manualmente um portal de vagas.",
-    "heading": "Pergunte, não procure",
-    "subtitle": "Diga ao assistente o que procura em linguagem simples. Por agora só consegue pesquisar; candidatar-se continua a ser feito na página da vaga.",
     "inputPlaceholder": "ex. Vagas remotas de React em Lisboa acima de 2500",
     "sendButton": "Enviar",
     "examplesHeading": "Experimente, por exemplo:",
@@ -1854,8 +1852,7 @@
     "chatName": "JT",
     "chatSubtitle": "O teu assistente de carreira com IA",
     "newChat": "Nova conversa",
-    "welcomeHeading": "Como posso ajudar?",
-    "welcomeSubtitle": "Diz-me o que procuras. Vamos encontrar a tua próxima oportunidade.",
+    "openingMessage": "Diz-me qual é o emprego dos teus sonhos.",
     "followUpRemote": "Mostrar só vagas remotas",
     "followUpSenior": "Mostrar só vagas sénior",
     "followUpCompare": "Compara estas vagas"

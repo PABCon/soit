@@ -1837,8 +1837,6 @@
   "assistant": {
     "pageTitle": "Job Search Assistant",
     "pageDescription": "Search IT jobs in Portugal by describing what you're looking for, instead of manually filtering a job board.",
-    "heading": "Ask, don't search",
-    "subtitle": "Tell the assistant what you're looking for in plain language. It can only search right now; applying still happens on the job page.",
     "inputPlaceholder": "e.g. Remote React jobs in Lisbon paying over 2500",
     "sendButton": "Send",
     "examplesHeading": "Try something like:",
@@ -1854,8 +1852,7 @@
     "chatName": "JT",
     "chatSubtitle": "Your AI career assistant",
     "newChat": "New chat",
-    "welcomeHeading": "How can I help you?",
-    "welcomeSubtitle": "Tell me what you're looking for. Let's find your next opportunity.",
+    "openingMessage": "Tell me your dream job.",
     "followUpRemote": "Only show remote jobs",
     "followUpSenior": "Only show senior roles",
     "followUpCompare": "Compare these jobs for me"

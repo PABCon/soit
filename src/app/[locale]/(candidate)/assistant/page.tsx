@@ -35,15 +35,17 @@ export default async function AssistantPage({ params, searchParams }: Props) {
   const { locale } = await params;
   const { q } = await searchParams;
   setRequestLocale(locale);
-  const t = await getTranslations({ locale, namespace: "assistant" });
 
-  return (
-    <>
-      <h1 className="font-display text-2xl font-bold">{t("heading")}</h1>
-      <p className="mt-2 max-w-2xl text-sm text-muted">{t("subtitle")}</p>
-      <div className="mt-6">
-        <AssistantChat initialQuery={q} />
-      </div>
-    </>
-  );
+  // Real-usage feedback: the page's own "Ask, don't search" heading and
+  // explainer paragraph, sitting above the chat, were both removed.
+  // JT's own opening line inside the chat itself now carries that framing
+  // ("Tell me your dream job"), and dropping this frees up enough vertical
+  // space for the whole widget to fit the viewport without scrolling the
+  // page to reach it. Same real tradeoff as the one already made (and
+  // documented) for the /jobs page's own removed heading: this page no
+  // longer has a landmark <h1> of its own. `pageTitle`/`pageDescription`
+  // (generateMetadata, above) are untouched: the browser tab title and
+  // share-card copy still describe the page for anyone who isn't looking
+  // at it, including search engines and link previews.
+  return <AssistantChat initialQuery={q} />;
 }

@@ -4,7 +4,6 @@ import { useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
-import { Sparkles } from "lucide-react";
 import { JobRow } from "@/components/JobRow";
 import { Link } from "@/i18n/navigation";
 import type { SearchJobsArgs, SearchJobsResult } from "@/lib/assistant/search-jobs";
@@ -89,7 +88,13 @@ export function AssistantChat({ initialQuery }: { initialQuery?: string }) {
   const lastMessage = messages.at(-1);
 
   return (
-    <div className="flex h-[calc(100dvh-10rem)] flex-col rounded-xl border border-line bg-white">
+    // 8rem = the candidate shell's own fixed chrome above this page: the
+    // 4rem (h-16) sticky TopNav plus <main>'s own 4rem (py-8) of vertical
+    // padding. Sized to exactly fill what's left of the viewport (real-
+    // usage ask: the whole widget, header to input, should fit on load
+    // with no outer page scroll needed to reach it); only this box's own
+    // message list scrolls internally, below.
+    <div className="flex h-[calc(100dvh-8rem)] flex-col rounded-xl border border-line bg-white">
       <div className="flex items-center justify-between gap-3 border-b border-line px-4 py-3">
         <div className="flex min-w-0 items-center gap-2.5">
           <JtAvatar className="h-9 w-9" />
@@ -111,25 +116,29 @@ export function AssistantChat({ initialQuery }: { initialQuery?: string }) {
 
       <div className="flex-1 space-y-4 overflow-y-auto p-4">
         {messages.length === 0 && (
-          <div className="mx-auto max-w-md pt-6 text-center">
-            <span className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-pine/10">
-              <Sparkles aria-hidden className="h-5 w-5 text-pine" />
-            </span>
-            <p className="mt-3 text-base font-bold text-ink">{t("welcomeHeading")}</p>
-            <p className="mt-1 text-sm text-muted">{t("welcomeSubtitle")}</p>
-
-            <p className="mt-6 text-sm text-muted">{t("examplesHeading")}</p>
-            <div className="mt-3 flex flex-wrap justify-center gap-2">
-              {EXAMPLE_KEYS.map((key) => (
-                <button
-                  key={key}
-                  type="button"
-                  onClick={() => handleSend(t(key))}
-                  className="rounded-full border border-line bg-paper px-3 py-1.5 text-xs text-ink hover:border-pine hover:text-pine"
-                >
-                  {t(key)}
-                </button>
-              ))}
+          // Real-usage ask: no separate "welcome" banner above the chat.
+          // The opening line is just JT's own first message, styled
+          // exactly like any other assistant reply below, not a distinct
+          // heading treatment.
+          <div className="flex items-start gap-2.5">
+            <JtAvatar className="mt-0.5 h-7 w-7" />
+            <div className="max-w-[90%] space-y-3">
+              <p className="rounded-2xl rounded-tl-sm bg-subtle px-4 py-2.5 text-sm text-ink">{t("openingMessage")}</p>
+              <div>
+                <p className="px-1 text-xs text-muted">{t("examplesHeading")}</p>
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {EXAMPLE_KEYS.map((key) => (
+                    <button
+                      key={key}
+                      type="button"
+                      onClick={() => handleSend(t(key))}
+                      className="rounded-full border border-line bg-white px-3 py-1.5 text-xs text-ink hover:border-pine hover:text-pine"
+                    >
+                      {t(key)}
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
           </div>
         )}

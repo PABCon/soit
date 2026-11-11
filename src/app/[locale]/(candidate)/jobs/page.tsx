@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { JobsExplorer, type QuickFilterOption } from "@/components/JobsExplorer";
-import { RecommendationsTeaser } from "@/components/candidate/RecommendationsTeaser";
 import { AssistantTeaser } from "@/components/candidate/AssistantTeaser";
 import { Link } from "@/i18n/navigation";
 import { getLiveJobs } from "@/lib/db/jobs";
@@ -112,10 +111,13 @@ export default async function JobsPage({ params }: Props) {
        *  explicitly asked for. */}
       {/* The chat assistant (JT) banner leads: the explicit ask behind
        *  this round was making it impossible to miss on the page every
-       *  visitor actually lands on, ahead of the existing recommendations
-       *  teaser below it. */}
+       *  visitor actually lands on. The recommendations teaser that used
+       *  to sit right below it was removed per direct feedback: it pushed
+       *  the real job list too far down the page, which is the actual
+       *  main content here. `RecommendationsTeaser` itself (and
+       *  `/recommendations`) is untouched, just no longer rendered on
+       *  this one page. */}
       <AssistantTeaser />
-      <RecommendationsTeaser />
 
       <div className="mt-6">
         <JobsExplorer
