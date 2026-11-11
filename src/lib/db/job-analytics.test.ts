@@ -55,4 +55,17 @@ describe("bucketEventsByDay", () => {
     );
     expect(points).toEqual([{ date: "2026-11-09", views: 0, applyClicks: 0 }]);
   });
+
+  it("never generates a day before trackingStartedAt, rather than zero-filling it", () => {
+    const points = bucketEventsByDay([], 5, NOW, new Date("2026-11-08T00:00:00.000Z"));
+    expect(points).toEqual([
+      { date: "2026-11-08", views: 0, applyClicks: 0 },
+      { date: "2026-11-09", views: 0, applyClicks: 0 },
+    ]);
+  });
+
+  it("ignores trackingStartedAt when it falls before the requested window entirely", () => {
+    const points = bucketEventsByDay([], 3, NOW, new Date("2026-01-01T00:00:00.000Z"));
+    expect(points).toHaveLength(3);
+  });
 });

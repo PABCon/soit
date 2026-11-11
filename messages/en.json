@@ -941,7 +941,8 @@
     "columnApplyClicks": "Apply clicks",
     "columnApplications": "Applications",
     "columnConversion": "View to apply rate",
-    "noData": "No data yet"
+    "noData": "No data yet",
+    "trendStartedAt": "Detailed daily tracking started on {date}, so earlier days aren't shown."
   },
   "applicants": {
     "title": "Applicants for “{job}”",

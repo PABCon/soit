@@ -1,8 +1,9 @@
-import { getTranslations, setRequestLocale } from "next-intl/server";
+import { getTranslations, setRequestLocale, getFormatter } from "next-intl/server";
 import { Eye, MousePointerClick, FileCheck2 } from "lucide-react";
 import { getMyEmployerContext } from "@/lib/db/companies";
 import { getCompanyAnalytics } from "@/lib/db/job-analytics";
 import { AnalyticsTrendChart } from "@/components/console/AnalyticsTrendChart";
+import { AnalyticsJobsTable } from "@/components/console/AnalyticsJobsTable";
 
 type Props = { params: Promise<{ locale: string }> };
 
@@ -20,11 +21,15 @@ export default async function AnalyticsPage({ params }: Props) {
   setRequestLocale(locale);
   const t = await getTranslations({ locale, namespace: "analytics" });
   const tc = await getTranslations({ locale, namespace: "console" });
+  const format = await getFormatter({ locale });
 
   const ctx = await getMyEmployerContext();
   if (!ctx) return <p className="text-sm text-muted">{tc("notEmployer")}</p>;
 
   const analytics = await getCompanyAnalytics(ctx.company.id);
+  const trendStartedAtLabel = analytics.trendStartedAt
+    ? format.dateTime(new Date(analytics.trendStartedAt), { day: "numeric", month: "long", year: "numeric" })
+    : null;
 
   const statCards = [
     { key: "totalViews", value: analytics.totals.views, Icon: Eye },
@@ -54,6 +59,9 @@ export default async function AnalyticsPage({ params }: Props) {
       <div className="mt-6 rounded-xl border border-line bg-white p-5">
         <h2 className="text-sm font-semibold text-ink">{t("trendHeading")}</h2>
         <p className="mt-0.5 text-xs text-muted">{t("trendSubtitle")}</p>
+        {trendStartedAtLabel && (
+          <p className="mt-1 text-xs text-muted italic">{t("trendStartedAt", { date: trendStartedAtLabel })}</p>
+        )}
         <div className="mt-4">
           <AnalyticsTrendChart trend={analytics.trend} viewsLabel={t("stat.totalViews")} applyClicksLabel={t("stat.totalApplyClicks")} />
         </div>
@@ -63,31 +71,7 @@ export default async function AnalyticsPage({ params }: Props) {
         <p className="mt-8 text-sm text-muted">{t("empty")}</p>
       ) : (
         <div className="mt-6 overflow-x-auto rounded-xl border border-line bg-white">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-line text-left text-xs font-semibold tracking-wide text-muted uppercase">
-                <th className="px-4 py-3">{t("columnJob")}</th>
-                <th className="px-4 py-3">{t("columnViews")}</th>
-                <th className="px-4 py-3">{t("columnApplyClicks")}</th>
-                <th className="px-4 py-3">{t("columnApplications")}</th>
-                <th className="px-4 py-3">{t("columnConversion")}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {analytics.jobs.map((job) => {
-                const conversion = job.views > 0 ? Math.round((job.applications / job.views) * 1000) / 10 : null;
-                return (
-                  <tr key={job.jobId} className="border-b border-line last:border-0">
-                    <td className="max-w-xs truncate px-4 py-3 font-medium text-ink">{job.jobTitle}</td>
-                    <td className="px-4 py-3 text-ink">{job.views}</td>
-                    <td className="px-4 py-3 text-ink">{job.applyClicks}</td>
-                    <td className="px-4 py-3 text-ink">{job.applications}</td>
-                    <td className="px-4 py-3 text-ink">{conversion != null ? `${conversion}%` : t("noData")}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+          <AnalyticsJobsTable jobs={analytics.jobs} />
         </div>
       )}
     </>

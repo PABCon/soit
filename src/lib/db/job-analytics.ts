@@ -23,6 +23,10 @@ export type CompanyAnalytics = {
   totals: { views: number; applyClicks: number; applications: number };
   jobs: JobAnalyticsRow[];
   trend: AnalyticsTrendPoint[];
+  /** Null when there's real history for the full `TREND_DAYS` window;
+   *  otherwise the real calendar day day-level tracking began, so the
+   *  UI can say so instead of leaving an unexplained short chart. */
+  trendStartedAt: string | null;
 };
 
 const TREND_DAYS = 30;
@@ -33,17 +37,28 @@ const TREND_DAYS = 30;
  *  at all. A trend chart with gaps for quiet days reads as "no data for
  *  this day," which is the wrong story — a real quiet day is a zero, not
  *  a hole. `now` is a parameter (not read internally) so this is exactly
- *  reproducible in a test, not dependent on the clock at call time. */
+ *  reproducible in a test, not dependent on the clock at call time.
+ *
+ *  `trackingStartedAt` trims the *front* of that same window: day-level
+ *  view/apply-click tracking didn't exist at all before this feature
+ *  shipped, so without this, every company's chart would show a long,
+ *  entirely fabricated flat-zero stretch before its real first event:
+ *  real-usage feedback was that this reads exactly like a traffic
+ *  collapse, not like "there's no data yet." Days before this date are
+ *  simply never generated, rather than generated and then zero-filled. */
 export function bucketEventsByDay(
   events: { type: string; created_at: string }[],
   days: number,
   now: Date = new Date(),
+  trackingStartedAt?: Date,
 ): AnalyticsTrendPoint[] {
+  const startKey = trackingStartedAt ? trackingStartedAt.toISOString().slice(0, 10) : null;
   const points = new Map<string, AnalyticsTrendPoint>();
   for (let i = days - 1; i >= 0; i--) {
     const d = new Date(now);
     d.setUTCDate(d.getUTCDate() - i);
     const key = d.toISOString().slice(0, 10);
+    if (startKey && key < startKey) continue;
     points.set(key, { date: key, views: 0, applyClicks: 0 });
   }
   for (const e of events) {
@@ -64,6 +79,24 @@ type JobAnalyticsSelectRow = {
   apply_click_count: number;
   applications: { count: number }[];
 };
+
+// The very first `job.viewed`/`job.apply_clicked` event ever recorded,
+// site-wide across every company, a real fact about when this feature
+// started logging day-level data, not something that differs per
+// company. A plain indexed query (`events`' own `(type, created_at
+// desc)` index), cheap enough to just run per page load rather than
+// caching: this dashboard is a low-traffic console page, not a hot path.
+async function getTrackingStartDate(): Promise<Date | null> {
+  const admin = createAdminClient();
+  const { data } = await admin
+    .from("events")
+    .select("created_at")
+    .in("type", ["job.viewed", "job.apply_clicked"])
+    .order("created_at", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+  return data ? new Date(data.created_at) : null;
+}
 
 /** Per-job rows are a plain RLS-scoped read (same "employers see their
  *  own company's jobs" policy every other console query already relies
@@ -98,16 +131,22 @@ export async function getCompanyAnalytics(companyId: string): Promise<CompanyAna
     { views: 0, applyClicks: 0, applications: 0 },
   );
 
-  const since = new Date(Date.now() - TREND_DAYS * 86_400_000).toISOString();
+  const windowStart = new Date(Date.now() - TREND_DAYS * 86_400_000);
   const admin = createAdminClient();
   const { data: eventRows } = await admin
     .from("events")
     .select("type, created_at")
     .eq("payload->>company_id", companyId)
     .in("type", ["job.viewed", "job.apply_clicked"])
-    .gte("created_at", since);
+    .gte("created_at", windowStart.toISOString());
 
-  const trend = bucketEventsByDay(eventRows ?? [], TREND_DAYS);
+  const trackingStartedAt = await getTrackingStartDate();
+  const trend = bucketEventsByDay(eventRows ?? [], TREND_DAYS, new Date(), trackingStartedAt ?? undefined);
 
-  return { totals, jobs, trend };
+  return {
+    totals,
+    jobs,
+    trend,
+    trendStartedAt: trackingStartedAt && trackingStartedAt > windowStart ? trackingStartedAt.toISOString().slice(0, 10) : null,
+  };
 }

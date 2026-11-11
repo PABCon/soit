@@ -941,7 +941,8 @@
     "columnApplyClicks": "Cliques em candidatar",
     "columnApplications": "Candidaturas",
     "columnConversion": "Taxa de conversão",
-    "noData": "Ainda sem dados"
+    "noData": "Ainda sem dados",
+    "trendStartedAt": "O acompanhamento diário detalhado começou a {date}, por isso os dias anteriores não são mostrados."
   },
   "applicants": {
     "title": "Candidaturas para “{job}”",
