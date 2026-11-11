@@ -1862,7 +1862,10 @@
     "viewFullBreakdown": "View full breakdown",
     "applyPreviewHint": "Reply with a clear yes to actually submit this application.",
     "noCvOnFile": "You don't have a CV on file yet. Upload one on your profile first.",
-    "applySuccessMessage": "Application submitted!"
+    "applySuccessMessage": "Application submitted!",
+    "favoriteSaved": "Saved to favorites",
+    "favoriteRemoved": "Removed from favorites",
+    "viewFavorites": "View favorites"
   },
   "assistantTeaser": {
     "badge": "New",

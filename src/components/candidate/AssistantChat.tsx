@@ -15,6 +15,7 @@ import type { LookupCompanyToolResult } from "@/lib/assistant/lookup-company";
 import type { CalculateSalaryToolResult } from "@/lib/assistant/calculate-salary";
 import type { CalculateTerminationToolResult } from "@/lib/assistant/calculate-termination";
 import type { PreviewApplyToolResult } from "@/lib/assistant/apply-job";
+import type { ToggleFavoriteToolResult } from "@/lib/assistant/toggle-favorite";
 import type { ApplyResult } from "@/lib/db/applications";
 
 const EXAMPLE_KEYS = ["exampleOne", "exampleTwo", "exampleThree"] as const;
@@ -315,13 +316,41 @@ export function AssistantChat({ initialQuery }: { initialQuery?: string }) {
                   );
                 }
 
+                if (part.type === "tool-toggleFavorite" && part.state === "output-available") {
+                  const favResult = part.output as ToggleFavoriteToolResult;
+                  if (!favResult.ok && favResult.reason === "needs_account") {
+                    return <InlineAuthCard key={index} />;
+                  }
+                  // job_not_found: the model's own text explains this.
+                  if (!favResult.ok) return null;
+                  return (
+                    <div key={index} className="flex items-center justify-between gap-3 rounded-xl border border-line bg-white p-3">
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-semibold text-ink">{favResult.jobTitle}</p>
+                        <p className="truncate text-xs text-muted">{favResult.companyName}</p>
+                      </div>
+                      <div className="flex shrink-0 flex-col items-end gap-0.5">
+                        <span className="text-xs font-medium text-pine">
+                          {favResult.favorited ? t("favoriteSaved") : t("favoriteRemoved")}
+                        </span>
+                        {favResult.favorited && (
+                          <Link href="/favorites" className="text-xs text-muted hover:text-pine hover:underline">
+                            {t("viewFavorites")}
+                          </Link>
+                        )}
+                      </div>
+                    </div>
+                  );
+                }
+
                 if (
                   (part.type === "tool-searchJobs" ||
                     part.type === "tool-lookupCompany" ||
                     part.type === "tool-calculateSalary" ||
                     part.type === "tool-calculateTermination" ||
                     part.type === "tool-previewApply" ||
-                    part.type === "tool-confirmApply") &&
+                    part.type === "tool-confirmApply" ||
+                    part.type === "tool-toggleFavorite") &&
                   part.state === "input-streaming"
                 ) {
                   return (
