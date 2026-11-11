@@ -6402,3 +6402,125 @@ logged-in candidates only with an explicit confirmation-before-submit
 step, persisted conversation history, any employer-side action, and
 prompt-injection hardening beyond what Phase 1 already gets "for free"
 by having zero consequential tools.
+
+## Branding JT and promoting it on the jobs landing page
+
+A real-usage request: the chat assistant above was functionally done
+but nearly invisible (a single "Ask AI" Rail entry), and had no persona
+of its own. Given two reference images (a mascot illustration and a
+dashboard mockup showing a "Find your next IT opportunity with AI"
+banner), the user supplied real mascot artwork and asked for a name.
+Confirmed via `AskUserQuestion`: **"JT"**, matching the "jt" badge
+already on the robot's chest/laptop in the artwork, over three other
+candidates ("Ita," "Byte," "Jay").
+
+**Assets**: the two supplied PNGs (both genuinely RGBA, with a real
+soft-fade-to-transparent vignette at their edges, not an opaque black
+background as a casual look suggested) were resized via `sharp`
+(already a direct dependency from the image-resize work) into
+`public/jt-avatar.png` (160x160, a circular chat avatar) and
+`public/jt-hero.png` (900px wide, the banner illustration), the same
+plain-`public/`-asset convention `recommendations-avatar.png` already
+established, no new asset pipeline.
+
+**`AssistantTeaser`** (new, `src/components/candidate/AssistantTeaser.tsx`):
+a prominent banner now leads `/jobs` (which `/` already redirects to,
+making it the site's de facto homepage), above the existing
+`RecommendationsTeaser`. A real decision, not left ambiguous: whether
+the existing circular tech/category quick-filter row on `/jobs` needed
+to move into "More filters" to make room was resolved by actually
+reading `JobsExplorer.tsx` rather than guessing: that row is already a
+single, horizontally-measured, non-wrapping strip (`ResizeObserver` +
+fixed 72px chip width) with no interaction with a new banner stacked
+*above* it, so no change was needed there. Submitting the banner's own
+embedded input navigates to `/assistant?q=<text>`, mirroring
+`MobileSearchBar`'s existing "type and go" pattern (`useRouter` from
+`@/i18n/navigation`, no new mechanism).
+
+**`AssistantChat.tsx` redesign**: a branded header (JT avatar, "JT" +
+"Your AI career assistant," a "New chat" button calling `useChat`'s own
+`setMessages([])`), a JT avatar on every assistant message bubble, a
+restyled welcome state (sparkle icon + heading + subtitle, same example
+chips as before), and static, context-aware "suggested follow-up"
+chips under a search result, derived from the actual tool-call args
+just used (e.g. "Only show remote jobs" only when the prior search
+wasn't already remote-only) rather than invented UI chrome unrelated
+to what's on screen, or a fabricated "match quality" label like the
+reference mockup's own "Strong match" badge, which was deliberately
+**not** built: this project's whole "never invent, only show real data"
+discipline (the same reasoning behind every extraction feature's
+nullable-everything schemas) rules out a qualitative match score with
+no real scoring behind it, and building one for real would need a
+candidate profile an anonymous chat visitor doesn't have.
+
+**`/assistant` now takes an optional `?q=` param**, read server-side in
+`page.tsx` and passed to `AssistantChat` as `initialQuery`, auto-sent
+once on mount.
+
+**A real bug found and fixed during live verification, not by
+`tsc`/`eslint`/the build**: the auto-send-on-mount effect never
+actually sent anything, confirmed via a debug script that showed the
+effect firing exactly once (the ref guard working as intended) yet no
+network request ever reaching `/api/assistant`. Root cause: React
+Strict Mode's dev-mode double-invoke (mount, cleanup, mount, all
+synchronous, before the event loop yields) let the *first* invocation
+call `sendMessage()`, only for its underlying request to be aborted a
+moment later by the synthetic cleanup; the ref guard then correctly
+prevented the second invocation from retrying, since by its own logic
+the message had "already" been sent. Net effect: zero messages ever
+survived. Fixed with the standard defer-via-cleared-timeout pattern:
+schedule the actual send in a `setTimeout(0)` and clear it in the
+effect's cleanup function, so both synthetic invocations schedule and
+immediately cancel their own timer, and only the one effect instance
+that survives past the double-invoke dance ever lets its timer fire.
+
+**Usage tracking** (the "how do we track usage" ask): two new event
+types, `assistant.message_sent` and `assistant.search_performed`,
+logged from `src/app/api/assistant/route.ts` via the exact same
+`logEvent()` helper (`src/lib/events.ts`) every other analytics feature
+in this project already writes to (job views, apply-clicks), via
+`after()` so logging never sits on the response's own critical path.
+Deliberately logs only structured, controlled-vocabulary facts (session
+id, turn count, result count, category/seniority/work-model/remote/
+salary-floor/location), never the user's own free-text message or the
+model's free-text `tech`/`q` tool args, the same "never log raw user
+content" caution this project already applies to its email templates.
+
+New `src/lib/db/assistant-analytics.ts` mirrors `job-analytics.ts`'s own
+shape (a pure, unit-tested `bucketAssistantEventsByDay()` sibling to
+`bucketEventsByDay()`, deliberately not a generalized shared function,
+consistent with this project's precedent of duplicating rather than
+widening an already-shipped, tested module for an unrelated feature) to
+compute totals (sessions, messages, searches, zero-result rate), a
+30-day trend, and top-searched categories.
+
+**New `/assistant-stats` page** (bare, outside every route group, so it
+picks up none of the candidate/console chrome) surfaces this. There's
+no admin role or panel anywhere in this codebase yet (a known,
+deliberately-deferred gap noted earlier in this file), and this is
+platform-wide data, not scoped to one employer's console, so rather
+than build an admin system for one page, it's gated the same
+lightweight way the cron routes already are (a shared secret), just
+read from a `?key=` query param instead of an `Authorization` header
+since a human visits this in a browser: wrong or missing key renders a
+plain 404 via `notFound()`, never revealing the page exists. New
+`ASSISTANT_STATS_SECRET` env var, added to `.env.local` and all three
+Vercel environments (`--type secret`).
+
+Verified live end to end, both on `localhost` (Playwright) and
+production (curl): the teaser banner and hero illustration render on
+`/jobs`; submitting it navigates to `/assistant?q=...` and the query
+auto-sends, producing a real inline job card, a JT avatar in the header
+and on the message, a working "New chat" reset, and real suggested
+follow-up chips; the stats page 404s with no/wrong key and returns real
+non-zero session/message/search counts with the correct key, confirmed
+directly against the live `events` table. A handful of harmless test-
+generated tracking rows (5 sessions' worth) were left in the live
+`events` table from this verification pass (bulk-deleting from a live
+table was correctly blocked by the auto-mode classifier as a
+destructive action, not worked around), cosmetic noise in the stats
+baseline, not a data or security concern. `npx tsc --noEmit`, `eslint`,
+the full test suite (195 passing, +7 for `bucketAssistantEventsByDay`),
+`npm run build`, and `check:i18n` (1663 keys, in sync) all pass.
+Playwright reinstalled `--no-save` for this verification and fully
+uninstalled again once done.
