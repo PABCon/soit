@@ -6848,3 +6848,45 @@ favorites, saved searches, "my applications" status, and job
 recommendations. The same tool pattern established here (resolve
 identity server-side, reuse the existing data-layer function, render a
 small purpose-built card) is what a later round would reuse for them.
+
+## JT learns favorites, the first of the three deferred features
+
+Asked directly what to build next; recommended the deferred trio
+(favorites, saved searches, "my applications" status) since they reuse
+the exact same tool pattern just established, versus extending usage
+tracking first. The user chose to do the trio's first piece now and
+hear the tracking plan after.
+
+New `src/lib/assistant/toggle-favorite.ts` wraps the real
+`toggleFavorite()` from `favorites.ts` directly, same shape as
+`apply-job.ts`: no new auth logic, no admin client, identity resolved
+server-side, never a model-supplied candidate id. One real wrinkle
+`apply-job.ts` didn't have: `toggleFavorite()` throws a plain
+`Error("Not a candidate")` for a non-candidate rather than returning a
+typed result (it predates this chat work and was built for a context
+where RLS alone was the real boundary and a thrown error was fine);
+caught here and turned into the identical `needs_account` signal
+`previewApply` already produces, so the client's existing
+`InlineAuthCard` branch handles both tools with zero new client code
+beyond the rendering itself.
+
+System prompt gained a short "Saving favorites" section instructing
+the model to call `toggleFavorite` for both "save" and "remove/
+unfavorite" requests (the real function already toggles both
+directions, so there's exactly one tool, not two), and the "Scope and
+refusals" list was updated to include it.
+
+Verified live, both locally and in production: an anonymous "save this
+job" request correctly chains `searchJobs` → `toggleFavorite` →
+`needs_account` in one turn (confirming the model can compose multiple
+tools in a single response, not just one at a time). A real account
+(signup through the actual `/candidate/register` page, a real
+confirmation email received and clicked, a real login) asking JT to
+save a job produced a real `favorites` row, confirmed via direct
+database read; asking to remove it correctly deleted that exact row,
+also confirmed directly, not inferred from the chat's own reply alone.
+Fixtures cleaned up afterward. `npx tsc --noEmit`, `eslint`, the full
+test suite (220 passing, unaffected, `toggle-favorite.ts` wraps a DB
+call the same way `apply-job.ts` does and isn't unit-tested for the
+same reason), `npm run build`, and `check:i18n` (1670 keys, in sync)
+all pass.
