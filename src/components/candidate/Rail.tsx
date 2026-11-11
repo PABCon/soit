@@ -38,6 +38,12 @@ export const ITEMS: Item[] = [
     icon: icon("M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"),
     mvp: true,
   },
+  {
+    key: "terminationCalculator",
+    href: "/rescisao-contrato",
+    icon: icon("M9 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h4M16 17l5-5-5-5M21 12H9"),
+    mvp: true,
+  },
   { key: "favorites", href: "/favorites", icon: icon("m12 20-7-7a4 4 0 0 1 7-5 4 4 0 0 1 7 5Z"), mvp: true },
   {
     key: "profile",

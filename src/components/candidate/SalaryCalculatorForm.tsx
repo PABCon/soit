@@ -1000,6 +1000,12 @@ export function SalaryCalculatorForm() {
           </div>
 
           <p className="text-xs text-muted">{t("disclaimer")}</p>
+          <p className="text-xs text-muted">
+            {t("terminationCalculatorCta")}{" "}
+            <Link href="/rescisao-contrato" className="font-medium text-pine hover:underline">
+              {t("terminationCalculatorCtaButton")}
+            </Link>
+          </p>
         </div>
       </div>
 

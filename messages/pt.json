@@ -42,7 +42,8 @@
     "settings": "Definições",
     "soon": "Em breve",
     "collapse": "Reduzir menu",
-    "expand": "Expandir menu"
+    "expand": "Expandir menu",
+    "terminationCalculator": "Calculadora de rescisão"
   },
   "console": {
     "title": "Gerir recrutamento",
@@ -1397,7 +1398,9 @@
     "companyInfoSalaryVsDividendsTerm": "Salário vs. dividendos é uma contrapartida real",
     "companyInfoSalaryVsDividendsDefinition": "O salário do gerente é tributado como o de qualquer trabalhador e contribui para o seu registo de Segurança Social; os dividendos são tributados a uma taxa fixa de 28% sem qualquer Segurança Social, mas não contam para a sua pensão ou elegibilidade a subsídios. A maioria dos proprietários usa uma combinação dos dois.",
     "companyInfoIrcScheduleTerm": "O IRC vai descer nos próximos anos",
-    "companyInfoIrcScheduleDefinition": "A taxa atual de 15%/19% para PME está prevista descer para 18% em 2027 e 17% a partir de 2028 — não refletido aqui, já que esta calculadora usa sempre a taxa do ano que selecionar."
+    "companyInfoIrcScheduleDefinition": "A taxa atual de 15%/19% para PME está prevista descer para 18% em 2027 e 17% a partir de 2028 — não refletido aqui, já que esta calculadora usa sempre a taxa do ano que selecionar.",
+    "terminationCalculatorCta": "Vai sair de um emprego em vez de começar um? Veja o que tem direito a receber quando um contrato termina.",
+    "terminationCalculatorCtaButton": "Calculadora de rescisão"
   },
   "recibosVerdesGuide": {
     "pageTitle": "Recibos Verdes: Como Funciona, Descontos e Segurança Social (Guia 2026)",
@@ -1428,7 +1431,9 @@
     "pitfall4Body": "Sem férias pagas, sem baixa paga pela entidade patronal, sem subsídio de desemprego por defeito, sem indemnização se uma relação com um cliente terminar. Essa é a verdadeira contrapartida dos descontos mensais mais baixos — não é um pormenor técnico, é uma diferença real na proteção que tem.",
     "ctaHeading": "Veja os seus números reais",
     "ctaBody": "Cada valor acima depende exatamente de quanto fatura, da sua região, e se está no primeiro ano de atividade — a calculadora aplica as regras reais de 2026 aos seus próprios números em segundos.",
-    "ctaButton": "Calcule os seus números de recibos verdes →"
+    "ctaButton": "Calcule os seus números de recibos verdes →",
+    "terminationCta": "Vai sair deste emprego? Veja o que tem direito a receber quando um contrato termina.",
+    "terminationCtaButton": "Calculadora de rescisão"
   },
   "contratoTrabalhoGuide": {
     "pageTitle": "Contrato de Trabalho em Portugal: Recibo de Vencimento, Subsídios e Impostos (2026)",
@@ -1453,7 +1458,9 @@
     "rightsBody": "Além do valor líquido no seu recibo de vencimento, um contrato de trabalho também lhe dá direito a férias pagas, subsídio de doença da Segurança Social, elegibilidade para subsídio de desemprego se for despedido, licença parental, um prazo de aviso prévio e indemnização se a entidade empregadora terminar o contrato. Nada disto se aplica a recibos verdes ou a ter a sua própria empresa.",
     "ctaHeading": "Veja os seus números reais",
     "ctaBody": "Cada valor acima depende do seu salário bruto exato, região, idade e situação familiar — a calculadora aplica as tabelas de retenção reais de 2026 aos seus próprios números em segundos.",
-    "ctaButton": "Calcule o seu salário líquido →"
+    "ctaButton": "Calcule o seu salário líquido →",
+    "terminationCta": "Vai sair deste emprego? Veja o que tem direito a receber quando um contrato termina.",
+    "terminationCtaButton": "Calculadora de rescisão"
   },
   "empresaPropriaGuide": {
     "pageTitle": "Ter a Sua Própria Empresa em Portugal (Lda/B2B): Impostos, Custos e Contrapartidas (2026)",
@@ -1476,7 +1483,9 @@
     "fitBody": "Com rendimentos pequenos e inconsistentes, o custo e a complexidade extra de uma Lda (o contabilista obrigatório, o IRC além do imposto pessoal, a reserva legal) normalmente não compensa face aos recibos verdes. Tende a fazer mais sentido quando o seu rendimento é suficientemente alto e estável para que as vantagens estruturais — dividir entre salário e dividendos, potencial proteção de responsabilidade, uma estrutura mais credível perante clientes maiores — superem os custos fixos.",
     "ctaHeading": "Compare os seus próprios números",
     "ctaBody": "A verdadeira contrapartida entre empresa própria, recibos verdes e contrato de trabalho depende inteiramente do seu rendimento e situação — a calculadora aplica as três opções às regras reais de 2026.",
-    "ctaButton": "Calcule os números da sua empresa →"
+    "ctaButton": "Calcule os números da sua empresa →",
+    "terminationCta": "Vai sair deste emprego? Veja o que tem direito a receber quando um contrato termina.",
+    "terminationCtaButton": "Calculadora de rescisão"
   },
   "cvReview": {
     "pageTitle": "Avaliação Gratuita do CV para Profissionais de IT em Portugal",
@@ -1749,5 +1758,79 @@
     "serverErrorLinkHome": "Ir para a página inicial",
     "serverErrorLinkCompanies": "Explorar empresas",
     "serverErrorChip": "Estamos a trabalhar para resolver isto."
+  },
+  "terminationCalculator": {
+    "pageTitle": "Calculadora de Rescisão de Contrato (Portugal)",
+    "pageDescription": "Descubra o que tem direito a receber quando um contrato de trabalho em Portugal termina: indemnização por despedimento, compensação de contrato a termo, avaliação de uma proposta de mútuo acordo e aviso prévio de demissão. Grátis, com base na lei real.",
+    "heading": "Calculadora de rescisão de contrato",
+    "subtitle": "Descubra o que tem direito a receber (ou o que deve) quando um contrato de trabalho em Portugal termina, com valores reais do Código do Trabalho.",
+    "modeTab": {
+      "dismissal": "Fui despedido",
+      "fixed_term": "O meu contrato a termo terminou",
+      "mutual_agreement": "Proposta de mútuo acordo",
+      "resignation": "Vou pedir demissão"
+    },
+    "aboutYouHeading": "Sobre o seu contrato",
+    "monthlyRemuneration": "Retribuição mensal base",
+    "monthlyRemunerationHint": "Salário base mais diuturnidades, antes de impostos.",
+    "contractStartDate": "Data de início do contrato",
+    "cessationDate": "Data em que o contrato termina (ou terminou)",
+    "shareButton": "Copiar link partilhável",
+    "copied": "Copiado!",
+    "dismissalResultHeading": "O que tem direito a receber de indemnização",
+    "dismissalAmount": "Indemnização",
+    "dismissalYearsOfService": "Anos de antiguidade",
+    "dismissalCappedNote": "A sua retribuição foi limitada a 20× o salário mínimo para este cálculo. A lei limita assim a base para quem ganha mais.",
+    "dismissalFormulaNote": "14 dias de retribuição por ano de antiguidade, desde a reforma laboral de 2023 (Lei n.º 13/2023).",
+    "preOct2013Message": "Esta calculadora ainda não suporta contratos iniciados antes de 1 de outubro de 2013. Aplica-se uma fórmula diferente e segmentada a essa antiguidade, e preferimos não arriscar. O simulador oficial do ACT pode ajudar neste caso.",
+    "fixedTermResultHeading": "O que tem direito a receber quando o seu contrato termina",
+    "fixedTermAmount": "Compensação",
+    "fixedTermFormulaNote": "24 dias de retribuição por ano de antiguidade, desde a reforma laboral de 2023.",
+    "fixedTermOnlyWhenEmployerEndsHint": "Isto só se aplica quando é a entidade empregadora a deixar o contrato caducar ou a não renová-lo, não quando é o próprio trabalhador a fazer cessar o contrato.",
+    "mutualAgreementOfferedAmount": "O que está a ser proposto",
+    "mutualAgreementResultHeading": "Esta proposta é justa?",
+    "mutualAgreementNoLegalMinimumNote": "Não existe um mínimo legal para uma saída por mútuo acordo: é o que negociar com a entidade empregadora. Isto compara a sua proposta com um ponto de referência real.",
+    "mutualAgreementBenchmarkLine": "O que receberia num despedimento equivalente",
+    "mutualAgreementPercentLine": "A sua proposta corresponde a {percent}% desse valor de referência",
+    "mutualAgreementTaxExemptLine": "Parte estimada isenta de IRS",
+    "mutualAgreementTaxableLine": "Parte estimada sujeita a IRS",
+    "mutualAgreementUnemploymentCaveat": "Um mútuo acordo NÃO lhe dá automaticamente direito a subsídio de desemprego: só dá quando faz parte de um processo formal de redução de efetivos que cumpra condições legais específicas. Confirme isto com cuidado antes de assinar; não assuma que se aplica.",
+    "mutualAgreementJobsCta": "A avaliar uma saída? Veja o que está a contratar agora na Just IT.",
+    "resignationContractType": "Tipo de contrato",
+    "resignationContractTypeOption": {
+      "open_ended": "Sem termo",
+      "fixed_term": "A termo"
+    },
+    "resignationFixedTermOriginalDurationMonths": "Duração original do contrato (meses)",
+    "resignationNoticeDaysPlanned": "Dias de aviso prévio que planeia dar",
+    "resignationResultHeading": "A sua obrigação de aviso prévio",
+    "resignationNoticeDaysRequiredLine": "Aviso prévio exigido por lei",
+    "resignationShortfallLine": "Dias em falta",
+    "resignationCompensationOwedLine": "O que deveria à entidade empregadora",
+    "resignationNoShortfallMessage": "Está a dar o aviso prévio completo, por isso não deve nada à entidade empregadora por isto.",
+    "entitlementsHeading": "O que tem sempre direito a receber (qualquer cenário)",
+    "entitlementsSubtitle": "Aplica-se seja qual for a forma como o contrato termina.",
+    "unusedPriorYearHolidayDays": "Dias de férias não gozados de um ano anterior",
+    "entitlementsHolidayLine": "Férias proporcionais ({days} dias)",
+    "entitlementsChristmasLine": "Subsídio de Natal proporcional",
+    "entitlementsUnusedLine": "Pagamento de férias não gozadas de ano anterior",
+    "entitlementsTotalLine": "Total",
+    "ctaSalaryHeading": "Vai começar um novo emprego?",
+    "ctaSalaryBody": "Veja quanto fica realmente do seu próximo salário depois de impostos.",
+    "ctaSalaryButton": "Calcular o meu salário líquido",
+    "ctaJobsHeading": "Pronto para procurar noutro lugar?",
+    "ctaJobsBody": "Explore vagas de IT em Portugal, sempre com o salário real mostrado.",
+    "ctaJobsButton": "Ver vagas abertas",
+    "infoHeading": "O que deve saber",
+    "whatIsSeveranceTerm": "O que conta como \"indemnização por despedimento\"?",
+    "whatIsSeveranceBody": "A indemnização por despedimento é devida quando a entidade empregadora termina o seu contrato sem justa causa, incluindo quando o seu posto de trabalho concreto é extinto ou num despedimento coletivo. Desde maio de 2023, a fórmula é 14 dias de retribuição base por ano de antiguidade, com a retribuição usada no cálculo limitada a 20× o salário mínimo.",
+    "whatIsMutualAgreementTerm": "O que é um mútuo acordo?",
+    "whatIsMutualAgreementBody": "Um mútuo acordo é uma saída negociada: o trabalhador e a entidade empregadora acordam por escrito terminar o contrato, pela compensação que ambos acordarem. Não existe um valor mínimo legal, ao contrário de um despedimento, onde a lei define a fórmula. Tem 7 dias para revogar o acordo por escrito, desde que devolva qualquer compensação já recebida.",
+    "unemploymentEligibilityTerm": "Isto dá-me direito a subsídio de desemprego?",
+    "unemploymentEligibilityBody": "Um despedimento genuíno ou a extinção do seu posto de trabalho geralmente dá. Um mútuo acordo geralmente NÃO dá, a menos que faça parte de um processo formal de redução de efetivos que cumpra condições legais específicas, por isso não assuma que se aplica sem confirmar. Pedir demissão por iniciativa própria geralmente também não dá direito.",
+    "taxExemptionTerm": "A minha compensação é tributada?",
+    "taxExemptionBody": "A compensação por cessação de contrato é isenta de IRS até um limite: a sua retribuição média mensal dos últimos 12 meses, multiplicada pelos seus anos de antiguidade, com um limite absoluto de 240× o salário mínimo. O que exceder esse limite é tributado como rendimento normal do trabalho. Isto é uma estimativa, não é aconselhamento fiscal.",
+    "noticePeriodTerm": "Quanto aviso prévio tenho de dar se me demitir?",
+    "noticePeriodBody": "30 dias se está há 2 anos ou menos na empresa, 60 dias se está há mais tempo, num contrato sem termo. Se não der o aviso prévio completo, deve automaticamente à entidade empregadora o salário correspondente aos dias em falta, quer esta consiga provar um prejuízo real quer não."
   }
 }

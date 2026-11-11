@@ -87,6 +87,12 @@ export default async function ContratoTrabalhoGuidePage({ params }: Props) {
         <Link href="/salario-liquido?mode=employment" className={`mt-4 inline-block ${buttonClassName({ size: "md" })}`}>
           {t("ctaButton")}
         </Link>
+        <p className="mx-auto mt-4 max-w-md text-xs text-muted">
+          {t("terminationCta")}{" "}
+          <Link href="/rescisao-contrato" className="font-medium text-pine hover:underline">
+            {t("terminationCtaButton")}
+          </Link>
+        </p>
       </div>
     </article>
   );
