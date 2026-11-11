@@ -5,7 +5,9 @@ import { useTranslations } from "next-intl";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
 import { JobRow } from "@/components/JobRow";
+import { ChatMarkdown } from "@/components/candidate/ChatMarkdown";
 import { Link } from "@/i18n/navigation";
+import { serializeJobFilterParams } from "@/lib/jobs/match-filters";
 import type { SearchJobsArgs, SearchJobsResult } from "@/lib/assistant/search-jobs";
 
 const EXAMPLE_KEYS = ["exampleOne", "exampleTwo", "exampleThree"] as const;
@@ -152,10 +154,20 @@ export function AssistantChat({ initialQuery }: { initialQuery?: string }) {
             <div className={message.role === "user" ? "max-w-[80%] rounded-2xl rounded-tr-sm bg-pine px-4 py-2.5 text-sm text-white" : "min-w-0 max-w-[90%] space-y-3"}>
               {message.parts.map((part, index) => {
                 if (part.type === "text") {
+                  if (message.role === "user") {
+                    return <p key={index}>{part.text}</p>;
+                  }
+                  // The model reliably formats comparisons/breakdowns with
+                  // "- " bullets and "**bold**" field labels: a plain <p>
+                  // collapsed that structure into one unreadable run-on
+                  // line (real-usage bug). ChatMarkdown parses the same
+                  // minimal structure JobDescriptionBody.tsx already does.
                   return (
-                    <p key={index} className={message.role === "user" ? "" : "rounded-2xl rounded-tl-sm bg-subtle px-4 py-2.5 text-sm text-ink"}>
-                      {part.text}
-                    </p>
+                    <ChatMarkdown
+                      key={index}
+                      text={part.text}
+                      className="space-y-2 rounded-2xl rounded-tl-sm bg-subtle px-4 py-2.5 text-sm text-ink"
+                    />
                   );
                 }
 
@@ -165,19 +177,32 @@ export function AssistantChat({ initialQuery }: { initialQuery?: string }) {
                   // code into the client bundle), these casts are scoped
                   // to the two shapes `searchJobs()` itself actually has,
                   // re-exported from the same module the route uses.
-                  const { jobs, count } = part.output as SearchJobsResult;
+                  const { jobs, count, filters } = part.output as SearchJobsResult;
                   const args = part.input as SearchJobsArgs;
                   const isLastMessage = message.id === lastMessage?.id;
+                  // Real-usage bug: this used to link to a bare /jobs,
+                  // silently dropping everything the conversation had
+                  // established. `filters` is the real, revalidated set
+                  // this search actually ran with, serialized the exact
+                  // same way /jobs's own JobsExplorer reads it, so this
+                  // reproduces the identical filtered view, not a guess.
+                  const viewAllHref = `/jobs?${serializeJobFilterParams(filters).toString()}`;
                   return (
                     <div key={index} className="space-y-2">
                       <p className="px-1 text-xs font-medium text-muted">
                         {count === 0 ? t("noResults") : t("resultsCount", { count })}
                       </p>
-                      {jobs.map((job) => (
-                        <JobRow key={job.id} job={job} />
-                      ))}
+                      {/* JobRow's own root is an <li> (same as everywhere
+                       *  else it's used, e.g. JobsExplorer.tsx): a real
+                       *  stray bullet marker shows up without a real <ul>
+                       *  wrapper, caught by live verification. */}
+                      <ul className="flex flex-col gap-2">
+                        {jobs.map((job) => (
+                          <JobRow key={job.id} job={job} />
+                        ))}
+                      </ul>
                       {count > jobs.length && (
-                        <Link href="/jobs" className="block px-1 text-xs font-medium text-pine hover:underline">
+                        <Link href={viewAllHref} className="block px-1 text-xs font-medium text-pine hover:underline">
                           {t("viewAllOnJobsPage")}
                         </Link>
                       )}

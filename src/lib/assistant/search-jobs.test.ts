@@ -100,4 +100,17 @@ describe("searchJobs", () => {
     expect(result.count).toBe(10);
     expect(result.jobs).toHaveLength(6);
   });
+
+  it("returns the real, revalidated filters actually used, not the model's raw unvalidated args", () => {
+    const jobs = [makeJob({ tech: ["React"] })];
+    const result = searchJobs(
+      jobs,
+      { tech: ["React.js", "madeUpTech"], categorySlug: "not-a-real-category", remoteOnly: true, minSalary: 2000 },
+      VOCAB,
+    );
+    expect(result.filters.tech).toEqual(["React"]); // alias resolved, unmatched dropped
+    expect(result.filters.cat).toEqual([]); // invalid category slug dropped
+    expect(result.filters.remoteOnly).toBe(true);
+    expect(result.filters.minSalary).toBe(2000);
+  });
 });

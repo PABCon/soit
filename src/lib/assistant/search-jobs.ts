@@ -1,6 +1,8 @@
 import type { Job } from "@/lib/types";
 import { jobMatchesFilters, type JobFilterParams } from "@/lib/jobs/match-filters";
 
+export type { JobFilterParams };
+
 const SENIORITY_VALUES = ["junior", "mid", "senior", "lead"];
 const WORK_MODEL_VALUES = ["remote", "hybrid", "office"];
 const EMPLOYMENT_TYPE_VALUES = ["permanent", "fixed_term", "contractor", "freelance", "internship"];
@@ -47,6 +49,15 @@ export type SearchJobsVocab = {
 export type SearchJobsResult = {
   count: number;
   jobs: Job[];
+  /** The real, defensively-revalidated filters this search actually ran
+   *  with (never the model's raw, unvalidated tool args): real-usage
+   *  bug fix, the client's own "view all results on the jobs page" link
+   *  used to go to a bare `/jobs`, silently dropping everything the
+   *  conversation had established. Returning this lets the client build
+   *  a real `/jobs?...` URL via `serializeJobFilterParams()` that
+   *  reproduces the identical filtered view, not a second, independent
+   *  guess at one. */
+  filters: JobFilterParams;
 };
 
 function normalizeLabel(label: string): string {
@@ -91,5 +102,5 @@ export function searchJobs(allJobs: Job[], args: SearchJobsArgs, vocab: SearchJo
   const nearLocation = location ? { latitude: location.latitude, longitude: location.longitude } : null;
   const matches = allJobs.filter((job) => jobMatchesFilters(job, filters, nearLocation));
 
-  return { count: matches.length, jobs: matches.slice(0, MAX_RESULTS) };
+  return { count: matches.length, jobs: matches.slice(0, MAX_RESULTS), filters };
 }
