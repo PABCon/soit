@@ -30,16 +30,23 @@ export function AssistantTeaser() {
   }
 
   return (
-    // Full width again, per direct follow-up: a max-width cap (tried
-    // first, in response to a "huge space in the middle" report) read as
-    // the card itself being broken/too narrow on this page's much wider
-    // (2200px) content column. `justify-between` instead: the text
-    // column keeps its own natural width (no `flex-1` stretching it) and
-    // the illustration sits flush at the opposite edge, so whatever space
-    // is left between them reads as even, deliberate spacing rather than
-    // either side looking stranded.
-    <div className="mb-6 flex items-center justify-between gap-6 overflow-hidden rounded-2xl border border-line bg-gradient-to-br from-subtle to-white p-5 sm:p-6">
-      <div className="min-w-0">
+    // `justify-between` (previous round) still read as two stranded
+    // islands with one huge gap between them: it puts all the slack
+    // space in the middle only, with the text and image still flush
+    // against the card's own edges. Direct follow-up asked for the
+    // literal `justify-content: around` model instead: visible margin
+    // on both outer sides *and* a gap between the two, each getting a
+    // fair share of the leftover space rather than it all pooling in
+    // one spot.
+    <div className="mb-6 flex items-center justify-around gap-6 overflow-hidden rounded-2xl border border-line bg-gradient-to-br from-subtle to-white p-5 sm:p-6">
+      {/* A real, fixed width here (not a max-width on the form alone):
+       *  with no `flex-grow`, a flex item with only a `max-w-*` cap still
+       *  sizes to its own content's fit-content width, which left the
+       *  input visibly narrower than its cap even after raising it. An
+       *  explicit width makes the column's size deterministic, so the
+       *  form (now `w-full` of this column rather than its own separate
+       *  cap) genuinely fills it. */}
+      <div className="w-full min-w-0 sm:w-[480px]">
         <span className="inline-flex items-center gap-1 rounded-full bg-pine/15 px-2.5 py-1 text-xs font-semibold text-pine">
           <Sparkles aria-hidden className="h-3 w-3" />
           {t("badge")}
@@ -47,7 +54,7 @@ export function AssistantTeaser() {
         <h2 className="mt-2 text-lg font-bold text-ink sm:text-xl">{t("heading")}</h2>
         <p className="mt-1 text-sm text-muted">{t("subtitle")}</p>
 
-        <form onSubmit={handleSubmit} className="mt-4 flex max-w-xl gap-2">
+        <form onSubmit={handleSubmit} className="mt-4 flex w-full gap-2">
           <input
             value={value}
             onChange={(e) => setValue(e.target.value)}

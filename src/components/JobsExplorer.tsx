@@ -333,8 +333,19 @@ export function JobsExplorer({
        *  above the row. Round-7: the "All" chip is removed — it had no
        *  wired behavior worth keeping as its own element; a real
        *  "clear quick filters" action is a separate feature to propose,
-       *  not something to invent here. */}
-      <div ref={quickFilterRowRef} className="flex flex-nowrap gap-x-2 overflow-x-hidden pt-1">
+       *  not something to invent here.
+       *
+       *  Real-usage follow-up: with smaller chips, a page this wide often
+       *  has room for every real quick-filter entry well before using the
+       *  whole row, left-packed with a small fixed gap, reading as
+       *  clustered on the left with dead space on the right. `gap-x-2`
+       *  stays as the guaranteed minimum between chips; `justify-between`
+       *  spends whatever's left over growing those gaps so the shown
+       *  chips span the row's full width evenly instead. Exactly as safe
+       *  as the fixed-gap version: `justify-between` only ever consumes
+       *  space the fit-count calculation above already confirmed was
+       *  free, never more, so it can't overflow. */}
+      <div ref={quickFilterRowRef} className="flex flex-nowrap justify-between gap-x-2 overflow-x-hidden pt-1">
         {quickFilters.slice(0, visibleQuickFilterCount).map((item) =>
           item.kind === "tech" ? (
             <CircleChip
