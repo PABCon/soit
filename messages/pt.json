@@ -43,7 +43,8 @@
     "soon": "Em breve",
     "collapse": "Reduzir menu",
     "expand": "Expandir menu",
-    "terminationCalculator": "Calculadora de rescisão"
+    "terminationCalculator": "Calculadora de rescisão",
+    "assistant": "Perguntar à IA"
   },
   "console": {
     "title": "Gerir recrutamento",
@@ -1832,5 +1833,23 @@
     "taxExemptionBody": "A compensação por cessação de contrato é isenta de IRS até um limite: a sua retribuição média mensal dos últimos 12 meses, multiplicada pelos seus anos de antiguidade, com um limite absoluto de 240× o salário mínimo. O que exceder esse limite é tributado como rendimento normal do trabalho. Isto é uma estimativa, não é aconselhamento fiscal.",
     "noticePeriodTerm": "Quanto aviso prévio tenho de dar se me demitir?",
     "noticePeriodBody": "30 dias se está há 2 anos ou menos na empresa, 60 dias se está há mais tempo, num contrato sem termo. Se não der o aviso prévio completo, deve automaticamente à entidade empregadora o salário correspondente aos dias em falta, quer esta consiga provar um prejuízo real quer não."
+  },
+  "assistant": {
+    "pageTitle": "Assistente de Procura de Emprego",
+    "pageDescription": "Procure vagas de IT em Portugal descrevendo o que procura, em vez de filtrar manualmente um portal de vagas.",
+    "heading": "Pergunte, não procure",
+    "subtitle": "Diga ao assistente o que procura em linguagem simples. Por agora só consegue pesquisar; candidatar-se continua a ser feito na página da vaga.",
+    "inputPlaceholder": "ex. Vagas remotas de React em Lisboa acima de 2500",
+    "sendButton": "Enviar",
+    "examplesHeading": "Experimente, por exemplo:",
+    "exampleOne": "Vagas remotas de React sénior",
+    "exampleTwo": "Vagas de Python no Porto acima de 3000",
+    "exampleThree": "Vagas júnior, qualquer localização",
+    "noResults": "Nenhuma vaga correspondeu a essa pesquisa.",
+    "viewAllOnJobsPage": "Ver todos os resultados na página de vagas",
+    "rateLimitedMessage": "Enviou muitas mensagens num curto período. Tente novamente daqui a pouco.",
+    "errorMessage": "Algo correu mal. Tente novamente.",
+    "thinking": "A pensar…",
+    "resultsCount": "{count, plural, one {# vaga encontrada} other {# vagas encontradas}}"
   }
 }

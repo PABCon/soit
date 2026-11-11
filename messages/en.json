@@ -43,7 +43,8 @@
     "soon": "Coming soon",
     "collapse": "Collapse menu",
     "expand": "Expand menu",
-    "terminationCalculator": "Termination calculator"
+    "terminationCalculator": "Termination calculator",
+    "assistant": "Ask AI"
   },
   "console": {
     "title": "Manage recruitments",
@@ -1832,5 +1833,23 @@
     "taxExemptionBody": "Compensation for contract cessation is exempt from IRS up to a threshold: your average monthly pay over the last 12 months, multiplied by your years of service, capped at 240× the minimum wage. Anything above that threshold is taxed as normal employment income. This is an estimate, not tax advice.",
     "noticePeriodTerm": "How much notice do I have to give if I resign?",
     "noticePeriodBody": "30 days if you've been there 2 years or less, 60 days if more, for a permanent contract. If you don't give full notice, you automatically owe your employer your pay for the missing days, whether or not they can show any real loss."
+  },
+  "assistant": {
+    "pageTitle": "Job Search Assistant",
+    "pageDescription": "Search IT jobs in Portugal by describing what you're looking for, instead of manually filtering a job board.",
+    "heading": "Ask, don't search",
+    "subtitle": "Tell the assistant what you're looking for in plain language. It can only search right now; applying still happens on the job page.",
+    "inputPlaceholder": "e.g. Remote React jobs in Lisbon paying over 2500",
+    "sendButton": "Send",
+    "examplesHeading": "Try something like:",
+    "exampleOne": "Remote senior React jobs",
+    "exampleTwo": "Python jobs in Porto paying over 3000",
+    "exampleThree": "Junior jobs, any location",
+    "noResults": "No jobs matched that search.",
+    "viewAllOnJobsPage": "See all results on the jobs page",
+    "rateLimitedMessage": "You've sent a lot of messages in a short time. Please try again in a little while.",
+    "errorMessage": "Something went wrong. Please try again.",
+    "thinking": "Thinking…",
+    "resultsCount": "{count, plural, one {# matching job} other {# matching jobs}}"
   }
 }
