@@ -6143,3 +6143,71 @@ new `trackingStartedAt` behavior), `npm run build`, and `check:i18n`
 (1555 keys, in sync) all pass. Fixture cleaned up afterward; Playwright
 reinstalled `--no-save` for this verification and fully uninstalled
 again once done.
+
+## AI/answer-engine audit (AEO/GEO)
+
+A direct ask: is the site optimized for AI models (ChatGPT, Claude,
+Perplexity, Google AI Overviews) to surface/recommend Just IT in their
+answers? Audited the live site exactly as a crawler would see it
+(response headers, rendered JSON-LD, robots.txt) rather than guessing.
+
+**Already solid, confirmed directly**: `robots.ts` allows everything
+(`userAgent: "*", allow: "/"`): GPTBot/ClaudeBot/PerplexityBot/
+Google-Extended are all implicitly allowed, nothing blocks them. No
+middleware/proxy (`src/proxy.ts`, Next 16's renamed convention for
+what used to be `middleware.ts`) does any bot filtering, no BotID, no
+challenge layer. Canonical URLs, hreflang alternates (pt/en/x-default),
+`JobPosting` schema on every job, `Article` schema on blog posts, a
+real public API at `/developers`, all correct before this pass.
+
+**Real gaps found and fixed**: the site-wide `Organization` JSON-LD
+(`[locale]/layout.tsx`) had no `description` at all, the single field
+AI models and knowledge graphs lean on most to understand what an
+entity is, now set from the already-approved `brand.shareDescription`
+copy, no new text written. No `llms.txt` existed (the emerging
+llmstxt.org convention, a curated plain-text summary for AI crawlers,
+the same role robots.txt/sitemap.xml play for search crawlers); added
+one as a plain route handler at `src/app/llms.txt/route.ts` (no Next.js
+file convention covers this the way `robots.ts`/`sitemap.ts` do). No
+page used `FAQPage` schema anywhere; added a shared `faqPageJsonLd()`
+helper (`src/lib/json-ld.ts`) and wired it into all three guide pages
+(contrato-trabalho, recibos-verdes, empresa-propria), built directly
+from their own existing term/heading + body arrays, so the schema's
+questions/answers are the exact same text already live on the page,
+nothing invented.
+
+**A real honesty check caught while writing the llms.txt copy**: the
+obvious, strongest claim to make ("every listing always shows a real
+salary") is no longer strictly true since the Top Employer billing
+work added a paid-tier salary-hide option: confirmed directly against
+the live database that exactly 1 of 105 live listings currently hides
+its salary. Worded the new llms.txt precisely instead of copying the
+existing (now slightly overstated) site tagline: "every posting must
+include a real salary range before it can be published," which is
+unconditionally true regardless of public display, rather than
+repeating a near-universal-but-not-literally-always claim into a new
+place.
+
+**Real-world validation, from the same conversation**: asked ChatGPT
+and Claude directly for "best IT job sites Portugal." GPT already
+lists Just IT (#3, "salary transparency as a differentiator"); Claude
+initially left it out and, asked directly, gave specific, candid
+feedback worth keeping on file rather than acting on unilaterally:
+listing volume/track record is still the real gap, not a technical
+one; Just IT doesn't yet appear in the "best IT job sites" listicles
+and roundups AI answers pull from (a content/outreach gap, not
+code); the salary calculator is likely the strongest standalone SEO
+asset, more than the job listings themselves; and Claude noticed the
+same salary-visibility tension independently ("you've let employers
+hide salary… that's the one claim that would make me recommend Just
+IT over a competitor"). None of these are code fixes, flagged here
+for a deliberate product/content/BD conversation, not quietly
+actioned.
+
+Verified live against production directly (not just locally): fetched
+`/llms.txt` and confirmed its real content; fetched `/pt/jobs` and
+confirmed the `Organization` entity's `description` field renders
+correctly; fetched all three guide pages and confirmed `FAQPage`
+schema with the correct question count on each (7/9/6). `tsc
+--noEmit`, `eslint`, the full test suite (158 passing), `npm run
+build`, and `check:i18n` (1555 keys, in sync) all pass.
