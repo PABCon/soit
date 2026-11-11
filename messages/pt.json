@@ -1850,6 +1850,22 @@
     "rateLimitedMessage": "Enviou muitas mensagens num curto período. Tente novamente daqui a pouco.",
     "errorMessage": "Algo correu mal. Tente novamente.",
     "thinking": "A pensar…",
-    "resultsCount": "{count, plural, one {# vaga encontrada} other {# vagas encontradas}}"
+    "resultsCount": "{count, plural, one {# vaga encontrada} other {# vagas encontradas}}",
+    "chatName": "JT",
+    "chatSubtitle": "O teu assistente de carreira com IA",
+    "newChat": "Nova conversa",
+    "welcomeHeading": "Como posso ajudar?",
+    "welcomeSubtitle": "Diz-me o que procuras. Vamos encontrar a tua próxima oportunidade.",
+    "followUpRemote": "Mostrar só vagas remotas",
+    "followUpSenior": "Mostrar só vagas sénior",
+    "followUpCompare": "Compara estas vagas"
+  },
+  "assistantTeaser": {
+    "badge": "Novo",
+    "heading": "Encontra a tua próxima oportunidade de IT com o JT",
+    "subtitle": "Descreve, nas tuas palavras, a vaga que procuras.",
+    "inputPlaceholder": "ex. Vagas remotas de Java em Portugal acima de 3.000€...",
+    "helper": "Pesquisa vagas, explora oportunidades e recebe conselhos de carreira.",
+    "submit": "Perguntar ao JT"
   }
 }

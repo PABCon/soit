@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { JobsExplorer, type QuickFilterOption } from "@/components/JobsExplorer";
 import { RecommendationsTeaser } from "@/components/candidate/RecommendationsTeaser";
+import { AssistantTeaser } from "@/components/candidate/AssistantTeaser";
 import { Link } from "@/i18n/navigation";
 import { getLiveJobs } from "@/lib/db/jobs";
 import { getFeaturedTechCounts, getTechTags } from "@/lib/db/tech-tags";
@@ -109,6 +110,11 @@ export default async function JobsPage({ params }: Props) {
        *  which matters for SEO/accessibility in general (a landmark
        *  heading is normally expected on every page), but it's what was
        *  explicitly asked for. */}
+      {/* The chat assistant (JT) banner leads: the explicit ask behind
+       *  this round was making it impossible to miss on the page every
+       *  visitor actually lands on, ahead of the existing recommendations
+       *  teaser below it. */}
+      <AssistantTeaser />
       <RecommendationsTeaser />
 
       <div className="mt-6">

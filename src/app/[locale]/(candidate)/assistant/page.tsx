@@ -3,7 +3,7 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import { AssistantChat } from "@/components/candidate/AssistantChat";
 import { localeAlternates, socialMeta } from "@/lib/seo";
 
-type Props = { params: Promise<{ locale: string }> };
+type Props = { params: Promise<{ locale: string }>; searchParams: Promise<{ q?: string }> };
 
 const SITE = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
 
@@ -31,8 +31,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
  *  accessible, session-only (no persisted history, no new DB table).
  *  Apply-via-chat, persisted history, and any employer-side action are
  *  explicitly later phases, not built here. */
-export default async function AssistantPage({ params }: Props) {
+export default async function AssistantPage({ params, searchParams }: Props) {
   const { locale } = await params;
+  const { q } = await searchParams;
   setRequestLocale(locale);
   const t = await getTranslations({ locale, namespace: "assistant" });
 
@@ -41,7 +42,7 @@ export default async function AssistantPage({ params }: Props) {
       <h1 className="font-display text-2xl font-bold">{t("heading")}</h1>
       <p className="mt-2 max-w-2xl text-sm text-muted">{t("subtitle")}</p>
       <div className="mt-6">
-        <AssistantChat />
+        <AssistantChat initialQuery={q} />
       </div>
     </>
   );

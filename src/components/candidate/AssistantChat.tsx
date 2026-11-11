@@ -1,14 +1,38 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport } from "ai";
+import { Sparkles } from "lucide-react";
 import { JobRow } from "@/components/JobRow";
 import { Link } from "@/i18n/navigation";
-import type { SearchJobsResult } from "@/lib/assistant/search-jobs";
+import type { SearchJobsArgs, SearchJobsResult } from "@/lib/assistant/search-jobs";
 
 const EXAMPLE_KEYS = ["exampleOne", "exampleTwo", "exampleThree"] as const;
+
+function JtAvatar({ className = "h-8 w-8" }: { className?: string }) {
+  // Same plain-img convention RecommendationsTeaser/AssistantTeaser
+  // already use for their own static illustrations; a small avatar isn't
+  // worth next/image's overhead.
+  // eslint-disable-next-line @next/next/no-img-element
+  return <img src="/jt-avatar.png" alt="" className={`shrink-0 rounded-full object-cover ${className}`} />;
+}
+
+/** Static, context-aware quick replies shown under the most recent
+ *  search result only, grounded in the actual args the tool was just
+ *  called with (never a fabricated suggestion unrelated to what's on
+ *  screen), matching the reference design's "suggested follow-ups" row.
+ *  Clicking one just sends its own text as a normal next message; the
+ *  model combines it with the existing conversation itself, no special
+ *  client-side filter-merging logic needed. */
+function suggestFollowUps(args: SearchJobsArgs, t: (key: string) => string): string[] {
+  const suggestions: string[] = [];
+  if (!args.remoteOnly) suggestions.push(t("followUpRemote"));
+  if (!(args.seniority ?? []).includes("senior")) suggestions.push(t("followUpSenior"));
+  suggestions.push(t("followUpCompare"));
+  return suggestions.slice(0, 3);
+}
 
 /** A dedicated, Claude-style single-window chat for searching jobs by
  *  natural language, Phase 1 of the chat assistant plan (search/
@@ -20,10 +44,10 @@ const EXAMPLE_KEYS = ["exampleOne", "exampleTwo", "exampleThree"] as const;
  *  `useChat` state, nothing is persisted, and the conversation resets on
  *  reload. Works for anonymous visitors, same as /jobs itself, bounded
  *  by a server-side rate limit instead of a login requirement. */
-export function AssistantChat() {
+export function AssistantChat({ initialQuery }: { initialQuery?: string }) {
   const t = useTranslations("assistant");
   const [input, setInput] = useState("");
-  const { messages, sendMessage, status, error } = useChat({
+  const { messages, sendMessage, setMessages, status, error } = useChat({
     transport: new DefaultChatTransport({ api: "/api/assistant" }),
   });
 
@@ -34,14 +58,67 @@ export function AssistantChat() {
     setInput("");
   }
 
+  // The /jobs page's own "ask JT" banner hands off a first query via
+  // ?q=... on the URL, sent once automatically, so landing here from
+  // that banner is a single motion rather than "type it again."
+  const sentInitialQuery = useRef(false);
+  useEffect(() => {
+    if (!initialQuery) return;
+    // Dev-mode React Strict Mode double-invokes this effect (mount,
+    // cleanup, mount again) synchronously before the browser yields to
+    // the event loop. Marking `sentInitialQuery` true at the top of the
+    // effect body (the obvious guard) still lets the *first* invocation's
+    // sendMessage() call fire, only for its underlying request to be
+    // aborted a moment later by the synthetic cleanup, with the guard
+    // then correctly preventing the second invocation from retrying.
+    // Net effect: zero messages ever actually sent. Deferring the actual
+    // send via a cleared-on-cleanup timeout is the standard fix: both
+    // synthetic invocations schedule and immediately cancel their own
+    // timer, so only the one effect instance that survives past the
+    // synchronous double-invoke dance ever fires its callback.
+    const timer = setTimeout(() => {
+      if (sentInitialQuery.current) return;
+      sentInitialQuery.current = true;
+      handleSend(initialQuery);
+    }, 0);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialQuery]);
+
   const isBusy = status === "submitted" || status === "streaming";
+  const lastMessage = messages.at(-1);
 
   return (
     <div className="flex h-[calc(100dvh-10rem)] flex-col rounded-xl border border-line bg-white">
+      <div className="flex items-center justify-between gap-3 border-b border-line px-4 py-3">
+        <div className="flex min-w-0 items-center gap-2.5">
+          <JtAvatar className="h-9 w-9" />
+          <div className="min-w-0">
+            <p className="truncate text-sm font-bold text-ink">{t("chatName")}</p>
+            <p className="truncate text-xs text-muted">{t("chatSubtitle")}</p>
+          </div>
+        </div>
+        {messages.length > 0 && (
+          <button
+            type="button"
+            onClick={() => setMessages([])}
+            className="shrink-0 rounded-lg border border-line px-3 py-1.5 text-xs font-medium text-ink hover:border-pine hover:text-pine"
+          >
+            {t("newChat")}
+          </button>
+        )}
+      </div>
+
       <div className="flex-1 space-y-4 overflow-y-auto p-4">
         {messages.length === 0 && (
-          <div className="mx-auto max-w-md pt-8 text-center">
-            <p className="text-sm text-muted">{t("examplesHeading")}</p>
+          <div className="mx-auto max-w-md pt-6 text-center">
+            <span className="mx-auto flex h-10 w-10 items-center justify-center rounded-full bg-pine/10">
+              <Sparkles aria-hidden className="h-5 w-5 text-pine" />
+            </span>
+            <p className="mt-3 text-base font-bold text-ink">{t("welcomeHeading")}</p>
+            <p className="mt-1 text-sm text-muted">{t("welcomeSubtitle")}</p>
+
+            <p className="mt-6 text-sm text-muted">{t("examplesHeading")}</p>
             <div className="mt-3 flex flex-wrap justify-center gap-2">
               {EXAMPLE_KEYS.map((key) => (
                 <button
@@ -58,14 +135,12 @@ export function AssistantChat() {
         )}
 
         {messages.map((message) => (
-          <div key={message.id} className={message.role === "user" ? "flex justify-end" : "flex justify-start"}>
-            <div
-              className={
-                message.role === "user"
-                  ? "max-w-[80%] rounded-2xl rounded-tr-sm bg-pine px-4 py-2.5 text-sm text-white"
-                  : "max-w-[90%] space-y-3"
-              }
-            >
+          <div
+            key={message.id}
+            className={message.role === "user" ? "flex justify-end" : "flex items-start gap-2.5"}
+          >
+            {message.role === "assistant" && <JtAvatar className="mt-0.5 h-7 w-7" />}
+            <div className={message.role === "user" ? "max-w-[80%] rounded-2xl rounded-tr-sm bg-pine px-4 py-2.5 text-sm text-white" : "min-w-0 max-w-[90%] space-y-3"}>
               {message.parts.map((part, index) => {
                 if (part.type === "text") {
                   return (
@@ -78,10 +153,12 @@ export function AssistantChat() {
                 if (part.type === "tool-searchJobs" && part.state === "output-available") {
                   // `useChat` has no compile-time link to this route's own
                   // tool definition (that would mean importing server-only
-                  // code into the client bundle), this cast is scoped to
-                  // the one shape `searchJobs()`'s own return type actually
-                  // has, re-exported from the same module the route uses.
+                  // code into the client bundle), these casts are scoped
+                  // to the two shapes `searchJobs()` itself actually has,
+                  // re-exported from the same module the route uses.
                   const { jobs, count } = part.output as SearchJobsResult;
+                  const args = part.input as SearchJobsArgs;
+                  const isLastMessage = message.id === lastMessage?.id;
                   return (
                     <div key={index} className="space-y-2">
                       <p className="px-1 text-xs font-medium text-muted">
@@ -94,6 +171,20 @@ export function AssistantChat() {
                         <Link href="/jobs" className="block px-1 text-xs font-medium text-pine hover:underline">
                           {t("viewAllOnJobsPage")}
                         </Link>
+                      )}
+                      {jobs.length > 0 && isLastMessage && !isBusy && (
+                        <div className="flex flex-wrap gap-1.5 pt-1">
+                          {suggestFollowUps(args, t).map((label) => (
+                            <button
+                              key={label}
+                              type="button"
+                              onClick={() => handleSend(label)}
+                              className="rounded-full border border-line bg-white px-3 py-1 text-xs font-medium text-pine hover:border-pine"
+                            >
+                              {label}
+                            </button>
+                          ))}
+                        </div>
                       )}
                     </div>
                   );
@@ -114,7 +205,8 @@ export function AssistantChat() {
         ))}
 
         {isBusy && messages.at(-1)?.role === "user" && (
-          <div className="flex justify-start">
+          <div className="flex items-start gap-2.5">
+            <JtAvatar className="mt-0.5 h-7 w-7" />
             <p className="rounded-2xl rounded-tl-sm bg-subtle px-4 py-2.5 text-sm text-muted">{t("thinking")}</p>
           </div>
         )}

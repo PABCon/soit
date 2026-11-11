@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { after } from "next/server";
 import { convertToModelMessages, createUIMessageStreamResponse, isStepCount, streamText, tool, toUIMessageStream, type UIMessage } from "ai";
 import { z } from "zod";
 import { Ratelimit } from "@upstash/ratelimit";
@@ -8,7 +9,27 @@ import { getTechTags } from "@/lib/db/tech-tags";
 import { getJobCategories } from "@/lib/db/job-categories";
 import { getLocations } from "@/lib/db/locations";
 import { getSpokenLanguages } from "@/lib/db/spoken-languages";
-import { searchJobs, type SearchJobsVocab } from "@/lib/assistant/search-jobs";
+import { searchJobs, type SearchJobsArgs, type SearchJobsVocab } from "@/lib/assistant/search-jobs";
+import { logEvent } from "@/lib/events";
+
+/** Fire-and-forget usage tracking (the "how do we track usage" ask):
+ *  reuses the existing `events` table every other analytics feature in
+ *  this project already writes to (see job.viewed/job.apply_clicked),
+ *  rather than new infrastructure. Deliberately logs only structured,
+ *  controlled-vocabulary facts (session id, turn count, result count,
+ *  category/seniority/work-model/remote/salary-floor/location), never
+ *  the user's own free-text message or the free-text `tech`/`q` args a
+ *  model could echo back from it, same "never log raw user content"
+ *  caution this project already applies to its email templates. `after()`
+ *  keeps this off the response's own critical path, same pattern
+ *  `applications.ts` already established for its own notification sends. */
+function trackAssistantEvent(type: string, payload: Record<string, unknown>) {
+  try {
+    after(() => logEvent(type, payload));
+  } catch {
+    void logEvent(type, payload);
+  }
+}
 
 // This project's first streaming, tool-calling AI feature: every other
 // file under src/lib/ai/ is one-shot generateText/Output.object. Every
@@ -79,6 +100,12 @@ export async function POST(req: Request) {
 
   const { messages }: { messages: UIMessage[] } = await req.json();
 
+  trackAssistantEvent("assistant.message_sent", {
+    sessionId,
+    isNewSession: isNew,
+    turn: messages.filter((m) => m.role === "user").length,
+  });
+
   const [allJobs, techTags, categories, locations, languages] = await Promise.all([
     getLiveJobs(),
     getTechTags(),
@@ -114,7 +141,21 @@ export async function POST(req: Request) {
           locationSlug: z.string().optional(),
           radiusKm: z.number().optional().describe("Search radius in km around locationSlug, defaults to 25"),
         }),
-        execute: async (args) => searchJobs(allJobs, args, vocab),
+        execute: async (args: SearchJobsArgs) => {
+          const result = searchJobs(allJobs, args, vocab);
+          trackAssistantEvent("assistant.search_performed", {
+            sessionId,
+            resultCount: result.count,
+            categorySlug: args.categorySlug ?? null,
+            seniority: args.seniority ?? [],
+            workModel: args.workModel ?? [],
+            employmentType: args.employmentType ?? [],
+            remoteOnly: args.remoteOnly ?? false,
+            minSalary: args.minSalary ?? 0,
+            locationSlug: args.locationSlug ?? null,
+          });
+          return result;
+        },
       }),
     },
     stopWhen: isStepCount(3),
