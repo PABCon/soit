@@ -6580,3 +6580,84 @@ suite (195 passing, unaffected), `npm run build`, and `check:i18n`
 (1660 keys, in sync, the removed `assistant.heading`/`subtitle`/
 `welcomeHeading`/`welcomeSubtitle` keys balanced by the new
 `assistant.openingMessage`) all pass.
+
+## JT follow-up: even banner spacing, compact tech chips, chat markdown, a real pre-filtered link
+
+A fourth round of real-usage feedback on the same JT work, from
+actually using the live, just-fixed version:
+
+1. **The banner's `max-w-4xl` cap, from the previous round, was itself
+   the wrong fix.** It solved the "huge space in the middle" report but
+   now read as the card being broken or too narrow on this page's much
+   wider content column, a real, direct correction ("make it full width
+   and just use the distribute in between"). Reverted to full width;
+   `justify-between` replaces the capped width, so the text column
+   keeps its own natural size (no `flex-1` stretching it) and the
+   illustration sits flush at the box's opposite edge, the same even
+   look regardless of how wide the page's own content column is.
+2. **The quick-filter tech/category chip row was contributing to "too
+   much UI"** before the real job list, with an explicit preference
+   given up front: keep every chip visible, don't hide any. Shrunk the
+   whole chip (`CircleChip` in `JobsExplorer.tsx`): 72px slot down to
+   56px, the 40px icon circle down to 32px, smaller label/badge text to
+   match. Noticeably cuts the row's own height and, as a side effect,
+   fits more chips in the same row width for free (the same single-row,
+   fixed-width measurement logic, just a smaller per-chip number).
+3. **The assistant's own replies were rendering literal, unrendered
+   markdown**: `- ` bullets and `**bold**` field labels showing up as
+   plain text, all run together on one line. Root cause confirmed
+   identical to a bug this project already fixed once for job
+   descriptions (`JobDescriptionBody.tsx`): a plain `<p>` collapses the
+   model's real `\n`-separated structure per normal HTML whitespace
+   rules, so the structure exists in the string but never renders. New
+   `src/components/candidate/ChatMarkdown.tsx` mirrors
+   `JobDescriptionBody.tsx`'s own minimal block parser (`-`/`*`-prefixed
+   lines become a real `<ul>`, everything else a paragraph) and adds
+   inline `**bold**` → `<strong>` parsing on top, the one inline style
+   actually observed in real model output. Wired into `AssistantChat`'s
+   own text-part rendering for assistant messages only (user messages
+   stay plain text, they don't write markdown).
+4. **A second, smaller bug caught by this same verification pass, not
+   reported, found live**: every inline job card in the chat showed a
+   stray bullet dot. Root cause: `JobRow`'s own root element is an
+   `<li>` (true everywhere else it's used, e.g. `JobsExplorer.tsx`'s own
+   `<ul className="flex flex-col gap-2">`), but `AssistantChat.tsx`
+   never wrapped its own `jobs.map(...)` in a real `<ul>` when the
+   feature was first built. A bare `<li>` still gets the browser's
+   default list-item marker regardless of whether it has a `<ul>`
+   parent, so every job card in the chat silently carried one, mostly
+   unnoticed until the chip/layout changes drew more attention to it.
+   Fixed by wrapping the results in a real `<ul>`, same convention as
+   everywhere else.
+5. **"See all results on the jobs page" went to a bare `/jobs`**,
+   silently dropping every filter the conversation had actually
+   established, a real, reported bug. Root cause: the link only ever
+   had the model's raw, unvalidated tool-call args to work with, not
+   the real, defensively-revalidated filter set `searchJobs()` actually
+   matched against. `SearchJobsResult` now also returns `filters` (the
+   same `JobFilterParams` object the function already built internally,
+   just not previously returned). New `serializeJobFilterParams()` in
+   `match-filters.ts`, the exact inverse of the already-existing
+   `parseJobFilterParams()` (same keys, same comma-joined list
+   encoding, round-trip tested), builds a real `/jobs?...` URL from it,
+   so the link reproduces the identical filtered view `/jobs` itself
+   would show, not a second, independent guess at one.
+
+Verified live via Playwright at 1920x1080 (installed `--no-save`, fully
+uninstalled after): the banner's text and illustration sit adjacent
+with even spacing at full width, confirmed via a real screenshot, not
+just a bounding-box number; the quick-filter row visibly shows more
+chips in less vertical height (confirmed a previously-cut-off chip,
+"Kubernetes," now visible); a real conversation's reply renders actual
+`<strong>` and `<li>` elements with zero literal `**`/`-` characters
+leaking into the visible text; the stray per-job-card bullet is gone,
+confirmed via a focused screenshot before and after the fix; the
+"view all results" link carries real query params matching the actual
+search (`/jobs?q=Business+Analyst`, not a bare `/jobs`). Re-verified
+live on `https://justit.pt` after deploy: the banner renders correctly
+and a direct POST to the production `/api/assistant` endpoint confirmed
+the response now includes a real `filters` object. `npx tsc --noEmit`,
+`eslint`, the full test suite (198 passing, +3 for
+`serializeJobFilterParams`'s round-trip and `searchJobs()`'s own
+revalidated-filters behavior), `npm run build`, and `check:i18n` (1660
+keys, unaffected by this round) all pass.
