@@ -6661,3 +6661,50 @@ the response now includes a real `filters` object. `npx tsc --noEmit`,
 `serializeJobFilterParams`'s round-trip and `searchJobs()`'s own
 revalidated-filters behavior), `npm run build`, and `check:i18n` (1660
 keys, unaffected by this round) all pass.
+
+## JT banner: real justify-around spacing and a genuinely wider input
+
+A direct correction on the previous round's `justify-between` fix:
+still read as two stranded islands with one huge gap pooling all the
+slack space in the middle, not the even look that was actually wanted.
+Explicit instruction: "apply the justify-content-around logic." Swapped
+to `justify-around`, which gives visible margin on both outer edges
+*plus* a gap between the text and the illustration, rather than every
+bit of free space collecting in one spot.
+
+**The real reason the input still looked too narrow even after the
+previous round raised its `max-w-*` cap**, found by direct measurement
+rather than guessed at again: with no `flex-grow`, a flex item sized
+only by a `max-w-*` still collapses to its own content's fit-content
+width, not the cap, so the form's own measured width was only 346px
+despite a `max-w-3xl` (768px) ceiling. Fixed by giving the text column
+itself a real, fixed width (480px) and having the form fill it directly
+(`w-full`) instead of carrying its own separate, now-irrelevant
+max-width. Confirmed via DOM measurement before and after: the input's
+rendered width went from 346px to a full 480px, with equal ~278px
+margins on both outer edges of the banner and a proportionally
+doubled ~529px middle gap between text and illustration, exactly
+matching real CSS `justify-content: space-around` math (each edge gets
+half a "share," the middle gets a full one).
+
+**The tech/category chip row's own `justify-between` fix from the
+previous round was re-verified, not re-guessed**: a screenshot glance
+read it as "still clustered left," but direct DOM measurement showed
+all 20 chips spread with consistent ~36px gaps from the row's left edge
+to its right edge, a false alarm from eyeballing a screenshot rather
+than an actual bug. Worth remembering generally: a screenshot read at a
+glance isn't a substitute for an actual geometry measurement when the
+two disagree, trust the measurement.
+
+Verified live via Playwright at 1920x1080, 1440x900, and 390px mobile
+(installed `--no-save`, fully uninstalled after): measured banner
+margins/gap match the expected 1:1:2 `space-around` ratio at desktop
+widths; the input's own rendered width is a full 480px; mobile (where
+the illustration is hidden) shows the text column correctly using the
+card's full width with no regression. Re-verified live on
+`https://justit.pt` after deploy (the first deploy attempt hit a
+transient Vercel CLI "Not authorized" error, a plain retry succeeded):
+the banner heading and the new `justify-around` class both confirmed
+present in the live page source. `npx tsc --noEmit`, `eslint`, the full
+test suite (198 passing, unaffected by this round), `npm run build`,
+and `check:i18n` all pass.
