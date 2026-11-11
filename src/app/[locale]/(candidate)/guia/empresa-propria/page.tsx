@@ -3,6 +3,7 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
 import { buttonClassName } from "@/components/Button";
 import { localeAlternates, socialMeta } from "@/lib/seo";
+import { safeJsonLd, faqPageJsonLd } from "@/lib/json-ld";
 
 type Props = { params: Promise<{ locale: string }> };
 
@@ -48,8 +49,13 @@ export default async function EmpresaPropriaGuidePage({ params }: Props) {
   setRequestLocale(locale);
   const t = await getTranslations({ locale, namespace: "empresaPropriaGuide" });
 
+  const faqItems = [...CORPORATE_TAX_SECTIONS, ...STANDALONE_SECTIONS, ...OWNER_TRADEOFF_SECTIONS, ["fitHeading", "fitBody"] as const].map(
+    ([question, answer]) => ({ question: t(question), answer: t(answer) }),
+  );
+
   return (
     <article className="mx-auto max-w-2xl">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: safeJsonLd(faqPageJsonLd(faqItems)) }} />
       <h1 className="font-display text-2xl font-bold sm:text-3xl">{t("heading")}</h1>
 
       <p className="mt-4 text-sm leading-relaxed text-ink">{t("introP1")}</p>
