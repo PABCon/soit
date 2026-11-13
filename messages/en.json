@@ -505,7 +505,7 @@
     "categoryPlaceholder": "Select a category…",
     "salaryLegend": "Salary — required, shown on every listing",
     "salaryMin": "Minimum",
-    "salaryMax": "Maximum",
+    "salaryMax": "Maximum (optional)",
     "salaryPeriod": "Period",
     "salaryPeriodOption": {
       "hour": "Per hour",

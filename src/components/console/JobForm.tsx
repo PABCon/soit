@@ -502,8 +502,10 @@ export function JobForm({
 
   // §job-import: a bulk-imported draft can land with no category/salary
   // yet — fine to just save as a draft, same as a human leaving the form
-  // half-filled; only actually publishing requires them, enforced here to
-  // match the server-side gate (saveJob's hasRequiredFields) exactly.
+  // half-filled; only actually publishing requires a category and a real
+  // minimum salary, enforced here to match the server-side gate (saveJob's
+  // hasRequiredFields) exactly. The maximum is deliberately optional, even
+  // to publish, see hasRequiredFields's own comment for why.
   function validate(publish: boolean): string | null {
     if (!title.trim()) return t("errorTitle");
     if (!description.trim()) return t("errorDescription");
@@ -511,9 +513,16 @@ export function JobForm({
     if (publish) {
       if (!categoryId) return t("errorCategory");
       const min = Number(salaryMin);
-      const max = Number(salaryMax);
       if (!min || min <= 0) return t("errorSalaryMin");
-      if (!max || max < min) return t("errorSalaryMax");
+      // Real-usage decision, 2026-11-13: the ceiling is optional, only the
+      // floor is required to publish, matching saveJob's own
+      // hasRequiredFields exactly. Still validated against the minimum
+      // when it IS provided, a real but incomplete max (below the min)
+      // is still a mistake worth catching.
+      if (salaryMax.trim()) {
+        const max = Number(salaryMax);
+        if (!max || max < min) return t("errorSalaryMax");
+      }
     }
     if (expiresAt && expiresAt <= new Date().toISOString().slice(0, 10)) return t("errorExpiresAt");
     return null;

@@ -165,28 +165,27 @@ export function toJob(row: JobRow): Job {
   };
 }
 
-/** Hides the salary on the public path when the employer has chosen to.
- *  A distinct step from toJob() itself, so the exact same mapper can serve
+/** Hides the salary on the public path when the employer has chosen to —
+ *  a distinct step from toJob() itself, so the exact same mapper can serve
  *  both the public feed (hidden) and the console's own job list (always
  *  real), without duplicating every other field. Exported for
  *  recommendations.ts, the one other candidate-facing consumer of raw
  *  JobRow-shaped data outside this file.
  *
- *  Real-usage decision, 2026-11-13: a paying company choosing to hide
- *  the salary can only ever hide the ceiling now, never the floor. Every
- *  live job always shows at least a real minimum, so "every listing on
- *  Just IT shows a real salary" stays true without exception, while a
- *  paying company still gets to keep its exact top-of-band private if it
- *  wants to, and still only earns the feed boost (the `autoBoost` check
- *  further down this file) by showing the full range. `contractSalaries`
- *  (the rarer secondary-employment-type ranges) stay hidden entirely
- *  here rather than getting the same min-only treatment:
- *  `ContractSalary.min`/`max` are both non-nullable, and widening that
- *  type for this smaller feature is a separate, bigger change this
- *  decision doesn't require. */
+ *  This all-or-nothing toggle is unchanged and deliberately stays that
+ *  way (2026-11-13 direct decision): a paying company that chooses to
+ *  hide still hides the whole thing, min included, that choice is a
+ *  real, sold feature, not something to quietly undercut. The separate
+ *  lever for "every listing shows at least a real number" is
+ *  `hasRequiredFields` below, which now only requires `salaryMin` to
+ *  publish at all, `salaryMax` is optional at creation time. A free or
+ *  paying company that never set a max, and hasn't chosen to hide, still
+ *  shows its real minimum here (salary_public stays true, nothing to
+ *  hide), the nudge toward sharing something real is in what's required
+ *  to publish, not in weakening what "hide" means. */
 export function hideSalaryIfPrivate(row: JobRow, job: Job): Job {
   if (row.salary_public) return job;
-  return { ...job, salaryMax: null, contractSalaries: [] };
+  return { ...job, salaryMin: null, salaryMax: null, contractSalaries: [] };
 }
 
 // `sortForFeed` lives in `@/lib/jobs/sort-feed` (a pure, dependency-light
@@ -645,7 +644,13 @@ export async function saveJob(
   // §job-import: a bulk-imported draft can be missing category/salary —
   // fine to save, never fine to publish, same DB-level guarantee
   // `jobs_published_requires_salary` enforces independently.
-  const hasRequiredFields = input.categoryId != null && input.salaryMin != null && input.salaryMax != null;
+  //
+  // Real-usage decision, 2026-11-13: salaryMax is deliberately not
+  // required here anymore, only salaryMin is. The intent is for a
+  // company to lean toward actually sharing a real minimum instead of
+  // reaching for the separate, all-or-nothing `salaryPublic` hide toggle
+  // just because they don't want to commit to an exact ceiling yet.
+  const hasRequiredFields = input.categoryId != null && input.salaryMin != null;
   // Security audit finding: this used to also require `liveCount <
   // company.job_ad_slot_cap` here, decided once in JS and then written
   // unconditionally — the exact same TOCTOU shape as the ad-credit race
