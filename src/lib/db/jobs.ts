@@ -165,15 +165,28 @@ export function toJob(row: JobRow): Job {
   };
 }
 
-/** Hides the salary on the public path when the employer has chosen to —
- *  a distinct step from toJob() itself, so the exact same mapper can serve
+/** Hides the salary on the public path when the employer has chosen to.
+ *  A distinct step from toJob() itself, so the exact same mapper can serve
  *  both the public feed (hidden) and the console's own job list (always
  *  real), without duplicating every other field. Exported for
  *  recommendations.ts, the one other candidate-facing consumer of raw
- *  JobRow-shaped data outside this file. */
+ *  JobRow-shaped data outside this file.
+ *
+ *  Real-usage decision, 2026-11-13: a paying company choosing to hide
+ *  the salary can only ever hide the ceiling now, never the floor. Every
+ *  live job always shows at least a real minimum, so "every listing on
+ *  Just IT shows a real salary" stays true without exception, while a
+ *  paying company still gets to keep its exact top-of-band private if it
+ *  wants to, and still only earns the feed boost (the `autoBoost` check
+ *  further down this file) by showing the full range. `contractSalaries`
+ *  (the rarer secondary-employment-type ranges) stay hidden entirely
+ *  here rather than getting the same min-only treatment:
+ *  `ContractSalary.min`/`max` are both non-nullable, and widening that
+ *  type for this smaller feature is a separate, bigger change this
+ *  decision doesn't require. */
 export function hideSalaryIfPrivate(row: JobRow, job: Job): Job {
   if (row.salary_public) return job;
-  return { ...job, salaryMin: null, salaryMax: null, contractSalaries: [] };
+  return { ...job, salaryMax: null, contractSalaries: [] };
 }
 
 // `sortForFeed` lives in `@/lib/jobs/sort-feed` (a pure, dependency-light

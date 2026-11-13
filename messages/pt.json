@@ -647,7 +647,8 @@
       "freelance": "Freelance",
       "internship": "Estágio"
     },
-    "notDisclosed": "Salário não divulgado"
+    "notDisclosed": "Salário não divulgado",
+    "from": "A partir de"
   },
   "jobs": {
     "title": "Vagas de IT",

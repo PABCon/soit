@@ -647,7 +647,8 @@
       "freelance": "Freelance",
       "internship": "Internship"
     },
-    "notDisclosed": "Salary not disclosed"
+    "notDisclosed": "Salary not disclosed",
+    "from": "From"
   },
   "jobs": {
     "title": "IT jobs",
