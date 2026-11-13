@@ -4,15 +4,13 @@ import { useMemo, useState, useTransition, type ReactNode } from "react";
 import { useTranslations } from "next-intl";
 import { Search, Briefcase, ListFilter, ArrowUpDown, ChevronDown, User, Info } from "lucide-react";
 import { Link, useRouter } from "@/i18n/navigation";
-import { updateStatusAction, openApplicantThreadAction } from "@/app/[locale]/(console)/recruit/jobs/[id]/applicants/actions";
+import { updateStageAction, openApplicantThreadAction } from "@/app/[locale]/(console)/recruit/jobs/[id]/applicants/actions";
 import { buttonClassName } from "@/components/Button";
 import { Badge } from "@/components/Badge";
 import { Dropdown } from "@/components/Dropdown";
-import type { CompanyApplicant, MyApplication } from "@/lib/db/applications";
-import { APPLICANT_STATUS_BADGE as STATUS_BADGE } from "@/lib/applicant-status-badge";
-
-type Status = MyApplication["status"];
-const STATUSES: Status[] = ["applied", "viewed", "responded", "rejected", "closed"];
+import type { CompanyApplicant } from "@/lib/db/applications";
+import type { ApplicationStage, CandidateBucket } from "@/lib/db/application-stages";
+import { BUCKET_BADGE } from "@/lib/applicant-status-badge";
 
 type Sort = "newest" | "oldest";
 
@@ -79,26 +77,39 @@ function MessageButton({ applicationId }: { applicationId: string }) {
  *  `overflow-x-auto` clipping the old absolute-positioned panel) instead
  *  of a separate `<select>` living in Actions, which left two different
  *  status displays on the same row. `onChange` updates the parent's
- *  optimistic state immediately; `updateStatusAction` persists in the
+ *  optimistic state immediately; `updateStageAction` persists in the
  *  background, same fire-and-forget pattern the old inline `<select>`
- *  already used here. */
+ *  already used here.
+ *
+ *  Custom pipeline stages: `stages` is the company's own list (every
+ *  option here is whatever label the employer themselves chose, not a
+ *  fixed set), and the badge is colored by `candidateBucket` rather
+ *  than by the stage itself, since the bucket is the one thing that
+ *  stays a small, fixed enum regardless of how a company names its
+ *  stages. */
 function StatusDropdown({
   jobId,
   applicationId,
-  status,
+  stages,
+  stageId,
+  stageLabel,
+  candidateBucket,
   onChange,
 }: {
   jobId: string;
   applicationId: string;
-  status: Status;
-  onChange: (status: Status) => void;
+  stages: ApplicationStage[];
+  stageId: string;
+  stageLabel: string;
+  candidateBucket: CandidateBucket;
+  onChange: (stage: ApplicationStage) => void;
 }) {
   const t = useTranslations("applicants");
 
-  function select(next: Status, close: () => void) {
+  function select(next: ApplicationStage, close: () => void) {
     onChange(next);
     close();
-    if (next !== status) updateStatusAction(jobId, applicationId, next);
+    if (next.id !== stageId) updateStageAction(jobId, applicationId, next.id);
   }
 
   return (
@@ -106,29 +117,29 @@ function StatusDropdown({
       portal
       trigger={
         <span className="inline-flex items-center gap-1">
-          <Badge variant={STATUS_BADGE[status]}>{t(`status.${status}`)}</Badge>
+          <Badge variant={BUCKET_BADGE[candidateBucket]}>{stageLabel}</Badge>
           <ChevronDown className="h-3 w-3 text-muted" aria-hidden="true" />
         </span>
       }
       triggerLabel={t("changeStatus")}
       triggerClassName="inline-flex items-center rounded-full hover:opacity-80"
       align="left"
-      panelClassName="w-40 rounded-lg border border-line bg-white py-1 shadow-md"
+      panelClassName="w-48 rounded-lg border border-line bg-white py-1 shadow-md"
     >
       {(close) => (
         <>
-          {STATUSES.map((s) => (
+          {stages.map((s) => (
             <button
-              key={s}
+              key={s.id}
               type="button"
               onClick={() => select(s, close)}
               className={
-                s === status
+                s.id === stageId
                   ? "block w-full px-3 py-1.5 text-left text-sm font-medium text-pine"
                   : "block w-full px-3 py-1.5 text-left text-sm text-ink hover:bg-paper"
               }
             >
-              {t(`status.${s}`)}
+              {s.label}
             </button>
           ))}
         </>
@@ -143,22 +154,36 @@ function StatusDropdown({
  *  "filter the already-fetched array" pattern `ConsoleJobsExplorer`
  *  already uses — no new query) above a real table, same functionality
  *  this list already had (view CV, message, change status). */
-export function AllApplicantsList({ applicants, locale }: { applicants: CompanyApplicant[]; locale: string }) {
+export function AllApplicantsList({
+  applicants,
+  stages,
+  locale,
+}: {
+  applicants: CompanyApplicant[];
+  stages: ApplicationStage[];
+  locale: string;
+}) {
   const t = useTranslations("applicants");
+  const tm = useTranslations("messaging");
 
   const [query, setQuery] = useState("");
   const [jobFilter, setJobFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [sort, setSort] = useState<Sort>("newest");
-  // Optimistic status overrides — the server action's own revalidatePath
+  // Optimistic stage overrides. The server action's own revalidatePath
   // targets the per-job applicants page, not this aggregated one, so a
-  // status change needs to update this list's own display immediately
+  // stage change needs to update this list's own display immediately
   // rather than waiting on a reload that was never coming.
-  const [statusOverrides, setStatusOverrides] = useState<Record<string, Status>>({});
+  const [stageOverrides, setStageOverrides] = useState<Record<string, ApplicationStage>>({});
 
   const effectiveApplicants = useMemo(
-    () => applicants.map((a) => (statusOverrides[a.id] ? { ...a, status: statusOverrides[a.id] } : a)),
-    [applicants, statusOverrides],
+    () =>
+      applicants.map((a) => {
+        const override = stageOverrides[a.id];
+        if (!override) return a;
+        return { ...a, stageId: override.id, stageLabel: override.label, candidateBucket: override.candidateBucket };
+      }),
+    [applicants, stageOverrides],
   );
 
   const jobs = useMemo(() => {
@@ -172,7 +197,8 @@ export function AllApplicantsList({ applicants, locale }: { applicants: CompanyA
     const result = effectiveApplicants.filter((a) => {
       if (q && !a.candidateName.toLowerCase().includes(q) && !a.jobTitle.toLowerCase().includes(q)) return false;
       if (jobFilter && a.jobId !== jobFilter) return false;
-      if (statusFilter && a.status !== statusFilter) return false;
+      if (statusFilter === "connected" && a.origin !== "match") return false;
+      if (statusFilter && statusFilter !== "connected" && a.stageId !== statusFilter) return false;
       return true;
     });
     result.sort((a, b) => {
@@ -211,11 +237,12 @@ export function AllApplicantsList({ applicants, locale }: { applicants: CompanyA
 
         <FilterSelect icon={<ListFilter className="h-4 w-4" aria-hidden="true" />} value={statusFilter} onChange={setStatusFilter}>
           <option value="">{t("allStatuses")}</option>
-          {STATUSES.map((s) => (
-            <option key={s} value={s}>
-              {t(`status.${s}`)}
+          {stages.map((s) => (
+            <option key={s.id} value={s.id}>
+              {s.label}
             </option>
           ))}
+          <option value="connected">{t("status.connected")}</option>
         </FilterSelect>
 
         <FilterSelect icon={<ArrowUpDown className="h-4 w-4" aria-hidden="true" />} value={sort} onChange={(v) => setSort(v as Sort)}>
@@ -257,7 +284,9 @@ export function AllApplicantsList({ applicants, locale }: { applicants: CompanyA
                           <Link href={`/recruit/applicants/${a.id}`} className="font-medium text-ink hover:text-pine hover:underline">
                             {a.candidateName}
                           </Link>
-                          <p className="truncate text-xs text-muted">{t("appliedFor", { job: a.jobTitle })}</p>
+                          <p className="truncate text-xs text-muted">
+                            {a.origin === "application" ? t("appliedFor", { job: a.jobTitle }) : t("connectedFor", { job: a.jobTitle })}
+                          </p>
                         </div>
                       </div>
                     </td>
@@ -270,12 +299,19 @@ export function AllApplicantsList({ applicants, locale }: { applicants: CompanyA
                       })}
                     </td>
                     <td className="px-4 py-3">
-                      <StatusDropdown
-                        jobId={a.jobId}
-                        applicationId={a.id}
-                        status={a.status}
-                        onChange={(s) => setStatusOverrides((o) => ({ ...o, [a.id]: s }))}
-                      />
+                      {a.origin === "application" ? (
+                        <StatusDropdown
+                          jobId={a.jobId}
+                          applicationId={a.id}
+                          stages={stages}
+                          stageId={a.stageId!}
+                          stageLabel={a.stageLabel!}
+                          candidateBucket={a.candidateBucket!}
+                          onChange={(s) => setStageOverrides((o) => ({ ...o, [a.id]: s }))}
+                        />
+                      ) : (
+                        <Badge variant="match">{t("status.connected")}</Badge>
+                      )}
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-2">
@@ -286,7 +322,15 @@ export function AllApplicantsList({ applicants, locale }: { applicants: CompanyA
                         ) : (
                           <span className="text-xs text-muted">{t("cvUnavailable")}</span>
                         )}
-                        <MessageButton applicationId={a.id} />
+                        {a.origin === "application" ? (
+                          <MessageButton applicationId={a.id} />
+                        ) : (
+                          a.threadId && (
+                            <Link href={`/recruit/messages/${a.threadId}`} className={buttonClassName()}>
+                              {tm("viewConversation")}
+                            </Link>
+                          )
+                        )}
                       </div>
                     </td>
                   </tr>

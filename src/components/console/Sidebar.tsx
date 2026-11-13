@@ -1,11 +1,12 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { Briefcase, Users, Mail, Plug, DollarSign, User, Building2, Phone } from "lucide-react";
+import { Briefcase, Users, Mail, Plug, DollarSign, User, Building2, Phone, BarChart3 } from "lucide-react";
 import { Link, usePathname } from "@/i18n/navigation";
 
-const MVP = [
+export const MVP = [
   { key: "myJobAds", href: "/recruit", Icon: Briefcase },
+  { key: "analytics", href: "/recruit/analytics", Icon: BarChart3 },
   { key: "matchmaking", href: "/recruit/matchmaking", Icon: Users },
   { key: "messages", href: "/recruit/messages", Icon: Mail },
   { key: "api", href: "/recruit/api", Icon: Plug },
@@ -59,18 +60,25 @@ export function Sidebar({ unreadMessageCount = 0 }: { unreadMessageCount?: numbe
   }
 
   return (
+    // Real-device report: the horizontal-scroll mobile tab strip this
+    // used to fall back to below `md` had no visible cue that more items
+    // sat off-screen (confirmed via a real iPhone screenshot — the last
+    // visible tab was cut mid-label at the viewport edge) and read as
+    // genuinely unpleasant to use. Replaced by MobileConsoleMenu's
+    // hamburger dropdown (ConsoleTopNav), the exact same pattern the
+    // candidate side's Rail already uses — this aside is desktop-only now.
     <aside
       className={
-        "flex w-full shrink-0 flex-col border-b border-line bg-white/60 px-3 py-4 " +
+        "hidden shrink-0 flex-col border-b border-line bg-white/60 px-3 py-4 " +
         // Sticky below ConsoleTopNav's own sticky h-14 header (same
         // "sticky top-<header height> + h-[calc(100dvh-<header height>)]"
         // recipe the candidate Rail already proved out) — only the
         // content to its right scrolls, matching the navbar never
         // scrolling itself.
-        "md:sticky md:top-14 md:h-[calc(100dvh-3.5rem)] md:w-60 md:self-start md:overflow-y-auto md:border-r md:border-b-0"
+        "md:flex md:sticky md:top-14 md:h-[calc(100dvh-3.5rem)] md:w-60 md:self-start md:overflow-y-auto md:border-r md:border-b-0"
       }
     >
-      <nav className="flex gap-0.5 overflow-x-auto md:flex-col md:overflow-visible">
+      <nav className="flex flex-col gap-0.5">
         {MVP.map(({ key, href, Icon }) => {
           const active = isActive(href);
           return (

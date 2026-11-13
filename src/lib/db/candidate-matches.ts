@@ -1,3 +1,4 @@
+import { after } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getMyEmployerContext } from "./companies";
@@ -45,9 +46,16 @@ import { generateMatchSummaries, generateSingleMatchSummary, type JobFactsForPro
 // *preference* the candidate submitted themselves is the same category
 // of non-identifying fact `preferred_work_model` already is, not a real
 // address or employer; still never `candidates.location`-shaped PII.
+// `location_id` (Phase 2 addition) is the candidate's own residence —
+// same curated 14-city table as the preferred-locations join above, so
+// the same "city-level fact, not a real address" privacy bar already
+// established for that join applies here too. Bare id only, no name
+// embed — scoring only ever compares it by id against a job's own
+// `location_id`, never renders it.
 const SCORABLE_CANDIDATE_SELECT = `
   id, years_experience, preferred_work_model, preferred_employment_type,
-  desired_salary_min, desired_salary_max, desired_salary_period,
+  desired_salary_min, desired_salary_max, desired_salary_period, location_id,
+  job_search_status,
   candidate_tech_tags ( tech_tag_id, level, tech_tags ( label ) ),
   candidate_preferred_categories ( category_id ),
   candidate_preferred_locations ( location_id, locations ( name ) ),
@@ -62,6 +70,8 @@ type ScorableCandidateRow = {
   desired_salary_min: number | null;
   desired_salary_max: number | null;
   desired_salary_period: string | null;
+  location_id: string | null;
+  job_search_status: "looking" | "open" | "not_open";
   candidate_tech_tags: { tech_tag_id: string; level: string | null; tech_tags: { label: string } }[];
   candidate_preferred_categories: { category_id: string }[];
   candidate_preferred_locations: { location_id: string; locations: { name: string } }[];
@@ -82,6 +92,14 @@ export type CandidateMatch = {
   hasWorkHistory: boolean;
   status: MatchStatus;
   isTopMatch: boolean;
+  /** Surfaced so an employer can see the real signal behind the
+   *  "actively looking" ranking boost below, not just feel its effect
+   *  silently. */
+  jobSearchStatus: "looking" | "open" | "not_open";
+  /** null until an employer has actually opened this candidate's match
+   *  detail page — see markMatchViewed's own comment. Drives the "new"
+   *  badge on both the list card and the per-job match count. */
+  viewedAt: string | null;
   /** null until an employer has generated it (or the list's own batch
    *  generation has run) — see generateMatchSummaries' own comment for
    *  why this is cached, not recomputed on every view. */
@@ -112,6 +130,8 @@ function candidatePrefsFromRow(row: ScorableCandidateRow): CandidatePrefsForScor
     salaryMin: row.desired_salary_min,
     salaryMax: row.desired_salary_max,
     salaryPeriod: row.desired_salary_period,
+    residenceLocationId: row.location_id,
+    jobSearchStatus: row.job_search_status,
   };
 }
 
@@ -120,13 +140,14 @@ type MatchNoteRow = {
   status: MatchStatus;
   ai_summary: MatchSummary | null;
   ai_summary_generated_at: string | null;
+  viewed_at: string | null;
 };
 
 async function fetchMatchNotes(companyId: string, jobId: string): Promise<Map<string, MatchNoteRow>> {
   const supabase = await createClient();
   const { data } = await supabase
     .from("candidate_match_notes")
-    .select("candidate_id, status, ai_summary, ai_summary_generated_at")
+    .select("candidate_id, status, ai_summary, ai_summary_generated_at, viewed_at")
     .eq("company_id", companyId)
     .eq("job_id", jobId);
   return new Map((data ?? []).map((row) => [row.candidate_id, row as MatchNoteRow]));
@@ -226,6 +247,8 @@ export async function getCandidateMatchesForJob(jobId: string, limit = 200): Pro
         hasWorkHistory: row.candidate_experience.length > 0,
         status: note?.status ?? "new",
         isTopMatch: false,
+        jobSearchStatus: row.job_search_status,
+        viewedAt: note?.viewed_at ?? null,
         aiSummary: note?.ai_summary ?? null,
         aiSummaryGeneratedAt: note?.ai_summary_generated_at ?? null,
       };
@@ -233,7 +256,17 @@ export async function getCandidateMatchesForJob(jobId: string, limit = 200): Pro
     })
     .filter((m) => m.matchScore >= MIN_MATCH_SCORE);
 
-  scored.sort((a, b) => b.matchScore - a.matchScore);
+  // "Look first to people actually looking" (the user's own framing): at
+  // an equal score, a candidate who's actively job-hunting ranks above
+  // one who's merely open to offers, a tie-break, not a scoring bonus,
+  // so the score itself stays a meaningful, comparable number regardless
+  // of this ranking preference.
+  scored.sort((a, b) => {
+    if (b.matchScore !== a.matchScore) return b.matchScore - a.matchScore;
+    if (a.jobSearchStatus === "looking" && b.jobSearchStatus !== "looking") return -1;
+    if (b.jobSearchStatus === "looking" && a.jobSearchStatus !== "looking") return 1;
+    return 0;
+  });
   const matches = scored.slice(0, limit);
   if (matches.length > 0) matches[0].isTopMatch = true;
 
@@ -272,19 +305,60 @@ export type CandidateMatchDetailResult =
   | { ok: true; jobTitle: string; match: CandidateMatch }
   | { ok: false; reason: "not_an_employer" | "not_found" | "not_paying" };
 
+/** First-view-only: a match that already has a `viewed_at` never needs
+ *  touching again, so this is a plain conditional update rather than an
+ *  upsert that would also need to carry every other note column along
+ *  with it. Runs via the regular RLS-scoped client — the caller
+ *  (getCandidateMatchDetail) has already confirmed this employer owns
+ *  the job, same authorization `setMatchStatus` already relies on. */
+async function markMatchViewed(companyId: string, jobId: string, candidateId: string): Promise<void> {
+  const supabase = await createClient();
+  const { data: existing } = await supabase
+    .from("candidate_match_notes")
+    .select("id, viewed_at")
+    .eq("company_id", companyId)
+    .eq("job_id", jobId)
+    .eq("candidate_id", candidateId)
+    .maybeSingle();
+  if (existing?.viewed_at) return;
+  const now = new Date().toISOString();
+  if (existing) {
+    await supabase.from("candidate_match_notes").update({ viewed_at: now }).eq("id", existing.id);
+  } else {
+    await supabase.from("candidate_match_notes").insert({ company_id: companyId, job_id: jobId, candidate_id: candidateId, viewed_at: now });
+  }
+}
+
 /** Page 04 (candidate profile) — reuses the same list computation and
  *  picks out one candidate, rather than a parallel query shape; a match
  *  only exists in the context of its already-computed, already-sorted
- *  job list anyway. */
+ *  job list anyway. Opening this page is also the one place a match
+ *  ever gets marked "seen" (real-usage report: there was previously no
+ *  way at all to tell an already-reviewed match from a brand-new one) —
+ *  best-effort and after the fact, never blocking the page the employer
+ *  is waiting on. */
 export async function getCandidateMatchDetail(jobId: string, candidateId: string): Promise<CandidateMatchDetailResult> {
   const result = await getCandidateMatchesForJob(jobId);
   if (!result.ok) return result;
   const match = result.matches.find((m) => m.candidateId === candidateId);
   if (!match) return { ok: false, reason: "not_found" };
+
+  if (!match.viewedAt) {
+    const ctx = await getMyEmployerContext();
+    if (ctx) {
+      const markViewed = () => markMatchViewed(ctx.company.id, jobId, candidateId);
+      try {
+        after(markViewed);
+      } catch {
+        void markViewed();
+      }
+    }
+  }
+
   return { ok: true, jobTitle: result.jobTitle, match };
 }
 
-export type JobMatchCount = { jobId: string; matchCount: number; lastCheckedAt: string | null };
+export type JobMatchCount = { jobId: string; matchCount: number; newMatchCount: number; lastCheckedAt: string | null };
 
 /** Powers the `/recruit/matchmaking` overview — one candidate fetch,
  *  scored against every live job at once, rather than a separate query
@@ -301,20 +375,26 @@ export async function getMatchCountsForCompanyJobs(): Promise<JobMatchCount[]> {
   if (activeJobs.length === 0) return [];
 
   const supabase = await createClient();
-  const [candidates, lastCheckedRows, ...jobsForEdit] = await Promise.all([
+  const [candidates, noteRows, ...jobsForEdit] = await Promise.all([
     fetchScorableCandidates(),
     supabase
       .from("candidate_match_notes")
-      .select("job_id, updated_at")
+      .select("job_id, candidate_id, updated_at, viewed_at")
       .eq("company_id", ctx.company.id)
       .in("job_id", activeJobs.map((j) => j.id)),
     ...activeJobs.map((j) => getJobForEdit(j.id)),
   ]);
 
   const lastCheckedByJob = new Map<string, string>();
-  for (const row of lastCheckedRows.data ?? []) {
+  // candidate_id -> viewed_at, grouped by job_id — lets the "new matches"
+  // count below tell apart a candidate nobody's opened yet from one an
+  // employer already reviewed.
+  const viewedByJob = new Map<string, Map<string, string | null>>();
+  for (const row of noteRows.data ?? []) {
     const current = lastCheckedByJob.get(row.job_id);
     if (!current || row.updated_at > current) lastCheckedByJob.set(row.job_id, row.updated_at);
+    if (!viewedByJob.has(row.job_id)) viewedByJob.set(row.job_id, new Map());
+    viewedByJob.get(row.job_id)!.set(row.candidate_id, row.viewed_at);
   }
 
   return jobsForEdit
@@ -330,12 +410,150 @@ export async function getMatchCountsForCompanyJobs(): Promise<JobMatchCount[]> {
         salaryMax: job.salary_max,
         salaryPeriod: job.salary_period,
       };
-      const matchCount = candidates.filter((row) => {
+      const viewedForJob = viewedByJob.get(job.id);
+      let matchCount = 0;
+      let newMatchCount = 0;
+      for (const row of candidates) {
         const skillIds = new Set(row.candidate_tech_tags.map((t) => t.tech_tag_id));
-        return scoreJobMatch(jobFacts, tags, skillIds, candidatePrefsFromRow(row)) >= MIN_MATCH_SCORE;
-      }).length;
-      return { jobId: job.id, matchCount, lastCheckedAt: lastCheckedByJob.get(job.id) ?? null };
+        if (scoreJobMatch(jobFacts, tags, skillIds, candidatePrefsFromRow(row)) < MIN_MATCH_SCORE) continue;
+        matchCount++;
+        if (!viewedForJob?.get(row.id)) newMatchCount++;
+      }
+      return { jobId: job.id, matchCount, newMatchCount, lastCheckedAt: lastCheckedByJob.get(job.id) ?? null };
     });
+}
+
+export type ConnectedCandidate = {
+  candidateId: string;
+  jobId: string;
+  jobTitle: string;
+  jobSlug: string;
+  matchScore: number;
+  threadId: string;
+  connectedAt: string;
+  candidateName: string;
+  candidateEmail: string;
+  phone: string | null;
+  linkedinUrl: string | null;
+  avatarUrl: string | null;
+  skills: string[];
+  yearsExperience: number | null;
+  cvSignedUrl: string | null;
+};
+
+const CONNECTED_CANDIDATE_DETAIL_SELECT = "full_name, email, phone, linkedin_url, avatar_url, skills, years_experience, cv_url";
+
+/** Matchmaking rework, Phase 4. Once a candidate accepts a connection
+ *  request (Phase 3's gate), they're known to this company going
+ *  forward, not just inside that one thread. This surfaces them against
+ *  every one of the company's other live jobs they currently match too,
+ *  not only the job the connection happened through, per the user's own
+ *  framing for this phase ("known to this company ... across every job
+ *  they match, not only the one they connected through"). Reuses the
+ *  exact admin-client-scoped-in-code pattern applications.ts already
+ *  established for real applicant PII (candidates has zero employer-read
+ *  RLS): the only real difference is the authorization boundary itself,
+ *  a real accepted connection rather than a real application row. */
+export async function getConnectedCandidatesForCompany(companyId: string): Promise<ConnectedCandidate[]> {
+  const supabase = await createClient();
+  const { data: threads } = await supabase
+    .from("message_threads")
+    .select("id, candidate_id, job_id, responded_at")
+    .eq("company_id", companyId)
+    .eq("origin", "match")
+    .eq("request_status", "accepted");
+  if (!threads || threads.length === 0) return [];
+
+  // A candidate may have an accepted thread tied to more than one job at
+  // this company (one request per job), grouped so every job they
+  // currently match gets a thread to point "Message" at: the thread tied
+  // to that specific job when one exists, otherwise the earliest
+  // accepted thread for that candidate, so there's always a real
+  // conversation to link to even for a job they never separately
+  // connected through.
+  const threadsByCandidate = new Map<string, NonNullable<typeof threads>>();
+  for (const t of threads) {
+    if (!threadsByCandidate.has(t.candidate_id)) threadsByCandidate.set(t.candidate_id, []);
+    threadsByCandidate.get(t.candidate_id)!.push(t);
+  }
+
+  const activeJobs = await getCompanyJobs(companyId, "active");
+  if (activeJobs.length === 0) return [];
+  const jobSlugById = new Map(activeJobs.map((j) => [j.id, j.slug]));
+  const jobsForEdit = (await Promise.all(activeJobs.map((j) => getJobForEdit(j.id)))).filter(
+    (j): j is NonNullable<typeof j> => j !== null,
+  );
+
+  const allCandidates = await fetchScorableCandidates();
+  const connectedIds = new Set(threadsByCandidate.keys());
+  const connectedCandidates = allCandidates.filter((c) => connectedIds.has(c.id));
+  if (connectedCandidates.length === 0) return [];
+
+  const admin = createAdminClient();
+  const { data: contactRows } = await admin
+    .from("candidates")
+    .select(`id, ${CONNECTED_CANDIDATE_DETAIL_SELECT}`)
+    .in(
+      "id",
+      connectedCandidates.map((c) => c.id),
+    );
+  const contactById = new Map((contactRows ?? []).map((r) => [r.id, r]));
+
+  const rows: ConnectedCandidate[] = [];
+  for (const candidateRow of connectedCandidates) {
+    const contact = contactById.get(candidateRow.id);
+    const candidateThreads = threadsByCandidate.get(candidateRow.id)!;
+    const skillIds = new Set(candidateRow.candidate_tech_tags.map((t) => t.tech_tag_id));
+    const prefs = candidatePrefsFromRow(candidateRow);
+
+    const cvSignedUrl = contact?.cv_url
+      ? ((await admin.storage.from("cvs").createSignedUrl(contact.cv_url, 900)).data?.signedUrl ?? null)
+      : null;
+
+    for (const job of jobsForEdit) {
+      const tags = job.job_tech_tags.map((t) => ({ techTagId: t.tech_tag_id, required: t.required }));
+      const jobFacts = {
+        categoryId: job.category_id,
+        locationId: job.location_id,
+        workModel: job.work_model,
+        employmentType: job.employment_type,
+        salaryMin: job.salary_min,
+        salaryMax: job.salary_max,
+        salaryPeriod: job.salary_period,
+      };
+      const matchScore = scoreJobMatch(jobFacts, tags, skillIds, prefs);
+      // A job the candidate already has an accepted thread for stays
+      // visible regardless of their *current* score (including the
+      // job-search-status hard gate: someone who later marks themselves
+      // "not open" shouldn't retroactively vanish from a relationship
+      // that already exists). The threshold only gates *new* cross-job
+      // surfacing, jobs they never specifically connected through.
+      const isDirectConnection = candidateThreads.some((t) => t.job_id === job.id);
+      if (matchScore < MIN_MATCH_SCORE && !isDirectConnection) continue;
+
+      const threadForJob = candidateThreads.find((t) => t.job_id === job.id) ?? candidateThreads[0];
+      rows.push({
+        candidateId: candidateRow.id,
+        jobId: job.id,
+        jobTitle: job.title,
+        jobSlug: jobSlugById.get(job.id) ?? "",
+        matchScore,
+        threadId: threadForJob.id,
+        connectedAt: threadForJob.responded_at ?? new Date(0).toISOString(),
+        candidateName: contact?.full_name ?? "—",
+        candidateEmail: contact?.email ?? "—",
+        phone: contact?.phone ?? null,
+        linkedinUrl: contact?.linkedin_url ?? null,
+        avatarUrl: contact?.avatar_url ?? null,
+        skills: contact?.skills ?? [],
+        yearsExperience: contact?.years_experience ?? null,
+        cvSignedUrl,
+      });
+    }
+  }
+
+  rows.sort((a, b) => new Date(b.connectedAt).getTime() - new Date(a.connectedAt).getTime());
+  return rows;
 }
 
 export type SetMatchStatusResult = { ok: true } | { ok: false; reason: "not_an_employer" | "not_found" };

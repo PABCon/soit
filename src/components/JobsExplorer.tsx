@@ -42,13 +42,22 @@ const PANEL_WORK_MODELS: WorkModel[] = ["hybrid", "office"];
 const EMPLOYMENT_TYPES: EmploymentType[] = ["permanent", "fixed_term", "contractor", "freelance", "internship"];
 type Sort = "recent" | "oldest" | "salary";
 
-const CHIP_WIDTH = 72;
-const CHIP_GAP = 12; // gap-x-3
+// Real-usage feedback: with the new JT banner also on this page, the
+// quick-filter row (plus "More filters"/count/sort below it) read as
+// "too much UI" before the real job list ever appears. Explicit
+// preference: keep every tech/category chip visible, shrink them
+// instead of hiding any. CHIP_WIDTH/the circle/label sizes below were
+// all reduced together (56px slot, 32px circle, smaller label/badge
+// text), cutting this row's own height noticeably while fitting more
+// chips per row for free (smaller fixed width per chip, same
+// single-row measurement logic below).
+const CHIP_WIDTH = 56;
+const CHIP_GAP = 8; // gap-x-2
 // Round-7 fix: the count badge overflows ~6px past the chip's own right
 // edge (`-right-1` on a 16px badge) — reserving this much slack in the
 // fitted-count arithmetic keeps the last chip's badge from landing right
 // at (or past) the row's own boundary.
-const BADGE_SLACK = 8;
+const BADGE_SLACK = 6;
 
 /** One circular icon chip for the tech/category filter row (round-6 —
  *  a real live job-count badge, per the reference screenshot, at the
@@ -67,13 +76,13 @@ function CircleChip({
   children: ReactNode;
 }) {
   return (
-    // 40px icon container, 1px neutral border, subtle blue-tinted hover.
+    // 32px icon container, 1px neutral border, subtle blue-tinted hover.
     // `shrink-0` — a fixed-width item (round-6: now in a true single-row,
     // no-wrap, no-scroll layout — see the measured-count row below).
-    <button type="button" onClick={onClick} title={label} className="flex w-[72px] shrink-0 flex-col items-center gap-1">
-      <span className="relative h-10 w-10">
+    <button type="button" onClick={onClick} title={label} className="flex w-[56px] shrink-0 flex-col items-center gap-0.5">
+      <span className="relative h-8 w-8">
         <span
-          className={`flex h-10 w-10 items-center justify-center rounded-full border bg-white transition-colors ${
+          className={`flex h-8 w-8 items-center justify-center rounded-full border bg-white transition-colors ${
             active ? "border-pine bg-pine/10" : "border-line hover:border-pine/40 hover:bg-subtle"
           }`}
         >
@@ -87,12 +96,12 @@ function CircleChip({
           // `overflow-x-hidden` instead (horizontal-only) plus a bit of
           // top padding, so this badge's `-top-1`/`-right-1` overflow has
           // real room.
-          <span className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-pine px-1 text-[9px] font-semibold text-white">
+          <span className="absolute -top-1 -right-1 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-pine px-0.5 text-[8px] font-semibold text-white">
             {count > 999 ? "999+" : count}
           </span>
         )}
       </span>
-      <span className={`line-clamp-2 w-full text-center text-xs leading-[14px] ${active ? "font-semibold text-pine" : "text-muted"}`}>
+      <span className={`line-clamp-2 w-full text-center text-[10px] leading-[12px] ${active ? "font-semibold text-pine" : "text-muted"}`}>
         {label}
       </span>
     </button>
@@ -324,8 +333,19 @@ export function JobsExplorer({
        *  above the row. Round-7: the "All" chip is removed — it had no
        *  wired behavior worth keeping as its own element; a real
        *  "clear quick filters" action is a separate feature to propose,
-       *  not something to invent here. */}
-      <div ref={quickFilterRowRef} className="flex flex-nowrap gap-x-3 overflow-x-hidden pt-1">
+       *  not something to invent here.
+       *
+       *  Real-usage follow-up: with smaller chips, a page this wide often
+       *  has room for every real quick-filter entry well before using the
+       *  whole row, left-packed with a small fixed gap, reading as
+       *  clustered on the left with dead space on the right. `gap-x-2`
+       *  stays as the guaranteed minimum between chips; `justify-between`
+       *  spends whatever's left over growing those gaps so the shown
+       *  chips span the row's full width evenly instead. Exactly as safe
+       *  as the fixed-gap version: `justify-between` only ever consumes
+       *  space the fit-count calculation above already confirmed was
+       *  free, never more, so it can't overflow. */}
+      <div ref={quickFilterRowRef} className="flex flex-nowrap justify-between gap-x-2 overflow-x-hidden pt-1">
         {quickFilters.slice(0, visibleQuickFilterCount).map((item) =>
           item.kind === "tech" ? (
             <CircleChip
@@ -335,7 +355,7 @@ export function JobsExplorer({
               active={tech.includes(item.label)}
               onClick={() => toggleListParam("tech", tech, item.label)}
             >
-              <TechIcon slug={item.slug} label={item.label} className="h-[18px] w-[18px]" />
+              <TechIcon slug={item.slug} label={item.label} className="h-3.5 w-3.5" />
             </CircleChip>
           ) : (
             <CircleChip
@@ -345,7 +365,7 @@ export function JobsExplorer({
               active={cat.includes(item.slug)}
               onClick={() => toggleListParam("cat", cat, item.slug)}
             >
-              <CategoryIcon slug={item.slug} className="h-[18px] w-[18px] text-ink" />
+              <CategoryIcon slug={item.slug} className="h-3.5 w-3.5 text-ink" />
             </CircleChip>
           ),
         )}

@@ -1,34 +1,35 @@
 "use client";
 
-import { useTranslations } from "next-intl";
-import { updateStatusAction } from "@/app/[locale]/(console)/recruit/jobs/[id]/applicants/actions";
-import type { MyApplication } from "@/lib/db/applications";
+import { updateStageAction } from "@/app/[locale]/(console)/recruit/jobs/[id]/applicants/actions";
+import type { ApplicationStage } from "@/lib/db/application-stages";
 
-const STATUSES: MyApplication["status"][] = ["applied", "viewed", "responded", "rejected", "closed"];
-
-/** The status control on the candidate detail page — same
- *  `updateStatusAction` the list rows already use, just standalone so the
- *  detail page itself can stay a server component. */
+/** The stage control on the candidate detail page, using the same
+ *  `updateStageAction` the list rows already use, just standalone so the
+ *  detail page itself can stay a server component. `stages` is the
+ *  company's own custom pipeline (fetched by the page, lazily created
+ *  via `getOrCreateCompanyStages` if this company has never customized
+ *  one), not a fixed list: every option here is whatever label the
+ *  employer themselves chose. */
 export function ApplicantStatusSelect({
   jobId,
   applicationId,
-  initialStatus,
+  stages,
+  initialStageId,
 }: {
   jobId: string;
   applicationId: string;
-  initialStatus: MyApplication["status"];
+  stages: ApplicationStage[];
+  initialStageId: string;
 }) {
-  const t = useTranslations("applicants");
-
   return (
     <select
-      defaultValue={initialStatus}
-      onChange={(e) => updateStatusAction(jobId, applicationId, e.target.value as MyApplication["status"])}
+      defaultValue={initialStageId}
+      onChange={(e) => updateStageAction(jobId, applicationId, e.target.value)}
       className="h-9 rounded-lg border border-line bg-white px-2 text-sm"
     >
-      {STATUSES.map((s) => (
-        <option key={s} value={s}>
-          {t(`status.${s}`)}
+      {stages.map((s) => (
+        <option key={s.id} value={s.id}>
+          {s.label}
         </option>
       ))}
     </select>

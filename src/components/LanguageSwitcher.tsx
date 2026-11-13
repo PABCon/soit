@@ -26,6 +26,7 @@ export function LanguageSwitcher() {
       triggerLabel={t("language")}
       triggerClassName="flex h-9 cursor-pointer items-center gap-1 rounded-lg px-2 text-sm font-medium text-ink hover:bg-white"
       panelClassName="w-36 rounded-lg border border-line bg-white py-1 shadow-sm"
+      align="auto"
       trigger={
         <>
           {locale.toUpperCase()}

@@ -64,7 +64,22 @@ export function ConsoleJobRow({ job, tab }: { job: ConsoleJob; tab: ConsoleTab }
         </span>
 
         <div className="min-w-0 flex-1">
-          <Link href={`/recruit/jobs/${job.id}/edit`} className="truncate font-display font-semibold text-ink hover:text-pine">
+          {/* `block`, not just `truncate`: a bare `<a>` defaults to
+           *  `display: inline`, which doesn't reliably respect an
+           *  ancestor's shrunk width or truncate long text within it,
+           *  a real production bug, caught live: a long real job title
+           *  ("Senior Application Systems Manager – Data Management")
+           *  overflowed the whole page horizontally on mobile instead
+           *  of ellipsizing, confirmed via `document.documentElement.
+           *  scrollWidth` exceeding the viewport. `block` makes this a
+           *  real block box that fills (and is constrained by) the
+           *  parent's own `min-w-0 flex-1` width, which is what
+           *  `truncate`'s `overflow-hidden`/`text-overflow: ellipsis`
+           *  actually needs to do anything. */}
+          <Link
+            href={`/recruit/jobs/${job.id}/edit`}
+            className="block truncate font-display font-semibold text-ink hover:text-pine"
+          >
             {job.title}
           </Link>
 

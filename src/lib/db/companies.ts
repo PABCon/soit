@@ -42,6 +42,12 @@ export type MyCompany = {
   benefits_text: string | null;
   custom_section_title: string | null;
   custom_section_body: string | null;
+  /** Appended to the bottom of every one of this company's job postings
+   *  at display time (`toJobDetail()`), never copied into any job's own
+   *  stored description. Not Top-Employer-gated like the rich-profile
+   *  fields above: a legal/boilerplate notice is a basic utility every
+   *  employer should be able to use regardless of paid tier. */
+  job_disclaimer: string | null;
 };
 
 export type CompanyTeamMember = { id: string; name: string; role: string | null; photoUrl: string | null };
@@ -450,5 +456,19 @@ export async function updateCompanyImage(field: "company_logo_url" | "cover_imag
     .from("companies")
     .update({ [field]: url })
     .eq("id", companyId);
+  if (error) throw new Error(error.message);
+}
+
+/** Lives on the Team page, not Company Profile: per direct instruction,
+ *  this is a once-per-team process setting (what gets appended to every
+ *  job your team posts), not a public-facing profile fact, so it doesn't
+ *  belong in the same form as the logo/description/socials. A narrow
+ *  update, same shape as `updateCompanyImage` above, rather than routing
+ *  through `updateCompanyProfile`'s full-replace shape for a one-field
+ *  change. */
+export async function updateJobDisclaimer(jobDisclaimer: string | null) {
+  const supabase = await createClient();
+  const { data: companyId } = await supabase.rpc("my_company_id");
+  const { error } = await supabase.from("companies").update({ job_disclaimer: jobDisclaimer }).eq("id", companyId);
   if (error) throw new Error(error.message);
 }

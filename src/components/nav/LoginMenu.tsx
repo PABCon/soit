@@ -91,6 +91,7 @@ export function LoginMenu() {
         triggerLabel={label}
         triggerClassName="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full"
         panelClassName="w-56 rounded-lg border border-line bg-white py-1 shadow-sm"
+        align="auto"
         trigger={<Avatar label={label} avatarUrl={profile?.avatarUrl ?? null} />}
       >
         {(close) => (
@@ -140,10 +141,21 @@ export function LoginMenu() {
       <Dropdown
         triggerClassName="flex h-9 cursor-pointer items-center rounded-lg px-3 text-sm font-medium text-ink hover:bg-white"
         panelClassName="w-64 rounded-lg border border-line bg-white py-1 shadow-sm"
+        align="auto"
         trigger={t("login")}
       >
         {(close) => (
           <>
+            {/* Real-usage report: below sm, the standalone "Publicar
+             *  vaga" button sat crammed next to the hamburger/logo/
+             *  language switcher/this trigger with no breathing room —
+             *  moved in here for narrow widths specifically (the
+             *  standalone button below is `hidden` at that same
+             *  breakpoint), same destination either way. */}
+            <Link href="/recruit" prefetch={false} className={`${item} sm:hidden`} onClick={close}>
+              {t("addOffer")}
+            </Link>
+            <hr className="my-1 border-line sm:hidden" />
             <p className="px-3 pt-1 pb-0.5 text-xs font-semibold text-ink">{t("groupCandidate")}</p>
             <Link href="/candidate/login" className={item} onClick={close}>
               {t("loginAsCandidate")}
@@ -181,9 +193,11 @@ export function LoginMenu() {
        *  `Button` component itself — this is a navigation Link, not a
        *  submit action) so it can't silently drift from Button's own
        *  recipe again. */}
-      <Link href="/recruit" prefetch={false} className={buttonClassName()}>
-        {t("addOffer")}
-      </Link>
+      <span className="hidden sm:inline-block">
+        <Link href="/recruit" prefetch={false} className={buttonClassName()}>
+          {t("addOffer")}
+        </Link>
+      </span>
     </>
   );
 }

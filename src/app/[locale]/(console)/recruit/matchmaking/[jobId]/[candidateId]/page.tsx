@@ -3,6 +3,7 @@ import { getTranslations, getFormatter, setRequestLocale } from "next-intl/serve
 import { Lock, ListChecks, Briefcase, FileText as CvIcon } from "lucide-react";
 import { Link } from "@/i18n/navigation";
 import { getCandidateMatchDetail } from "@/lib/db/candidate-matches";
+import { getExistingMatchThread } from "@/lib/db/messaging";
 import { StartThreadButton } from "@/components/StartThreadButton";
 import { MatchStatusSelect } from "@/components/console/MatchStatusSelect";
 import { MatchSummarySection } from "@/components/console/MatchSummarySection";
@@ -34,6 +35,7 @@ export default async function MatchCandidateProfilePage({ params }: Props) {
   const t = await getTranslations({ locale, namespace: "console" });
   const tJobForm = await getTranslations({ locale, namespace: "jobForm" });
   const tp = await getTranslations({ locale, namespace: "profile" });
+  const tm = await getTranslations({ locale, namespace: "messaging" });
   const format = await getFormatter({ locale });
 
   const result = await getCandidateMatchDetail(jobId, candidateId);
@@ -54,6 +56,7 @@ export default async function MatchCandidateProfilePage({ params }: Props) {
 
   const { match, jobTitle } = result;
   const displayNumber = candidateDisplayNumber(candidateId);
+  const existingThread = await getExistingMatchThread(candidateId, jobId);
 
   return (
     <>
@@ -72,18 +75,29 @@ export default async function MatchCandidateProfilePage({ params }: Props) {
               <span className="rounded-full bg-green-100 px-2.5 py-1 text-xs font-semibold text-green-700">
                 {t("matchedCandidateBadge")}
               </span>
+              {match.jobSearchStatus === "looking" && (
+                <span className="rounded-full bg-green-100 px-2.5 py-1 text-xs font-semibold text-green-700">
+                  {t("activelyLookingBadge")}
+                </span>
+              )}
             </div>
             <p className="mt-0.5 text-sm text-muted">
               {match.aiSummaryGeneratedAt
                 ? t("matchedForWithDate", { job: jobTitle, date: format.dateTime(new Date(match.aiSummaryGeneratedAt), { dateStyle: "short" }) })
                 : t("matchedForNoDate", { job: jobTitle })}
             </p>
+            {/* Real-usage report: no way to see the actual job posting
+             *  (requirements, description) this candidate matched
+             *  against without hunting for it separately. */}
+            <Link href={`/recruit/jobs/${jobId}/edit`} className="mt-0.5 inline-block text-xs font-medium text-pine hover:underline">
+              {t("viewJobPosting")}
+            </Link>
           </div>
         </div>
         <MatchStatusSelect jobId={jobId} candidateId={candidateId} initialStatus={match.status} />
       </div>
 
-      <div className="mt-8 grid gap-8 sm:grid-cols-[1fr_16rem]">
+      <div className="mt-8 grid grid-cols-1 gap-8 sm:grid-cols-[1fr_16rem]">
         <div className="min-w-0 space-y-6">
           <MatchSummarySection jobId={jobId} candidateId={candidateId} initialSummary={match.aiSummary} />
 
@@ -136,7 +150,27 @@ export default async function MatchCandidateProfilePage({ params }: Props) {
               <p className="text-sm text-muted">{t("hiddenValue")}</p>
             </div>
             <div className="border-t border-line pt-3">
-              <StartThreadButton redirectBase="/recruit/messages" onSend={startMatchThreadAction.bind(null, candidateId, jobId)} />
+              {existingThread ? (
+                <Link
+                  href={`/recruit/messages/${existingThread.threadId}`}
+                  className="flex items-center justify-between gap-2 text-sm font-medium text-pine hover:underline"
+                >
+                  <span>
+                    {existingThread.requestStatus === "pending" && tm("pendingBadge")}
+                    {existingThread.requestStatus === "accepted" && tm("viewConversation")}
+                    {existingThread.requestStatus === "declined" && tm("declinedBadge")}
+                  </span>
+                  →
+                </Link>
+              ) : (
+                <StartThreadButton
+                  redirectBase="/recruit/messages"
+                  onSend={startMatchThreadAction.bind(null, candidateId, jobId)}
+                  triggerLabel={tm("requestConnection")}
+                  placeholder={tm("connectionRequestPlaceholder")}
+                  submitLabel={tm("sendRequest")}
+                />
+              )}
             </div>
           </aside>
 

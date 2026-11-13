@@ -37,7 +37,7 @@ export const SELECT = `
   latitude, longitude, salary_min, salary_max, salary_currency, salary_period,
   salary_months, salary_basis, employment_type, status, published_at, expires_at, created_at,
   external_apply_url, location_id, salary_public, boost_rank_at, boosted_until,
-  companies!inner ( slug, company_name, company_logo_url, company_description, top_employer_active ),
+  companies!inner ( slug, company_name, company_logo_url, company_description, top_employer_active, job_disclaimer ),
   job_tech_tags ( level, required, tech_tags ( slug, label ) ),
   job_categories ( slug ),
   locations ( slug, country ),
@@ -78,6 +78,7 @@ export type JobRow = {
     company_logo_url: string | null;
     company_description: string | null;
     top_employer_active: boolean;
+    job_disclaimer: string | null;
   };
   job_tech_tags: { level: SkillLevel | null; required: boolean; tech_tags: { slug: string; label: string } }[];
   job_categories: { slug: string } | null;
@@ -199,6 +200,11 @@ export type JobDetail = Job & {
   /** Short employer blurb for the sidebar — `companies.company_description`,
    *  null when the employer never filled it in. */
   companyBlurb: string | null;
+  /** Appended to the bottom of the description at render time, never
+   *  stored in the job's own description text (see
+   *  `companies.job_disclaimer`'s own comment). `null` when the
+   *  employer never set one. */
+  jobDisclaimer: string | null;
   /** The same tags as `tech` (plain labels, for the feed/filters), plus the
    *  level/required the employer set for each — real-usage QA item asking
    *  for "tech-stack proficiency shown as grade/icon" on the job page. The
@@ -221,6 +227,7 @@ function toJobDetail(row: JobRow): JobDetail {
       level: jl.level,
     })),
     companyBlurb: row.companies.company_description,
+    jobDisclaimer: row.companies.job_disclaimer,
     techStack: row.job_tech_tags.map((t) => ({
       slug: t.tech_tags.slug,
       label: t.tech_tags.label,

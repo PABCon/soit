@@ -37,7 +37,7 @@ export function ErrorPageCard({
 }) {
   return (
     <div className="rounded-2xl border border-line bg-white p-8 sm:p-12">
-      <div className="grid items-center gap-10 lg:grid-cols-[1fr_320px]">
+      <div className="grid grid-cols-1 items-center gap-10 lg:grid-cols-[1fr_320px]">
         <div className="min-w-0">
           <div className="flex items-center gap-2 text-xs font-semibold tracking-wide text-pine uppercase">
             <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-pine" aria-hidden="true" />

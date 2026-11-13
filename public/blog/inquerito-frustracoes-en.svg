@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 300" width="640" height="300" role="img" aria-label="Biggest job-hunting frustrations">
+  <rect width="640" height="300" fill="#ffffff" />
+  <text x="24" y="30" font-family="system-ui, sans-serif" font-size="16" font-weight="700" fill="#182230">Biggest job-hunting frustrations</text>
+  
+    <text x="24" y="56" font-family="system-ui, sans-serif" font-size="13" fill="#182230">Salaries never published</text>
+    <rect x="24" y="62" width="544" height="20" rx="4" fill="#e2e6ef" opacity="0.4" />
+    <rect x="24" y="62" width="544" height="20" rx="4" fill="#465bff" />
+    <text x="578" y="77" font-family="system-ui, sans-serif" font-size="13" font-weight="700" fill="#465bff">74%</text>
+    <text x="24" y="112" font-family="system-ui, sans-serif" font-size="13" fill="#182230">Too many intermediaries/recruiters</text>
+    <rect x="24" y="118" width="544" height="20" rx="4" fill="#e2e6ef" opacity="0.4" />
+    <rect x="24" y="118" width="463.1351351351351" height="20" rx="4" fill="#eef2ff" />
+    <text x="497.1351351351351" y="133" font-family="system-ui, sans-serif" font-size="13" font-weight="700" fill="#667085">63%</text>
+    <text x="24" y="168" font-family="system-ui, sans-serif" font-size="13" fill="#182230">Irrelevant or low-quality offers</text>
+    <rect x="24" y="174" width="544" height="20" rx="4" fill="#e2e6ef" opacity="0.4" />
+    <rect x="24" y="174" width="330.81081081081084" height="20" rx="4" fill="#eef2ff" />
+    <text x="364.81081081081084" y="189" font-family="system-ui, sans-serif" font-size="13" font-weight="700" fill="#667085">45%</text>
+    <text x="24" y="224" font-family="system-ui, sans-serif" font-size="13" fill="#182230">Companies that post and never respond</text>
+    <rect x="24" y="230" width="544" height="20" rx="4" fill="#e2e6ef" opacity="0.4" />
+    <rect x="24" y="230" width="286.70270270270265" height="20" rx="4" fill="#eef2ff" />
+    <text x="320.70270270270265" y="245" font-family="system-ui, sans-serif" font-size="13" font-weight="700" fill="#667085">39%</text>
+</svg>

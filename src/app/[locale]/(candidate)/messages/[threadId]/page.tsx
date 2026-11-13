@@ -8,7 +8,8 @@ import { getThreadDetail } from "@/lib/db/messaging";
 import { ThreadReplyBox } from "@/components/ThreadReplyBox";
 import { MessageAttachment } from "@/components/messaging/MessageAttachment";
 import { ThreadRealtimeRefresh } from "@/components/messaging/ThreadRealtimeRefresh";
-import { sendCandidateMessageAction } from "./actions";
+import { ConnectionRequestResponse } from "@/components/messaging/ConnectionRequestResponse";
+import { sendCandidateMessageAction, respondToConnectionRequestAction } from "./actions";
 
 type Props = { params: Promise<{ locale: string; threadId: string }> };
 
@@ -62,7 +63,11 @@ export default async function CandidateThreadPage({ params }: Props) {
         </span>
         <div className="min-w-0 pt-1">
           <h1 className="text-2xl font-bold lg:text-3xl">{thread.companyName}</h1>
-          <p className="mt-0.5 text-sm text-muted">{thread.jobTitle}</p>
+          <p className="mt-0.5 text-sm text-muted">
+            <Link href={`/jobs/${thread.jobSlug}`} className="font-medium text-pine hover:underline">
+              {thread.jobTitle}
+            </Link>
+          </p>
         </div>
       </div>
 
@@ -107,7 +112,14 @@ export default async function CandidateThreadPage({ params }: Props) {
         </ul>
       </div>
 
-      <ThreadReplyBox onSend={sendCandidateMessageAction.bind(null, threadId)} />
+      {thread.requestStatus === "pending" && (
+        <ConnectionRequestResponse
+          companyName={thread.companyName}
+          onRespond={respondToConnectionRequestAction.bind(null, threadId)}
+        />
+      )}
+      {thread.requestStatus === "declined" && <p className="mt-4 text-sm text-muted">{t("youDeclinedNotice")}</p>}
+      {thread.requestStatus === "accepted" && <ThreadReplyBox onSend={sendCandidateMessageAction.bind(null, threadId)} />}
     </>
   );
 }

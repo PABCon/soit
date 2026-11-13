@@ -42,12 +42,15 @@
     "settings": "Settings",
     "soon": "Coming soon",
     "collapse": "Collapse menu",
-    "expand": "Expand menu"
+    "expand": "Expand menu",
+    "terminationCalculator": "Termination calculator",
+    "assistant": "Ask AI"
   },
   "console": {
     "title": "Manage recruitments",
     "myJobAds": "My job ads",
     "myJobAdsSubtitle": "Manage your job advertisements, track applications and find the right talent.",
+    "analytics": "Analytics",
     "companyProfile": "Company profile",
     "companyProfileSubtitle": "Manage the information candidates see about your company.",
     "team": "Team",
@@ -98,8 +101,10 @@
     "tabDrafts": "Drafts",
     "logOut": "Log out",
     "empty": "You have not published any job ads yet.",
+    "noMatchedJobsYet": "None of your active jobs have any matched candidates yet. Check back in a few days.",
+    "newMatchesBadge": "{count, plural, one {# new} other {# new}}",
     "matchmaking": "Matchmaking",
-    "matchmakingSubtitle": "Candidates matched to your live job ads — ranked by fit, shown anonymously.",
+    "matchmakingSubtitle": "Candidates matched to your live job ads, ranked by fit, shown anonymously.",
     "messages": "Messages",
     "matchmakingUpsell": "Matching is included with any paid job ad — buy ad credits or subscribe to Top Employer to see matched candidates.",
     "matchCount": "{count, plural, =0 {No matches yet} one {# match} other {# matches}}",
@@ -133,6 +138,8 @@
     "skills": "Skills",
     "candidateNumber": "Candidate #{number}",
     "topMatchBadge": "Top match",
+    "newMatchBadge": "New",
+    "activelyLookingBadge": "Actively looking",
     "reviewProfile": "Review profile",
     "matchStatusOption": {
       "new": "New",
@@ -143,6 +150,7 @@
     "matchedCandidateBadge": "Matched candidate",
     "matchedForWithDate": "Matched for “{job}” · {date}",
     "matchedForNoDate": "Matched for “{job}”",
+    "viewJobPosting": "View job posting →",
     "aiSummaryHeading": "AI summary",
     "aiSummaryGenerateCta": "Generate AI summary",
     "aiSummaryRegenerateCta": "Regenerate",
@@ -191,6 +199,9 @@
     "imageUploaded": "Uploaded.",
     "companyName": "Company name",
     "description": "Description",
+    "jobDisclaimer": "Job posting disclaimer",
+    "jobDisclaimerPlaceholder": "e.g. a legal notice, an equal-opportunity statement, a data-processing note…",
+    "jobDisclaimerHint": "Shown at the bottom of every one of your job postings, automatically. Edit it here and every live ad updates at once.",
     "website": "Website",
     "industry": "Industry",
     "companySize": "Company size",
@@ -897,12 +908,11 @@
     "title": "My applications",
     "subtitle": "Track the status of every job you've applied to.",
     "empty": "You haven't applied to any jobs yet.",
-    "status": {
-      "applied": "Applied",
-      "viewed": "Viewed",
-      "responded": "Responded",
-      "rejected": "Rejected",
-      "closed": "Closed"
+    "bucket": {
+      "submitted": "Submitted",
+      "in_review": "In review",
+      "not_selected": "Not selected",
+      "hired": "Hired"
     }
   },
   "favorites": {
@@ -916,6 +926,25 @@
     "empty": "You haven't saved any searches yet.",
     "delete": "Remove",
     "notifyMe": "Notify me"
+  },
+  "analytics": {
+    "title": "Analytics",
+    "subtitle": "Real numbers on how your job ads are performing.",
+    "stat": {
+      "totalViews": "Total views",
+      "totalApplyClicks": "Apply-button clicks",
+      "totalApplications": "Applications"
+    },
+    "trendHeading": "Last 30 days",
+    "trendSubtitle": "Views and apply-button clicks across all your job ads.",
+    "empty": "Post a job ad to start seeing analytics here.",
+    "columnJob": "Job",
+    "columnViews": "Views",
+    "columnApplyClicks": "Apply clicks",
+    "columnApplications": "Applications",
+    "columnConversion": "View to apply rate",
+    "noData": "No data yet",
+    "trendStartedAt": "Detailed daily tracking started on {date}, so earlier days aren't shown."
   },
   "applicants": {
     "title": "Applicants for “{job}”",
@@ -940,15 +969,12 @@
     "noResults": "No applicants match your filters.",
     "changeStatus": "Change status",
     "appliedFor": "Applied for “{job}”",
+    "connectedFor": "Connected via “{job}”",
     "backToApplicants": "← Back to applicants",
     "notProvided": "Not provided",
     "coverNote": "Cover note",
     "status": {
-      "applied": "Applied",
-      "viewed": "Viewed",
-      "responded": "Responded",
-      "rejected": "Rejected",
-      "closed": "Closed"
+      "connected": "Connected"
     },
     "aiSynopsisHeading": "AI summary",
     "synopsisSummaryLabel": "Profile summary",
@@ -987,7 +1013,19 @@
     "attachFile": "Attach a file",
     "removeAttachment": "Remove attachment",
     "attachmentTooLarge": "That file is too large (max 5 MB).",
-    "errorBadAttachment": "This file could not be attached (unsupported type or too large)."
+    "errorBadAttachment": "This file could not be attached (unsupported type or too large).",
+    "requestConnection": "Request connection",
+    "connectionRequestPlaceholder": "Introduce yourself and say why you'd like to connect with this candidate…",
+    "sendRequest": "Send request",
+    "viewConversation": "View conversation",
+    "pendingBadge": "Awaiting response",
+    "declinedBadge": "Declined",
+    "respondPrompt": "{company} would like to talk to you about this role. Would you like to accept the connection request?",
+    "accept": "Accept",
+    "decline": "Decline",
+    "youDeclinedNotice": "You declined this connection request.",
+    "waitingForCandidateNotice": "Waiting for the candidate to respond to your connection request.",
+    "candidateDeclinedNotice": "The candidate declined to connect. Their identity remains private."
   },
   "profile": {
     "title": "My profile",
@@ -1005,6 +1043,16 @@
     "email": "Email",
     "phone": "Phone",
     "linkedinUrl": "LinkedIn URL",
+    "location": "Where you live",
+    "locationUnset": "Not set",
+    "locationHint": "We use this so companies only see you as a match for on-site or hybrid roles near you. Remote roles are unaffected.",
+    "jobSearchStatus": "Job search status",
+    "jobSearchStatusOption": {
+      "looking": "Actively looking for a job",
+      "open": "Open to offers",
+      "not_open": "Not open to offers right now"
+    },
+    "jobSearchStatusHint": "This decides whether employers can match with you at all. Choosing \"Not open to offers\" removes you from matching entirely until you change it back.",
     "headline": "Headline",
     "yearsExperienceLabel": "Years of experience",
     "saving": "Saving…",
@@ -1100,7 +1148,7 @@
   },
   "recommendations": {
     "title": "Jobs matched to you",
-    "metaDescription": "Get IT jobs in Portugal matched to your real skills and experience — free, always.",
+    "metaDescription": "Get IT jobs in Portugal matched to your real skills and experience, free, always.",
     "subtitle": "Ranked against your skills and job preferences.",
     "pitchTitle": "Get jobs matched to your skills",
     "pitchBody": "Create a free account, add your skills (or just upload your CV), and we'll rank live jobs against your real profile.",
@@ -1118,13 +1166,13 @@
     "noMatches": "No live jobs match your profile closely right now — check back soon, or browse all jobs."
   },
   "recommendationsTeaser": {
-    "anonPitch": "Get jobs matched to your skills — free",
-    "emptyProfilePitch": "Add your skills to see jobs matched to you",
-    "noPreferencesPitch": "Set your job preferences to see jobs matched to you",
+    "anonPitch": "Get Matched! Jobs picked for your skills, free",
+    "emptyProfilePitch": "Add your skills to start getting matched",
+    "noPreferencesPitch": "Set your job preferences to get matched",
     "matchesPitch": "{count, plural, one {# job matches} other {# jobs match}} your profile",
     "noMatchesPitch": "See jobs matched to your profile",
     "subtitle": "Create a profile and let companies find you",
-    "cta": "View matches"
+    "cta": "See matches"
   },
   "salaryCalculator": {
     "pageTitle": "Portugal Net Salary Calculator 2026: Employee, Freelancer & B2B",
@@ -1351,7 +1399,9 @@
     "companyInfoSalaryVsDividendsTerm": "Salary vs. dividends is a real trade-off",
     "companyInfoSalaryVsDividendsDefinition": "Gerente salary is taxed like any employee's and builds your Social Security record; dividends are taxed at a flat 28% with no Social Security at all, but don't count toward your pension or benefit eligibility. Most owners use a mix of both.",
     "companyInfoIrcScheduleTerm": "IRC is falling in future years",
-    "companyInfoIrcScheduleDefinition": "The current 15%/19% SME rate is scheduled to drop to 18% in 2027 and 17% from 2028 — not reflected here, since this calculator always uses the rate for the year you select."
+    "companyInfoIrcScheduleDefinition": "The current 15%/19% SME rate is scheduled to drop to 18% in 2027 and 17% from 2028 — not reflected here, since this calculator always uses the rate for the year you select.",
+    "terminationCalculatorCta": "Leaving a job instead of starting one? See what you're owed when a contract ends.",
+    "terminationCalculatorCtaButton": "Termination calculator"
   },
   "recibosVerdesGuide": {
     "pageTitle": "Recibos Verdes Explained for IT Freelancers in Portugal (2026 Guide)",
@@ -1382,7 +1432,9 @@
     "pitfall4Body": "No paid holidays, no employer-paid sick leave, no unemployment benefit by default, no severance if a client relationship ends. That's the real trade-off behind the lower monthly deductions — not a technicality, a genuine difference in what you're covered for.",
     "ctaHeading": "See your own real numbers",
     "ctaBody": "Every figure above depends on exactly how much you invoice, your region, and whether you're in your first year of activity — the calculator runs the real 2026 rules against your own numbers in seconds.",
-    "ctaButton": "Calculate your recibos verdes numbers →"
+    "ctaButton": "Calculate your recibos verdes numbers →",
+    "terminationCta": "Leaving this job instead? See what you're owed when a contract ends.",
+    "terminationCtaButton": "Termination calculator"
   },
   "contratoTrabalhoGuide": {
     "pageTitle": "Portuguese Employment Contracts Explained: Payslip, Subsidies & Taxes (2026)",
@@ -1407,7 +1459,9 @@
     "rightsBody": "Beyond the net figure on your payslip, an employment contract also entitles you to paid holiday, Social Security-paid sick leave, unemployment benefit eligibility if you're let go, parental leave, a notice period, and severance if your employer ends the contract. None of this applies to freelancing (recibos verdes) or running your own company.",
     "ctaHeading": "See your own real numbers",
     "ctaBody": "Every figure above depends on your exact gross salary, region, age, and household situation — the calculator runs the real 2026 withholding tables against your own numbers in seconds.",
-    "ctaButton": "Calculate your take-home pay →"
+    "ctaButton": "Calculate your take-home pay →",
+    "terminationCta": "Leaving this job instead? See what you're owed when a contract ends.",
+    "terminationCtaButton": "Termination calculator"
   },
   "empresaPropriaGuide": {
     "pageTitle": "Running Your Own Company in Portugal (Lda/B2B): Tax, Costs & Trade-offs (2026)",
@@ -1430,7 +1484,9 @@
     "fitBody": "At small, inconsistent income levels, the extra cost and complexity of a Lda (the mandatory accountant, corporate tax on top of personal tax, the legal reserve) usually isn't worth it compared to recibos verdes. It tends to make more sense once your income is high and stable enough that the structural advantages — splitting salary and dividends, potential liability protection, a more credible setup for larger clients — outweigh the fixed costs.",
     "ctaHeading": "Compare your own numbers",
     "ctaBody": "The real trade-off between a company, recibos verdes, and an employment contract depends entirely on your own revenue and situation — the calculator runs all three against the real 2026 rules.",
-    "ctaButton": "Calculate your company numbers →"
+    "ctaButton": "Calculate your company numbers →",
+    "terminationCta": "Leaving this job instead? See what you're owed when a contract ends.",
+    "terminationCtaButton": "Termination calculator"
   },
   "cvReview": {
     "pageTitle": "Free CV Score for IT Professionals in Portugal",
@@ -1703,5 +1759,124 @@
     "serverErrorLinkHome": "Go to homepage",
     "serverErrorLinkCompanies": "Explore companies",
     "serverErrorChip": "We're working to fix this."
+  },
+  "terminationCalculator": {
+    "pageTitle": "Contract Termination Calculator (Portugal)",
+    "pageDescription": "Find out what you're owed when a Portuguese employment contract ends: dismissal severance, fixed-term compensation, a mutual-agreement offer check, and resignation notice. Free, sourced from the actual law.",
+    "heading": "Contract termination calculator",
+    "subtitle": "Figure out what you're owed (or what you owe) when an employment contract in Portugal ends, with real figures from the Labour Code.",
+    "modeTab": {
+      "dismissal": "I was dismissed",
+      "fixed_term": "My fixed-term contract ended",
+      "mutual_agreement": "Mutual agreement offer",
+      "resignation": "I'm resigning"
+    },
+    "aboutYouHeading": "About your contract",
+    "monthlyRemuneration": "Monthly base salary",
+    "monthlyRemunerationHint": "Base pay plus any seniority allowance (diuturnidades), before tax.",
+    "contractStartDate": "Contract start date",
+    "cessationDate": "Date the contract ends (or ended)",
+    "shareButton": "Copy a shareable link",
+    "copied": "Copied!",
+    "dismissalResultHeading": "What you're owed for severance",
+    "dismissalAmount": "Severance compensation",
+    "dismissalYearsOfService": "Years of service",
+    "dismissalCappedNote": "Your salary was capped at 20× the minimum wage for this calculation. The law caps the base this way for higher earners.",
+    "dismissalFormulaNote": "14 days' pay per year of service, since the 2023 labour reform (Lei n.º 13/2023).",
+    "preOct2013Message": "This calculator doesn't yet support contracts that started before 1 October 2013. A different, segmented formula applies to that tenure, and we'd rather not guess. The official ACT simulator can help with this case.",
+    "fixedTermResultHeading": "What you're owed when your contract ends",
+    "fixedTermAmount": "Compensation",
+    "fixedTermFormulaNote": "24 days' pay per year of service, since the 2023 labour reform.",
+    "fixedTermOnlyWhenEmployerEndsHint": "This only applies when the employer lets the contract run its course or doesn't renew it, not when you're the one who ends it.",
+    "mutualAgreementOfferedAmount": "What's being offered",
+    "mutualAgreementResultHeading": "Is this offer fair?",
+    "mutualAgreementNoLegalMinimumNote": "There's no legal minimum for a mutual-agreement exit. It's whatever you and your employer negotiate. This compares your offer against a real reference point instead.",
+    "mutualAgreementBenchmarkLine": "What you'd get for an equivalent dismissal",
+    "mutualAgreementPercentLine": "Your offer is {percent}% of that benchmark",
+    "mutualAgreementTaxExemptLine": "Estimated IRS-exempt portion",
+    "mutualAgreementTaxableLine": "Estimated taxable portion",
+    "mutualAgreementUnemploymentCaveat": "A mutual agreement does NOT automatically qualify you for unemployment benefit (subsídio de desemprego). It only does when it's part of a formal workforce-reduction process meeting specific conditions. Check this carefully before signing; don't assume it applies.",
+    "mutualAgreementJobsCta": "Evaluating an exit? See what's hiring now on Just IT.",
+    "resignationContractType": "Contract type",
+    "resignationContractTypeOption": {
+      "open_ended": "Permanent (sem termo)",
+      "fixed_term": "Fixed-term (a termo)"
+    },
+    "resignationFixedTermOriginalDurationMonths": "Original contract duration (months)",
+    "resignationNoticeDaysPlanned": "Days of notice you plan to give",
+    "resignationResultHeading": "Your notice obligation",
+    "resignationNoticeDaysRequiredLine": "Notice required by law",
+    "resignationShortfallLine": "Shortfall",
+    "resignationCompensationOwedLine": "What you'd owe your employer",
+    "resignationNoShortfallMessage": "You're giving full notice, so you don't owe your employer anything for this.",
+    "entitlementsHeading": "What you're owed regardless (every scenario)",
+    "entitlementsSubtitle": "These apply no matter how the contract ends.",
+    "unusedPriorYearHolidayDays": "Unused holiday days from a previous year",
+    "entitlementsHolidayLine": "Proportional holiday pay ({days} days)",
+    "entitlementsChristmasLine": "Proportional Christmas subsidy",
+    "entitlementsUnusedLine": "Unused prior-year holiday payout",
+    "entitlementsTotalLine": "Total",
+    "ctaSalaryHeading": "Starting a new job?",
+    "ctaSalaryBody": "See what your next salary actually becomes after tax.",
+    "ctaSalaryButton": "Calculate your take-home pay",
+    "ctaJobsHeading": "Ready to look elsewhere?",
+    "ctaJobsBody": "Browse IT jobs in Portugal, always with a real salary shown.",
+    "ctaJobsButton": "See open jobs",
+    "infoHeading": "What you should know",
+    "whatIsSeveranceTerm": "What counts as \"severance\"?",
+    "whatIsSeveranceBody": "Severance (indemnização por despedimento) is owed when your employer ends your contract without cause, including when your specific role is eliminated (extinção do posto de trabalho) or in a collective dismissal. Since May 2023, the formula is 14 days' base pay per year of service, capped at 20× the minimum wage for the salary used in the calculation.",
+    "whatIsMutualAgreementTerm": "What is a mutual agreement (mútuo acordo)?",
+    "whatIsMutualAgreementBody": "A mutual agreement is a negotiated exit: you and your employer agree in writing to end the contract, for whatever compensation you both agree to. There's no legal minimum amount, unlike a dismissal, where the law sets the formula. You have 7 days to revoke the agreement in writing, as long as you return any compensation already paid.",
+    "unemploymentEligibilityTerm": "Does this qualify me for unemployment benefit?",
+    "unemploymentEligibilityBody": "A genuine dismissal or your role being eliminated generally does. A mutual agreement generally does NOT, unless it's part of a formal workforce-reduction process meeting specific legal conditions, so don't assume it applies without checking. Resigning on your own initiative generally doesn't qualify either.",
+    "taxExemptionTerm": "Is my compensation taxed?",
+    "taxExemptionBody": "Compensation for contract cessation is exempt from IRS up to a threshold: your average monthly pay over the last 12 months, multiplied by your years of service, capped at 240× the minimum wage. Anything above that threshold is taxed as normal employment income. This is an estimate, not tax advice.",
+    "noticePeriodTerm": "How much notice do I have to give if I resign?",
+    "noticePeriodBody": "30 days if you've been there 2 years or less, 60 days if more, for a permanent contract. If you don't give full notice, you automatically owe your employer your pay for the missing days, whether or not they can show any real loss."
+  },
+  "assistant": {
+    "pageTitle": "Job Search Assistant",
+    "pageDescription": "Search IT jobs in Portugal by describing what you're looking for, instead of manually filtering a job board.",
+    "inputPlaceholder": "e.g. Remote React jobs in Lisbon paying over 2500",
+    "sendButton": "Send",
+    "examplesHeading": "Try something like:",
+    "exampleOne": "Remote senior React jobs",
+    "exampleTwo": "Python jobs in Porto paying over 3000",
+    "exampleThree": "Junior jobs, any location",
+    "noResults": "No jobs matched that search.",
+    "viewAllOnJobsPage": "See all results on the jobs page",
+    "rateLimitedMessage": "You've sent a lot of messages in a short time. Please try again in a little while.",
+    "errorMessage": "Something went wrong. Please try again.",
+    "thinking": "Thinking…",
+    "resultsCount": "{count, plural, one {# matching job} other {# matching jobs}}",
+    "chatName": "JT",
+    "chatSubtitle": "Your AI career assistant",
+    "newChat": "New chat",
+    "openingMessage": "Tell me your dream job and I'll find it. I can also check out companies, calculate your salary or severance pay, save favorites, and help you apply. Just ask.",
+    "followUpRemote": "Only show remote jobs",
+    "followUpSenior": "Only show senior roles",
+    "followUpCompare": "Compare these jobs for me",
+    "authCardLoggedIn": "You're logged in. Ask me again and I'll continue.",
+    "viewCompanyProfile": "View full profile",
+    "openJobsCount": "{count, plural, one {# open job} other {# open jobs}}",
+    "viewFullBreakdown": "View full breakdown",
+    "applyPreviewHint": "Reply with a clear yes to actually submit this application.",
+    "noCvOnFile": "You don't have a CV on file yet. Upload one on your profile first.",
+    "applySuccessMessage": "Application submitted!",
+    "favoriteSaved": "Saved to favorites",
+    "favoriteRemoved": "Removed from favorites",
+    "viewFavorites": "View favorites",
+    "cvOverallScore": "Overall score: {score}/100",
+    "cvScoreFailed": "Something went wrong scoring your CV. Please try again.",
+    "interviewPrepRequested": "Request sent! We'll follow up by email to confirm your slot.",
+    "interviewPrepTooSoon": "The earliest bookable date is {date}."
+  },
+  "assistantTeaser": {
+    "badge": "New",
+    "heading": "Find your next IT opportunity with JT",
+    "subtitle": "Describe the role you're looking for in your own words.",
+    "inputPlaceholder": "e.g. Find remote Java jobs in Portugal paying over €3,000...",
+    "helper": "Search jobs, explore opportunities and get career advice.",
+    "submit": "Ask JT"
   }
 }

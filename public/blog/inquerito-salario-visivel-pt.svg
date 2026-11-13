@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 300" width="640" height="300" role="img" aria-label="Se o salário estivesse sempre visível">
+  <rect width="640" height="300" fill="#ffffff" />
+  <text x="24" y="30" font-family="system-ui, sans-serif" font-size="16" font-weight="700" fill="#182230">Se o salário estivesse sempre visível</text>
+  
+    <text x="24" y="56" font-family="system-ui, sans-serif" font-size="13" fill="#182230">Usaria mais, mas não exclusivamente</text>
+    <rect x="24" y="62" width="544" height="20" rx="4" fill="#e2e6ef" opacity="0.4" />
+    <rect x="24" y="62" width="544" height="20" rx="4" fill="#465bff" />
+    <text x="578" y="77" font-family="system-ui, sans-serif" font-size="13" font-weight="700" fill="#465bff">53%</text>
+    <text x="24" y="112" font-family="system-ui, sans-serif" font-size="13" fill="#182230">Passaria a ser a minha plataforma principal</text>
+    <rect x="24" y="118" width="544" height="20" rx="4" fill="#e2e6ef" opacity="0.4" />
+    <rect x="24" y="118" width="318.188679245283" height="20" rx="4" fill="#eef2ff" />
+    <text x="352.188679245283" y="133" font-family="system-ui, sans-serif" font-size="13" font-weight="700" fill="#667085">31%</text>
+    <text x="24" y="168" font-family="system-ui, sans-serif" font-size="13" fill="#182230">Não mudaria muito</text>
+    <rect x="24" y="174" width="544" height="20" rx="4" fill="#e2e6ef" opacity="0.4" />
+    <rect x="24" y="174" width="133.43396226415095" height="20" rx="4" fill="#eef2ff" />
+    <text x="167.43396226415095" y="189" font-family="system-ui, sans-serif" font-size="13" font-weight="700" fill="#667085">13%</text>
+    <text x="24" y="224" font-family="system-ui, sans-serif" font-size="13" fill="#182230">Ficaria cético quanto à veracidade</text>
+    <rect x="24" y="230" width="544" height="20" rx="4" fill="#e2e6ef" opacity="0.4" />
+    <rect x="24" y="230" width="30.79245283018868" height="20" rx="4" fill="#eef2ff" />
+    <text x="64.79245283018868" y="245" font-family="system-ui, sans-serif" font-size="13" font-weight="700" fill="#667085">3%</text>
+</svg>

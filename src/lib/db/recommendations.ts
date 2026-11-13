@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { toJob, hideSalaryIfPrivate, type JobRow } from "./jobs";
-import { getMyCandidateSkillsAndEducation, getMyCandidateJobPreferences } from "./candidate-profile";
+import { getMyCandidateSkillsAndEducation, getMyCandidateJobPreferences, getMyCandidateProfile } from "./candidate-profile";
 import { scoreJobMatch, MIN_MATCH_SCORE } from "./matching-scoring";
 import type { Job, SkillLevel } from "@/lib/types";
 
@@ -52,6 +52,8 @@ function scoreJob(
   row: RecsJobRow,
   skillIds: Set<string>,
   prefs: Awaited<ReturnType<typeof getMyCandidateJobPreferences>>,
+  residenceLocationId: string | null,
+  jobSearchStatus: "looking" | "open" | "not_open",
 ): { score: number; matchedTechLabels: string[] } {
   const matchedTechLabels = row.job_tech_tags
     .filter((t) => skillIds.has(t.tech_tag_id))
@@ -69,7 +71,18 @@ function scoreJob(
     },
     row.job_tech_tags.map((t) => ({ techTagId: t.tech_tag_id, required: t.required })),
     skillIds,
-    prefs,
+    // `residenceLocationId`/`jobSearchStatus` deliberately aren't part of
+    // CandidateJobPreferences itself (that type is also what the Job
+    // Preferences tab's save action takes, both are separate facts
+    // edited on the Overview tab, and keeping them off this type means
+    // that save path never has to carry a field it doesn't touch),
+    // merged in here, at the one place that actually needs the full
+    // scoring shape. A candidate who's said they're "not open to offers"
+    // stops seeing their own job recommendations too, by the same
+    // symmetric engine logic the employer-facing direction uses: if
+    // they're not open to being matched, "jobs matched to you" shouldn't
+    // keep surfacing either.
+    prefs ? { ...prefs, residenceLocationId, jobSearchStatus } : null,
   );
 
   return { score, matchedTechLabels };
@@ -85,9 +98,10 @@ export async function getJobRecommendationsForCandidate(limit = 20): Promise<Rec
   const { data: candidateId } = await supabase.rpc("my_candidate_id");
   if (!candidateId) return { ok: false, reason: "not_a_candidate" };
 
-  const [skillsAndEducation, prefs] = await Promise.all([
+  const [skillsAndEducation, prefs, profile] = await Promise.all([
     getMyCandidateSkillsAndEducation(),
     getMyCandidateJobPreferences(),
+    getMyCandidateProfile(),
   ]);
 
   const skillIds = new Set((skillsAndEducation?.techTags ?? []).map((t) => t.techTagId));
@@ -119,7 +133,13 @@ export async function getJobRecommendationsForCandidate(limit = 20): Promise<Rec
   const rows = data as unknown as RecsJobRow[];
   const scored = rows
     .map((row) => {
-      const { score, matchedTechLabels } = scoreJob(row, skillIds, prefs);
+      const { score, matchedTechLabels } = scoreJob(
+        row,
+        skillIds,
+        prefs,
+        profile?.locationId ?? null,
+        profile?.jobSearchStatus ?? "open",
+      );
       return { job: hideSalaryIfPrivate(row, toJob(row)), matchScore: score, matchedTechLabels };
     })
     // A job with near-zero overlap isn't a "match" just because it's live —
@@ -155,9 +175,10 @@ export async function getJobMatchScoreForCandidate(jobId: string): Promise<JobMa
   const { data: candidateId } = await supabase.rpc("my_candidate_id");
   if (!candidateId) return { ok: false, reason: "not_a_candidate" };
 
-  const [skillsAndEducation, prefs] = await Promise.all([
+  const [skillsAndEducation, prefs, profile] = await Promise.all([
     getMyCandidateSkillsAndEducation(),
     getMyCandidateJobPreferences(),
+    getMyCandidateProfile(),
   ]);
 
   const skillIds = new Set((skillsAndEducation?.techTags ?? []).map((t) => t.techTagId));
@@ -183,6 +204,12 @@ export async function getJobMatchScoreForCandidate(jobId: string): Promise<JobMa
 
   if (!data) return { ok: false, reason: "below_threshold" };
 
-  const { score } = scoreJob(data as unknown as RecsJobRow, skillIds, prefs);
+  const { score } = scoreJob(
+    data as unknown as RecsJobRow,
+    skillIds,
+    prefs,
+    profile?.locationId ?? null,
+    profile?.jobSearchStatus ?? "open",
+  );
   return score >= MIN_MATCH_SCORE ? { ok: true, score } : { ok: false, reason: "below_threshold" };
 }

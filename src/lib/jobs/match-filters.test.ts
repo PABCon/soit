@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseJobFilterParams, jobMatchesFilters, monthlyFloor } from "./match-filters";
+import { parseJobFilterParams, serializeJobFilterParams, jobMatchesFilters, monthlyFloor } from "./match-filters";
 import type { Job } from "@/lib/types";
 
 function makeJob(overrides: Partial<Job> = {}): Job {
@@ -41,6 +41,33 @@ describe("parseJobFilterParams", () => {
     expect(filters.minSalary).toBe(2000);
     expect(filters.remoteOnly).toBe(true);
     expect(filters.q).toBe("");
+  });
+});
+
+describe("serializeJobFilterParams", () => {
+  it("round-trips through parseJobFilterParams unchanged", () => {
+    const original = parseJobFilterParams(
+      new URLSearchParams({
+        q: "backend",
+        near: "lisboa",
+        radiusKm: "25",
+        tech: "React,Python",
+        cat: "backend-development",
+        seniority: "senior,lead",
+        workModel: "remote",
+        empType: "permanent",
+        reqLang: "english",
+        remote: "1",
+        minSalary: "2500",
+      }),
+    );
+    const roundTripped = parseJobFilterParams(serializeJobFilterParams(original));
+    expect(roundTripped).toEqual(original);
+  });
+
+  it("omits every empty/default field rather than writing a param with no real value", () => {
+    const params = serializeJobFilterParams(parseJobFilterParams(new URLSearchParams()));
+    expect(params.toString()).toBe("");
   });
 });
 
