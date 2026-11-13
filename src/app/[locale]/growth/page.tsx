@@ -157,6 +157,33 @@ export default async function GrowthMetricsPage({ params, searchParams }: Props)
         )}
       </div>
 
+      <div className="mt-6 rounded-xl border border-line bg-white p-4">
+        <p className="text-sm font-semibold text-ink">Pipeline: companies that should claim their account</p>
+        <p className="mt-0.5 text-xs text-muted">Scraped + drafted (§claim-invites), awaiting an owner to actually claim the profile.</p>
+        {data.prospects.length === 0 ? (
+          <p className="mt-3 text-sm text-muted">No open prospects right now.</p>
+        ) : (
+          <table className="mt-3 w-full text-left text-sm">
+            <thead>
+              <tr className="text-xs text-muted">
+                <th className="pb-1.5 font-medium">Company</th>
+                <th className="pb-1.5 font-medium">Added</th>
+                <th className="pb-1.5 font-medium">Claim link expires</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.prospects.map((p) => (
+                <tr key={p.companyId} className="border-t border-line">
+                  <td className="py-1.5 text-ink">{p.companyName}</td>
+                  <td className="py-1.5 text-muted">{p.createdAt.slice(0, 10)}</td>
+                  <td className="py-1.5 text-muted">{p.claimExpiresAt.slice(0, 10)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+
       <div className="mt-6 grid grid-cols-3 gap-3">
         <div className="rounded-xl border border-line bg-white p-3">
           <p className="text-xs text-muted">Ad-credit revenue (lifetime)</p>

@@ -10,6 +10,33 @@ import type { VerificationStatus } from "@/lib/db/companies";
  * layer, not here; this module has no opinion on who's allowed to call it.
  */
 
+// Known dev/QA fixtures left behind by earlier testing sessions that were
+// never cleaned up (real-usage finding: this page surfaced them directly
+// as "bad data"). Confirmed by direct inspection before excluding, not
+// guessed from name patterns alone, each of these companies has zero
+// jobs ever, and each of these candidates has a test-tool-generated
+// email/name with zero real applications/favorites/saved searches. A
+// genuinely ambiguous case (a candidate with a real CV and skills on
+// file, even one you can't fully vouch for) is deliberately NOT excluded
+// here, this list only holds confirmed, unambiguous fixtures. Filtering
+// here (not deleting the rows) keeps this reversible and auditable; a
+// real cleanup pass deleting them from the database is a separate,
+// explicit action.
+const EXCLUDED_COMPANY_IDS = new Set([
+  "67212b85-15d2-4096-8754-5d66b77cb29b", // "QA GDPR Test Co 1793102836987"
+  "197a4cc1-fe43-44ef-b2c5-038d1e5b063c", // "Matchmaking Test Co"
+  "3cd24489-2507-4c71-ab1b-a52ddaf3c3b1", // "Matchmaking Test Co" (second fixture)
+  "670fcc1a-0735-4061-9797-53a4f5a67035", // "Just IT" itself, a placeholder/demo row, zero real jobs
+]);
+const EXCLUDED_CANDIDATE_IDS = new Set([
+  "b2f57e20-511e-41d9-b3d3-8e40d40e747c", // terms-test-...@mailinator.com
+  "d92c5d9a-2124-4a93-8b07-ae18a267c6a2", // qa-apply-fix-...@example.com
+  "7ada1958-37d4-435a-b4d9-4b0728ddac48", // interviewprep-test fixtures (4x)
+  "383e3bc7-2f1b-4da6-9a1d-bf16d74bfe0a",
+  "bbcb7927-19db-4a30-8bc8-be82ef9b605c",
+  "33f2db9b-077d-4d16-896a-81e7ddfff4e6",
+]);
+
 const TREND_DAYS = 30;
 
 export type SignupTrendPoint = { date: string; candidates: number; companies: number };
@@ -53,6 +80,16 @@ export type ClientRow = {
   lastPublishedAt: string | null;
 };
 
+/** A company that's been scraped + drafted (§claim-invites) but hasn't
+ *  claimed its profile yet, exactly "other companies that should claim
+ *  their accounts," the real-usage gap this section closes. */
+export type ProspectRow = {
+  companyId: string;
+  companyName: string;
+  createdAt: string;
+  claimExpiresAt: string;
+};
+
 export type GrowthMetrics = {
   totals: {
     candidates: number;
@@ -67,6 +104,7 @@ export type GrowthMetrics = {
   newLast30Days: { candidates: number; verifiedCompanies: number; jobsPublished: number };
   signupTrend: SignupTrendPoint[];
   clients: ClientRow[];
+  prospects: ProspectRow[];
   billing: {
     adCreditRevenueCents: number;
     activeTopEmployerCount: number;
@@ -81,8 +119,7 @@ export async function getGrowthMetrics(): Promise<GrowthMetrics> {
   const nowIso = now.toISOString();
 
   const [
-    { count: candidatesCount },
-    { data: candidateDates },
+    { data: candidateRows },
     { data: companiesAll },
     { count: liveJobsCount },
     { count: applicationsCount },
@@ -91,9 +128,9 @@ export async function getGrowthMetrics(): Promise<GrowthMetrics> {
     { data: jobRows },
     { data: adPurchases },
     { data: subRows },
+    { data: claimInvites },
   ] = await Promise.all([
-    admin.from("candidates").select("id", { count: "exact", head: true }),
-    admin.from("candidates").select("created_at").gte("created_at", windowStart.toISOString()),
+    admin.from("candidates").select("id, created_at"),
     admin.from("companies").select("id, company_name, verification_status, created_at, top_employer_active"),
     admin.from("jobs").select("id", { count: "exact", head: true }).eq("status", "published").gt("expires_at", nowIso),
     admin.from("applications").select("id", { count: "exact", head: true }),
@@ -102,10 +139,12 @@ export async function getGrowthMetrics(): Promise<GrowthMetrics> {
     admin.from("jobs").select("company_id, status, published_at, expires_at"),
     admin.from("job_ad_purchases").select("company_id, total_cents"),
     admin.from("company_subscriptions").select("company_id, status"),
+    admin.from("company_claim_invites").select("company_id, expires_at, claimed_at"),
   ]);
 
-  const companies = companiesAll ?? [];
-  const jobs = jobRows ?? [];
+  const candidates = (candidateRows ?? []).filter((c) => !EXCLUDED_CANDIDATE_IDS.has(c.id));
+  const companies = (companiesAll ?? []).filter((c) => !EXCLUDED_COMPANY_IDS.has(c.id));
+  const jobs = (jobRows ?? []).filter((j) => !EXCLUDED_COMPANY_IDS.has(j.company_id));
 
   const companiesByStatus: Record<VerificationStatus, number> = {
     unverified: 0,
@@ -145,13 +184,27 @@ export async function getGrowthMetrics(): Promise<GrowthMetrics> {
       return (b.lastPublishedAt ?? "").localeCompare(a.lastPublishedAt ?? "");
     });
 
+  // Unclaimed companies are exactly the ones with an open (unclaimed)
+  // company_claim_invites row, joined in code rather than a Postgres
+  // join, same "small table, compare in memory" style this project's
+  // other admin-client reads already use (getFeaturedTechCounts, etc.).
+  const unclaimedCompanyIds = new Set(companies.filter((c) => c.verification_status === "unclaimed").map((c) => c.id));
+  const prospects: ProspectRow[] = (claimInvites ?? [])
+    .filter((inv) => !inv.claimed_at && unclaimedCompanyIds.has(inv.company_id))
+    .map((inv) => {
+      const company = companies.find((c) => c.id === inv.company_id);
+      return { companyId: inv.company_id, companyName: company?.company_name ?? "Unknown", createdAt: company?.created_at ?? inv.expires_at, claimExpiresAt: inv.expires_at };
+    })
+    .sort((a, b) => a.claimExpiresAt.localeCompare(b.claimExpiresAt));
+
   const jobsPublishedLast30 = jobs.filter((j) => j.published_at && j.published_at >= windowStart.toISOString()).length;
   const newVerifiedCompanies = companies.filter(
     (c) => c.verification_status === "verified" && c.created_at >= windowStart.toISOString(),
   ).length;
 
+  const newCandidates = candidates.filter((c) => c.created_at >= windowStart.toISOString());
   const signupTrend = bucketSignupsByDay(
-    (candidateDates ?? []).map((r) => r.created_at),
+    newCandidates.map((r) => r.created_at),
     companies.filter((c) => c.created_at >= windowStart.toISOString()).map((c) => c.created_at),
     TREND_DAYS,
     now,
@@ -165,7 +218,7 @@ export async function getGrowthMetrics(): Promise<GrowthMetrics> {
 
   return {
     totals: {
-      candidates: candidatesCount ?? 0,
+      candidates: candidates.length,
       companies: companies.length,
       verifiedCompanies: verifiedCompanies.length,
       liveJobs: liveJobsCount ?? 0,
@@ -175,12 +228,13 @@ export async function getGrowthMetrics(): Promise<GrowthMetrics> {
     },
     companiesByStatus,
     newLast30Days: {
-      candidates: (candidateDates ?? []).length,
+      candidates: newCandidates.length,
       verifiedCompanies: newVerifiedCompanies,
       jobsPublished: jobsPublishedLast30,
     },
     signupTrend,
     clients,
+    prospects,
     billing: {
       adCreditRevenueCents,
       activeTopEmployerCount,
