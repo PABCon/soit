@@ -2,7 +2,6 @@
 
 import { useTranslations } from "next-intl";
 import { Link, useRouter } from "@/i18n/navigation";
-import { createClient } from "@/lib/supabase/client";
 import { Dropdown } from "@/components/Dropdown";
 
 const item = "block w-full truncate px-3 py-2 text-left text-sm text-ink hover:bg-paper";
@@ -40,7 +39,12 @@ export function AccountMenu({
   const t = useTranslations("console");
   const router = useRouter();
 
+  // Same perf fix as LoginMenu.tsx's identical function (PageSpeed audit,
+  // 2026-11-17): a dynamic import here keeps the whole supabase-js client
+  // out of the console shell's own initial bundle, fetched only if this
+  // button is actually clicked.
   async function handleLogOut() {
+    const { createClient } = await import("@/lib/supabase/client");
     await createClient().auth.signOut();
     router.push("/");
     router.refresh();

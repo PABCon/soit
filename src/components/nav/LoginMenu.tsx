@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { Link, useRouter } from "@/i18n/navigation";
-import { createClient } from "@/lib/supabase/client";
 import { Dropdown } from "@/components/Dropdown";
 import { buttonClassName } from "@/components/Button";
 
@@ -46,35 +45,57 @@ export function LoginMenu() {
   const [email, setEmail] = useState<string | null | undefined>(undefined);
   const [profile, setProfile] = useState<Profile | null>(null);
 
+  // Real-usage finding (PageSpeed audit, 2026-11-17): this component
+  // renders on every page via TopNav, and a static top-level
+  // `import { createClient } from "@/lib/supabase/client"` bundled the
+  // whole supabase-js client (auth/realtime/storage, ~82% of it unused
+  // on any single page) into the shared chunk every page loads
+  // up front, well before this effect even runs. Dynamically importing
+  // it here instead, same pattern CompanyMap.tsx/JobMap.tsx already use
+  // for `leaflet`, lets Next.js split it into its own chunk fetched
+  // only once this effect actually runs, after first paint, rather than
+  // competing with it.
   useEffect(() => {
-    const supabase = createClient();
+    let cancelled = false;
+    let unsubscribe: (() => void) | undefined;
 
-    async function loadProfile() {
-      const { data } = await supabase.auth.getUser();
-      const currentEmail = data.user?.email ?? null;
-      setEmail(currentEmail);
-      if (!currentEmail) {
-        setProfile(null);
-        return;
+    import("@/lib/supabase/client").then(({ createClient }) => {
+      if (cancelled) return;
+      const supabase = createClient();
+
+      async function loadProfile() {
+        const { data } = await supabase.auth.getUser();
+        const currentEmail = data.user?.email ?? null;
+        setEmail(currentEmail);
+        if (!currentEmail) {
+          setProfile(null);
+          return;
+        }
+        // Avatar/name live only on `candidates` (candidate-profile.ts), never
+        // synced to auth user_metadata — one extra read, RLS-scoped to the
+        // caller's own row same as getMyCandidateProfile.
+        const { data: candidate } = await supabase
+          .from("candidates")
+          .select("full_name, avatar_url")
+          .maybeSingle();
+        setProfile(candidate ? { fullName: candidate.full_name, avatarUrl: candidate.avatar_url } : null);
       }
-      // Avatar/name live only on `candidates` (candidate-profile.ts), never
-      // synced to auth user_metadata — one extra read, RLS-scoped to the
-      // caller's own row same as getMyCandidateProfile.
-      const { data: candidate } = await supabase
-        .from("candidates")
-        .select("full_name, avatar_url")
-        .maybeSingle();
-      setProfile(candidate ? { fullName: candidate.full_name, avatarUrl: candidate.avatar_url } : null);
-    }
 
-    loadProfile();
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(() => loadProfile());
-    return () => subscription.unsubscribe();
+      loadProfile();
+      const {
+        data: { subscription },
+      } = supabase.auth.onAuthStateChange(() => loadProfile());
+      unsubscribe = () => subscription.unsubscribe();
+    });
+
+    return () => {
+      cancelled = true;
+      unsubscribe?.();
+    };
   }, []);
 
   async function handleLogOut() {
+    const { createClient } = await import("@/lib/supabase/client");
     await createClient().auth.signOut();
     router.push("/");
     router.refresh();
