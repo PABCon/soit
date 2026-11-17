@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 692" width="640" height="692" role="img" aria-label="IT job postings by region (Teamlyzer, 2026)">
+  <rect width="640" height="692" fill="#ffffff" />
+  <text x="24" y="30" font-family="system-ui, sans-serif" font-size="16" font-weight="700" fill="#182230">IT job postings by region (Teamlyzer, 2026)</text>
+  
+    <text x="24" y="56" font-family="system-ui, sans-serif" font-size="13" fill="#182230">Lisbon</text>
+    <rect x="24" y="62" width="544" height="20" rx="4" fill="#e2e6ef" opacity="0.4" />
+    <rect x="24" y="62" width="544" height="20" rx="4" fill="#465bff" />
+    <text x="578" y="77" font-family="system-ui, sans-serif" font-size="13" font-weight="700" fill="#465bff">51.72%</text>
+    <text x="24" y="112" font-family="system-ui, sans-serif" font-size="13" fill="#182230">Porto</text>
+    <rect x="24" y="118" width="544" height="20" rx="4" fill="#e2e6ef" opacity="0.4" />
+    <rect x="24" y="118" width="320.17324052590874" height="20" rx="4" fill="#eef2ff" />
+    <text x="354.17324052590874" y="133" font-family="system-ui, sans-serif" font-size="13" font-weight="700" fill="#667085">30.44%</text>
+    <text x="24" y="168" font-family="system-ui, sans-serif" font-size="13" fill="#182230">Braga</text>
+    <rect x="24" y="174" width="544" height="20" rx="4" fill="#e2e6ef" opacity="0.4" />
+    <rect x="24" y="174" width="68.68368136117557" height="20" rx="4" fill="#eef2ff" />
+    <text x="102.68368136117557" y="189" font-family="system-ui, sans-serif" font-size="13" font-weight="700" fill="#667085">6.53%</text>
+    <text x="24" y="224" font-family="system-ui, sans-serif" font-size="13" fill="#182230">Aveiro</text>
+    <rect x="24" y="230" width="544" height="20" rx="4" fill="#e2e6ef" opacity="0.4" />
+    <rect x="24" y="230" width="48.80433101314772" height="20" rx="4" fill="#eef2ff" />
+    <text x="82.80433101314772" y="245" font-family="system-ui, sans-serif" font-size="13" font-weight="700" fill="#667085">4.64%</text>
+    <text x="24" y="280" font-family="system-ui, sans-serif" font-size="13" fill="#182230">Coimbra</text>
+    <rect x="24" y="286" width="544" height="20" rx="4" fill="#e2e6ef" opacity="0.4" />
+    <rect x="24" y="286" width="46.38515081206497" height="20" rx="4" fill="#eef2ff" />
+    <text x="80.38515081206498" y="301" font-family="system-ui, sans-serif" font-size="13" font-weight="700" fill="#667085">4.41%</text>
+    <text x="24" y="336" font-family="system-ui, sans-serif" font-size="13" fill="#182230">Setúbal</text>
+    <rect x="24" y="342" width="544" height="20" rx="4" fill="#e2e6ef" opacity="0.4" />
+    <rect x="24" y="342" width="13.568445475638052" height="20" rx="4" fill="#eef2ff" />
+    <text x="47.56844547563805" y="357" font-family="system-ui, sans-serif" font-size="13" font-weight="700" fill="#667085">1.29%</text>
+    <text x="24" y="392" font-family="system-ui, sans-serif" font-size="13" fill="#182230">Évora</text>
+    <rect x="24" y="398" width="544" height="20" rx="4" fill="#e2e6ef" opacity="0.4" />
+    <rect x="24" y="398" width="4" height="20" rx="4" fill="#eef2ff" />
+    <text x="38" y="413" font-family="system-ui, sans-serif" font-size="13" font-weight="700" fill="#667085">0.27%</text>
+    <text x="24" y="448" font-family="system-ui, sans-serif" font-size="13" fill="#182230">Faro</text>
+    <rect x="24" y="454" width="544" height="20" rx="4" fill="#e2e6ef" opacity="0.4" />
+    <rect x="24" y="454" width="4" height="20" rx="4" fill="#eef2ff" />
+    <text x="38" y="469" font-family="system-ui, sans-serif" font-size="13" font-weight="700" fill="#667085">0.26%</text>
+    <text x="24" y="504" font-family="system-ui, sans-serif" font-size="13" fill="#182230">Azores</text>
+    <rect x="24" y="510" width="544" height="20" rx="4" fill="#e2e6ef" opacity="0.4" />
+    <rect x="24" y="510" width="4" height="20" rx="4" fill="#eef2ff" />
+    <text x="38" y="525" font-family="system-ui, sans-serif" font-size="13" font-weight="700" fill="#667085">0.24%</text>
+    <text x="24" y="560" font-family="system-ui, sans-serif" font-size="13" fill="#182230">Madeira</text>
+    <rect x="24" y="566" width="544" height="20" rx="4" fill="#e2e6ef" opacity="0.4" />
+    <rect x="24" y="566" width="4" height="20" rx="4" fill="#eef2ff" />
+    <text x="38" y="581" font-family="system-ui, sans-serif" font-size="13" font-weight="700" fill="#667085">0.23%</text>
+    <text x="24" y="616" font-family="system-ui, sans-serif" font-size="13" fill="#182230">Other districts (combined)</text>
+    <rect x="24" y="622" width="544" height="20" rx="4" fill="#e2e6ef" opacity="0.4" />
+    <rect x="24" y="622" width="8.098994586233566" height="20" rx="4" fill="#eef2ff" />
+    <text x="42.098994586233566" y="637" font-family="system-ui, sans-serif" font-size="13" font-weight="700" fill="#667085">0.77%</text>
+</svg>
