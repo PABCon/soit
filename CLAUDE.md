@@ -6994,3 +6994,54 @@ discussed before this six-item report arrived (new event types for
 company lookups/calculator use, an apply-funnel view on
 `/assistant-stats`) — the user's very next message was this six-item
 batch instead of answering that question, so it remains open.
+
+## A public MCP server — the same JT tools, reachable outside justit.pt
+
+Direct request: "how hard would it be to build an MCP for our website?"
+followed by "ok mcp work lets go." `src/app/api/mcp/route.ts` exposes 4
+of JT's already-shipped, already-audited tools to any MCP-compatible
+client (Claude Desktop, Claude Code, or anything else that speaks the
+protocol), not just justit.pt's own chat widget: `search_jobs`,
+`lookup_company`, `calculate_net_salary`, `calculate_termination`.
+Deliberately read-only for this first version — apply/favorites/CV-
+scoring/interview-prep stay JT-only, since a write action through MCP
+properly needs the protocol's own OAuth flow, separate, bigger work,
+not bolted on here.
+
+**Reused, never reimplemented**: every tool wraps the exact same
+`src/lib/assistant/*.ts`/`src/lib/db/*.ts` functions `/api/assistant`
+already calls (`searchJobs`, `findMatchingCompany`/`getCompanyBySlug`,
+`calculateSalary`, `calculateTermination`) — same "provably shared, not
+duplicated" principle this project already applies to its scoring
+engine and its job-filter predicate. A result from this endpoint is
+never a second, independent implementation that could silently drift
+from what JT itself would say.
+
+**Architecture**: `@modelcontextprotocol/sdk` (`McpServer`,
+`WebStandardStreamableHTTPServerTransport`), stateless mode
+(`sessionIdGenerator: undefined`) — the SDK's own doc comment calls
+this out as the correct pattern for "simple API-style servers," and
+it's the right one here since there's no multi-turn MCP session to
+persist across serverless invocations that may each land on a
+different function instance, same reasoning this project already
+applies to its own stateless public v1 API. A fresh `McpServer` +
+transport is built per request. Rate-limited via the existing Upstash
+sliding-window limiter, keyed by IP (`x-forwarded-for`) rather than a
+session cookie — there's no persistent identity for an anonymous MCP
+caller the way `jobs_assistant_session` gives the chat widget one.
+
+Verified end to end, real protocol calls (not mocked), against both a
+local production build (`npm run start`) and `https://justit.pt`
+after deploy: a real `initialize` handshake, `tools/list` returning
+all 4 tools' correct auto-generated JSON schemas, `search_jobs`
+returning a real live job, `lookup_company` returning ITDS Portugal's
+real public profile (name, description, industry, size, open-jobs
+count, with URLs correctly resolving to `https://justit.pt` in
+production), `calculate_net_salary` matching the already-many-times-
+verified €2500/month employment case exactly, and `calculate_termination`
+matching a real dismissal scenario (6.84 years of service, 14 days/
+year, uncapped) down to the cent. `npx tsc --noEmit` and `eslint` both
+clean. **How to use it**: any MCP client that supports a remote
+streamable-HTTP server can point at `https://justit.pt/api/mcp`
+directly (no API key, no auth) — e.g. in Claude Desktop's config,
+add an entry under `mcpServers` with that URL as a remote server.
