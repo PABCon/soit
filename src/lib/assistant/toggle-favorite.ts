@@ -1,4 +1,5 @@
 import { toggleFavorite } from "@/lib/db/favorites";
+import type { CandidateIdOverride } from "@/lib/db/applications";
 import type { Job } from "@/lib/types";
 
 /**
@@ -15,9 +16,9 @@ export type ToggleFavoriteResult =
   | { ok: false; reason: "needs_account" }
   | { ok: true; favorited: boolean; jobTitle: string; companyName: string };
 
-export async function toggleFavoriteForJob(job: Job): Promise<ToggleFavoriteResult> {
+export async function toggleFavoriteForJob(job: Job, override?: CandidateIdOverride): Promise<ToggleFavoriteResult> {
   try {
-    const { favorited } = await toggleFavorite(job.id);
+    const { favorited } = await toggleFavorite(job.id, override);
     return { ok: true, favorited, jobTitle: job.title, companyName: job.company.name };
   } catch {
     // toggleFavorite() throws a plain Error("Not a candidate") rather

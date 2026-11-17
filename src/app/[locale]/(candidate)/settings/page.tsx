@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { getTranslations, setRequestLocale } from "next-intl/server";
-import { Globe, Bell, Download, AlertTriangle } from "lucide-react";
+import { Globe, Bell, Download, KeyRound, AlertTriangle } from "lucide-react";
 import { redirect } from "@/i18n/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { PasswordChangeForm } from "@/components/auth/PasswordChangeForm";
@@ -8,8 +8,10 @@ import { LanguageSwitcher } from "@/components/LanguageSwitcher";
 import { MarketingOptInToggle } from "@/components/candidate/MarketingOptInToggle";
 import { DeleteAccountSection } from "@/components/candidate/DeleteAccountSection";
 import { DataExportButton } from "@/components/candidate/DataExportButton";
+import { CandidateApiKeyManager } from "@/components/candidate/CandidateApiKeyManager";
 import { CardHeading } from "@/components/CardHeading";
 import { getMyCandidateProfile } from "@/lib/db/candidate-profile";
+import { getMyCandidateApiKey } from "@/lib/db/candidate-api-keys";
 
 type Props = { params: Promise<{ locale: string }> };
 
@@ -61,6 +63,13 @@ export default async function CandidateSettingsPage({ params }: Props) {
           <CardHeading icon={Download} title={ts("yourData")} />
           <div className="mt-5">
             <DataExportButton />
+          </div>
+        </div>
+
+        <div className="rounded-xl border border-line bg-white p-6">
+          <CardHeading icon={KeyRound} title={ts("apiKeyHeading")} subtitle={ts("apiKeySubtitle")} />
+          <div className="mt-5">
+            <CandidateApiKeyManager existingKey={await getMyCandidateApiKey()} />
           </div>
         </div>
 

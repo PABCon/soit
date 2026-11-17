@@ -162,9 +162,8 @@ export type ApplyStatus = {
 
 /** Server-side, for the job detail page to decide what the Apply button
  *  should do — show the modal pre-filled, or the full anonymous form. */
-export async function getApplyStatus(jobId: string): Promise<ApplyStatus> {
-  const supabase = await createClient();
-  const { data: candidateId } = await supabase.rpc("my_candidate_id");
+export async function getApplyStatus(jobId: string, override?: CandidateIdOverride): Promise<ApplyStatus> {
+  const { supabase, candidateId } = await resolveCandidateContext(override);
   if (!candidateId) return { isCandidate: false, alreadyApplied: false, storedCv: null };
 
   const [{ data: existing }, { data: candidate }] = await Promise.all([
@@ -184,16 +183,39 @@ export async function getApplyStatus(jobId: string): Promise<ApplyStatus> {
 
 export type CvSource = { kind: "upload"; file: File } | { kind: "stored" };
 
+/** The candidate-MCP equivalent of `jobs.ts`'s `JobWriteOverride` — lets
+ *  a caller with a verified `candidate_api_keys` token (no cookie
+ *  session at all) resolve identity from that already-verified key
+ *  instead of `my_candidate_id()`. Never model/client-argument-supplied:
+ *  only ever set by the MCP route itself, after authenticating the
+ *  Bearer token against the admin client. Every explicit `.eq("candidate_id",
+ *  ...)` filter below is unchanged either way — same defense-in-depth
+ *  convention `saveJob`/`setJobStatus` already established for
+ *  `JobWriteOverride`, never left to RLS alone. */
+export type CandidateIdOverride = { candidateId: string };
+
+async function resolveCandidateContext(
+  override?: CandidateIdOverride,
+): Promise<{ supabase: SupabaseClient; candidateId: string | null }> {
+  if (override) return { supabase: createAdminClient(), candidateId: override.candidateId };
+  const supabase = await createClient();
+  const { data: candidateId } = await supabase.rpc("my_candidate_id");
+  return { supabase, candidateId };
+}
+
 /**
  * A candidate who's already logged in applies directly against their
  * existing, verified row (§6.7 — the simpler of the two paths; no
  * unclaimed-profile step, RLS is the real authorization boundary via the
  * "candidates apply to live jobs" policy).
  */
-export async function applyToJob(jobSlug: string, cv: CvSource, coverNote: string): Promise<ApplyResult> {
-  const supabase = await createClient();
-
-  const { data: candidateId } = await supabase.rpc("my_candidate_id");
+export async function applyToJob(
+  jobSlug: string,
+  cv: CvSource,
+  coverNote: string,
+  override?: CandidateIdOverride,
+): Promise<ApplyResult> {
+  const { supabase, candidateId } = await resolveCandidateContext(override);
   if (!candidateId) return { ok: false, reason: "not_candidate" };
 
   const { data: job } = await supabase

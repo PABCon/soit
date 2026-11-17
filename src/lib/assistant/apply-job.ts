@@ -1,4 +1,4 @@
-import { getApplyStatus, applyToJob, type ApplyResult } from "@/lib/db/applications";
+import { getApplyStatus, applyToJob, type ApplyResult, type CandidateIdOverride } from "@/lib/db/applications";
 import type { Job } from "@/lib/types";
 
 /**
@@ -31,8 +31,8 @@ export type PreviewApplyResult =
  *  real type, same convention as `SearchJobsResult`. */
 export type PreviewApplyToolResult = PreviewApplyResult | { ok: false; reason: "job_not_found" };
 
-export async function previewApply(job: Job): Promise<PreviewApplyResult> {
-  const status = await getApplyStatus(job.id);
+export async function previewApply(job: Job, override?: CandidateIdOverride): Promise<PreviewApplyResult> {
+  const status = await getApplyStatus(job.id, override);
   if (!status.isCandidate) return { ok: false, reason: "needs_account" };
   if (status.alreadyApplied) {
     return { ok: false, reason: "already_applied", jobTitle: job.title, companyName: job.company.name };
@@ -48,6 +48,6 @@ export async function previewApply(job: Job): Promise<PreviewApplyResult> {
  *  by calling the real `applyToJob()`, which never trusts a prior
  *  preview as still accurate (job could have expired, the daily cap
  *  could have been hit by another action, in the moments between). */
-export async function confirmApply(jobSlug: string, coverNote?: string): Promise<ApplyResult> {
-  return applyToJob(jobSlug, { kind: "stored" }, coverNote ?? "");
+export async function confirmApply(jobSlug: string, coverNote?: string, override?: CandidateIdOverride): Promise<ApplyResult> {
+  return applyToJob(jobSlug, { kind: "stored" }, coverNote ?? "", override);
 }
