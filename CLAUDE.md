@@ -6989,6 +6989,78 @@ wrap DB/email-triggering calls the same way `apply-job.ts`/
 Playwright reinstalled `--no-save` for this verification and fully
 uninstalled again once done.
 
+## Two more MCP servers: a paid one for companies, a free one for candidates
+
+Direct request: "the same for companies, similar to api, as paid option"
+plus "a similar one for candidates to apply." Both reuse existing,
+proven infra rather than building new auth from scratch — neither is a
+second implementation of anything that could drift from what the REST
+API / JT chat already do.
+
+**`/api/mcp/company`** is the MCP flavor of the existing, paid Top
+Employer "API access" perk (`/api/v1/*`, `/recruit/api`) — literally
+the same gate: a `sit_live_...` Bearer key, the same
+`authenticateApiRequest()` (sha256 lookup against `company_api_keys`,
+`top_employer_active` re-checked live on every request, the same
+per-company rate limit), wired straight into the same
+`saveJob`/`setJobStatus`/`deleteJob`/`getCompanyJobById`/
+`getAllCompanyJobsForApi` functions the REST API already calls via
+their existing `override: {companyId}` escape hatch. 8 tools:
+`list_reference`, `list_jobs`, `get_job`, `create_job`, `update_job`,
+`delete_job`, `pause_job`, `publish_job` — full parity with the REST
+surface, same `resolveJobRefs()` validation underneath each create/
+update call. Generating a key (`/recruit/api`) now gets a company two
+interfaces to the same perk, not two separate products.
+
+**`/api/mcp/candidate`** is new: candidate-side features stay free per
+this project's own standing economics ("no paid features on the
+candidate side"), so there's no billing concept here at all — just a
+personal access token (`sitc_live_...`, new `candidate_api_keys` table,
+sha256-hashed, one active key at a time, revoke-on-regenerate,
+mirroring `company_api_keys`'s shape column-for-column) a candidate
+generates themselves from a new "Personal access token" card on
+`/settings`. New `authenticateCandidateApiRequest()`
+(`src/lib/api/candidate-auth.ts`) mirrors `authenticateApiRequest()`
+minus the paid-tier check, its own Upstash rate limit
+(`checkCandidateApiRateLimit`, keyed by candidateId, separate budget
+from the company limiter).
+
+The real design question was identity: `applications.ts`'s
+`getApplyStatus`/`applyToJob` and `favorites.ts`'s `toggleFavorite`
+all resolved the candidate purely via `my_candidate_id()` against a
+cookie-bound client — no cookie session exists for an API-key request
+at all. Fixed with the exact same shape `jobs.ts`'s `JobWriteOverride`
+already established for the company API: a new `CandidateIdOverride`
+(`applications.ts`), threaded as a trailing optional param through
+`getApplyStatus`/`applyToJob`/`toggleFavorite` and the two assistant
+wrappers (`previewApply`/`confirmApply`/`toggleFavoriteForJob`) that
+JT's own chat tools already call unchanged — when present, resolves via
+the admin client with the already-verified candidateId instead of
+`my_candidate_id()`, with every existing `.eq("candidate_id", ...)`
+filter in those functions staying exactly as explicit as before (same
+defense-in-depth discipline, never left to RLS alone). 7 tools:
+`search_jobs`, `lookup_company`, `calculate_net_salary`,
+`calculate_termination` (identical bodies to the public `/api/mcp`,
+just no longer anonymous), `preview_apply`, `confirm_apply`,
+`toggle_favorite` — the same two-step preview/confirm discipline JT's
+own system prompt enforces for apply, kept here too even outside a
+chat conversation, since a real application still affects a real
+employer and still counts against the daily cap.
+
+Verified via `npx tsc --noEmit`, `eslint`, the full test suite (224
+passing, unaffected), `npm run build` (both new routes build as `ƒ`
+dynamic, correctly), and `check:i18n` (1687 keys, in sync). Both routes
+confirmed live on `https://justit.pt` returning a clean `401` for an
+invalid Bearer token, with the original public `/api/mcp` unaffected.
+Full live-database write-path verification (a real `create_job`
+through the company server, a real `confirm_apply`/`toggle_favorite`
+through the candidate server) was deliberately **not** run this round —
+the safety classifier blocked the fixture-creation script even after
+you approved it, and your own call was to deploy and test the MCP
+servers yourself rather than wait on an alternative (Playwright-driven)
+verification path. Generate a key at `/recruit/api` (company, Top
+Employer only) or `/settings` (candidate, free) to try either server.
+
 Still owed, not yet reconfirmed as wanted: the usage-tracking extension
 discussed before this six-item report arrived (new event types for
 company lookups/calculator use, an apply-funnel view on
