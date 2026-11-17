@@ -3,7 +3,7 @@ title: "The D8 Visa and Taxes: What Remote IT Workers Actually Need to Know"
 excerpt: "The D8 visa has a real minimum income requirement. And there's a common assumption about how your foreign income gets taxed that we checked and found wrong, the real answer is better news than it looks."
 date: "2026-11-17"
 category: "tips"
-coverImage: "/blog/visto-d8-cover-en.svg"
+coverImage: "/blog/visto-d8-cover.jpg"
 ---
 
 Working remotely for a foreign company while living in Portugal isn't a niche situation in IT anymore. Portugal's D8 visa, its "digital nomad visa," was built exactly for this. But there are two questions almost nobody answers clearly: how much do you actually need to earn to qualify, and how is that foreign income really taxed once you're here?

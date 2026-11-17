@@ -10,6 +10,11 @@ type Props = { params: Promise<{ locale: string; location: string }> };
 
 const SITE = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
 
+const LOCATION_OG_IMAGE: Record<string, string> = {
+  lisboa: `${SITE}/og/jobs-in-lisboa.jpg`,
+  porto: `${SITE}/og/jobs-in-porto.jpg`,
+};
+
 // SEO audit finding: this template drives this app's entire long-tail
 // SEO play (justjoin.it-style "IT jobs in Lisbon" pages) — ~70+ of these
 // are already in the sitemap and the count grows with every new job, but
@@ -37,7 +42,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     title,
     description,
     alternates: localeAlternates(`/jobs/in/${location}`, locale),
-    ...socialMeta({ title, description, url: `${SITE}/${locale}/jobs/in/${location}` }),
+    // A real photo for the two highest-volume locations (Lisboa/Porto
+    // alone are ~82% of real IT postings in Portugal, per the blog's own
+    // "onde estão as vagas" research), every other location falls back
+    // to the sitewide default image rather than needing one of its own.
+    ...socialMeta({ title, description, url: `${SITE}/${locale}/jobs/in/${location}`, image: LOCATION_OG_IMAGE[location] }),
     // A combo reachable by direct URL but not currently in the sitemap
     // (zero live jobs right now) shouldn't rank on an empty page — but it
     // must still render a real 200, not 404, since the taxonomy itself is

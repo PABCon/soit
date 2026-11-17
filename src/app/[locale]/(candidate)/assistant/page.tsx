@@ -21,7 +21,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     // already indexed at its own canonical /jobs/[slug] URL).
     robots: { index: false, follow: false },
     alternates: localeAlternates("/assistant", locale),
-    ...socialMeta({ title, description, url: `${SITE}/${locale}/assistant` }),
+    ...socialMeta({ title, description, url: `${SITE}/${locale}/assistant`, image: `${SITE}/og/assistant.jpg` }),
   };
 }
 

@@ -3,7 +3,7 @@ title: "Where IT Jobs Actually Are in Portugal (2026)"
 excerpt: "82% of IT job postings in Portugal sit in just Lisbon and Porto. We looked at the real numbers behind 8,730 postings, region by region, and at what the market is actually promising for next quarter."
 date: "2026-11-17"
 category: "market"
-coverImage: "/blog/onde-estao-vagas-cover-en.svg"
+coverImage: "/blog/onde-estao-vagas-cover.jpg"
 ---
 
 If you're thinking about IT work in Portugal, there's a question that rarely gets a real-numbers answer: where do the jobs actually are? Not "where we'd like them to be" or "where the company's head office is on paper," but where IT roles are actually posted.

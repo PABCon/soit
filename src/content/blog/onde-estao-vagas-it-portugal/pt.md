@@ -3,7 +3,7 @@ title: "Onde estão realmente as vagas de IT em Portugal (2026)"
 excerpt: "82% das vagas de IT em Portugal concentram-se só em Lisboa e Porto. Olhámos para os números reais de 8.730 vagas, região a região, e para o que o mercado promete para o próximo trimestre."
 date: "2026-11-17"
 category: "market"
-coverImage: "/blog/onde-estao-vagas-cover-pt.svg"
+coverImage: "/blog/onde-estao-vagas-cover.jpg"
 ---
 
 Se está a pensar em IT em Portugal, há uma pergunta que raramente é respondida com números reais: onde é que as vagas realmente estão? Não "onde gostaríamos que estivessem" nem "onde a sede da empresa fica no papel", mas onde é que as vagas de IT são publicadas de facto.

@@ -64,81 +64,6 @@ function writeChart(outPath: string, title: string, bars: Bar[]) {
   console.log("wrote", outPath);
 }
 
-// Calibrated against a real rendered measurement from this exact pipeline
-// (macOS Quick Look's system sans), not a generic font-metrics table. A
-// first version guessed 0.6em/char and ran both the stat and the caption
-// straight off the 1200px canvas. Re-measured directly off that failed
-// render ("€3.680" at font-size 220 filled the full 1120px text area
-// across 6 characters, ≈0.85em/char) and added real margin on top, since
-// this only needs to reliably fit, not be typographically exact.
-const BOLD_CHAR_WIDTH_EM = 0.95;
-const REGULAR_CHAR_WIDTH_EM = 0.74;
-
-function estimateWidth(text: string, fontSize: number, charWidthEm: number): number {
-  return text.length * fontSize * charWidthEm;
-}
-
-/** Greedy word-wrap, breaking only on spaces, each line kept under
- *  `maxWidth` at the given font size. */
-function wrapText(text: string, fontSize: number, charWidthEm: number, maxWidth: number): string[] {
-  const words = text.split(" ");
-  const lines: string[] = [];
-  let current = "";
-  for (const word of words) {
-    const candidate = current ? `${current} ${word}` : word;
-    if (estimateWidth(candidate, fontSize, charWidthEm) > maxWidth && current) {
-      lines.push(current);
-      current = word;
-    } else {
-      current = candidate;
-    }
-  }
-  if (current) lines.push(current);
-  return lines;
-}
-
-/**
- * A branded stat card at the same 1200x800 (3:2) aspect ratio every other
- * post's own photographed `coverImage` already uses, this project has no
- * photo-sourcing step of its own, so a real, on-brand stat (not a stock
- * photo) is the honest substitute for a post that's fundamentally about
- * one real number, same "never fake it, show the real thing" discipline
- * as the bar charts above.
- */
-function renderCover(eyebrow: string, stat: string, caption: string): string {
-  const width = 1200;
-  const height = 800;
-  const maxTextWidth = width - 80 * 2;
-
-  const maxStatFontSize = 220;
-  const statFontSize = Math.min(maxStatFontSize, maxTextWidth / (stat.length * BOLD_CHAR_WIDTH_EM));
-
-  const captionFontSize = 36;
-  const captionLines = wrapText(caption, captionFontSize, REGULAR_CHAR_WIDTH_EM, maxTextWidth);
-  const captionLineHeight = captionFontSize * 1.35;
-
-  const statBaselineY = 400;
-  const captionStartY = statBaselineY + 70;
-  const captionText = captionLines
-    .map((line, i) => `<tspan x="80" y="${captionStartY + i * captionLineHeight}">${escapeXml(line)}</tspan>`)
-    .join("");
-
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" width="${width}" height="${height}" role="img" aria-label="${escapeXml(eyebrow)}: ${escapeXml(stat)}, ${escapeXml(caption)}">
-  <rect width="${width}" height="${height}" fill="${PINE}" />
-  <text x="80" y="140" font-family="system-ui, sans-serif" font-size="28" font-weight="700" letter-spacing="2" fill="#ffffff" opacity="0.75">${escapeXml(eyebrow)}</text>
-  <text x="80" y="${statBaselineY}" font-family="system-ui, sans-serif" font-size="${statFontSize.toFixed(1)}" font-weight="800" fill="#ffffff">${escapeXml(stat)}</text>
-  <text font-family="system-ui, sans-serif" font-size="${captionFontSize}" font-weight="500" fill="#ffffff" opacity="0.92">${captionText}</text>
-</svg>`;
-}
-
-function writeCover(outPath: string, eyebrow: string, stat: string, caption: string) {
-  const svg = renderCover(eyebrow, stat, caption);
-  const full = path.join(process.cwd(), "public", outPath);
-  fs.mkdirSync(path.dirname(full), { recursive: true });
-  fs.writeFileSync(full, svg, "utf8");
-  console.log("wrote", outPath);
-}
-
 // ── inquerito-candidatos-it-2026 charts ──────────────────────────────────
 
 writeChart("blog/inquerito-onde-encontraram-pt.svg", "Onde encontraram o último emprego", [
@@ -191,11 +116,16 @@ writeChart("blog/inquerito-salario-visivel-en.svg", "If salary was always visibl
   { label: "Would be skeptical the ranges were accurate", value: 3 },
 ]);
 
-// ── onde-estao-vagas-it-portugal charts + cover ──────────────────────────
+// ── onde-estao-vagas-it-portugal chart ───────────────────────────────────
 // Source: lidermagazine.sapo.pt, "Lisboa e Porto concentram 82% das vagas
 // tech em Portugal" (21 Apr 2026), Teamlyzer's own analysis of 8,730 real
 // tech job postings over the prior 12 months. Real regional percentages,
 // not estimated or rounded beyond what the source itself published.
+// (This post's own coverImage ended up using a real photo from the
+// JustIT_Website_Image_Library instead of a generated stat card, once
+// that library existed, so the cover-card generator this comment once
+// pointed at was removed as genuinely unused rather than kept on
+// spec, re-add it if a future post has no real photo to reach for.)
 
 writeChart("blog/vagas-it-regiao-pt.svg", "Vagas de IT por região (Teamlyzer, 2026)", [
   { label: "Lisboa", value: 51.72 },
@@ -225,12 +155,3 @@ writeChart("blog/vagas-it-regiao-en.svg", "IT job postings by region (Teamlyzer,
   { label: "Other districts (combined)", value: 0.77 },
 ]);
 
-writeCover("blog/onde-estao-vagas-cover-pt.svg", "JUST IT", "82%", "das vagas de IT concentram-se em Lisboa e Porto");
-writeCover("blog/onde-estao-vagas-cover-en.svg", "JUST IT", "82%", "of IT job postings sit in just Lisbon and Porto");
-
-// ── visto-d8-regime-fiscal cover ─────────────────────────────────────────
-// Source: vistos.mne.gov.pt (D8 income test) + CIRS art. 81º n.º 4 (the
-// IFICI foreign-income exemption).
-
-writeCover("blog/visto-d8-cover-pt.svg", "JUST IT", "€3.680", "rendimento mínimo mensal exigido para o Visto D8 em 2026");
-writeCover("blog/visto-d8-cover-en.svg", "JUST IT", "€3,680", "minimum monthly income required for the D8 visa in 2026");

@@ -3,7 +3,7 @@ title: "Visto D8 e o regime fiscal: o que quem trabalha remoto em TI precisa de 
 excerpt: "O Visto D8 exige um rendimento mínimo real. E há uma ideia feita sobre como o seu rendimento estrangeiro é tributado que, verificámos, está errada, e a resposta real é melhor notícia do que parece."
 date: "2026-11-17"
 category: "tips"
-coverImage: "/blog/visto-d8-cover-pt.svg"
+coverImage: "/blog/visto-d8-cover.jpg"
 ---
 
 Trabalhar remoto para uma empresa estrangeira enquanto vive em Portugal já não é uma situação de nicho em TI. O Visto D8, o "visto de nómada digital" português, foi desenhado exatamente para isto. Mas há duas perguntas que quase ninguém responde com clareza: quanto preciso de ganhar para me qualificar, e como é que esse rendimento estrangeiro é realmente tributado depois?

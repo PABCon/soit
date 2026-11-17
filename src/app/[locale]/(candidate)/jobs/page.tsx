@@ -31,7 +31,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     // content" URL with nothing telling a crawler they're all the same
     // underlying page (SEO audit finding).
     alternates: localeAlternates("/jobs", locale),
-    ...socialMeta({ title, description, url: `${SITE}/${locale}/jobs` }),
+    ...socialMeta({ title, description, url: `${SITE}/${locale}/jobs`, image: `${SITE}/og/jobs.jpg` }),
   };
 }
 

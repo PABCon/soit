@@ -25,7 +25,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     title,
     description,
     alternates: localeAlternates("/rescisao-contrato", locale),
-    ...socialMeta({ title, description, url: `${SITE}/${locale}/rescisao-contrato` }),
+    ...socialMeta({ title, description, url: `${SITE}/${locale}/rescisao-contrato`, image: `${SITE}/og/rescisao-contrato.jpg` }),
   };
 }
 
