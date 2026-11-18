@@ -7182,3 +7182,25 @@ beside the paginated list; scrolling all the way down reaches the real
 footer in the same continuous scroll. Re-verified live on
 `https://justit.pt/en/jobs` after deploy: "Page 1 of 4" and working
 Previous/Next both render correctly.
+
+**Immediate follow-up, same conversation**: "the filters on top should
+be visible when blocking the scrolling for the listings" — with the
+list no longer its own sticky region, the quick-filter chips, the
+count/sort/remote/"more filters" row, and the active-search summary
+just below it all scrolled away with the hero the moment the listings
+came into view, losing access to them while scrolling through a page
+of jobs. Wrapped those three pieces (deliberately NOT the "more
+filters" aside panel or the list/map grid, which still scroll
+normally) in one `sticky top-20 z-[25] border-b border-line bg-paper`
+container — `top-20` matches every other sticky element's offset
+against the header (`TopNav`'s own `h-20`), `bg-paper` matches the
+page's real body background (`globals.css`) so the list scrolling
+underneath never shows through.
+
+Verified live via Playwright (installed `--no-save`, fully uninstalled
+after): the filter bar sits at its natural in-flow position (y=430) at
+the top of the page; after scrolling 700px it pins at y=162 and stays
+at that exact same y after scrolling a further 1500px (true sticky
+pinning, not just "still on screen by coincidence"); clicking a filter
+(the remote-only toggle) while scrolled down still works correctly
+(`?remote=1` applied).
