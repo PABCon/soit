@@ -377,7 +377,16 @@ export function JobsExplorer({
        *  clean edge once it's actually pinned. Deliberately NOT wrapping
        *  the "more filters" aside panel or the list/map grid below —
        *  those still scroll normally. */}
-      <div className="sticky top-20 z-[25] border-b border-line bg-paper pb-4">
+      {/* Real-usage report: a visible gap showed job-card content peeking
+       *  through between the navbar and this bar. Root cause: `TopNav`'s
+       *  real rendered height is `h-16` (64px, deliberately shrunk from
+       *  an earlier `h-20` in a since-documented pixel-measurement
+       *  correction) — `top-20` (80px) was a stale assumption, leaving a
+       *  ~16px seam below the header where this bar hadn't actually
+       *  pinned yet. `top-16` matches the header's real height exactly,
+       *  at every breakpoint (TopNav's row height doesn't change on
+       *  mobile, only which of its children are visible). */}
+      <div className="sticky top-16 z-[25] border-b border-line bg-paper pb-4">
         {/* Round-6 feedback: a genuine single row, never wrapping — see the
        *  measurement effect above. `overflow-x-hidden` (not full
        *  `overflow-hidden`, which clips vertical overflow too — the real
@@ -718,8 +727,13 @@ export function JobsExplorer({
             // map's actual visual size instead comes from the explicit
             // height on its own inner frame just below, unrelated to
             // however tall the list currently is.
-            <div className="order-1 hidden flex-col gap-2 lg:sticky lg:top-20 lg:order-2 lg:flex lg:self-start">
-              <div className="relative h-[calc(100dvh-8rem)] overflow-hidden rounded-[10px] border border-line">
+            // top-16/h-[calc(100dvh-7rem)]: same stale-top-20-assumes-an-
+            // h-20-header bug as the filter bar above — corrected to
+            // TopNav's real h-16 (64px), with the height's subtracted
+            // total reduced by the same 1rem so the map keeps its
+            // original ~3rem bottom gap rather than quietly shrinking.
+            <div className="order-1 hidden flex-col gap-2 lg:sticky lg:top-16 lg:order-2 lg:flex lg:self-start">
+              <div className="relative h-[calc(100dvh-7rem)] overflow-hidden rounded-[10px] border border-line">
                 <button
                   type="button"
                   onClick={() => setMapVisible(false)}

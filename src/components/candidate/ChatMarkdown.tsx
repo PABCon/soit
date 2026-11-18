@@ -1,6 +1,33 @@
 import type { ReactNode } from "react";
 
-type Block = { type: "p"; text: string } | { type: "ul"; items: string[] } | { type: "ol"; items: string[] };
+type Block =
+  | { type: "p"; text: string }
+  | { type: "ul"; items: string[] }
+  | { type: "ol"; items: string[] }
+  | { type: "table"; headers: string[]; rows: string[][] };
+
+/** GFM pipe-table row detection/parsing — the model reliably formats
+ *  job comparisons as real markdown tables; real-usage bug: with no
+ *  table handling at all, every row fell into the plain-paragraph
+ *  branch below and rendered as one literal "| Vaga | Salário |..."
+ *  line. */
+function isTableRow(line: string): boolean {
+  return /^\|.*\|$/.test(line.trim());
+}
+
+function splitTableRow(line: string): string[] {
+  return line
+    .trim()
+    .replace(/^\|/, "")
+    .replace(/\|$/, "")
+    .split("|")
+    .map((cell) => cell.trim());
+}
+
+function isSeparatorRow(line: string): boolean {
+  const cells = splitTableRow(line);
+  return cells.length > 0 && cells.every((c) => /^:?-+:?$/.test(c));
+}
 
 /** Same parsing approach as `JobDescriptionBody.tsx`'s own
  *  `parseDescriptionBlocks` (a plain `<p>` collapses the model's own
@@ -24,6 +51,7 @@ function parseChatBlocks(text: string): Block[] {
     let currentList: string[] | null = null;
     let currentListType: "ul" | "ol" | null = null;
     let currentPara: string[] | null = null;
+    let currentTableLines: string[] | null = null;
 
     function flushList() {
       if (currentList && currentListType) blocks.push({ type: currentListType, items: currentList });
@@ -31,7 +59,36 @@ function parseChatBlocks(text: string): Block[] {
       currentListType = null;
     }
 
+    function flushTable() {
+      if (!currentTableLines) return;
+      // A real table needs a header row + a valid separator row; a lone
+      // pipe-looking line (or a header with no separator after it) isn't
+      // actually a table, so it falls back to plain text rather than
+      // silently vanishing.
+      if (currentTableLines.length >= 2 && isSeparatorRow(currentTableLines[1])) {
+        blocks.push({
+          type: "table",
+          headers: splitTableRow(currentTableLines[0]),
+          rows: currentTableLines.slice(2).map(splitTableRow),
+        });
+      } else {
+        blocks.push({ type: "p", text: currentTableLines.join(" ") });
+      }
+      currentTableLines = null;
+    }
+
     for (const line of lines) {
+      if (isTableRow(line)) {
+        if (currentPara) {
+          blocks.push({ type: "p", text: currentPara.join(" ") });
+          currentPara = null;
+        }
+        flushList();
+        (currentTableLines ??= []).push(line);
+        continue;
+      }
+      flushTable();
+
       const bulletMatch = /^[-*]\s+(.*)/.exec(line);
       const numberedMatch = /^\d+[.)]\s+(.*)/.exec(line);
       const listType = bulletMatch ? "ul" : numberedMatch ? "ol" : null;
@@ -53,6 +110,7 @@ function parseChatBlocks(text: string): Block[] {
       }
     }
     flushList();
+    flushTable();
     if (currentPara) blocks.push({ type: "p", text: currentPara.join(" ") });
   }
 
@@ -97,6 +155,31 @@ export function ChatMarkdown({ text, className }: { text: string; className?: st
               <li key={j}>{renderInline(item, `${i}-${j}`)}</li>
             ))}
           </ol>
+        ) : block.type === "table" ? (
+          <div key={i} className="overflow-x-auto">
+            <table className="w-full border-collapse text-left text-sm">
+              <thead>
+                <tr>
+                  {block.headers.map((h, j) => (
+                    <th key={j} className="border-b border-line px-2 py-1.5 font-semibold whitespace-nowrap text-ink">
+                      {renderInline(h, `${i}-h-${j}`)}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {block.rows.map((row, j) => (
+                  <tr key={j}>
+                    {row.map((cell, k) => (
+                      <td key={k} className="border-b border-line px-2 py-1.5 align-top">
+                        {renderInline(cell, `${i}-${j}-${k}`)}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         ) : (
           <p key={i}>{renderInline(block.text, `${i}`)}</p>
         ),

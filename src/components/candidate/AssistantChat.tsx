@@ -178,7 +178,24 @@ export function AssistantChat({ initialQuery }: { initialQuery?: string }) {
             className={message.role === "user" ? "flex justify-end" : "flex items-start gap-2.5"}
           >
             {message.role === "assistant" && <JtAvatar className="mt-0.5 h-7 w-7" />}
-            <div className={message.role === "user" ? "max-w-[80%] rounded-2xl rounded-tr-sm bg-pine px-4 py-2.5 text-sm text-white" : "min-w-0 max-w-[90%] space-y-3"}>
+            {/* Real-usage bug: `max-w-[90%]` alone caps this column's
+             *  width but doesn't give it one — with no `flex-1`, a flex
+             *  item defaults to shrink-to-fit over its own content's
+             *  natural width, so the whole column (job cards included)
+             *  came out only as wide as whatever that message's
+             *  *shortest* piece of content happened to need (a short
+             *  reply sentence, say), not the available bubble width.
+             *  `w-full` on the job-list wrapper further down was
+             *  therefore 100% of an already-too-narrow parent. `flex-1`
+             *  makes this column actually fill the row (still capped by
+             *  max-w-[90%]), regardless of which part is shortest. */}
+            <div
+              className={
+                message.role === "user"
+                  ? "max-w-[80%] rounded-2xl rounded-tr-sm bg-pine px-4 py-2.5 text-sm text-white"
+                  : "min-w-0 max-w-[90%] flex-1 space-y-3"
+              }
+            >
               {message.parts.map((part, index) => {
                 if (part.type === "text") {
                   if (message.role === "user") {
