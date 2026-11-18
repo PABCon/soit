@@ -7259,3 +7259,43 @@ Engineer – Large Language Model Systems"); a real follow-up request
 `<table>` elements with correct headers ("Vaga"/"Salário bruto"), with
 zero raw pipe characters anywhere on the page — confirmed both by DOM
 query and by a visual screenshot of the rendered table.
+
+**Two more follow-ups, a second real screenshot**: pinning the filter
+bar flush against the header left its quick-filter count badges (each
+already pokes upward past its own chip via `-top-1`) with only the
+row's own `pt-1` (4px) of clearance and nothing else — tight enough
+that the header visually cut off the top sliver of every number.
+Added `pt-3` to the sticky wrapper itself for real breathing room.
+Separately: clicking "Next" scrolled the list's top edge to `y=0` via
+plain `scrollIntoView({block: "start"})` — but two sticky elements
+(the header, then the filter bar) are pinned on top of that, so the
+new page's first 1-2 jobs landed hidden underneath both. Replaced it
+with a calculation that measures both sticky elements' real current
+heights live (`document.querySelector("header")`'s and the filter
+bar's own ref) and scrolls to clear both plus 12px of margin — robust
+to either one's height changing again, rather than hardcoding another
+"it's always Xpx" assumption, which is exactly the class of bug that
+caused the navbar gap in the first place.
+
+A messy verification round worth remembering: the first several
+Playwright passes against this fix kept reporting the old, wrong
+behavior (`firstJobTop` landing under the bars) even after the fix was
+confirmed correct in an isolated manual test — root cause was stale
+background `npm run start` processes from earlier in the same session
+still holding port 3000 (confirmed via `lsof -i:3000`, a leftover PID
+from well before the latest build), so several "failing" runs were
+actually hitting old code, not the current fix. A separate, final
+false alarm after killing the stale process was pure test timing: the
+smooth-scroll animation over a ~5000px distance hadn't settled within
+the test's own 900ms wait — a 2-second wait confirmed the fix lands
+exactly right (`firstJobTop: 232`, flush against `barBottom: 219`
+plus margin). Lesson: when a fix measures correct in isolation but
+"fails" in a longer script, check for a stale server before assuming
+the code is wrong.
+
+Verified live via Playwright (installed `--no-save`, fully uninstalled
+after) against a clean, confirmed-fresh local production build: the
+badge now has 11px of real clearance below the header's bottom edge
+(was flush/negative); after clicking "Next," the first job row's top
+measures 232px, correctly below both sticky elements' combined
+bottom edge (219px) with margin to spare.
