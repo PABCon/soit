@@ -7117,3 +7117,68 @@ clean. **How to use it**: any MCP client that supports a remote
 streamable-HTTP server can point at `https://justit.pt/api/mcp`
 directly (no API key, no auth) — e.g. in Claude Desktop's config,
 add an entry under `mcpServers` with that URL as a remote server.
+
+## Feed ranking, growth-phase override: most-recent-first instead of Top Employer first
+
+Direct request: "we need to show different companies now, that we need
+to grow... show the most recent jobs on top." `sortForFeed()`
+(`src/lib/jobs/sort-feed.ts`) gained a `TOP_EMPLOYER_FIRST` flag
+(default `false`, one constant to flip back) — off, it falls straight
+through to `boost_rank_at` descending instead of placing Top Employer
+jobs first (with its salary-visible tiebreak). The original
+always-first-for-paying-customers logic is untouched and still covered
+by tests via an explicit `topEmployerFirst: true` override, so
+reverting once there's more Top Employer breadth is the one-line flip,
+not a rewrite.
+
+**A real, more fundamental finding caught while verifying this
+actually worked, not assumed**: queried the live database directly —
+**all 111 currently-published, live jobs belong to Top Employer
+companies** (ITDS and ISS). Zero live jobs exist right now from any
+non-Top-Employer company. The sort change is real and shipped, but no
+sort order can surface "different companies" when there's no other
+inventory live yet — flagged back to the user rather than claimed as
+solving the visible problem.
+
+## /jobs landing page: single-scroll fix + real pagination
+
+Real-usage report: "you have 2 scrolls, the one from the main page and
+then one from the jobs listing... I want to have 1 only." An earlier
+landing-page redesign round had deliberately made the list column its
+own independent, sticky, `overflow-y-auto` scroll region next to the
+map — but with the list unbounded (every matching job rendered, no
+cap) and the map's sticky box the same height, scrolling landed on
+whichever of the two regions the cursor happened to be over, producing
+exactly the "mixed" feeling reported.
+
+Fixed in `src/components/JobsExplorer.tsx`: the list column is now a
+plain, unconstrained block — no `sticky`/`h-[calc(...)]`/
+`overflow-y-auto` of its own — capped at a real `PAGE_SIZE = 30` jobs
+per page, with Prev/Next controls below it (new `page` URL param, reset
+to 1 by `updateParams` whenever any other filter/sort changes, clamped
+rather than rewritten when stale/out-of-range). One continuous scroll
+now carries the reader through the hero banner, then the list and its
+pager, then on into whatever follows in normal document flow (the
+"Browse by" section, the footer) — never two regions competing. The map
+column keeps its sticky/pinned behavior (confirmed with the user this
+was still wanted) via `lg:self-start` instead of a matching fixed
+height, since the list beside it no longer has one; the map's own
+visual size comes from an explicit height on its inner frame directly,
+decoupled from however tall the list currently is.
+
+Verified live via Playwright (installed `--no-save`, fully uninstalled
+after) against a local production build: no element in the list
+column's ancestor chain has an independent `overflow-y: auto/scroll`
+with real overflow; page 1 renders exactly 30 job rows (confirmed by
+counting the real `<li>` children of the job `<ul>` specifically — a
+broad `a[href*="/jobs/"]` selector overcounts since it also matches
+nav/footer links elsewhere on the page, a false alarm caught and
+explained, not a real bug); the pager reads "Page 1 of 4" for the
+real live count (111 jobs ÷ 30); a mouse-wheel scroll with the cursor
+over the list area moves `window.scrollY` itself, not some inner
+element's `scrollTop`; clicking "Next" sets `?page=2`, updates the
+pager, and scrolls the list's own top into view; the map stays visible
+beside the paginated list; scrolling all the way down reaches the real
+footer in the same continuous scroll. Re-verified live on
+`https://justit.pt/en/jobs` after deploy: "Page 1 of 4" and working
+Previous/Next both render correctly.
