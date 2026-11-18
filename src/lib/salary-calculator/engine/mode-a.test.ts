@@ -197,6 +197,35 @@ describe("calculateEmploymentNet — full orchestration smoke test", () => {
     expect(full.annual.net).toBeCloseTo(none.annual.net, 0);
   });
 
+  it("a subsidy equal to the base salary withholds the same amount as a regular month (real bug: it was using a flat marginal rate with no parcela/dependent abatement at all, confirmed and fixed against a primary source)", () => {
+    const profile = baseProfile({ maritalStatus: "married_two_earners", dependents: 2, age: 34 });
+    const input = {
+      grossMonthly: 2550,
+      paymentsPerYear: 14 as const,
+      meal: { type: "card" as const, dailyValue: 10.2, daysPerMonth: 21 },
+      exemptAllowanceMonthly: 308,
+    };
+
+    const none = calculateEmploymentNet(profile, { ...input, twelfths: "none" });
+    // The regular month's own IRS (R=2550, same bracket) — confirmed
+    // directly against a real external reference for this exact
+    // scenario: €447.66, an effective 17.56% of R, not the bracket's
+    // 38.36% marginal rate.
+    expect(none.monthly.irs).toBeCloseTo(447.66, 2);
+    // A full subsidy (= one month's base salary) must withhold the
+    // identical amount — the whole point of the primary source's own
+    // wording ("a subsidy equal to your base salary gets the same
+    // withholding as a regular month").
+    expect(none.subsidyMonths!.holiday.irs).toBeCloseTo(none.monthly.irs, 2);
+    expect(none.subsidyMonths!.christmas.irs).toBeCloseTo(none.monthly.irs, 2);
+
+    const full = calculateEmploymentNet(profile, { ...input, twelfths: "full" });
+    // Both subsidies' full retention spread evenly across 12 months:
+    // 2 × 447.66 / 12 ≈ 74.61, not 2 × (425 × 38.36%) ≈ 163.03 (the old,
+    // flat-marginal-rate bug's answer — nearly double the real figure).
+    expect(full.monthly.irs - none.monthly.irs).toBeCloseTo((2 * none.monthly.irs) / 12, 1);
+  });
+
   it("applies a flat 20% withholding under IFICI, bypassing tables entirely", () => {
     const profile = baseProfile({ flatRate20: true });
     const result = calculateEmploymentNet(profile, {
