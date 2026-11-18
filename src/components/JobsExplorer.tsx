@@ -281,17 +281,29 @@ export function JobsExplorer({
   const pagedJobs = useMemo(() => jobs.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE), [jobs, page]);
 
   const listTopRef = useRef<HTMLUListElement>(null);
+  const filterBarRef = useRef<HTMLDivElement>(null);
   const skipNextScroll = useRef(true);
   useEffect(() => {
     if (skipNextScroll.current) {
       skipNextScroll.current = false;
       return;
     }
-    // Changing page re-renders the same spot on screen with different
-    // jobs — without this, "Next" would leave the reader staring at
-    // whatever happened to be at their current scroll position rather
-    // than the new page's first result.
-    listTopRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    const list = listTopRef.current;
+    if (!list) return;
+    // Real-usage report: plain `scrollIntoView({block: "start"})` aligns
+    // the list's own top edge with y=0 of the viewport — but two sticky
+    // elements (the header, then the filter bar) are pinned on top of
+    // that, covering whatever scrolls to right behind them. The result
+    // was the new page's first 1-2 jobs landing hidden underneath both.
+    // Measuring their real heights live (rather than hardcoding another
+    // "the header is Xpx" assumption — exactly the mistake just fixed
+    // above) and scrolling to clear both, plus a little breathing room,
+    // fixes it regardless of either one's current actual height.
+    const headerHeight = document.querySelector("header")?.getBoundingClientRect().height ?? 0;
+    const barHeight = filterBarRef.current?.getBoundingClientRect().height ?? 0;
+    const currentTop = list.getBoundingClientRect().top;
+    const delta = currentTop - (headerHeight + barHeight + 12);
+    window.scrollTo({ top: window.scrollY + delta, behavior: "smooth" });
   }, [page]);
 
   const panelActiveCount =
@@ -386,7 +398,14 @@ export function JobsExplorer({
        *  pinned yet. `top-16` matches the header's real height exactly,
        *  at every breakpoint (TopNav's row height doesn't change on
        *  mobile, only which of its children are visible). */}
-      <div className="sticky top-16 z-[25] border-b border-line bg-paper pb-4">
+      {/* Real-usage follow-up: pinning this flush against the header (the
+       *  fix just above) left the quick-filter count badges — which
+       *  already poke upward past their own chip via `-top-1` — with
+       *  only the inner row's own `pt-1` (4px) of clearance above them
+       *  and nothing else, tight enough that the header visually cut off
+       *  the top sliver of each number. `pt-3` here adds real breathing
+       *  room between the header's bottom edge and the row below. */}
+      <div ref={filterBarRef} className="sticky top-16 z-[25] border-b border-line bg-paper pt-3 pb-4">
         {/* Round-6 feedback: a genuine single row, never wrapping — see the
        *  measurement effect above. `overflow-x-hidden` (not full
        *  `overflow-hidden`, which clips vertical overflow too — the real
