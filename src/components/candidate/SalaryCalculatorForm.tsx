@@ -124,9 +124,25 @@ function NumberField({
           }
           const parsed = Number(raw);
           if (Number.isNaN(parsed)) return;
-          let next = Math.max(min, parsed);
-          if (max !== undefined) next = Math.min(max, next);
+          // Real-usage bug: clamping up to `min` on every keystroke (not
+          // just on blur) corrupted multi-digit entry whenever the
+          // number being typed started below `min` — e.g. typing "34"
+          // for an age with min=16 forced the field to "16" the instant
+          // just "3" had been typed, then further digits compounded from
+          // there until it ran away past `max` too. Typing a number
+          // one digit at a time only ever gets *bigger*, so a live
+          // `max` clamp is still safe (it can only need correcting
+          // downward, never "finish becoming valid" on its own) — but a
+          // live `min` clamp isn't, since "3" is often just the first
+          // digit of a longer, perfectly valid number. `min` is now only
+          // enforced on blur, once the user is actually done typing.
+          const next = max !== undefined ? Math.min(max, parsed) : parsed;
           onChange(next);
+        }}
+        onBlur={() => {
+          if (value === 0) return;
+          const next = Math.max(min, value);
+          if (next !== value) onChange(next);
         }}
         className={inputClass}
       />
