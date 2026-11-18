@@ -7299,3 +7299,63 @@ badge now has 11px of real clearance below the header's bottom edge
 (was flush/negative); after clicking "Next," the first job row's top
 measures 232px, correctly below both sticky elements' combined
 bottom edge (219px) with margin to spare.
+
+## Salary calculator: a real IRS over-withholding bug on subsidies/duodécimos
+
+The user shared a real, specific shareable link alongside the same
+scenario run through an external calculator (dfin.pt) and reported:
+"if I do without duodécimos, the amounts match [the external tool];
+but with duodécimos paid per month, it's wrong." Investigated by
+decoding both tools' own share links (same real inputs: €2,550 gross,
+married two earners, 2 dependents, continente, 2026, meal card
+€10.20/day × 21 days) and comparing the actual rendered numbers —
+confirmed a real, meaningful discrepancy: our "full duodécimos"
+monthly net was €2.559,26 against the external tool's €2.648,29, an
+€89/month gap.
+
+**Root-caused against our own engine, then confirmed against a real
+primary source before touching anything** (`fisco.pt`'s own guide,
+fetched directly, not trusted from a search summary alone): a subsidy
+month (férias/Natal) and the duodécimo-spread portion were withheld
+using the bracket's flat marginal rate (`bracket.rate`, e.g. 38.36%)
+with **no parcela or per-dependent abatement at all** — the exact
+formula a regular month gets, minus the deductions. The primary source
+states plainly: *"um subsídio igual ao teu salário base leva a mesma
+retenção que um mês normal"* (a subsidy equal to your base salary gets
+the same withholding as a regular month) — i.e. the full `R × rate −
+parcela − dependentDeduction` formula — and *"cada duodécimo de um
+subsídio retém 1/12"* of that subsidy's own full retention — a
+proportional share, never a fresh bracket lookup on the smaller sliced
+amount.
+
+**Fixed in `mode-a.ts`**: `calculateSubsidyMonth()` now takes a
+`fraction` (1 for a full lump-sum subsidy month, 0.5 for a half-spread's
+remaining lump sum) and a pre-computed `fullSubsidyRetention` (the
+subsidy's own gross run through the exact same
+`calculateMonthlyWithholding()` a regular month uses), instead of a
+bare marginal `rate`. The duodécimo-spread IRS term changed from
+`duodecimoGross × rate` to `fullSubsidyRetention × 2 × spreadFraction /
+12` — the same proportional-share logic as the gross figure right next
+to it, just applied to the subsidy's real retention instead of a flat
+percentage of its gross.
+
+**This single bug affected every employment-mode calculation with
+`paymentsPerYear: 14`** (the standard/default in Portugal) — not just
+duodécimos specifically: the "none" (lump-sum subsidy) mode's own
+**annual** total carried the identical overcharge, just invisible when
+only comparing a regular month's figure (which a lump-sum subsidy
+never touches) against an external tool, exactly why the user's own
+"without duodécimos it matches" observation didn't catch it.
+
+Verified: a new regression test locks in the exact real scenario —
+the regular month's IRS (€447.66, confirmed against the external
+reference) must now equal a full subsidy's own IRS exactly, and the
+duodécimo delta must equal `2 × monthlyIrs / 12`, not the old flat-rate
+answer (~double). All 227 tests pass (`tsc`/`eslint` clean). Live,
+post-deploy: the exact shared scenario's monthly net corrected from
+€2.559,26 to **€2.647,68** (within 61 cents of the external reference,
+plausibly explained by rounding-order differences, not a remaining
+bug), and the annual total — previously identical and wrong in both
+"none" and "full" modes (€30.711,12) — is now identical and correct in
+both (€31.772,16), confirming the fix applies uniformly rather than
+only patching the one visible symptom.
