@@ -365,7 +365,20 @@ export function JobsExplorer({
 
   return (
     <>
-      {/* Round-6 feedback: a genuine single row, never wrapping — see the
+      {/* Real-usage follow-up to the single-scroll fix: with the list no
+       *  longer its own sticky region, the quick-filter chips, the count/
+       *  sort/remote/"more filters" row, and the active search summary
+       *  just below it all scrolled away with the hero the moment the
+       *  list came into view — direct feedback was that these should stay
+       *  visible/usable the whole time the listings are scrolling past,
+       *  not just at the very top of the page. `bg-paper` matches the
+       *  page's own body background (`body` in globals.css) so the list
+       *  scrolling underneath never shows through; `border-b` gives a
+       *  clean edge once it's actually pinned. Deliberately NOT wrapping
+       *  the "more filters" aside panel or the list/map grid below —
+       *  those still scroll normally. */}
+      <div className="sticky top-20 z-[25] border-b border-line bg-paper pb-4">
+        {/* Round-6 feedback: a genuine single row, never wrapping — see the
        *  measurement effect above. `overflow-x-hidden` (not full
        *  `overflow-hidden`, which clips vertical overflow too — the real
        *  cause of round-7's clipped badges) is a safety net for the brief
@@ -521,6 +534,7 @@ export function JobsExplorer({
           )}
         </p>
       )}
+      </div>
 
       <div className="mt-4 flex items-start gap-6">
         {showMoreFilters && (
