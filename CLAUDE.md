@@ -7204,3 +7204,58 @@ at that exact same y after scrolling a further 1500px (true sticky
 pinning, not just "still on screen by coincidence"); clicking a filter
 (the remote-only toggle) while scrolled down still works correctly
 (`?remote=1` applied).
+
+**Immediate follow-up, a real screenshot**: a visible gap between the
+navbar and the new sticky filter bar, with job-card content scrolling
+through it. Root cause, confirmed by reading `TopNav.tsx` directly:
+it's genuinely `h-16` (64px) + a 1px border — `top-20` (80px) was a
+stale assumption (TopNav was shrunk from `h-20` to `h-16` in an earlier,
+separate pixel-measurement round, documented in `TopNav.tsx`'s own
+comment, but every `top-20` consumer elsewhere was never revisited).
+Fixed the filter bar and this same component's own map column (both
+touched this session) to `top-16`, with the map's inner frame height
+recomputed to `h-[calc(100dvh-7rem)]` (was `-8rem`) so it keeps its
+original ~3rem bottom gap now that the offset itself is correct.
+`Rail.tsx` and `JobDetailBody.tsx`'s sidebar share the exact same stale
+`top-20` value but have no visible defect today (no opaque background
+sitting against that seam) — flagged to the user as a known, real,
+currently-invisible instance of the same bug, deliberately not changed
+unprompted.
+
+Verified live via Playwright (installed `--no-save`, fully uninstalled
+after), both 1600px desktop and 390px mobile viewports: the header's
+real height measures 65px on both; after scrolling, the sticky bar
+pins at exactly `top: 64px` (flush against the header's real bottom
+edge) on both; sampling the pixel directly below the header's bottom
+edge resolves to the sticky bar itself, never a job row, on both.
+
+**Two more fixes from the same report, both in the JT chat assistant**:
+1. **Raw markdown tables**: `ChatMarkdown.tsx` had no GFM pipe-table
+   support at all — a real model-generated table rendered as literal
+   `"| Vaga | Salário bruto |..."` text. Added real table parsing
+   (header row + a valid separator row + data rows, falling back to
+   plain text if the second line isn't a real separator) and a
+   `<table>` render branch, same minimal/dependency-free approach this
+   file already uses for lists and inline bold/links.
+2. **A squashed job card** (title truncated, tags stacked vertically)
+   on "Java remoto acima de 2.000€" but not the Lisbon query. Root
+   cause: the assistant message's own content column
+   (`AssistantChat.tsx`) had `max-w-[90%]` but no `flex-1` — without a
+   definite width, a flex item defaults to shrink-to-fit over its own
+   content's *narrowest* natural width, so the whole column (job cards
+   included) came out only as wide as whatever that particular
+   message's shortest piece of content needed. The job-list wrapper's
+   existing `w-full` (already fixed once, for the "sliver" failure
+   mode) was 100% of an already-too-narrow parent, not actually wide.
+   `flex-1` makes the column genuinely fill the row, capped by
+   `max-w-[90%]`, regardless of which part of that message is
+   shortest.
+
+Verified live via Playwright against a local production build: the
+exact reported query ("Java remoto acima de 2.000€") now renders a job
+card at 948px wide with its full, untruncated title ("Senior AI
+Engineer – Large Language Model Systems"); a real follow-up request
+("compare these jobs' salaries in a markdown table") produced 2 real
+`<table>` elements with correct headers ("Vaga"/"Salário bruto"), with
+zero raw pipe characters anywhere on the page — confirmed both by DOM
+query and by a visual screenshot of the rendered table.
