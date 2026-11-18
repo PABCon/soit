@@ -108,6 +108,16 @@ function CircleChip({
   );
 }
 
+// Real-usage report: the list column used to be an independent, sticky,
+// `overflow-y-auto` scroll region next to the map, competing with the
+// outer page's own scroll (two scroll regions fighting depending on
+// where the cursor happened to be). Fixed by making the list a normal,
+// unconstrained block again (removed below) and capping it at a real
+// "page" of jobs instead — once a page's ~30 rows + the pager below them
+// scroll past, the rest of the page (browse-by section, footer) follows
+// in the exact same, single scroll, never a separate one.
+const PAGE_SIZE = 30;
+
 const CROSS_ICON = (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="h-4 w-4">
     <path d="M6 6l12 12M18 6L6 18" />
@@ -192,7 +202,16 @@ export function JobsExplorer({
       if (value === null || value === "") next.delete(key);
       else next.set(key, value);
     }
+    // Any filter/sort change resets back to page 1 — a stale page number
+    // from a much larger previous result set could otherwise land past
+    // the end of a newly narrowed one. `setPage` always passes `page`
+    // explicitly, so this never undoes an actual page-change request.
+    if (!("page" in patch)) next.delete("page");
     writeUrlSearchParams(next);
+  }
+
+  function setPage(nextPage: number) {
+    updateParams({ page: nextPage > 1 ? String(nextPage) : null });
   }
 
   function toggleListParam(key: string, list: string[], value: string) {
@@ -251,6 +270,29 @@ export function JobsExplorer({
   }, [allJobs, searchKey]);
 
   const pinned = useMemo(() => jobs.filter((j) => j.lat !== null && j.lng !== null), [jobs]);
+
+  // One "page" of the list at a time (§single-scroll fix) — clamped
+  // rather than rewritten back into the URL, so a stale/out-of-range page
+  // param (e.g. a bookmark from a much larger result set) just quietly
+  // falls back to the last real page instead of needing a redirect.
+  const totalPages = Math.max(1, Math.ceil(jobs.length / PAGE_SIZE));
+  const requestedPage = Math.max(1, Number(searchParams.get("page") ?? "1") || 1);
+  const page = Math.min(requestedPage, totalPages);
+  const pagedJobs = useMemo(() => jobs.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE), [jobs, page]);
+
+  const listTopRef = useRef<HTMLUListElement>(null);
+  const skipNextScroll = useRef(true);
+  useEffect(() => {
+    if (skipNextScroll.current) {
+      skipNextScroll.current = false;
+      return;
+    }
+    // Changing page re-renders the same spot on screen with different
+    // jobs — without this, "Next" would leave the reader staring at
+    // whatever happened to be at their current scroll position rather
+    // than the new page's first result.
+    listTopRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [page]);
 
   const panelActiveCount =
     workModel.length + seniority.length + adLanguage.length + employmentType.length + reqLanguage.length + (minSalary ? 1 : 0);
@@ -602,41 +644,43 @@ export function JobsExplorer({
         {/* Round-8 item 2: list:map is 2:1, not the near-even 1:1.1 split —
          *  the list is the primary surface, the map a secondary aid. */}
         <div className={`grid min-w-0 flex-1 gap-6 ${mapVisible ? "lg:grid-cols-[2fr_1fr]" : ""}`}>
-          {/* Round-7: independent scroll for the list, desktop/side-by-side
-           *  only — same `sticky top-20 h-[calc(100dvh-8rem)]` box the map
-           *  column already uses (so both columns align), but with
-           *  `overflow-y-auto` instead of `overflow-hidden` so the list's
-           *  own content scrolls once the sticky box reaches its pinned
-           *  position. No `overscroll-behavior` is set anywhere, so once
-           *  this inner scroll is exhausted, scrolling naturally chains to
-           *  the outer page — standard browser behavior, not something to
-           *  wire up by hand. Scoped to `lg:` (and to `mapVisible`, the
-           *  actual "list+map side by side" condition) — the stacked
-           *  mobile layout keeps plain single-page scroll, unchanged.
-           *  Round-8 item 3: `scrollbar-hide` keeps this column's own
-           *  scroll (confirmed still scrollable — the utility only hides
-           *  the browser's painted scrollbar, never disables scrolling
-           *  itself) from sitting right next to the map's edge. */}
-          <div
-            className={
-              mapVisible
-                ? "order-2 scrollbar-hide lg:sticky lg:top-20 lg:order-1 lg:h-[calc(100dvh-8rem)] lg:overflow-y-auto"
-                : ""
-            }
-          >
+          {/* Real-usage fix: the list used to be its own independent,
+           *  sticky, `overflow-y-auto` scroll region here — competing with
+           *  the outer page's own scroll depending on where the cursor
+           *  happened to be. It's now a plain, unconstrained block (no
+           *  sticky/height/overflow of its own) capped at PAGE_SIZE jobs,
+           *  so the page's single scroll carries the reader straight
+           *  through it — once a page's rows and the pager below them end,
+           *  normal document flow continues into whatever's next (the map
+           *  column beside it, still sticky/pinned, imposes no height on
+           *  this one — see its own `lg:self-start` below). */}
+          <div className="order-2 lg:order-1">
             {jobs.length > 0 ? (
-              // gap-2 (8px) — §6.6's "vertical gap between cards," replacing
-              // the old single-border-t table-row treatment now that each
-              // JobRow is its own bordered card.
-              <ul className="flex flex-col gap-2">
-                {jobs.map((job) => (
-                  <JobRow
-                    key={job.slug}
-                    job={job}
-                    isFavorited={favoriteJobIds ? favoriteJobIds.includes(job.id) : undefined}
-                  />
-                ))}
-              </ul>
+              <>
+                {/* gap-2 (8px) — §6.6's "vertical gap between cards,"
+                 *  replacing the old single-border-t table-row treatment
+                 *  now that each JobRow is its own bordered card. */}
+                <ul ref={listTopRef} className="flex flex-col gap-2">
+                  {pagedJobs.map((job) => (
+                    <JobRow
+                      key={job.slug}
+                      job={job}
+                      isFavorited={favoriteJobIds ? favoriteJobIds.includes(job.id) : undefined}
+                    />
+                  ))}
+                </ul>
+                {totalPages > 1 && (
+                  <div className="mt-6 flex items-center justify-center gap-3">
+                    <Button variant="secondary" disabled={page <= 1} onClick={() => setPage(page - 1)}>
+                      {t("prevPage")}
+                    </Button>
+                    <p className="text-sm text-muted tabular-nums">{t("pageOf", { page, total: totalPages })}</p>
+                    <Button variant="secondary" disabled={page >= totalPages} onClick={() => setPage(page + 1)}>
+                      {t("nextPage")}
+                    </Button>
+                  </div>
+                )}
+              </>
             ) : (
               <div className="rounded-xl border border-dashed border-line py-16 text-center">
                 <p className="text-sm text-muted">{t("noMatches")}</p>
@@ -654,15 +698,14 @@ export function JobsExplorer({
           </div>
 
           {mapVisible && (
-            // Column wrapper so the "remote jobs have no pin" disclaimer
-            // (reference-image comparison round) sits as its own line
-            // directly below the map frame, not overlaid on top of it —
-            // flex-col + the map box's own flex-1/min-h-0 keeps the whole
-            // column's total height at the existing sticky box's
-            // calc(100dvh-8rem), split between the map and this one text
-            // row, rather than growing past it.
-            <div className="order-1 hidden flex-col gap-2 lg:sticky lg:top-20 lg:order-2 lg:flex lg:h-[calc(100dvh-8rem)]">
-              <div className="relative min-h-0 flex-1 overflow-hidden rounded-[10px] border border-line">
+            // `lg:self-start` — without it, this sticky column would
+            // stretch (CSS Grid's default `align-items: stretch`) to
+            // match the list column's own, now-unconstrained height; the
+            // map's actual visual size instead comes from the explicit
+            // height on its own inner frame just below, unrelated to
+            // however tall the list currently is.
+            <div className="order-1 hidden flex-col gap-2 lg:sticky lg:top-20 lg:order-2 lg:flex lg:self-start">
+              <div className="relative h-[calc(100dvh-8rem)] overflow-hidden rounded-[10px] border border-line">
                 <button
                   type="button"
                   onClick={() => setMapVisible(false)}
