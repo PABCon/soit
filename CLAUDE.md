@@ -7359,3 +7359,28 @@ bug), and the annual total — previously identical and wrong in both
 "none" and "full" modes (€30.711,12) — is now identical and correct in
 both (€31.772,16), confirming the fix applies uniformly rather than
 only patching the one visible symptom.
+
+## Salary calculator: the age field "goes crazy" while typing
+
+Direct follow-up report: typing a two-digit age (e.g. "34") would jump
+to wildly wrong values mid-type. Root cause in the shared `NumberField`
+component (`SalaryCalculatorForm.tsx`, every numeric field in this form
+uses it — age, dependents, gross amounts, meal fields): it clamped the
+typed value up to `min` on **every keystroke**, not just on blur — for
+age (`min=16`), typing "3" (the first digit of "34") instantly forced
+the field to "16" before the second digit was ever typed, and further
+digits then compounded from that wrong base until the value ran away
+past `max` (100) too.
+
+Fixed by only enforcing `min` on blur, once the user is actually done
+typing — a number typed one digit at a time only ever gets *bigger*,
+so a live `max` clamp is still safe (it can only need correcting
+downward), but a live `min` clamp isn't, since a low leading digit is
+often just the start of a longer, valid number. Verified live via
+Playwright (installed `--no-save`, fully uninstalled after) against
+both a local production build and `https://justit.pt` directly: typing
+"3" then "4" now shows "3" then "34" at every step, with no runaway
+jump; a genuinely-too-low final value (typed "5", then blurred) still
+correctly clamps to 16 on blur; typing a value exceeding max (150)
+still live-clamps to 100 as it's typed, confirming both edge cases
+still work correctly, not just the reported one.
