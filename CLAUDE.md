@@ -7384,3 +7384,37 @@ jump; a genuinely-too-low final value (typed "5", then blurred) still
 correctly clamps to 16 on blur; typing a value exceeding max (150)
 still live-clamps to 100 as it's typed, confirming both edge cases
 still work correctly, not just the reported one.
+
+## Rail's hover flyout was rendering behind the new sticky filter bar
+
+Direct report, correctly self-diagnosed as connected to the previous
+day's work: "the side menu when expands is behind the filters bar...
+the side menu should be on top of all items in the page." Root cause:
+the filter bar added the day before (`z-[25]`) sits above `Rail.tsx`'s
+own `z-20` — a stacking-order regression neither change anticipated,
+since they'd never previously overlapped. Fixed by moving Rail to
+`z-40`, clearing the header (`z-30`), the filter bar and "more
+filters" panel (`z-[25]`), and any plain dropdown (`z-20`) — per
+direct instruction, the side menu beats every other page-level layer
+now — while staying below genuine app-wide modals (the cookie-consent
+banner, the shared `Modal` component, a fixed `Dropdown` panel, all
+`z-50`), which should still win over a nav flyout. The "more filters"
+aside panel's own doc comment (previously describing it as sitting
+above Rail, true at the time) was updated to say plainly that hovering
+Rail while that panel is open will now cover it — a deliberate
+trade-off from this instruction, not an oversight left unexplained.
+
+Also fixed the identical stale "header is `h-20`" assumption already
+found and corrected elsewhere the day before (`top-20`/
+`h-[calc(100dvh-5rem)]` → `top-16`/`h-[calc(100dvh-4rem)]`), since
+`TopNav` is genuinely `h-16` — one more instance of the same bug class,
+fixed while already in the file rather than left for a future report.
+
+Verified live via Playwright (installed `--no-save`, fully uninstalled
+after) against both a local production build and `https://justit.pt`
+directly: scrolled so the sticky filter bar is pinned, hovered Rail to
+expand it to its full 224px width, then sampled the exact pixel near
+its right edge (well past the old 64px boundary, inside the region the
+filter bar used to cover) — it resolves to the nav element itself on
+both environments, confirming Rail now paints on top there instead of
+underneath.
