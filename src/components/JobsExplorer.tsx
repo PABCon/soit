@@ -567,17 +567,19 @@ export function JobsExplorer({
       <div className="mt-4 flex items-start gap-6">
         {showMoreFilters && (
           // relative z-[25] — landing-page redesign spec §6.8: Rail (the
-          // floating left nav, fixed, z-20) and this panel occupy the same
-          // left-side screen region, and Rail's `top-1/2` anchor means it
-          // tracks the viewport's vertical center regardless of scroll
-          // position, so there's no scroll position that reliably avoids a
-          // collision. A static (non-positioned) element always paints
-          // below a positioned one in the same stacking context regardless
-          // of z-index, which is why this panel was getting obscured even
-          // though it had no z-index conflict on paper. Explicit stacking
-          // above Rail (z-20) but below the sticky header (z-30) guarantees
-          // the open filters panel is never obscured, independent of scroll
-          // position or Rail's own open/closed state.
+          // floating left nav) and this panel occupy the same left-side
+          // screen region, and Rail's `top-1/2` anchor means it tracks the
+          // viewport's vertical center regardless of scroll position, so
+          // there's no scroll position that reliably avoids a collision. A
+          // static (non-positioned) element always paints below a
+          // positioned one in the same stacking context regardless of
+          // z-index, which is why this panel was getting obscured even
+          // though it had no z-index conflict on paper. Below the sticky
+          // header (z-30) either way; Rail itself later moved to z-40
+          // (direct instruction: the side menu should sit above every
+          // other page-level layer, this panel included) — so hovering
+          // Rail while this panel is open will cover it, a deliberate
+          // trade-off from that instruction, not an oversight.
           <aside className="relative z-[25] w-full shrink-0 space-y-4 rounded-[10px] border border-line bg-white p-4 sm:w-64">
             <div>
               <p className="text-xs font-semibold text-muted uppercase">{t("filterSectionWorkModel")}</p>
