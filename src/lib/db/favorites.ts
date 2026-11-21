@@ -1,14 +1,21 @@
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { SELECT, toJob, type JobRow } from "./jobs";
+import type { CandidateIdOverride } from "./applications";
 import type { Job } from "@/lib/types";
 
 /** Toggles a candidate's own favorite on a job — insert if not already
  *  favorited, delete if it is. RLS-scoped to the caller's own candidate_id
  *  (favorites' "candidates manage their own favorites" policy); no admin
- *  client needed, this never touches another candidate's rows. */
-export async function toggleFavorite(jobId: string): Promise<{ favorited: boolean }> {
-  const supabase = await createClient();
-  const { data: candidateId } = await supabase.rpc("my_candidate_id");
+ *  client needed in the normal (cookie-session) path, this never touches
+ *  another candidate's rows. `override` (the candidate-MCP server's
+ *  verified-API-key path, same `CandidateIdOverride` `applications.ts`
+ *  defines) swaps in the admin client instead, since there's no cookie
+ *  session to resolve `my_candidate_id()` against — the explicit
+ *  `.eq("candidate_id", ...)` filters below are the real guard either way. */
+export async function toggleFavorite(jobId: string, override?: CandidateIdOverride): Promise<{ favorited: boolean }> {
+  const supabase = override ? createAdminClient() : await createClient();
+  const candidateId = override ? override.candidateId : (await supabase.rpc("my_candidate_id")).data;
   if (!candidateId) throw new Error("Not a candidate");
 
   const { data: existing } = await supabase

@@ -25,7 +25,18 @@ export function Dropdown({
    *  navigating away unmounts anyway, but a same-page action like "log
    *  out" or "switch language" should visibly close the panel too). */
   children: (close: () => void) => ReactNode;
-  align?: "left" | "right";
+  /** "auto" (real-usage bug fix): a hardcoded "left" or "right" only ever
+   *  covers one trigger position. The header's own dropdowns (login,
+   *  avatar menu, language switcher) share one row whose content shifts
+   *  with auth state — "left" fixed an anonymous "Entrar" trigger
+   *  clipping off the left edge at narrow widths, but the very same fix
+   *  then clipped the signed-in avatar trigger (which sits further
+   *  right once there's no "Publicar vaga" button next to it) off the
+   *  *right* edge instead. "auto" measures the trigger's own position
+   *  against the viewport midpoint each time it opens and picks
+   *  whichever direction actually has room, so it's correct regardless
+   *  of what else happens to be in that row. */
+  align?: "left" | "right" | "auto";
   panelClassName?: string;
   /** Renders the panel through a portal to `document.body`, positioned
    *  against the trigger's live bounding rect via `position: fixed`
@@ -40,14 +51,24 @@ export function Dropdown({
 }) {
   const [open, setOpen] = useState(false);
   const [coords, setCoords] = useState<{ top: number; left: number } | null>(null);
+  const [resolvedAlign, setResolvedAlign] = useState<"left" | "right">(align === "auto" ? "left" : align);
   const triggerRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   useClickOutside(triggerRef, open, () => setOpen(false), portal ? panelRef : undefined);
 
+  function resolveAlign(): "left" | "right" {
+    if (align !== "auto") return align;
+    const r = triggerRef.current?.getBoundingClientRect();
+    if (!r) return "left";
+    return r.left + r.width / 2 > window.innerWidth / 2 ? "right" : "left";
+  }
+
   function updateCoords() {
     const r = triggerRef.current?.getBoundingClientRect();
     if (!r) return;
-    setCoords({ top: r.bottom + 4, left: align === "right" ? r.right : r.left });
+    const a = resolveAlign();
+    setResolvedAlign(a);
+    setCoords({ top: r.bottom + 4, left: a === "right" ? r.right : r.left });
   }
 
   // Keep the portal panel glued to the trigger while open — a table row
@@ -66,7 +87,10 @@ export function Dropdown({
   }, [open, portal]);
 
   function toggle() {
-    if (!open && portal) updateCoords();
+    if (!open) {
+      if (portal) updateCoords();
+      else setResolvedAlign(resolveAlign());
+    }
     setOpen((v) => !v);
   }
 
@@ -83,7 +107,7 @@ export function Dropdown({
         {trigger}
       </button>
       {open && !portal && (
-        <div className={`absolute z-20 mt-1 ${align === "right" ? "right-0" : "left-0"} ${panelClassName}`}>
+        <div className={`absolute z-20 mt-1 ${resolvedAlign === "right" ? "right-0" : "left-0"} ${panelClassName}`}>
           {children(() => setOpen(false))}
         </div>
       )}
@@ -94,7 +118,11 @@ export function Dropdown({
           <div
             ref={panelRef}
             className={`fixed z-50 ${panelClassName}`}
-            style={align === "right" ? { top: coords.top, right: window.innerWidth - coords.left } : { top: coords.top, left: coords.left }}
+            style={
+              resolvedAlign === "right"
+                ? { top: coords.top, right: window.innerWidth - coords.left }
+                : { top: coords.top, left: coords.left }
+            }
           >
             {children(() => setOpen(false))}
           </div>,

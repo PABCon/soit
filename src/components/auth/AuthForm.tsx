@@ -428,14 +428,14 @@ export function AuthForm({ role, mode }: { role: Role; mode: Mode }) {
             <span className="h-px flex-1 bg-line" aria-hidden />
           </div>
 
-          <div className="flex gap-2">
+          <div className="grid grid-cols-2 gap-2 sm:flex">
             {OAUTH_PROVIDERS.map((provider) => (
               <button
                 key={provider}
                 type="button"
                 disabled={mode === "register" && !termsAccepted}
                 onClick={() => handleOAuth(provider)}
-                className="flex h-11 flex-1 items-center justify-center gap-2 rounded-lg border border-line bg-white text-sm hover:bg-paper disabled:cursor-not-allowed disabled:opacity-50"
+                className="flex h-11 min-w-0 items-center justify-center gap-2 rounded-lg border border-line bg-white px-2 text-sm hover:bg-paper disabled:cursor-not-allowed disabled:opacity-50 sm:flex-1"
               >
                 {/* Real brand marks for all four providers, standardized to the
                  *  same 20px (h-5 w-5) box regardless of source, so they read

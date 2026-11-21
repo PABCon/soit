@@ -69,6 +69,16 @@ export function CandidateMessagesInbox({ threads }: { threads: CandidateThreadSu
                   <div className="min-w-0 flex-1">
                     <p className={thread.unread ? "font-semibold text-ink" : "font-medium text-ink"}>
                       {thread.companyName}
+                      {thread.requestStatus === "pending" && (
+                        <span className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-medium text-amber-700">
+                          {t("pendingBadge")}
+                        </span>
+                      )}
+                      {thread.requestStatus === "declined" && (
+                        <span className="ml-2 rounded-full bg-subtle px-2 py-0.5 text-[11px] font-medium text-muted">
+                          {t("declinedBadge")}
+                        </span>
+                      )}
                     </p>
                     <p className="truncate text-sm text-muted">{thread.jobTitle}</p>
                     {thread.lastMessagePreview && (

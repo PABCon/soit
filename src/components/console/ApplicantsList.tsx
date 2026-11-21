@@ -2,17 +2,26 @@
 
 import { useTranslations } from "next-intl";
 import { Link } from "@/i18n/navigation";
-import { updateStatusAction, startApplicantThreadAction } from "@/app/[locale]/(console)/recruit/jobs/[id]/applicants/actions";
+import { updateStageAction, startApplicantThreadAction } from "@/app/[locale]/(console)/recruit/jobs/[id]/applicants/actions";
 import { StartThreadButton } from "@/components/StartThreadButton";
-import type { Applicant, MyApplication } from "@/lib/db/applications";
+import { Badge } from "@/components/Badge";
+import type { Applicant } from "@/lib/db/applications";
+import type { ApplicationStage } from "@/lib/db/application-stages";
 
-const STATUSES: MyApplication["status"][] = ["applied", "viewed", "responded", "rejected", "closed"];
-
-export function ApplicantsList({ jobId, applicants }: { jobId: string; applicants: Applicant[] }) {
+export function ApplicantsList({
+  jobId,
+  applicants,
+  stages,
+}: {
+  jobId: string;
+  applicants: Applicant[];
+  stages: ApplicationStage[];
+}) {
   const t = useTranslations("applicants");
+  const tm = useTranslations("messaging");
 
-  async function handleStatusChange(applicationId: string, status: MyApplication["status"]) {
-    await updateStatusAction(jobId, applicationId, status);
+  async function handleStageChange(applicationId: string, stageId: string) {
+    await updateStageAction(jobId, applicationId, stageId);
   }
 
   if (applicants.length === 0) {
@@ -42,21 +51,34 @@ export function ApplicantsList({ jobId, applicants }: { jobId: string; applicant
           ) : (
             <span className="shrink-0 text-sm text-muted">{t("cvUnavailable")}</span>
           )}
-          <StartThreadButton
-            redirectBase="/recruit/messages"
-            onSend={(body) => startApplicantThreadAction(a.id, body)}
-          />
-          <select
-            defaultValue={a.status}
-            onChange={(e) => handleStatusChange(a.id, e.target.value as MyApplication["status"])}
-            className="h-9 shrink-0 rounded-lg border border-line bg-white px-2 text-sm"
-          >
-            {STATUSES.map((s) => (
-              <option key={s} value={s}>
-                {t(`status.${s}`)}
-              </option>
-            ))}
-          </select>
+          {a.origin === "application" ? (
+            <>
+              <StartThreadButton
+                redirectBase="/recruit/messages"
+                onSend={(body) => startApplicantThreadAction(a.id, body)}
+              />
+              <select
+                defaultValue={a.stageId!}
+                onChange={(e) => handleStageChange(a.id, e.target.value)}
+                className="h-9 shrink-0 rounded-lg border border-line bg-white px-2 text-sm"
+              >
+                {stages.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.label}
+                  </option>
+                ))}
+              </select>
+            </>
+          ) : (
+            <>
+              {a.threadId && (
+                <Link href={`/recruit/messages/${a.threadId}`} className="shrink-0 text-sm font-medium text-pine hover:underline">
+                  {tm("viewConversation")}
+                </Link>
+              )}
+              <Badge variant="match">{t("status.connected")}</Badge>
+            </>
+          )}
         </li>
       ))}
     </ul>

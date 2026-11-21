@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getMyApplications } from "@/lib/db/applications";
 import { CompanyLogo } from "@/components/CompanyLogo";
 import { Badge } from "@/components/Badge";
-import { APPLICANT_STATUS_BADGE } from "@/lib/applicant-status-badge";
+import { BUCKET_BADGE } from "@/lib/applicant-status-badge";
 
 type Props = { params: Promise<{ locale: string }> };
 
@@ -52,8 +52,8 @@ export default async function ApplicationsPage({ params }: Props) {
                 </Link>
                 <p className="mt-0.5 text-sm text-muted">{app.job.company.name}</p>
               </div>
-              <Badge variant={APPLICANT_STATUS_BADGE[app.status]} className="shrink-0">
-                {t(`status.${app.status}`)}
+              <Badge variant={BUCKET_BADGE[app.bucket]} className="shrink-0">
+                {t(`bucket.${app.bucket}`)}
               </Badge>
             </li>
           ))}

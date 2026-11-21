@@ -65,7 +65,7 @@ export default async function CandidateLayout({
     <div className="flex min-h-dvh flex-col sm:flex-row">
       <Rail unreadMessageCount={unreadMessageCount} isLoggedIn={isLoggedIn} />
       <div className="flex min-w-0 flex-1 flex-col">
-        <TopNav />
+        <TopNav isLoggedIn={isLoggedIn} />
         <CvOnboardingPrompt />
         <CvReviewClaimWatcher />
         {/* Real-usage report, confirmed via a real 3420px-wide screenshot:

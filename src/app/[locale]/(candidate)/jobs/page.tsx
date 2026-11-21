@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { getTranslations, setRequestLocale } from "next-intl/server";
 import { JobsExplorer, type QuickFilterOption } from "@/components/JobsExplorer";
-import { RecommendationsTeaser } from "@/components/candidate/RecommendationsTeaser";
+import { AssistantTeaser } from "@/components/candidate/AssistantTeaser";
 import { Link } from "@/i18n/navigation";
 import { getLiveJobs } from "@/lib/db/jobs";
 import { getFeaturedTechCounts, getTechTags } from "@/lib/db/tech-tags";
@@ -31,7 +31,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     // content" URL with nothing telling a crawler they're all the same
     // underlying page (SEO audit finding).
     alternates: localeAlternates("/jobs", locale),
-    ...socialMeta({ title, description, url: `${SITE}/${locale}/jobs` }),
+    ...socialMeta({ title, description, url: `${SITE}/${locale}/jobs`, image: `${SITE}/og/jobs.jpg` }),
   };
 }
 
@@ -109,7 +109,15 @@ export default async function JobsPage({ params }: Props) {
        *  which matters for SEO/accessibility in general (a landmark
        *  heading is normally expected on every page), but it's what was
        *  explicitly asked for. */}
-      <RecommendationsTeaser />
+      {/* The chat assistant (JT) banner leads: the explicit ask behind
+       *  this round was making it impossible to miss on the page every
+       *  visitor actually lands on. The recommendations teaser that used
+       *  to sit right below it was removed per direct feedback: it pushed
+       *  the real job list too far down the page, which is the actual
+       *  main content here. `RecommendationsTeaser` itself (and
+       *  `/recommendations`) is untouched, just no longer rendered on
+       *  this one page. */}
+      <AssistantTeaser />
 
       <div className="mt-6">
         <JobsExplorer

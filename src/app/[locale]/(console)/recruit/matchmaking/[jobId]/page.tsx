@@ -62,7 +62,9 @@ export default async function JobMatchesPage({ params }: Props) {
             <Briefcase className="h-5 w-5" aria-hidden="true" />
           </span>
           <div>
-            <p className="font-display font-semibold text-ink">{result.jobTitle}</p>
+            <Link href={`/recruit/jobs/${jobId}/edit`} className="font-display font-semibold text-ink hover:text-pine hover:underline">
+              {result.jobTitle}
+            </Link>
             {job && (
               <p className="mt-0.5 text-xs text-muted">
                 {job.location ?? t("remoteBadge")} · {tJobForm(`employmentTypeOption.${job.employment_type}`)}

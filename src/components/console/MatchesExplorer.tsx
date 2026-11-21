@@ -140,9 +140,19 @@ export function MatchesExplorer({ jobId, matches }: { jobId: string; matches: Ca
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
                     <p className="font-display font-semibold text-ink">{t("candidateNumber", { number: displayNumber })}</p>
+                    {!match.viewedAt && (
+                      <span className="rounded bg-pine px-1.5 py-0.5 text-[10px] font-semibold tracking-wide text-white uppercase">
+                        {t("newMatchBadge")}
+                      </span>
+                    )}
                     {match.isTopMatch && (
                       <span className="rounded bg-green-100 px-1.5 py-0.5 text-[10px] font-semibold tracking-wide text-green-700 uppercase">
                         {t("topMatchBadge")}
+                      </span>
+                    )}
+                    {match.jobSearchStatus === "looking" && (
+                      <span className="rounded bg-green-100 px-1.5 py-0.5 text-[10px] font-semibold tracking-wide text-green-700 uppercase">
+                        {t("activelyLookingBadge")}
                       </span>
                     )}
                   </div>

@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { Link, usePathname } from "@/i18n/navigation";
 
-type Item = { key: string; href: string; icon: React.ReactNode; mvp: boolean; requiresAuth?: boolean };
+export type Item = { key: string; href: string; icon: React.ReactNode; mvp: boolean; requiresAuth?: boolean };
 
 const icon = (d: string) => (
   <svg
@@ -21,9 +21,15 @@ const icon = (d: string) => (
   </svg>
 );
 
-const ITEMS: Item[] = [
+export const ITEMS: Item[] = [
   { key: "recommendations", href: "/recommendations", icon: icon("M12 2 14.5 9H22l-6 4.5L18 22l-6-4.5L6 22l2-8.5L2 9h7.5Z"), mvp: true },
   { key: "offers", href: "/jobs", icon: icon("M4 7h16M4 12h16M4 17h10"), mvp: true },
+  {
+    key: "assistant",
+    href: "/assistant",
+    icon: icon("M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5Z"),
+    mvp: true,
+  },
   { key: "applications", href: "/applications", icon: icon("M9 5h6m-7 4h8m-8 4h8m-8 4h5M5 3h14v18H5Z"), mvp: true },
   {
     key: "communication",
@@ -36,6 +42,12 @@ const ITEMS: Item[] = [
     key: "salaryCalculator",
     href: "/salario-liquido",
     icon: icon("M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"),
+    mvp: true,
+  },
+  {
+    key: "terminationCalculator",
+    href: "/rescisao-contrato",
+    icon: icon("M9 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h4M16 17l5-5-5-5M21 12H9"),
     mvp: true,
   },
   { key: "favorites", href: "/favorites", icon: icon("m12 20-7-7a4 4 0 0 1 7-5 4 4 0 0 1 7 5Z"), mvp: true },
@@ -83,12 +95,13 @@ const ITEMS: Item[] = [
  *    now constrained to the viewport area *below* the header rather than
  *    the full viewport, so it can never visually sit beside/overlap the
  *    navbar row the way a `top-0`-anchored full-height strip could read.
- *    `sticky top-20` (the header's own `h-20`) plus
- *    `h-[calc(100dvh-5rem)]` + `justify-center` together guarantee the
- *    nav's own box starts exactly at the header's bottom edge — sticky
- *    positioning clamps it there even at scroll position 0, not just
- *    while scrolling — and its contents center within that reduced
- *    height, not the full viewport.
+ *    `sticky top-16` (the header's real rendered height — `h-16`, 64px;
+ *    an earlier `h-20` assumption here was stale, see the `/jobs` sticky
+ *    filter bar's own fix for the same bug) plus `h-[calc(100dvh-4rem)]`
+ *    + `justify-center` together guarantee the nav's own box starts
+ *    exactly at the header's bottom edge — sticky positioning clamps it
+ *    there even at scroll position 0, not just while scrolling — and its
+ *    contents center within that reduced height, not the full viewport.
  *
  * The reserved-gutter mechanism itself (a real flex sibling in
  * `(candidate)/layout.tsx`, zero overlap with content by construction)
@@ -191,7 +204,17 @@ export function Rail({ unreadMessageCount = 0, isLoggedIn = false }: { unreadMes
        *  height), not on this outer sticky wrapper, which stays fully
        *  transparent and only exists to center that stack vertically in
        *  the viewport area below the header. */}
-      <div className="sticky top-20 z-20 flex h-[calc(100dvh-5rem)] w-16 flex-col justify-center">
+      {/* Real-usage report: the hover-expanded flyout was rendering
+       *  behind the /jobs page's sticky filter bar (z-[25], added later
+       *  than this z-20 — a stacking-order regression neither side
+       *  anticipated). Direct instruction: the side menu should sit on
+       *  top of everything else on the page, so z-40 clears every other
+       *  page-level layer (the z-30 header, the z-[25] filter bar and
+       *  "more filters" panel, any plain z-20 dropdown) while staying
+       *  below genuine app-wide modals (the cookie-consent banner, the
+       *  shared Modal component, a fixed Dropdown panel — all z-50),
+       *  which should still win over a nav flyout. */}
+      <div className="sticky top-16 z-40 flex h-[calc(100dvh-4rem)] w-16 flex-col justify-center">
         <nav
           aria-label={t("offers")}
           onMouseEnter={() => setHovered(true)}

@@ -67,7 +67,9 @@ export function CvOnboardingPrompt() {
       saveCandidateLanguagesAction(
         data.matchedLanguages.map((l) => ({ spokenLanguageId: l.spokenLanguageId, level: l.level })),
       ),
-      saveCandidateEducationAction(data.education),
+      // `note` isn't part of the AI extraction schema (see extract-cv.ts) —
+      // the candidate can still fill it in by hand afterward on /profile.
+      saveCandidateEducationAction(data.education.map((e) => ({ ...e, note: null }))),
       saveCandidateCertificationsAction(data.certifications),
       saveCandidateExperienceAction(data.experience),
     ]);

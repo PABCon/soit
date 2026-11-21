@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createInvite, removeMember, updateMemberRole, deleteInvite, resendInvite } from "@/lib/db/team";
+import { updateJobDisclaimer } from "@/lib/db/companies";
 
 export async function createInviteAction(email: string, role: "owner" | "member") {
   const token = await createInvite(email, role);
@@ -28,4 +29,9 @@ export async function resendInviteAction(inviteId: string) {
   const token = await resendInvite(inviteId);
   revalidatePath("/recruit/team");
   return token;
+}
+
+export async function updateJobDisclaimerAction(jobDisclaimer: string | null) {
+  await updateJobDisclaimer(jobDisclaimer);
+  revalidatePath("/recruit/team");
 }

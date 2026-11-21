@@ -124,9 +124,25 @@ function NumberField({
           }
           const parsed = Number(raw);
           if (Number.isNaN(parsed)) return;
-          let next = Math.max(min, parsed);
-          if (max !== undefined) next = Math.min(max, next);
+          // Real-usage bug: clamping up to `min` on every keystroke (not
+          // just on blur) corrupted multi-digit entry whenever the
+          // number being typed started below `min` — e.g. typing "34"
+          // for an age with min=16 forced the field to "16" the instant
+          // just "3" had been typed, then further digits compounded from
+          // there until it ran away past `max` too. Typing a number
+          // one digit at a time only ever gets *bigger*, so a live
+          // `max` clamp is still safe (it can only need correcting
+          // downward, never "finish becoming valid" on its own) — but a
+          // live `min` clamp isn't, since "3" is often just the first
+          // digit of a longer, perfectly valid number. `min` is now only
+          // enforced on blur, once the user is actually done typing.
+          const next = max !== undefined ? Math.min(max, parsed) : parsed;
           onChange(next);
+        }}
+        onBlur={() => {
+          if (value === 0) return;
+          const next = Math.max(min, value);
+          if (next !== value) onChange(next);
         }}
         className={inputClass}
       />
@@ -245,9 +261,9 @@ export function SalaryCalculatorForm() {
         ))}
       </div>
 
-      <div className="grid gap-8 lg:grid-cols-[1fr_380px]">
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1fr_380px]">
         <div className="space-y-6">
-          <fieldset className="space-y-4 rounded-xl border border-line bg-white p-4">
+          <fieldset className="min-w-0 space-y-4 rounded-xl border border-line bg-white p-4">
             <legend className="px-1 text-sm font-semibold">{t("aboutYouHeading")}</legend>
 
             <div className="grid grid-cols-2 gap-4">
@@ -357,7 +373,7 @@ export function SalaryCalculatorForm() {
           </fieldset>
 
           {mode === "employment" && (
-            <fieldset className="space-y-4 rounded-xl border border-line bg-white p-4">
+            <fieldset className="min-w-0 space-y-4 rounded-xl border border-line bg-white p-4">
               <legend className="px-1 text-sm font-semibold">{t("contractHeading")}</legend>
 
               <div className="grid grid-cols-2 gap-4">
@@ -454,7 +470,7 @@ export function SalaryCalculatorForm() {
           )}
 
           {mode === "freelance" && (
-            <fieldset className="space-y-4 rounded-xl border border-line bg-white p-4">
+            <fieldset className="min-w-0 space-y-4 rounded-xl border border-line bg-white p-4">
               <legend className="px-1 text-sm font-semibold">{t("freelanceHeading")}</legend>
 
               <div className="grid grid-cols-2 gap-4">
@@ -607,7 +623,7 @@ export function SalaryCalculatorForm() {
           )}
 
           {mode === "company" && (
-            <fieldset className="space-y-4 rounded-xl border border-line bg-white p-4">
+            <fieldset className="min-w-0 space-y-4 rounded-xl border border-line bg-white p-4">
               <legend className="px-1 text-sm font-semibold">{t("companyHeading")}</legend>
 
               <div className="grid grid-cols-2 gap-4">
@@ -1000,6 +1016,12 @@ export function SalaryCalculatorForm() {
           </div>
 
           <p className="text-xs text-muted">{t("disclaimer")}</p>
+          <p className="text-xs text-muted">
+            {t("terminationCalculatorCta")}{" "}
+            <Link href="/rescisao-contrato" className="font-medium text-pine hover:underline">
+              {t("terminationCalculatorCtaButton")}
+            </Link>
+          </p>
         </div>
       </div>
 

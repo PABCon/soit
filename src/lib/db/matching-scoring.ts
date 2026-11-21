@@ -38,6 +38,22 @@ export type CandidatePrefsForScoring = {
   salaryMin: number | null;
   salaryMax: number | null;
   salaryPeriod: string | null;
+  /** Where the candidate actually lives (`candidates.location_id`) —
+   *  deliberately distinct from `locationIds` above, which is a
+   *  job-search *preference* the candidate opted into and is often
+   *  left empty. This is the real-world fact that makes an on-site/
+   *  hybrid role in a different city physically impossible, regardless
+   *  of how well the skills line up — see its use below. */
+  residenceLocationId: string | null;
+  /** `candidates.job_search_status`, directly plugged into the engine
+   *  as a hard gate, per the user's own explicit instruction: a
+   *  candidate who's said they're not open to offers should never
+   *  surface as a match at all, in either direction, no matter how well
+   *  skills/preferences otherwise line up. `null` is treated the same
+   *  as `"open"` (never excluded). The column itself defaults to
+   *  `"open"` at the database level, so `null` only shows up here for a
+   *  caller that genuinely never fetched it. */
+  jobSearchStatus: "looking" | "open" | "not_open" | null;
 } | null;
 
 // Raised from 30 after a real false positive: a candidate with a purely
@@ -54,6 +70,32 @@ export function scoreJobMatch(
   candidateSkillIds: Set<string>,
   candidatePrefs: CandidatePrefsForScoring,
 ): number {
+  // Directly plugged into the engine, checked before anything else: a
+  // candidate who's explicitly said they're not open to offers is never
+  // a match, full stop, regardless of skill overlap or how well
+  // preferences line up. The user's own instruction for this feature.
+  if (candidatePrefs?.jobSearchStatus === "not_open") return 0;
+
+  // Real-usage report: a candidate based in Warsaw was surfacing as a
+  // match for on-site/hybrid Lisbon roles — skill overlap and preference
+  // neutrals alone could carry a score past threshold with zero regard
+  // for whether the person could physically do the job. A known
+  // residence that doesn't match the job's own city is a hard
+  // disqualifier for anything that isn't fully remote, checked before
+  // any other scoring — no amount of skill overlap should out-vote
+  // physical geography. An *unknown* residence (the common case until
+  // candidates fill this in) stays neutral, same as every other unset
+  // preference below, rather than retroactively blocking everyone who
+  // hasn't set it yet.
+  if (
+    job.workModel !== "remote" &&
+    candidatePrefs?.residenceLocationId &&
+    job.locationId &&
+    candidatePrefs.residenceLocationId !== job.locationId
+  ) {
+    return 0;
+  }
+
   const requiredTags = tags.filter((t) => t.required);
   const niceTags = tags.filter((t) => !t.required);
 
@@ -101,7 +143,15 @@ export function scoreJobMatch(
       }
     }
 
-    score += prefWeight > 0 ? (prefPoints / prefWeight) * 30 : 15;
+    // Real false positive, caught via live data: a candidate with zero
+    // preferences set (common — nothing forces a candidate to fill
+    // these in) used to still collect a flat 15 here regardless, just
+    // for having a non-null prefs object. Combined with thin job tagging
+    // elsewhere, that free +15 was enough on its own to push an
+    // otherwise-unconvincing match over MIN_MATCH_SCORE. Zero signal now
+    // earns zero points — the skill buckets above are the only way to
+    // reach threshold when a candidate hasn't told us anything else.
+    score += prefWeight > 0 ? (prefPoints / prefWeight) * 30 : 0;
   }
 
   return Math.round(Math.min(100, score));

@@ -70,6 +70,7 @@ export default async function ConsoleLayout({ children, params }: Props) {
         fullName={metadata?.full_name ?? null}
         avatarUrl={metadata?.avatar_url ?? null}
         email={user!.email ?? ""}
+        unreadMessageCount={unreadMessageCount}
       />
       <div className="flex flex-1 flex-col md:flex-row">
         <Sidebar unreadMessageCount={unreadMessageCount} />

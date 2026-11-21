@@ -20,7 +20,7 @@ export function Modal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 p-4" onClick={onClose}>
       <div
-        className={`max-h-[90vh] w-full ${maxWidthClassName} overflow-y-auto rounded-xl bg-white p-6 shadow-lg`}
+        className={`max-h-[90dvh] w-full ${maxWidthClassName} overflow-y-auto rounded-xl bg-white p-6 shadow-lg`}
         onClick={(e) => e.stopPropagation()}
       >
         <button

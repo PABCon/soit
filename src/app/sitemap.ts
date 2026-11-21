@@ -31,6 +31,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     "/jobs",
     "/companies",
     "/salario-liquido",
+    "/rescisao-contrato",
     "/guia/recibos-verdes",
     "/guia/contrato-trabalho",
     "/guia/empresa-propria",

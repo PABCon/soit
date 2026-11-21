@@ -102,7 +102,9 @@ export function CandidateProfileForm({
           fieldOfStudy: e.fieldOfStudy,
           startDate: e.startDate,
           endDate: e.endDate,
-          note: e.note,
+          // Not part of the AI extraction schema (see extract-cv.ts) — the
+          // candidate can still fill this in by hand, same as always.
+          note: null,
         })),
       }
     : skillsAndEducation;
@@ -134,6 +136,7 @@ export function CandidateProfileForm({
         fullName: aiDraft.fullName ?? profile.fullName,
         phone: aiDraft.phone ?? profile.phone,
         linkedinUrl: aiDraft.linkedinUrl ?? profile.linkedinUrl,
+        locationId: aiDraft.locationId ?? profile.locationId,
       }
     : profile;
 
@@ -157,6 +160,7 @@ export function CandidateProfileForm({
             cvSignedUrl={signedUrl}
             headline={effectiveSkillsAndEducation?.headline ?? null}
             yearsExperience={effectiveSkillsAndEducation?.yearsExperience ?? null}
+            locations={locations}
             seededFromDraft={aiDraft !== null}
             onDraftReady={handleDraftReady}
           />

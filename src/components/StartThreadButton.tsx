@@ -11,6 +11,9 @@ export function StartThreadButton({
   onSend,
   redirectBase,
   triggerClassName = "shrink-0 text-sm font-medium text-pine hover:underline",
+  triggerLabel,
+  placeholder,
+  submitLabel,
 }: {
   onSend: (body: string) => Promise<{ ok: boolean; threadId?: string }>;
   redirectBase: string;
@@ -19,6 +22,14 @@ export function StartThreadButton({
    *  `AllApplicantsList`'s table restyle passes the shared `Button` recipe
    *  instead, to match its real buttons. */
   triggerClassName?: string;
+  /** Phase 3: the matchmaking candidate page frames this as a real
+   *  connection request, not a plain message, so its trigger/placeholder/
+   *  submit copy differ from the applicant-contact entry point. Each
+   *  defaults to the original plain-message strings when omitted, so
+   *  every other caller is unaffected. */
+  triggerLabel?: string;
+  placeholder?: string;
+  submitLabel?: string;
 }) {
   const t = useTranslations("messaging");
   const router = useRouter();
@@ -30,7 +41,7 @@ export function StartThreadButton({
   if (!open) {
     return (
       <button type="button" onClick={() => setOpen(true)} className={triggerClassName}>
-        {t("message")}
+        {triggerLabel ?? t("message")}
       </button>
     );
   }
@@ -52,7 +63,7 @@ export function StartThreadButton({
       <textarea
         value={body}
         onChange={(e) => setBody(e.target.value)}
-        placeholder={t("messagePlaceholder")}
+        placeholder={placeholder ?? t("messagePlaceholder")}
         rows={2}
         className="w-full rounded-lg border border-line p-2 text-sm"
       />
@@ -63,7 +74,7 @@ export function StartThreadButton({
           onClick={submit}
           className="h-8 rounded-lg bg-pine px-3 text-xs font-semibold text-white hover:bg-pine/90 disabled:opacity-50"
         >
-          {pending ? t("sending") : t("send")}
+          {pending ? t("sending") : (submitLabel ?? t("send"))}
         </button>
         <button type="button" onClick={() => setOpen(false)} className="text-xs text-muted hover:underline">
           {t("cancel")}

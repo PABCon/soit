@@ -9,12 +9,29 @@ import { d, round2 } from "./money";
 
 /** A subsidy month (férias/Natal) carries no meal allowance — "meal
  *  allowance is paid per day worked, never on subsidies" (spec §3.4) —
- *  and is withheld "autonomously": the SAME marginal rate the regular
- *  month's R falls into, applied directly to the subsidy gross with no
- *  parcela or per-dependent abatement (spec §3.2). */
-function calculateSubsidyMonth(subsidyGross: number, rate: number, meta: ReturnType<typeof getMeta>): SubsidyMonth {
+ *  and is withheld "autonomously": confirmed directly against a real
+ *  primary source (fisco.pt's own guide, quoting the rule): "um
+ *  subsídio igual ao teu salário base leva a mesma retenção que um mês
+ *  normal" — a subsidy equal to the base salary gets the exact SAME
+ *  retention a regular month would, meaning the full R×rate−parcela−
+ *  dependentDeduction formula, not a bare marginal rate with no
+ *  abatement at all (a real bug this fixes, caught by the user
+ *  comparing against an external calculator — the flat-rate version
+ *  overcharged IRS on every subsidy/duodécimo by exactly the parcela +
+ *  dependent-deduction amount that should have applied). `fraction`
+ *  covers the duodécimo-spread case too, same source: "cada duodécimo
+ *  de um subsídio retém 1/12" of that subsidy's own full retention —
+ *  a proportional SHARE of the full-subsidy figure, never a fresh
+ *  bracket lookup on the smaller sliced amount. */
+function calculateSubsidyMonth(
+  fraction: number,
+  fullSubsidyRetention: number,
+  grossMonthly: number,
+  meta: ReturnType<typeof getMeta>,
+): SubsidyMonth {
+  const subsidyGross = round2(d(grossMonthly).times(fraction));
   const ss = calculateEmployeeSocialSecurity(subsidyGross, meta);
-  const irs = round2(d(subsidyGross).times(rate));
+  const irs = round2(d(fullSubsidyRetention).times(fraction));
   return {
     gross: subsidyGross,
     ss,
@@ -47,19 +64,18 @@ export function calculateEmploymentNet(profile: Profile, input: EmploymentInput)
   const baseSs = calculateEmployeeSocialSecurity(ssBase, meta);
   const baseIrs = withholding.retention;
 
-  // Subsidies (férias/Natal) and duodécimos (spec §3.2, §3.1). Confirmed
-  // live against the real mechanism (OCC guidance on IRS retenção na
-  // fonte for subsídios): a spread duodécimo fraction is withheld
-  // "autonomously" at the rate corresponding to the *subsidy's own full
-  // value* (same bracket the regular month's R already falls into, since
-  // a subsidy equals one month's gross by definition) — not merged into
-  // R, no parcela/dependent abatement — same convention as a full
-  // subsidy month, just paid out as a smaller amount every month instead
-  // of a lump sum in June/December. This actually changes the money the
-  // employee receives *every month* when duodécimos are on, not just the
-  // annual total — a real bug (caught by the user, not by any of this
-  // session's tests) in an earlier version of this function left it only
-  // affecting the annual totals.
+  // Subsidies (férias/Natal) and duodécimos (spec §3.2, §3.1). Each
+  // subsidy's own full retention is computed once, on its own gross
+  // (= one month's base salary, no meal allowance — spec §3.4), through
+  // the exact same bracket/parcela/dependent-deduction formula a
+  // regular month uses — confirmed directly against a primary source
+  // (see calculateSubsidyMonth's own doc comment). Every other figure
+  // below (a lump-sum subsidy month, a duodécimo spread, a half-
+  // spread's remaining lump sum) is just a proportional fraction of
+  // that one number, never a fresh, independent bracket lookup on a
+  // smaller sliced amount.
+  const fullSubsidyRetention = calculateMonthlyWithholding(profile, input.grossMonthly).retention;
+
   let subsidyMonths: EmploymentResult["subsidyMonths"] = null;
   let duodecimoGross = 0;
   let duodecimoSs = 0;
@@ -67,8 +83,8 @@ export function calculateEmploymentNet(profile: Profile, input: EmploymentInput)
 
   if (input.paymentsPerYear === 14) {
     if (input.twelfths === "none") {
-      const holiday = calculateSubsidyMonth(input.grossMonthly, withholding.rate, meta);
-      const christmas = calculateSubsidyMonth(input.grossMonthly, withholding.rate, meta);
+      const holiday = calculateSubsidyMonth(1, fullSubsidyRetention, input.grossMonthly, meta);
+      const christmas = calculateSubsidyMonth(1, fullSubsidyRetention, input.grossMonthly, meta);
       subsidyMonths = { holiday, christmas };
     } else {
       // 'half': 50% of each subsidy spread monthly, the other 50% still
@@ -77,12 +93,11 @@ export function calculateEmploymentNet(profile: Profile, input: EmploymentInput)
       const spreadFraction = input.twelfths === "full" ? 1 : 0.5;
       duodecimoGross = round2(d(input.grossMonthly).times(2).times(spreadFraction).dividedBy(12));
       duodecimoSs = calculateEmployeeSocialSecurity(duodecimoGross, meta);
-      duodecimoIrs = round2(d(duodecimoGross).times(withholding.rate));
+      duodecimoIrs = round2(d(fullSubsidyRetention).times(2).times(spreadFraction).dividedBy(12));
 
       if (spreadFraction < 1) {
-        const remainderPerSubsidy = round2(d(input.grossMonthly).times(1 - spreadFraction));
-        const holiday = calculateSubsidyMonth(remainderPerSubsidy, withholding.rate, meta);
-        const christmas = calculateSubsidyMonth(remainderPerSubsidy, withholding.rate, meta);
+        const holiday = calculateSubsidyMonth(1 - spreadFraction, fullSubsidyRetention, input.grossMonthly, meta);
+        const christmas = calculateSubsidyMonth(1 - spreadFraction, fullSubsidyRetention, input.grossMonthly, meta);
         subsidyMonths = { holiday, christmas };
       }
     }

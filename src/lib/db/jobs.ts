@@ -37,7 +37,7 @@ export const SELECT = `
   latitude, longitude, salary_min, salary_max, salary_currency, salary_period,
   salary_months, salary_basis, employment_type, status, published_at, expires_at, created_at,
   external_apply_url, location_id, salary_public, boost_rank_at, boosted_until,
-  companies!inner ( slug, company_name, company_logo_url, company_description, top_employer_active ),
+  companies!inner ( slug, company_name, company_logo_url, company_description, top_employer_active, job_disclaimer ),
   job_tech_tags ( level, required, tech_tags ( slug, label ) ),
   job_categories ( slug ),
   locations ( slug, country ),
@@ -78,6 +78,7 @@ export type JobRow = {
     company_logo_url: string | null;
     company_description: string | null;
     top_employer_active: boolean;
+    job_disclaimer: string | null;
   };
   job_tech_tags: { level: SkillLevel | null; required: boolean; tech_tags: { slug: string; label: string } }[];
   job_categories: { slug: string } | null;
@@ -169,7 +170,19 @@ export function toJob(row: JobRow): Job {
  *  both the public feed (hidden) and the console's own job list (always
  *  real), without duplicating every other field. Exported for
  *  recommendations.ts, the one other candidate-facing consumer of raw
- *  JobRow-shaped data outside this file. */
+ *  JobRow-shaped data outside this file.
+ *
+ *  This all-or-nothing toggle is unchanged and deliberately stays that
+ *  way (2026-11-13 direct decision): a paying company that chooses to
+ *  hide still hides the whole thing, min included, that choice is a
+ *  real, sold feature, not something to quietly undercut. The separate
+ *  lever for "every listing shows at least a real number" is
+ *  `hasRequiredFields` below, which now only requires `salaryMin` to
+ *  publish at all, `salaryMax` is optional at creation time. A free or
+ *  paying company that never set a max, and hasn't chosen to hide, still
+ *  shows its real minimum here (salary_public stays true, nothing to
+ *  hide), the nudge toward sharing something real is in what's required
+ *  to publish, not in weakening what "hide" means. */
 export function hideSalaryIfPrivate(row: JobRow, job: Job): Job {
   if (row.salary_public) return job;
   return { ...job, salaryMin: null, salaryMax: null, contractSalaries: [] };
@@ -199,6 +212,11 @@ export type JobDetail = Job & {
   /** Short employer blurb for the sidebar — `companies.company_description`,
    *  null when the employer never filled it in. */
   companyBlurb: string | null;
+  /** Appended to the bottom of the description at render time, never
+   *  stored in the job's own description text (see
+   *  `companies.job_disclaimer`'s own comment). `null` when the
+   *  employer never set one. */
+  jobDisclaimer: string | null;
   /** The same tags as `tech` (plain labels, for the feed/filters), plus the
    *  level/required the employer set for each — real-usage QA item asking
    *  for "tech-stack proficiency shown as grade/icon" on the job page. The
@@ -221,6 +239,7 @@ function toJobDetail(row: JobRow): JobDetail {
       level: jl.level,
     })),
     companyBlurb: row.companies.company_description,
+    jobDisclaimer: row.companies.job_disclaimer,
     techStack: row.job_tech_tags.map((t) => ({
       slug: t.tech_tags.slug,
       label: t.tech_tags.label,
@@ -625,7 +644,13 @@ export async function saveJob(
   // §job-import: a bulk-imported draft can be missing category/salary —
   // fine to save, never fine to publish, same DB-level guarantee
   // `jobs_published_requires_salary` enforces independently.
-  const hasRequiredFields = input.categoryId != null && input.salaryMin != null && input.salaryMax != null;
+  //
+  // Real-usage decision, 2026-11-13: salaryMax is deliberately not
+  // required here anymore, only salaryMin is. The intent is for a
+  // company to lean toward actually sharing a real minimum instead of
+  // reaching for the separate, all-or-nothing `salaryPublic` hide toggle
+  // just because they don't want to commit to an exact ceiling yet.
+  const hasRequiredFields = input.categoryId != null && input.salaryMin != null;
   // Security audit finding: this used to also require `liveCount <
   // company.job_ad_slot_cap` here, decided once in JS and then written
   // unconditionally — the exact same TOCTOU shape as the ad-credit race

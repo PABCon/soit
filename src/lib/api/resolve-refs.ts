@@ -52,7 +52,11 @@ const jobBodySchema = z
     categorySlug: z.string().min(1),
     locationSlug: z.string().min(1).nullable().optional(),
     salaryMin: z.number().positive(),
-    salaryMax: z.number().positive(),
+    // Real-usage decision, 2026-11-13: only the minimum is required to
+    // publish, matching JobForm.tsx/saveJob's hasRequiredFields exactly.
+    // An external caller faces the same relaxed rule the console form
+    // does now, not the old, stricter one.
+    salaryMax: z.number().positive().nullable().optional(),
     salaryPeriod: z.enum(["hour", "day", "month", "year"]),
     salaryMonths: z.number().int().min(12).max(14).nullable().optional(),
     // The primary type's own salary basis (gross/net, §pricing) — defaults
@@ -85,7 +89,10 @@ const jobBodySchema = z
     publish: z.boolean().optional().default(false),
     salaryPublic: z.boolean().optional().default(true),
   })
-  .refine((v) => v.salaryMax >= v.salaryMin, { message: "salaryMax must be >= salaryMin", path: ["salaryMax"] })
+  .refine((v) => v.salaryMax == null || v.salaryMax >= v.salaryMin, {
+    message: "salaryMax must be >= salaryMin when given",
+    path: ["salaryMax"],
+  })
   .refine((v) => v.workModel === "remote" || !!v.locationSlug, {
     message: "locationSlug is required unless workModel is \"remote\"",
     path: ["locationSlug"],
@@ -194,7 +201,7 @@ export async function resolveJobRefs(body: unknown): Promise<ResolveJobRefsResul
     locationId,
     categoryId: category.id,
     salaryMin: v.salaryMin,
-    salaryMax: v.salaryMax,
+    salaryMax: v.salaryMax ?? null,
     salaryPeriod: v.salaryPeriod,
     salaryMonths: v.salaryPeriod === "month" ? (v.salaryMonths ?? null) : null,
     salaryBasis: v.salaryBasis,

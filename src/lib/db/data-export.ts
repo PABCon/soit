@@ -67,7 +67,7 @@ export async function getMyDataExport() {
     applications: applications.map((a) => ({
       jobTitle: a.job.title,
       companyName: a.job.company.name,
-      status: a.status,
+      status: a.bucket,
       appliedAt: a.createdAt,
     })),
     favoriteJobs: favoriteJobs.map((j) => ({ title: j.title, companySlug: j.company.slug })),

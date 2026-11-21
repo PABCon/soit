@@ -7,8 +7,10 @@ import { Link } from "@/i18n/navigation";
 import { Modal } from "@/components/Modal";
 import { applyAction, applyAnonymousAction } from "@/app/[locale]/(candidate)/jobs/[slug]/actions";
 import type { ApplyResult, AnonymousApplyResult, ApplyStatus } from "@/lib/db/applications";
+import { sendBeacon } from "@/lib/beacon";
 
 type Props = {
+  jobId: string;
   jobSlug: string;
   companyName: string;
   isCandidate: boolean;
@@ -23,6 +25,7 @@ const inputClass = "h-9 rounded-lg border border-line bg-white px-3 text-sm";
 const labelClass = "flex flex-col gap-1 text-sm";
 
 export function ApplyModal({
+  jobId,
   jobSlug,
   companyName,
   isCandidate,
@@ -79,7 +82,13 @@ export function ApplyModal({
 
   if (externalApplyUrl) {
     return (
-      <a href={externalApplyUrl} target="_blank" rel="noreferrer" className={buttonClass}>
+      <a
+        href={externalApplyUrl}
+        target="_blank"
+        rel="noreferrer"
+        className={buttonClass}
+        onClick={() => sendBeacon(`/api/jobs/${jobId}/apply-click`)}
+      >
         {t("apply")}
       </a>
     );
@@ -91,7 +100,14 @@ export function ApplyModal({
 
   return (
     <>
-      <button type="button" onClick={() => setModalOpen(true)} className={buttonClass}>
+      <button
+        type="button"
+        onClick={() => {
+          sendBeacon(`/api/jobs/${jobId}/apply-click`);
+          setModalOpen(true);
+        }}
+        className={buttonClass}
+      >
         {t("apply")}
       </button>
 

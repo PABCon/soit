@@ -42,6 +42,7 @@ export function OverviewSection({
   cvSignedUrl,
   headline,
   yearsExperience,
+  locations,
   seededFromDraft = false,
   onDraftReady,
 }: {
@@ -49,6 +50,10 @@ export function OverviewSection({
   cvSignedUrl: string | null;
   headline: string | null;
   yearsExperience: number | null;
+  /** Matchmaking rework, Phase 2 — the curated-city picker for "where do
+   *  you live," reusing the exact same list the Job Preferences tab's
+   *  own location chips already use. */
+  locations: { id: string; name: string }[];
   /** True when this mount's `profile`/`headline`/`yearsExperience` came
    *  from a freshly-parsed AI draft, not the persisted baseline — see
    *  `useAutosave`'s own `skipFirstRun` doc. */
@@ -63,7 +68,13 @@ export function OverviewSection({
   onDraftReady: (data: AiDraft, signedUrl: string | null) => void;
 }) {
   const t = useTranslations("profile");
-  const [basics, setBasics] = useState({ fullName: profile.fullName, phone: profile.phone ?? "", linkedinUrl: profile.linkedinUrl ?? "" });
+  const [basics, setBasics] = useState({
+    fullName: profile.fullName,
+    phone: profile.phone ?? "",
+    linkedinUrl: profile.linkedinUrl ?? "",
+    locationId: profile.locationId ?? "",
+    jobSearchStatus: profile.jobSearchStatus,
+  });
   const [fileError, setFileError] = useState<string | null>(null);
   const [autofillOpen, setAutofillOpen] = useState(false);
   const [analyzingStored, setAnalyzingStored] = useState(false);
@@ -75,6 +86,8 @@ export function OverviewSection({
         full_name: value.fullName.trim(),
         phone: value.phone.trim() || null,
         linkedin_url: value.linkedinUrl.trim() || null,
+        location_id: value.locationId || null,
+        job_search_status: value.jobSearchStatus,
       }),
     800,
     { skipFirstRun: !seededFromDraft },
@@ -215,7 +228,11 @@ export function OverviewSection({
 
       <div className={cardClass}>
         <CardHeading icon={Sparkles} title={t("headline")} action={<StatusIndicator status={headlineStatus} t={t} />} />
-        <div className="mt-5 grid grid-cols-2 gap-4">
+        {/* grid-cols-1 sm:grid-cols-2, not a bare 2-up grid: on a narrow
+         *  phone, two side-by-side fields here is cramped UX even where
+         *  it doesn't technically overflow, same single-column-first
+         *  responsive shape the basic-info card below already uses. */}
+        <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
           <label className={labelClass}>
             <span className="font-medium text-ink">{t("headline")}</span>
             <input
@@ -239,7 +256,18 @@ export function OverviewSection({
 
       <div className={cardClass}>
         <CardHeading icon={User} title={t("basicInfoHeading")} action={<StatusIndicator status={basicsStatus} t={t} />} />
-        <div className="mt-5 grid gap-4 sm:grid-cols-2">
+        {/* grid-cols-1, not a bare `grid` with no base column count: a
+         *  real production bug, caught live. With no `grid-template-
+         *  columns` set at all below `sm`, the grid's implicit column
+         *  track defaults to content-based `auto` sizing, not "one
+         *  column filling the container." An input with no explicit
+         *  width can force that auto track (and every item placed in
+         *  it) wider than the grid's own box, overflowing the page,
+         *  even though the grid container itself still reports a
+         *  perfectly normal width. `grid-cols-1` makes the base track a
+         *  real `minmax(0, 1fr)`, the same fix `sm:grid-cols-2` already
+         *  gets right at its own breakpoint. */}
+        <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
           <label className={labelClass}>
             <span className="font-medium text-ink">{t("fullName")}</span>
             <input
@@ -268,6 +296,37 @@ export function OverviewSection({
               onChange={(e) => setBasics((prev) => ({ ...prev, linkedinUrl: e.target.value }))}
               className={inputClass}
             />
+          </label>
+          <label className={labelClass}>
+            <span className="font-medium text-ink">{t("location")}</span>
+            <select
+              value={basics.locationId}
+              onChange={(e) => setBasics((prev) => ({ ...prev, locationId: e.target.value }))}
+              className={inputClass}
+            >
+              <option value="">{t("locationUnset")}</option>
+              {locations.map((loc) => (
+                <option key={loc.id} value={loc.id}>
+                  {loc.name}
+                </option>
+              ))}
+            </select>
+            <span className="text-xs text-muted">{t("locationHint")}</span>
+          </label>
+          <label className={labelClass}>
+            <span className="font-medium text-ink">{t("jobSearchStatus")}</span>
+            <select
+              value={basics.jobSearchStatus}
+              onChange={(e) =>
+                setBasics((prev) => ({ ...prev, jobSearchStatus: e.target.value as typeof prev.jobSearchStatus }))
+              }
+              className={inputClass}
+            >
+              <option value="looking">{t("jobSearchStatusOption.looking")}</option>
+              <option value="open">{t("jobSearchStatusOption.open")}</option>
+              <option value="not_open">{t("jobSearchStatusOption.not_open")}</option>
+            </select>
+            <span className="text-xs text-muted">{t("jobSearchStatusHint")}</span>
           </label>
         </div>
       </div>

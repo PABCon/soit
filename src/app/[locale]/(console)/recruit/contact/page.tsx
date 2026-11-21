@@ -21,7 +21,7 @@ export default async function ContactPage({ params }: Props) {
     <>
       <h1 className="text-3xl font-bold lg:text-4xl">{t("title")}</h1>
       <p className="mt-2 text-sm text-muted">{t("intro")}</p>
-      <div className="mt-6 grid gap-6 lg:grid-cols-[2fr_1fr]">
+      <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-[2fr_1fr]">
         <ContactForm />
         <ContactHelpTopics locale={locale} />
       </div>

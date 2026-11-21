@@ -45,7 +45,14 @@ export function CompaniesExplorer({
   return (
     <>
       <div className="mt-6 flex flex-wrap items-center gap-3">
-        <div className="relative min-w-0 flex-1">
+        {/* Real-device report: `min-w-0` let this shrink all the way
+         *  down to an illegibly narrow box before `flex-wrap` ever
+         *  decided a sibling control needed its own line — a `flex-wrap`
+         *  row only wraps once an item's *minimum* width genuinely
+         *  can't fit, so an unbounded min-width never triggers it. A
+         *  real floor here is what makes wrapping kick in at a
+         *  reasonable point instead. */}
+        <div className="relative min-w-[200px] flex-1">
           <Search
             className="pointer-events-none absolute top-1/2 left-3 h-4 w-4 -translate-y-1/2 text-muted"
             aria-hidden="true"

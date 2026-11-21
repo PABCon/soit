@@ -42,13 +42,22 @@ const PANEL_WORK_MODELS: WorkModel[] = ["hybrid", "office"];
 const EMPLOYMENT_TYPES: EmploymentType[] = ["permanent", "fixed_term", "contractor", "freelance", "internship"];
 type Sort = "recent" | "oldest" | "salary";
 
-const CHIP_WIDTH = 72;
-const CHIP_GAP = 12; // gap-x-3
+// Real-usage feedback: with the new JT banner also on this page, the
+// quick-filter row (plus "More filters"/count/sort below it) read as
+// "too much UI" before the real job list ever appears. Explicit
+// preference: keep every tech/category chip visible, shrink them
+// instead of hiding any. CHIP_WIDTH/the circle/label sizes below were
+// all reduced together (56px slot, 32px circle, smaller label/badge
+// text), cutting this row's own height noticeably while fitting more
+// chips per row for free (smaller fixed width per chip, same
+// single-row measurement logic below).
+const CHIP_WIDTH = 56;
+const CHIP_GAP = 8; // gap-x-2
 // Round-7 fix: the count badge overflows ~6px past the chip's own right
 // edge (`-right-1` on a 16px badge) — reserving this much slack in the
 // fitted-count arithmetic keeps the last chip's badge from landing right
 // at (or past) the row's own boundary.
-const BADGE_SLACK = 8;
+const BADGE_SLACK = 6;
 
 /** One circular icon chip for the tech/category filter row (round-6 —
  *  a real live job-count badge, per the reference screenshot, at the
@@ -67,13 +76,13 @@ function CircleChip({
   children: ReactNode;
 }) {
   return (
-    // 40px icon container, 1px neutral border, subtle blue-tinted hover.
+    // 32px icon container, 1px neutral border, subtle blue-tinted hover.
     // `shrink-0` — a fixed-width item (round-6: now in a true single-row,
     // no-wrap, no-scroll layout — see the measured-count row below).
-    <button type="button" onClick={onClick} title={label} className="flex w-[72px] shrink-0 flex-col items-center gap-1">
-      <span className="relative h-10 w-10">
+    <button type="button" onClick={onClick} title={label} className="flex w-[56px] shrink-0 flex-col items-center gap-0.5">
+      <span className="relative h-8 w-8">
         <span
-          className={`flex h-10 w-10 items-center justify-center rounded-full border bg-white transition-colors ${
+          className={`flex h-8 w-8 items-center justify-center rounded-full border bg-white transition-colors ${
             active ? "border-pine bg-pine/10" : "border-line hover:border-pine/40 hover:bg-subtle"
           }`}
         >
@@ -87,17 +96,27 @@ function CircleChip({
           // `overflow-x-hidden` instead (horizontal-only) plus a bit of
           // top padding, so this badge's `-top-1`/`-right-1` overflow has
           // real room.
-          <span className="absolute -top-1 -right-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-pine px-1 text-[9px] font-semibold text-white">
+          <span className="absolute -top-1 -right-1 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-pine px-0.5 text-[8px] font-semibold text-white">
             {count > 999 ? "999+" : count}
           </span>
         )}
       </span>
-      <span className={`line-clamp-2 w-full text-center text-xs leading-[14px] ${active ? "font-semibold text-pine" : "text-muted"}`}>
+      <span className={`line-clamp-2 w-full text-center text-[10px] leading-[12px] ${active ? "font-semibold text-pine" : "text-muted"}`}>
         {label}
       </span>
     </button>
   );
 }
+
+// Real-usage report: the list column used to be an independent, sticky,
+// `overflow-y-auto` scroll region next to the map, competing with the
+// outer page's own scroll (two scroll regions fighting depending on
+// where the cursor happened to be). Fixed by making the list a normal,
+// unconstrained block again (removed below) and capping it at a real
+// "page" of jobs instead — once a page's ~30 rows + the pager below them
+// scroll past, the rest of the page (browse-by section, footer) follows
+// in the exact same, single scroll, never a separate one.
+const PAGE_SIZE = 30;
 
 const CROSS_ICON = (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="h-4 w-4">
@@ -183,7 +202,16 @@ export function JobsExplorer({
       if (value === null || value === "") next.delete(key);
       else next.set(key, value);
     }
+    // Any filter/sort change resets back to page 1 — a stale page number
+    // from a much larger previous result set could otherwise land past
+    // the end of a newly narrowed one. `setPage` always passes `page`
+    // explicitly, so this never undoes an actual page-change request.
+    if (!("page" in patch)) next.delete("page");
     writeUrlSearchParams(next);
+  }
+
+  function setPage(nextPage: number) {
+    updateParams({ page: nextPage > 1 ? String(nextPage) : null });
   }
 
   function toggleListParam(key: string, list: string[], value: string) {
@@ -242,6 +270,41 @@ export function JobsExplorer({
   }, [allJobs, searchKey]);
 
   const pinned = useMemo(() => jobs.filter((j) => j.lat !== null && j.lng !== null), [jobs]);
+
+  // One "page" of the list at a time (§single-scroll fix) — clamped
+  // rather than rewritten back into the URL, so a stale/out-of-range page
+  // param (e.g. a bookmark from a much larger result set) just quietly
+  // falls back to the last real page instead of needing a redirect.
+  const totalPages = Math.max(1, Math.ceil(jobs.length / PAGE_SIZE));
+  const requestedPage = Math.max(1, Number(searchParams.get("page") ?? "1") || 1);
+  const page = Math.min(requestedPage, totalPages);
+  const pagedJobs = useMemo(() => jobs.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE), [jobs, page]);
+
+  const listTopRef = useRef<HTMLUListElement>(null);
+  const filterBarRef = useRef<HTMLDivElement>(null);
+  const skipNextScroll = useRef(true);
+  useEffect(() => {
+    if (skipNextScroll.current) {
+      skipNextScroll.current = false;
+      return;
+    }
+    const list = listTopRef.current;
+    if (!list) return;
+    // Real-usage report: plain `scrollIntoView({block: "start"})` aligns
+    // the list's own top edge with y=0 of the viewport — but two sticky
+    // elements (the header, then the filter bar) are pinned on top of
+    // that, covering whatever scrolls to right behind them. The result
+    // was the new page's first 1-2 jobs landing hidden underneath both.
+    // Measuring their real heights live (rather than hardcoding another
+    // "the header is Xpx" assumption — exactly the mistake just fixed
+    // above) and scrolling to clear both, plus a little breathing room,
+    // fixes it regardless of either one's current actual height.
+    const headerHeight = document.querySelector("header")?.getBoundingClientRect().height ?? 0;
+    const barHeight = filterBarRef.current?.getBoundingClientRect().height ?? 0;
+    const currentTop = list.getBoundingClientRect().top;
+    const delta = currentTop - (headerHeight + barHeight + 12);
+    window.scrollTo({ top: window.scrollY + delta, behavior: "smooth" });
+  }, [page]);
 
   const panelActiveCount =
     workModel.length + seniority.length + adLanguage.length + employmentType.length + reqLanguage.length + (minSalary ? 1 : 0);
@@ -314,7 +377,36 @@ export function JobsExplorer({
 
   return (
     <>
-      {/* Round-6 feedback: a genuine single row, never wrapping — see the
+      {/* Real-usage follow-up to the single-scroll fix: with the list no
+       *  longer its own sticky region, the quick-filter chips, the count/
+       *  sort/remote/"more filters" row, and the active search summary
+       *  just below it all scrolled away with the hero the moment the
+       *  list came into view — direct feedback was that these should stay
+       *  visible/usable the whole time the listings are scrolling past,
+       *  not just at the very top of the page. `bg-paper` matches the
+       *  page's own body background (`body` in globals.css) so the list
+       *  scrolling underneath never shows through; `border-b` gives a
+       *  clean edge once it's actually pinned. Deliberately NOT wrapping
+       *  the "more filters" aside panel or the list/map grid below —
+       *  those still scroll normally. */}
+      {/* Real-usage report: a visible gap showed job-card content peeking
+       *  through between the navbar and this bar. Root cause: `TopNav`'s
+       *  real rendered height is `h-16` (64px, deliberately shrunk from
+       *  an earlier `h-20` in a since-documented pixel-measurement
+       *  correction) — `top-20` (80px) was a stale assumption, leaving a
+       *  ~16px seam below the header where this bar hadn't actually
+       *  pinned yet. `top-16` matches the header's real height exactly,
+       *  at every breakpoint (TopNav's row height doesn't change on
+       *  mobile, only which of its children are visible). */}
+      {/* Real-usage follow-up: pinning this flush against the header (the
+       *  fix just above) left the quick-filter count badges — which
+       *  already poke upward past their own chip via `-top-1` — with
+       *  only the inner row's own `pt-1` (4px) of clearance above them
+       *  and nothing else, tight enough that the header visually cut off
+       *  the top sliver of each number. `pt-3` here adds real breathing
+       *  room between the header's bottom edge and the row below. */}
+      <div ref={filterBarRef} className="sticky top-16 z-[25] border-b border-line bg-paper pt-3 pb-4">
+        {/* Round-6 feedback: a genuine single row, never wrapping — see the
        *  measurement effect above. `overflow-x-hidden` (not full
        *  `overflow-hidden`, which clips vertical overflow too — the real
        *  cause of round-7's clipped badges) is a safety net for the brief
@@ -324,8 +416,19 @@ export function JobsExplorer({
        *  above the row. Round-7: the "All" chip is removed — it had no
        *  wired behavior worth keeping as its own element; a real
        *  "clear quick filters" action is a separate feature to propose,
-       *  not something to invent here. */}
-      <div ref={quickFilterRowRef} className="flex flex-nowrap gap-x-3 overflow-x-hidden pt-1">
+       *  not something to invent here.
+       *
+       *  Real-usage follow-up: with smaller chips, a page this wide often
+       *  has room for every real quick-filter entry well before using the
+       *  whole row, left-packed with a small fixed gap, reading as
+       *  clustered on the left with dead space on the right. `gap-x-2`
+       *  stays as the guaranteed minimum between chips; `justify-between`
+       *  spends whatever's left over growing those gaps so the shown
+       *  chips span the row's full width evenly instead. Exactly as safe
+       *  as the fixed-gap version: `justify-between` only ever consumes
+       *  space the fit-count calculation above already confirmed was
+       *  free, never more, so it can't overflow. */}
+      <div ref={quickFilterRowRef} className="flex flex-nowrap justify-between gap-x-2 overflow-x-hidden pt-1">
         {quickFilters.slice(0, visibleQuickFilterCount).map((item) =>
           item.kind === "tech" ? (
             <CircleChip
@@ -335,7 +438,7 @@ export function JobsExplorer({
               active={tech.includes(item.label)}
               onClick={() => toggleListParam("tech", tech, item.label)}
             >
-              <TechIcon slug={item.slug} label={item.label} className="h-[18px] w-[18px]" />
+              <TechIcon slug={item.slug} label={item.label} className="h-3.5 w-3.5" />
             </CircleChip>
           ) : (
             <CircleChip
@@ -345,7 +448,7 @@ export function JobsExplorer({
               active={cat.includes(item.slug)}
               onClick={() => toggleListParam("cat", cat, item.slug)}
             >
-              <CategoryIcon slug={item.slug} className="h-[18px] w-[18px] text-ink" />
+              <CategoryIcon slug={item.slug} className="h-3.5 w-3.5 text-ink" />
             </CircleChip>
           ),
         )}
@@ -459,21 +562,24 @@ export function JobsExplorer({
           )}
         </p>
       )}
+      </div>
 
       <div className="mt-4 flex items-start gap-6">
         {showMoreFilters && (
           // relative z-[25] — landing-page redesign spec §6.8: Rail (the
-          // floating left nav, fixed, z-20) and this panel occupy the same
-          // left-side screen region, and Rail's `top-1/2` anchor means it
-          // tracks the viewport's vertical center regardless of scroll
-          // position, so there's no scroll position that reliably avoids a
-          // collision. A static (non-positioned) element always paints
-          // below a positioned one in the same stacking context regardless
-          // of z-index, which is why this panel was getting obscured even
-          // though it had no z-index conflict on paper. Explicit stacking
-          // above Rail (z-20) but below the sticky header (z-30) guarantees
-          // the open filters panel is never obscured, independent of scroll
-          // position or Rail's own open/closed state.
+          // floating left nav) and this panel occupy the same left-side
+          // screen region, and Rail's `top-1/2` anchor means it tracks the
+          // viewport's vertical center regardless of scroll position, so
+          // there's no scroll position that reliably avoids a collision. A
+          // static (non-positioned) element always paints below a
+          // positioned one in the same stacking context regardless of
+          // z-index, which is why this panel was getting obscured even
+          // though it had no z-index conflict on paper. Below the sticky
+          // header (z-30) either way; Rail itself later moved to z-40
+          // (direct instruction: the side menu should sit above every
+          // other page-level layer, this panel included) — so hovering
+          // Rail while this panel is open will cover it, a deliberate
+          // trade-off from that instruction, not an oversight.
           <aside className="relative z-[25] w-full shrink-0 space-y-4 rounded-[10px] border border-line bg-white p-4 sm:w-64">
             <div>
               <p className="text-xs font-semibold text-muted uppercase">{t("filterSectionWorkModel")}</p>
@@ -582,41 +688,43 @@ export function JobsExplorer({
         {/* Round-8 item 2: list:map is 2:1, not the near-even 1:1.1 split —
          *  the list is the primary surface, the map a secondary aid. */}
         <div className={`grid min-w-0 flex-1 gap-6 ${mapVisible ? "lg:grid-cols-[2fr_1fr]" : ""}`}>
-          {/* Round-7: independent scroll for the list, desktop/side-by-side
-           *  only — same `sticky top-20 h-[calc(100dvh-8rem)]` box the map
-           *  column already uses (so both columns align), but with
-           *  `overflow-y-auto` instead of `overflow-hidden` so the list's
-           *  own content scrolls once the sticky box reaches its pinned
-           *  position. No `overscroll-behavior` is set anywhere, so once
-           *  this inner scroll is exhausted, scrolling naturally chains to
-           *  the outer page — standard browser behavior, not something to
-           *  wire up by hand. Scoped to `lg:` (and to `mapVisible`, the
-           *  actual "list+map side by side" condition) — the stacked
-           *  mobile layout keeps plain single-page scroll, unchanged.
-           *  Round-8 item 3: `scrollbar-hide` keeps this column's own
-           *  scroll (confirmed still scrollable — the utility only hides
-           *  the browser's painted scrollbar, never disables scrolling
-           *  itself) from sitting right next to the map's edge. */}
-          <div
-            className={
-              mapVisible
-                ? "order-2 scrollbar-hide lg:sticky lg:top-20 lg:order-1 lg:h-[calc(100dvh-8rem)] lg:overflow-y-auto"
-                : ""
-            }
-          >
+          {/* Real-usage fix: the list used to be its own independent,
+           *  sticky, `overflow-y-auto` scroll region here — competing with
+           *  the outer page's own scroll depending on where the cursor
+           *  happened to be. It's now a plain, unconstrained block (no
+           *  sticky/height/overflow of its own) capped at PAGE_SIZE jobs,
+           *  so the page's single scroll carries the reader straight
+           *  through it — once a page's rows and the pager below them end,
+           *  normal document flow continues into whatever's next (the map
+           *  column beside it, still sticky/pinned, imposes no height on
+           *  this one — see its own `lg:self-start` below). */}
+          <div className="order-2 lg:order-1">
             {jobs.length > 0 ? (
-              // gap-2 (8px) — §6.6's "vertical gap between cards," replacing
-              // the old single-border-t table-row treatment now that each
-              // JobRow is its own bordered card.
-              <ul className="flex flex-col gap-2">
-                {jobs.map((job) => (
-                  <JobRow
-                    key={job.slug}
-                    job={job}
-                    isFavorited={favoriteJobIds ? favoriteJobIds.includes(job.id) : undefined}
-                  />
-                ))}
-              </ul>
+              <>
+                {/* gap-2 (8px) — §6.6's "vertical gap between cards,"
+                 *  replacing the old single-border-t table-row treatment
+                 *  now that each JobRow is its own bordered card. */}
+                <ul ref={listTopRef} className="flex flex-col gap-2">
+                  {pagedJobs.map((job) => (
+                    <JobRow
+                      key={job.slug}
+                      job={job}
+                      isFavorited={favoriteJobIds ? favoriteJobIds.includes(job.id) : undefined}
+                    />
+                  ))}
+                </ul>
+                {totalPages > 1 && (
+                  <div className="mt-6 flex items-center justify-center gap-3">
+                    <Button variant="secondary" disabled={page <= 1} onClick={() => setPage(page - 1)}>
+                      {t("prevPage")}
+                    </Button>
+                    <p className="text-sm text-muted tabular-nums">{t("pageOf", { page, total: totalPages })}</p>
+                    <Button variant="secondary" disabled={page >= totalPages} onClick={() => setPage(page + 1)}>
+                      {t("nextPage")}
+                    </Button>
+                  </div>
+                )}
+              </>
             ) : (
               <div className="rounded-xl border border-dashed border-line py-16 text-center">
                 <p className="text-sm text-muted">{t("noMatches")}</p>
@@ -634,15 +742,19 @@ export function JobsExplorer({
           </div>
 
           {mapVisible && (
-            // Column wrapper so the "remote jobs have no pin" disclaimer
-            // (reference-image comparison round) sits as its own line
-            // directly below the map frame, not overlaid on top of it —
-            // flex-col + the map box's own flex-1/min-h-0 keeps the whole
-            // column's total height at the existing sticky box's
-            // calc(100dvh-8rem), split between the map and this one text
-            // row, rather than growing past it.
-            <div className="order-1 hidden flex-col gap-2 lg:sticky lg:top-20 lg:order-2 lg:flex lg:h-[calc(100dvh-8rem)]">
-              <div className="relative min-h-0 flex-1 overflow-hidden rounded-[10px] border border-line">
+            // `lg:self-start` — without it, this sticky column would
+            // stretch (CSS Grid's default `align-items: stretch`) to
+            // match the list column's own, now-unconstrained height; the
+            // map's actual visual size instead comes from the explicit
+            // height on its own inner frame just below, unrelated to
+            // however tall the list currently is.
+            // top-16/h-[calc(100dvh-7rem)]: same stale-top-20-assumes-an-
+            // h-20-header bug as the filter bar above — corrected to
+            // TopNav's real h-16 (64px), with the height's subtracted
+            // total reduced by the same 1rem so the map keeps its
+            // original ~3rem bottom gap rather than quietly shrinking.
+            <div className="order-1 hidden flex-col gap-2 lg:sticky lg:top-16 lg:order-2 lg:flex lg:self-start">
+              <div className="relative h-[calc(100dvh-7rem)] overflow-hidden rounded-[10px] border border-line">
                 <button
                   type="button"
                   onClick={() => setMapVisible(false)}

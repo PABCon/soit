@@ -46,8 +46,15 @@ const SITE = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
  * ("Just IT") and a sitelinks search box. `sameAs` only lists LinkedIn
  * when `NEXT_PUBLIC_LINKEDIN_URL` is actually set (same guard Footer.tsx
  * already uses) — no fabricated/placeholder social links.
+ *
+ * AI/answer-engine audit finding: this entity had no `description` at
+ * all, the single field AI models and knowledge graphs lean on most to
+ * understand what an entity actually is, before ever reading a page of
+ * prose. Reuses the exact same approved `brand.shareDescription` copy
+ * the root layout's own `<meta name="description">` and share cards
+ * already use, rather than writing new marketing copy for this one spot.
  */
-function organizationJsonLd(name: string, locale: string) {
+function organizationJsonLd(name: string, description: string, locale: string) {
   const linkedinUrl = process.env.NEXT_PUBLIC_LINKEDIN_URL;
   return {
     "@context": "https://schema.org",
@@ -56,6 +63,7 @@ function organizationJsonLd(name: string, locale: string) {
         "@type": "Organization",
         "@id": `${SITE}/#organization`,
         name,
+        description,
         url: SITE,
         logo: `${SITE}/logo-justit.png`,
         ...(linkedinUrl ? { sameAs: [linkedinUrl] } : {}),
@@ -122,7 +130,9 @@ export default async function LocaleLayout({ children, params }: Props) {
       <body className="bg-paper text-ink antialiased">
         <script
           type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: safeJsonLd(organizationJsonLd(t("name"), locale)) }}
+          dangerouslySetInnerHTML={{
+            __html: safeJsonLd(organizationJsonLd(t("name"), t("shareDescription"), locale)),
+          }}
         />
         <NextIntlClientProvider>
           {children}

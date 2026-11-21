@@ -3,6 +3,7 @@ import { getTranslations, setRequestLocale } from "next-intl/server";
 import { Link } from "@/i18n/navigation";
 import { getJobForEdit } from "@/lib/db/jobs";
 import { getApplicantsForJob } from "@/lib/db/applications";
+import { getOrCreateCompanyStages } from "@/lib/db/application-stages";
 import { ApplicantsList } from "@/components/console/ApplicantsList";
 
 type Props = { params: Promise<{ locale: string; id: string }> };
@@ -14,6 +15,7 @@ export default async function ApplicantsPage({ params }: Props) {
 
   const [job, applicants] = await Promise.all([getJobForEdit(id), getApplicantsForJob(id)]);
   if (!job) notFound();
+  const stages = await getOrCreateCompanyStages(job.company_id);
 
   return (
     <>
@@ -21,7 +23,7 @@ export default async function ApplicantsPage({ params }: Props) {
         {t("backToJobAds")}
       </Link>
       <h1 className="mt-2 text-2xl font-bold">{t("title", { job: job.title })}</h1>
-      <ApplicantsList jobId={id} applicants={applicants} />
+      <ApplicantsList jobId={id} applicants={applicants} stages={stages} />
     </>
   );
 }

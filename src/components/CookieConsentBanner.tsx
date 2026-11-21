@@ -15,9 +15,21 @@ type Consent = "pending" | "accepted" | "rejected";
 // `useSyncExternalStore`, not `useState`+`useEffect` — reading localStorage
 // then `setState`-ing it inside an effect is exactly the cascading-render
 // pattern `react-hooks/set-state-in-effect` flags (same lint rule this
-// project already hit once for Rail's old collapse state). `getServerSnapshot`
-// returns `null` (render nothing) so the server-rendered markup never
-// claims a choice that hasn't actually been read from the browser yet.
+// project already hit once for Rail's old collapse state).
+//
+// `getServerSnapshot` returns `"pending"`, not `null` (real-usage finding,
+// PageSpeed diagnostic, 2026-11-17): this banner's own text turned out to
+// be this page's measured LCP element, and the old `null` default meant
+// rendering nothing at all until client hydration caught up and read
+// localStorage, a ~5s blank gap on a throttled connection. This was
+// never actually a load-time cost, it was a pure render-delay cost.
+// `useSyncExternalStore` already handles a server/client snapshot
+// mismatch safely on its own (render the server value first, resync to
+// the real client value right after), so "pending" immediately, upgraded
+// a moment later if the visitor already decided on an earlier visit, is
+// the one-line fix. A brief flash of an already-dismissed banner for a
+// *returning* visitor is a fair trade for every first-time visitor
+// getting real content painted instantly instead of waiting on nothing.
 function getSnapshot(): Consent {
   try {
     const stored = localStorage.getItem(CONSENT_KEY);
@@ -26,8 +38,8 @@ function getSnapshot(): Consent {
     return "pending"; // private browsing / storage blocked — still show the banner
   }
 }
-function getServerSnapshot(): Consent | null {
-  return null;
+function getServerSnapshot(): Consent {
+  return "pending";
 }
 function subscribe(callback: () => void) {
   window.addEventListener(CONSENT_EVENT, callback);

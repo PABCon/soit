@@ -1,0 +1,11 @@
+{
+  "effective_from": "2003-01-01",
+  "effective_to": null,
+  "openEndedNoticeDaysShortTenure": 30,
+  "openEndedNoticeDaysLongTenure": 60,
+  "openEndedTenureThresholdYears": 2,
+  "fixedTermNoticeDaysShortContract": 15,
+  "fixedTermNoticeDaysLongContract": 30,
+  "fixedTermContractDurationThresholdMonths": 6,
+  "source": "Código do Trabalho art. 400.º ('Denúncia com aviso prévio'): 30 dias de aviso prévio para antiguidade até 2 anos, 60 dias para antiguidade superior a 2 anos (contrato sem termo); 15 dias se o contrato a termo tiver duração inferior a 6 meses, 30 dias se igual ou superior. Consequência de aviso prévio insuficiente/inexistente: art. 401.º, compensação automática ao empregador equivalente à retribuição base e diuturnidades correspondentes ao período de aviso prévio em falta, sem necessidade de prova de prejuízo efetivo."
+}

@@ -54,15 +54,19 @@ export async function RecommendationsTeaser() {
     // chips stay as decoration alongside it.
     <Link
       href="/recommendations"
-      className="relative mb-6 flex items-center justify-between gap-4 overflow-hidden rounded-lg bg-gradient-to-r from-pine/20 to-pine/5 px-4 py-3 transition-colors hover:from-pine/25 hover:to-pine/10"
+      className="relative mb-6 flex flex-col gap-3 overflow-hidden rounded-lg bg-gradient-to-r from-pine/20 to-pine/5 px-4 py-3 transition-colors hover:from-pine/25 hover:to-pine/10 sm:flex-row sm:items-center sm:justify-between sm:gap-4"
     >
       <span className="flex min-w-0 items-center gap-3">
         <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-pine/15">
           <Sparkles aria-hidden className="h-5 w-5 text-pine" />
         </span>
         <span className="min-w-0">
-          <span className="block truncate text-sm font-bold text-pine">{body}</span>
-          <span className="block truncate text-xs text-muted">{t("subtitle")}</span>
+          {/* Below sm, this row has no illustration/CTA squeezing it, so
+           *  it can wrap to 2 lines instead of truncating to a few
+           *  unreadable characters — truncate only once there's a real
+           *  width constraint again, from sm up. */}
+          <span className="block text-sm font-bold text-pine sm:truncate">{body}</span>
+          <span className="block text-xs text-muted sm:truncate">{t("subtitle")}</span>
         </span>
       </span>
 

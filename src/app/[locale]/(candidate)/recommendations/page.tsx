@@ -26,7 +26,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     // page's own design) but was falling back to the root layout's
     // homepage alternates — same gap as the other growth-funnel pages.
     alternates: localeAlternates("/recommendations", locale),
-    ...socialMeta({ title, description, url: `${SITE}/${locale}/recommendations` }),
+    ...socialMeta({ title, description, url: `${SITE}/${locale}/recommendations`, image: `${SITE}/og/recommendations.jpg` }),
   };
 }
 

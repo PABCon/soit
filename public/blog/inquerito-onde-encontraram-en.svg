@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 524" width="640" height="524" role="img" aria-label="Where they found their last job">
+  <rect width="640" height="524" fill="#ffffff" />
+  <text x="24" y="30" font-family="system-ui, sans-serif" font-size="16" font-weight="700" fill="#182230">Where they found their last job</text>
+  
+    <text x="24" y="56" font-family="system-ui, sans-serif" font-size="13" fill="#182230">LinkedIn</text>
+    <rect x="24" y="62" width="544" height="20" rx="4" fill="#e2e6ef" opacity="0.4" />
+    <rect x="24" y="62" width="544" height="20" rx="4" fill="#465bff" />
+    <text x="578" y="77" font-family="system-ui, sans-serif" font-size="13" font-weight="700" fill="#465bff">84%</text>
+    <text x="24" y="112" font-family="system-ui, sans-serif" font-size="13" fill="#182230">Recruiter or headhunter</text>
+    <rect x="24" y="118" width="544" height="20" rx="4" fill="#e2e6ef" opacity="0.4" />
+    <rect x="24" y="118" width="207.23809523809524" height="20" rx="4" fill="#eef2ff" />
+    <text x="241.23809523809524" y="133" font-family="system-ui, sans-serif" font-size="13" font-weight="700" fill="#667085">32%</text>
+    <text x="24" y="168" font-family="system-ui, sans-serif" font-size="13" fill="#182230">Personal network / referral</text>
+    <rect x="24" y="174" width="544" height="20" rx="4" fill="#e2e6ef" opacity="0.4" />
+    <rect x="24" y="174" width="136" height="20" rx="4" fill="#eef2ff" />
+    <text x="170" y="189" font-family="system-ui, sans-serif" font-size="13" font-weight="700" fill="#667085">21%</text>
+    <text x="24" y="224" font-family="system-ui, sans-serif" font-size="13" fill="#182230">Direct on the company's own site</text>
+    <rect x="24" y="230" width="544" height="20" rx="4" fill="#e2e6ef" opacity="0.4" />
+    <rect x="24" y="230" width="136" height="20" rx="4" fill="#eef2ff" />
+    <text x="170" y="245" font-family="system-ui, sans-serif" font-size="13" font-weight="700" fill="#667085">21%</text>
+    <text x="24" y="280" font-family="system-ui, sans-serif" font-size="13" fill="#182230">Indeed</text>
+    <rect x="24" y="286" width="544" height="20" rx="4" fill="#e2e6ef" opacity="0.4" />
+    <rect x="24" y="286" width="71.23809523809524" height="20" rx="4" fill="#eef2ff" />
+    <text x="105.23809523809524" y="301" font-family="system-ui, sans-serif" font-size="13" font-weight="700" fill="#667085">11%</text>
+    <text x="24" y="336" font-family="system-ui, sans-serif" font-size="13" fill="#182230">Net-Empregos</text>
+    <rect x="24" y="342" width="544" height="20" rx="4" fill="#e2e6ef" opacity="0.4" />
+    <rect x="24" y="342" width="38.857142857142854" height="20" rx="4" fill="#eef2ff" />
+    <text x="72.85714285714286" y="357" font-family="system-ui, sans-serif" font-size="13" font-weight="700" fill="#667085">6%</text>
+    <text x="24" y="392" font-family="system-ui, sans-serif" font-size="13" fill="#182230">SAPO Emprego</text>
+    <rect x="24" y="398" width="544" height="20" rx="4" fill="#e2e6ef" opacity="0.4" />
+    <rect x="24" y="398" width="38.857142857142854" height="20" rx="4" fill="#eef2ff" />
+    <text x="72.85714285714286" y="413" font-family="system-ui, sans-serif" font-size="13" font-weight="700" fill="#667085">6%</text>
+    <text x="24" y="448" font-family="system-ui, sans-serif" font-size="13" fill="#182230">ITJobs</text>
+    <rect x="24" y="454" width="544" height="20" rx="4" fill="#e2e6ef" opacity="0.4" />
+    <rect x="24" y="454" width="6.476190476190476" height="20" rx="4" fill="#eef2ff" />
+    <text x="40.476190476190474" y="469" font-family="system-ui, sans-serif" font-size="13" font-weight="700" fill="#667085">1%</text>
+</svg>

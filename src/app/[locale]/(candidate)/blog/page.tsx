@@ -31,7 +31,7 @@ export default async function BlogIndexPage({ params }: Props) {
 
   return (
     <div className="mx-auto max-w-6xl">
-      <div className="grid items-center gap-8 rounded-2xl bg-pine/5 p-8 sm:p-10 lg:grid-cols-[1fr_340px]">
+      <div className="grid grid-cols-1 items-center gap-8 rounded-2xl bg-pine/5 p-8 sm:p-10 lg:grid-cols-[1fr_340px]">
         <div>
           <p className="text-sm font-semibold text-pine">{t("listingLabel")}</p>
           <h1 className="mt-2 font-display text-2xl font-bold text-ink sm:text-3xl">{t("listingHeading")}</h1>

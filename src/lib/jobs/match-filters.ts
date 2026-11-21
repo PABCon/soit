@@ -50,6 +50,30 @@ export function parseJobFilterParams(params: URLSearchParams): JobFilterParams {
   };
 }
 
+/** The exact inverse of `parseJobFilterParams`, same keys, same
+ *  comma-joined list encoding, so anything that already has a
+ *  `JobFilterParams` (the chat assistant's own search tool, for its
+ *  "view all results" link; a future saved-search edit link; etc.) can
+ *  build a real `/jobs?...` URL that reproduces the identical filtered
+ *  view, rather than a second, hand-rolled query-string builder that
+ *  could silently drift from what `/jobs` itself actually reads. */
+export function serializeJobFilterParams(filters: JobFilterParams): URLSearchParams {
+  const params = new URLSearchParams();
+  if (filters.q) params.set("q", filters.q);
+  if (filters.near) params.set("near", filters.near);
+  if (filters.radiusKm) params.set("radiusKm", String(filters.radiusKm));
+  if (filters.tech.length) params.set("tech", filters.tech.join(","));
+  if (filters.cat.length) params.set("cat", filters.cat.join(","));
+  if (filters.seniority.length) params.set("seniority", filters.seniority.join(","));
+  if (filters.adLanguage.length) params.set("lang", filters.adLanguage.join(","));
+  if (filters.workModel.length) params.set("workModel", filters.workModel.join(","));
+  if (filters.employmentType.length) params.set("empType", filters.employmentType.join(","));
+  if (filters.reqLanguage.length) params.set("reqLang", filters.reqLanguage.join(","));
+  if (filters.remoteOnly) params.set("remote", "1");
+  if (filters.minSalary) params.set("minSalary", String(filters.minSalary));
+  return params;
+}
+
 /** A job's own `salaryMin`, normalized onto a monthly-gross scale so
  *  postings billed hourly/daily/yearly/monthly can all be compared
  *  against one `minSalary` floor. `null` (a hidden salary) is never

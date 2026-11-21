@@ -83,7 +83,12 @@ export function Salary({
     });
 
   function renderOption(opt: SalaryOption, showLabel: boolean) {
-    if (opt.min == null || opt.max == null) {
+    // Real-usage decision, 2026-11-13: a paying company can still hide the
+    // exact ceiling, but never the floor, so `min` alone is now the only
+    // case this component treats as genuinely "not disclosed," true today
+    // only for a non-live context (a draft, say), since a live job always
+    // has at least a real minimum.
+    if (opt.min == null) {
       return (
         <p
           className={
@@ -97,6 +102,12 @@ export function Salary({
       );
     }
 
+    // Captured into a local rather than reusing `opt.min` directly below:
+    // TS invalidates a narrowed property's type across any intervening
+    // function call (the `t(...)` calls just below), since it can't prove
+    // none of them mutates `opt` back to holding a null `min`.
+    const min = opt.min;
+    const max = opt.max;
     const showMonths = opt.period === "month" && typeof opt.months === "number";
     const meta = [
       showMonths ? t("months", { count: opt.months as number }) : null,
@@ -120,7 +131,7 @@ export function Salary({
               : "font-display text-base font-bold text-pine tabular-nums"
           }
         >
-          {money(opt.min)}–{money(opt.max)}
+          {max != null ? `${money(min)}–${money(max)}` : `${t("from")} ${money(min)}`}
         </p>
         <p className={size === "detail" ? "mt-1 text-sm text-muted" : "mt-0.5 text-xs text-muted"}>
           {t(PERIOD_KEY[opt.period])} · {meta}

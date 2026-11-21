@@ -25,3 +25,17 @@ export async function checkApiRateLimit(companyId: string): Promise<boolean> {
   const { success } = await ratelimit.limit(companyId);
   return success;
 }
+
+// Same reasoning as the company limiter above, just keyed by candidateId
+// for the candidate MCP server — a separate Ratelimit instance (own
+// prefix) so the two surfaces' usage never shares one budget.
+const candidateRatelimit = new Ratelimit({
+  redis,
+  limiter: Ratelimit.slidingWindow(60, "60 s"),
+  prefix: "api-candidate-ratelimit",
+});
+
+export async function checkCandidateApiRateLimit(candidateId: string): Promise<boolean> {
+  const { success } = await candidateRatelimit.limit(candidateId);
+  return success;
+}
